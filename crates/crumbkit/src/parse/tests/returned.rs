@@ -4,11 +4,10 @@
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{Flags, admits, tool};
-use crate::help::Guide;
+use super::{Flags, admits, tree};
 use crate::parse::parse_to;
 use crate::view::{Table, View};
-use crate::{Printed, Sink};
+use crate::{Printed, Sink, Tool};
 
 #[test]
 fn a_command_line_that_parses_returns_the_parsed_type_and_an_output_that_holds_the_command() {
@@ -16,8 +15,8 @@ fn a_command_line_that_parses_returns_the_parsed_type_and_an_output_that_holds_t
     let mut err = Vec::new();
     let result = parse_to::<Flags, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         ["tool", "--json", "planets", "show", "Mars"],
     );
 
@@ -53,7 +52,7 @@ fn parse_reads_the_view_flags_that_a_tool_flattens_before_the_tool_s_type_takes_
     let result = parse_to::<Viewed, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         <Viewed as clap::CommandFactory>::command(),
-        &Guide::new(),
+        &Tool::new(),
         ["tool", "list", "--json", "--fields", "name,moons"],
     );
 
@@ -75,7 +74,7 @@ fn a_tool_without_view_flags_parses_with_every_view_flag_off() {
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         Command::new("tool").arg(Arg::new("json").long("json").action(ArgAction::SetTrue)),
-        &Guide::new(),
+        &Tool::new(),
         ["tool", "--json"],
     );
 
@@ -87,14 +86,15 @@ fn a_tool_without_view_flags_parses_with_every_view_flag_off() {
 }
 
 #[test]
-fn the_output_of_a_stopped_run_has_the_guide_s_output_budget() {
-    const GUIDE: Guide = Guide::new().output_budget(1024, "the test sets it");
+fn the_output_of_a_stopped_run_has_the_tool_s_output_budget() {
+    const TOOL: Tool =
+        Tool::new().output(crate::tool::Output::new().budget(1024, "the test sets it"));
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result = parse_to::<Flags, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        tool(),
-        &GUIDE,
+        tree(),
+        &TOOL,
         ["tool", "--help"],
     );
 
@@ -126,7 +126,7 @@ enum Removes {
 fn removing(args: &[&str]) -> crate::Output {
     let mut sink = Sink::new(Vec::new(), Vec::new());
     let command = <Removing as clap::CommandFactory>::command();
-    let (_, output) = parse_to::<Removing, _, _, _, _>(&mut sink, command, &Guide::new(), args)
+    let (_, output) = parse_to::<Removing, _, _, _, _>(&mut sink, command, &Tool::new(), args)
         .unwrap_or_else(|_| panic!("the command line did not parse"));
     output
 }
@@ -155,7 +155,7 @@ fn a_dry_run_confirms_without_asking() {
 #[track_caller]
 fn printed_by(command: Command, args: &[&str]) -> Printed {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    match parse_to::<(), _, _, _, _>(&mut sink, command, &Guide::new(), args) {
+    match parse_to::<(), _, _, _, _>(&mut sink, command, &Tool::new(), args) {
         Err(stop) => stop.printed(),
         Ok(_) => panic!("{args:?} parsed"),
     }
@@ -163,26 +163,26 @@ fn printed_by(command: Command, args: &[&str]) -> Printed {
 
 #[test]
 fn short_help_long_help_and_the_word_help_report_that_help_printed() {
-    assert_eq!(printed_by(tool(), &["tool", "-h"]), Printed::Help);
+    assert_eq!(printed_by(tree(), &["tool", "-h"]), Printed::Help);
     assert_eq!(
-        printed_by(tool(), &["tool", "planets", "show", "--help"]),
+        printed_by(tree(), &["tool", "planets", "show", "--help"]),
         Printed::Help
     );
     assert_eq!(
-        printed_by(tool(), &["tool", "help", "planets"]),
+        printed_by(tree(), &["tool", "help", "planets"]),
         Printed::Help
     );
 }
 
 #[test]
 fn the_version_reports_that_the_version_printed() {
-    assert_eq!(printed_by(tool(), &["tool", "--version"]), Printed::Version);
+    assert_eq!(printed_by(tree(), &["tool", "--version"]), Printed::Version);
 }
 
 #[test]
 fn a_topic_at_the_root_reports_that_a_topic_printed() {
     assert_eq!(
-        printed_by(tool(), &["tool", "help", "exit-codes"]),
+        printed_by(tree(), &["tool", "help", "exit-codes"]),
         Printed::Topic
     );
 }
@@ -191,12 +191,12 @@ fn a_topic_at_the_root_reports_that_a_topic_printed() {
 fn a_printed_refusal_reports_that_a_refusal_printed() {
     let refused = ["tool", "planets", "show", "Mars", "--srot", "name"];
     admits(
-        tool(),
+        tree(),
         &refused,
         &["tool", "planets", "show", "Mars", "--sort", "name"],
     );
 
-    assert_eq!(printed_by(tool(), &refused), Printed::Refusal);
+    assert_eq!(printed_by(tree(), &refused), Printed::Refusal);
 }
 
 #[test]

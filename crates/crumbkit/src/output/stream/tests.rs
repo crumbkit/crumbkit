@@ -94,7 +94,7 @@ impl Failure for Unreadable {
 /// A tool with one command that streams sightings.
 #[derive(Parser)]
 #[command(name = "birds")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -113,19 +113,12 @@ enum Command {
 /// tool that parses with clap alone builds it, with the `--dry-run` that
 /// `flags` hold.
 fn parse(flags: &[&str]) -> Output {
-    let mut command = Tool::command();
+    let mut command = Cli::command();
     let args = ["birds", "watch"].iter().chain(flags);
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
-    let tool = Tool::from_arg_matches(&matches).unwrap();
+    let tool = Cli::from_arg_matches(&matches).unwrap();
     let Command::Watch { dry_run } = tool.command;
-    Output::new(
-        tool.view,
-        dry_run,
-        command,
-        &crate::help::Guide::new(),
-        args,
-    )
-    .unwrap()
+    Output::new(tool.view, dry_run, command, &crate::Tool::new(), args).unwrap()
 }
 
 /// What a stream wrote and the exit code it ended with.
@@ -474,26 +467,26 @@ fn another_write_error_is_reported_once_and_the_stream_exits_with_1() {
     );
 }
 
-/// Streams `count` robins with `flags` and a guide whose output budget is
+/// Streams `count` robins with `flags` and a tool record whose output budget is
 /// 1024 bytes, until the stream breaks, and returns what it wrote and the
 /// number of items it accepted.
 fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
     run_budgeted_as(flags, count, SIGHTINGS)
 }
 
-/// Streams `count` robins as `document` with `flags` and a guide whose
+/// Streams `count` robins as `document` with `flags` and a tool record whose
 /// output budget is 1024 bytes, as [`run_budgeted`] does.
 fn run_budgeted_as(
     flags: &[&str],
     count: usize,
     document: Document<Stream<Sighting>>,
 ) -> (Streamed, usize) {
-    let mut command = Tool::command();
+    let mut command = Cli::command();
     let args = ["birds", "watch"].iter().chain(flags);
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
-    let view = Tool::from_arg_matches(&matches).unwrap().view;
-    let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    let output = Output::new(view, DryRun::default(), command, &guide, args).unwrap();
+    let view = Cli::from_arg_matches(&matches).unwrap().view;
+    let tool = crate::Tool::new().output(crate::tool::Output::new().budget(1024, "a short watch"));
+    let output = Output::new(view, DryRun::default(), command, &tool, args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -559,13 +552,13 @@ fn a_json_stream_ends_with_the_over_budget_failure_document() {
 
 #[test]
 fn a_stream_always_prints_its_first_item_even_past_the_budget() {
-    let mut command = Tool::command();
+    let mut command = Cli::command();
     let matches = command
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
-    let view = Tool::from_arg_matches(&matches).unwrap().view;
-    let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    let output = Output::new(view, DryRun::default(), command, &guide, ["birds", "watch"]).unwrap();
+    let view = Cli::from_arg_matches(&matches).unwrap().view;
+    let tool = crate::Tool::new().output(crate::tool::Output::new().budget(1024, "a short watch"));
+    let output = Output::new(view, DryRun::default(), command, &tool, ["birds", "watch"]).unwrap();
     let long: &'static str = Box::leak("w".repeat(2000).into_boxed_str());
     let wren = Sighting {
         bird: long,

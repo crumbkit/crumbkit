@@ -5,13 +5,12 @@
 use std::ffi::OsString;
 
 use clap::{CommandFactory as _, Parser, Subcommand};
-use crumbkit::help::Guide;
-use crumbkit::{Sink, Unparsed, ViewFlags};
+use crumbkit::{Sink, Tool, Unparsed, ViewFlags};
 
 /// A tool with a `list` command.
 #[derive(Debug, Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -32,10 +31,10 @@ type Printed = (String, String);
 fn refuse(args: &[&str]) -> (Vec<OsString>, Option<String>, Printed, Printed) {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let parsed = crumbkit::try_parse_to::<Tool, _, _, _, _>(
+    let parsed = crumbkit::try_parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         args,
     );
     let before = (

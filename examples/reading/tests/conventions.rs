@@ -1,20 +1,20 @@
-//! The convention tests of reading, which hold its command tree, guide, help
-//! pages and examples to crumbkit's conventions with crumbkit-test.
+//! The convention tests of reading, which hold its command tree, tool record,
+//! help pages and examples to crumbkit's conventions with crumbkit-test.
 //!
-//! Each check reads the command tree and the guide that reading builds from
-//! the lists in `tests/fixtures/lists/`, so the checks cover the commands
-//! that reading adds at run time. They live in an integration test so that
-//! the example check can run the built binary, whose path cargo sets only
-//! for integration tests. The example check runs each example in a new copy
-//! of the fixture directory, with `READING_DIR` naming the copy, and
-//! compares each run's standard output with its golden file under
-//! `tests/golden/examples/` (ADR-0005). `SNAPSHOTS=overwrite cargo test` writes, rewrites and
-//! deletes the golden files.
+//! Each check reads the command tree and the tool record that reading builds
+//! from the lists in `tests/fixtures/lists/`, so the checks cover the commands
+//! that reading adds at run time. They live in an integration test so that the
+//! example check can run the built binary, whose path cargo sets only for
+//! integration tests. The example check runs each example in a new copy of the
+//! fixture directory, with `READING_DIR` naming the copy, and compares each
+//! run's standard output with its golden file under `tests/golden/examples/`
+//! (ADR-0005). `SNAPSHOTS=overwrite cargo test` writes, rewrites and deletes
+//! the golden files.
 
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 use crumbkit_test::{
     Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Twin, Twins,
     Unprovoked,
@@ -65,25 +65,25 @@ const EXAMPLES: Examples<'_> =
         .provides(&["writable-lists"])
         .allow(ALLOW);
 
-/// Returns the command tree and the guide that reading builds from the lists
-/// in its fixture directory.
-fn fixture_tool() -> (Command, Guide) {
+/// Returns the command tree and the tool record that reading builds from the
+/// lists in its fixture directory.
+fn fixture_tool() -> (Command, Tool) {
     let lists = reading::lists_in(Path::new(LISTS));
-    (reading::command(&lists), reading::guide(&lists))
+    (reading::command(&lists), reading::tool(&lists))
 }
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_names(&command, Pages::rendered(&guide), ALLOW);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_names(&command, Pages::rendered(&tool), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_list_show_stream_edit_set_or_export() {
-    let (command, guide) = fixture_tool();
+    let (command, tool) = fixture_tool();
     crumbkit_test::check_grammar(
         &command,
-        Pages::rendered(&guide),
+        Pages::rendered(&tool),
         &["stream", "edit", "set", "export"],
         ALLOW,
     );
@@ -91,8 +91,8 @@ fn every_command_is_a_resource_followed_by_list_show_stream_edit_set_or_export()
 
 #[test]
 fn every_command_declares_its_effects() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_effects(&command, &guide, ALLOW);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_effects(&command, &tool, ALLOW);
 }
 
 #[test]
@@ -107,74 +107,74 @@ fn every_option_with_many_values_accepts_repeats_and_commas() {
 
 #[test]
 fn every_command_and_leaf_meets_the_guide_rules() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_guide(&command, &guide, ALLOW);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_guide(&command, &tool, ALLOW);
 }
 
 #[test]
 fn every_exit_code_meets_the_exit_code_rules() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_exit_codes(&command, &guide, ALLOW);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_exit_codes(&command, &tool, ALLOW);
 }
 
 #[test]
 fn every_help_page_fits_its_size_budget() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_help_sizes(&command, Pages::binary(&guide, &EXAMPLES), &BUDGETS);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_help_sizes(&command, Pages::binary(&tool, &EXAMPLES), &BUDGETS);
 }
 
 #[test]
 fn every_path_through_the_help_fits_its_weight_budget() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_path_weights(&command, Pages::binary(&guide, &EXAMPLES), &PATH_BUDGETS);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_path_weights(&command, Pages::binary(&tool, &EXAMPLES), &PATH_BUDGETS);
 }
 
 #[test]
 fn every_help_page_matches_its_golden_file() {
-    let (command, guide) = fixture_tool();
+    let (command, tool) = fixture_tool();
     crumbkit_test::check_help_goldens(
         &command,
-        Pages::binary(&guide, &EXAMPLES),
+        Pages::binary(&tool, &EXAMPLES),
         "tests/golden/help",
     );
 }
 
 #[test]
 fn every_document_schema_matches_its_golden_file() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_schema_goldens(&command, &guide, "tests/golden/schemas");
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_schema_goldens(&command, &tool, "tests/golden/schemas");
 }
 
 #[test]
 fn every_document_is_named_after_the_path_of_the_command_that_prints_it() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_document_ids(&command, &guide, ALLOW);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_document_ids(&command, &tool, ALLOW);
 }
 
 #[test]
 fn every_crumbkit_command_sits_at_its_fixed_path() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_mounts(&command, &guide);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_mounts(&command, &tool);
 }
 
 #[test]
-fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_examples(&command, &guide, &EXAMPLES);
+fn every_example_in_the_tool_runs_and_prints_its_golden_output() {
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_examples(&command, &tool, &EXAMPLES);
 }
 
 #[test]
 fn every_json_example_cuts_or_refuses_a_result_past_its_output_budget() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_output_budget(&command, &guide, &EXAMPLES);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_output_budget(&command, &tool, &EXAMPLES);
 }
 
 #[test]
 fn every_opt_out_matches_the_opt_out_report() {
-    let (command, guide) = fixture_tool();
+    let (command, tool) = fixture_tool();
     crumbkit_test::check_opt_outs(
         &command,
-        &guide,
+        &tool,
         ALLOW,
         &BUDGETS,
         Some(&PATH_BUDGETS),
@@ -238,8 +238,8 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[reading::CODES])
 
 #[test]
 fn every_recovery_leads_to_a_command_that_runs() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_recoveries(&command, &guide, &RECOVERIES, "tests/golden");
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_recoveries(&command, &tool, &RECOVERIES, "tests/golden");
 }
 
 /// The settings of reading's twin check: one twin for each declared code
@@ -266,6 +266,6 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[reading::CODES])
 
 #[test]
 fn every_declared_code_has_a_twin_that_the_tool_accepts() {
-    let (command, guide) = fixture_tool();
-    crumbkit_test::check_twins(&command, &guide, &TWINS);
+    let (command, tool) = fixture_tool();
+    crumbkit_test::check_twins(&command, &tool, &TWINS);
 }

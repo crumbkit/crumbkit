@@ -10,9 +10,10 @@ use serde::Serialize;
 
 use super::parse_to;
 use crate::Envelope;
-use crate::help::{Exit, Guide, Leaf, Rename};
+use crate::help::{Exit, Help, Leaf, Rename};
+use crate::tool::Failures;
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Stream};
+use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Stream, Tool};
 
 /// A row with a compact and a long column.
 #[derive(Serialize, JsonSchema)]
@@ -100,7 +101,7 @@ impl Row for Answer {
 const SHELVES: Document<Vec<Shelf>> = Document::new("tool", "shelves", 1, "The shelves.");
 const QUERY: Document<Vec<Answer>> = Document::new("tool", "query", 1, "The answers.");
 
-const GUIDE: Guide = Guide::new().leaves(&[
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "list"]).document(BOOKS),
     Leaf::new(&["books", "ids"]).document(IDS),
     Leaf::new(&["books", "count"]).document(COUNT),
@@ -112,11 +113,11 @@ const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["books", "own"]).document(COUNT),
     Leaf::new(&["books", "shelves"]).document(SHELVES),
     Leaf::new(&["books", "query"]).document(QUERY),
-]);
+]));
 
 /// A tool with crumbkit's output flags on its root and one group of leaves.
 /// The leaf `own` declares its own `--long`, which is not global.
-fn tool() -> Command {
+fn tree() -> Command {
     let leaves = [
         "list", "ids", "count", "export", "dump", "watch", "read", "plain", "shelves", "query",
     ]
@@ -146,12 +147,12 @@ struct Parsed {
     err: String,
 }
 
-/// Runs `parse_to` over `tool()` with the guide's leaves and `args`.
+/// Runs `parse_to` over `tree()` with the tool record's leaves and `args`.
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     Parsed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),
@@ -380,18 +381,21 @@ fn a_tool_s_own_long_argument_on_a_leaf_is_neither_hidden_nor_refused() {
 }
 
 #[test]
-fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_its_guide_lists() {
+fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_its_tool_lists() {
     const USAGE: crate::Code = crate::Code::new("tool", "cli", "usage");
-    const RENAMED: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["books", "count"]).document(COUNT)])
-        .codes(&[Rename::new(&crate::codes::CLI_USAGE, &USAGE)])
-        .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])]);
+    const RENAMED: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["books", "count"]).document(COUNT)]))
+        .failures(
+            Failures::new()
+                .codes(&[Rename::new(&crate::codes::CLI_USAGE, &USAGE)])
+                .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])]),
+        );
     let mut out = Vec::new();
     let mut err = Vec::new();
 
     let stop = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        tool(),
+        tree(),
         &RENAMED,
         ["tool", "books", "count", "--long"],
     )
@@ -425,13 +429,13 @@ error: --full prints every field of every row in JSON, so it needs --json
 }
 
 #[test]
-fn fields_with_long_is_refused_in_crumbkit_s_words_on_a_command_that_the_guide_does_not_name() {
+fn fields_with_long_is_refused_in_crumbkit_s_words_on_a_command_that_the_tool_does_not_name() {
     let run = |args: &[&str]| {
         let mut err = Vec::new();
         let result = parse_to::<(), _, _, _, _>(
             &mut Sink::new(Vec::new(), &mut err),
-            tool(),
-            &Guide::new(),
+            tree(),
+            &Tool::new(),
             args,
         );
         (

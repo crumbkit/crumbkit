@@ -12,7 +12,7 @@ the wiring and an example of each output, and shelf mounts both commands.
 A tool adds a `self` group with a `usage` subcommand that flattens
 [`SelfUsage`](../../../crates/crumbkit-usage/src/self_usage.rs). Its
 handler passes the result of `crumbkit_usage::findings`, which takes the tool's
-`Guide`, to `finish` with the document `SELF_USAGE`.
+`Tool`, to `finish` with the document `SELF_USAGE`.
 
 A tool mounts `self figures list` as a `figures` resource with the `list`
 verb under `self`, so it fits the [command grammar](../help/README.md). Its
@@ -47,8 +47,8 @@ Why: ADR-0034.
 ## Failed and refused runs
 
 A run counts as failed when it exited with 1 and no signal ended it. A run
-counts as refused when it exited with the code that the guide gives a
-refused command line, which is 2 unless the guide lists another, as the
+counts as refused when it exited with the code that the tool record gives a
+refused command line, which is 2 unless the tool record lists another, as the
 [exit codes](../failures/exit-codes.md) page describes. A run that exited
 with any other of the tool's own codes, 3 to 255, counts as neither,
 because its meaning belongs to the tool.
@@ -119,7 +119,7 @@ Two figures need a definition.
   previous run that printed no help page. The count is credited to the
   session's next command.
 - `exits` counts the runs that exited with each code from 3, with the
-  meaning that the guide declares for that command or null. `failed` still
+  meaning that the tool record declares for that command or null. `failed` still
   counts exit 1 only.
 
 Why: ADR-0034, ADR-0016, ADR-0037.

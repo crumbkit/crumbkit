@@ -30,15 +30,15 @@ const ROWS: usize = 20;
 /// `\n` or `\u{202e}`. Every choice therefore stays on one line, and a label
 /// cannot move the cursor or reorder or hide text.
 ///
-/// A tool keeps one menu in a `static` and sets it on its guide:
+/// A tool keeps one menu in a `static` and sets it on its tool record:
 ///
 /// ```
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit::pick::Menu;
 ///
 /// static MENU: Menu = Menu::new().rows(10);
-/// const GUIDE: Guide = Guide::new().picker(&MENU);
-/// assert!(GUIDE.get_picker().is_some());
+/// const TOOL: Tool = Tool::new().picker(&MENU);
+/// assert!(TOOL.get_picker().is_some());
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Menu {

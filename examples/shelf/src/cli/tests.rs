@@ -2,11 +2,11 @@
 
 use clap::CommandFactory as _;
 
-use super::{Cli, GUIDE};
+use super::{Cli, TOOL};
 
 #[test]
-fn the_command_tree_with_shelf_s_guide_applied_passes_clap_debug_assertions() {
-    crumbkit::help::extend(Cli::command(), &GUIDE).debug_assert();
+fn the_command_tree_with_shelf_s_tool_applied_passes_clap_debug_assertions() {
+    crumbkit::help::extend(Cli::command(), &TOOL).debug_assert();
 }
 
 #[test]

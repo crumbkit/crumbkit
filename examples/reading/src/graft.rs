@@ -8,10 +8,10 @@
 //! the tree.
 
 use clap::{ArgMatches, Args, Command, CommandFactory as _, FromArgMatches, Subcommand};
-use crumbkit::Page;
-use crumbkit::help::{Effects, Guide, RuntimeLeaf};
+use crumbkit::help::{Effects, RuntimeLeaf};
+use crumbkit::{Page, Tool};
 
-use crate::cli::{Cli, GUIDE, Resource};
+use crate::cli::{Cli, Resource, TOOL};
 use crate::lists::{ENTRIES_LIST, List};
 
 #[cfg(test)]
@@ -84,15 +84,15 @@ pub fn command(lists: &[List]) -> Command {
     })
 }
 
-/// Returns reading's guide: [`GUIDE`], with a leaf that lists two examples
-/// for the `list` command of each of `lists` and declares the document it
-/// prints, the one that `entries list` prints, and a leaf with one example
+/// Returns reading's tool record: [`TOOL`], with a leaf that lists two
+/// examples for the `list` command of each of `lists` and declares the document
+/// it prints, the one that `entries list` prints, and a leaf with one example
 /// for its `edit` command, which passes on the editor's exit code. With no
-/// lists it returns [`GUIDE`] itself and allocates nothing.
+/// lists it returns [`TOOL`] itself and allocates nothing.
 #[must_use]
-pub fn guide(lists: &[List]) -> Guide {
+pub fn tool(lists: &[List]) -> Tool {
     if lists.is_empty() {
-        return GUIDE;
+        return TOOL;
     }
     let leaves = lists
         .iter()
@@ -118,5 +118,5 @@ pub fn guide(lists: &[List]) -> Guide {
             [list_leaf, edit_leaf]
         })
         .collect();
-    GUIDE.with_runtime_leaves(leaves)
+    TOOL.with_runtime_leaves(leaves)
 }

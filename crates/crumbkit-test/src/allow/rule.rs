@@ -15,11 +15,11 @@ pub enum Rule {
     /// `grammar/root-leaf`.
     RootLeaf,
     /// [`check_grammar`](crate::check_grammar): a resource's name is not
-    /// lowercase words joined by single dashes, and the resource answers to
-    /// no such dashed form. Its id is `grammar/resource-name`. A resource
-    /// named in another style, such as `reading_lists`, needs no opt-out
-    /// when the guide declares `Guide::dashed_forms` and the name maps to a
-    /// dashed form that no other command beside it takes.
+    /// lowercase words joined by single dashes, and the resource answers to no
+    /// such dashed form. Its id is `grammar/resource-name`. A resource named in
+    /// another style, such as `reading_lists`, needs no opt-out when the tool
+    /// record declares `Tool::dashed_forms` and the name maps to a dashed form
+    /// that no other command beside it takes.
     ResourceName,
     /// [`check_effects`](crate::check_effects): a visible leaf declares no
     /// effects. Its id is `effects/declared`.
@@ -32,7 +32,7 @@ pub enum Rule {
     /// `--yes`. Its id is `effects/yes`.
     Yes,
     /// [`check_effects`](crate::check_effects): a tool that can ask a
-    /// question, because its guide has a picker or a command has `--yes`,
+    /// question, because its tool record has a picker or a command has `--yes`,
     /// has no `--no-input` from `crumbkit::NoInput` at its root. Its id is
     /// `effects/no-input`, and its opt-out names the root.
     NoInput,
@@ -52,9 +52,9 @@ pub enum Rule {
     /// [`check_names`](crate::check_names): help shows a second name for a
     /// command or an argument. Its id is `names/one-name`.
     OneName,
-    /// [`check_names`](crate::check_names): the guide names a person's
+    /// [`check_names`](crate::check_names): the tool record names a person's
     /// aliases on the root's help with
-    /// `crumbkit::help::Guide::personal_aliases`. Its id is
+    /// `Help::personal_aliases`. Its id is
     /// `names/personal-aliases`, and its opt-out names the root.
     PersonalAliases,
     /// [`check_listings`](crate::check_listings): a `list` command lacks
@@ -95,11 +95,11 @@ pub enum Rule {
     /// every field of each row in JSON without `--full`, because its row
     /// type sets `Row::WHOLE`. Its id is `documents/rows-whole`.
     RowsWhole,
-    /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
+    /// [`check_exit_codes`](crate::check_exit_codes): the tool record declares
     /// a single exit code from 126 to 128 or from 160 to 255, which a shell
     /// also reports for its own reasons. Its id is `exit-codes/shell-code`.
     ShellExitCode,
-    /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
+    /// [`check_exit_codes`](crate::check_exit_codes): the tool record declares
     /// the exit code 1 or 2, which already mean crumbkit's default failure
     /// and a refused command line. Its id is `exit-codes/shared-exit`.
     SharedExit,

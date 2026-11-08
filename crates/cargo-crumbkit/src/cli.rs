@@ -3,9 +3,9 @@
 use std::path::PathBuf;
 
 use clap::{ArgGroup, Args, Parser, Subcommand};
-use crumbkit::ViewFlags;
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
-use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf};
+use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf};
+use crumbkit::{Tool, ViewFlags};
 use crumbkit_test::{Allow, Rule};
 
 use crate::docs::DOCS;
@@ -40,38 +40,40 @@ pub struct Cli {
 /// Its root is `crumbkit`, because cargo always passes that word, so
 /// `cargo crumbkit help` prints the long help of `cargo crumbkit`, and
 /// `cargo crumbkit help exit-codes` prints a topic.
-pub const GUIDE: Guide = Guide::new()
-    .root(&["crumbkit"])
-    .groups(&[Group::new(
-        &["crumbkit"],
-        &[
-            Goal::new("Measure a tool's help", &["weigh"]),
-            Goal::new("Write a tool's reference", &["docs"]),
-            Goal::new("Explore the commands", &["commands"]),
-        ],
-    )])
-    .leaves(&[
-        Leaf::new(&["crumbkit", "weigh"])
-            .examples(&[
-                Example::new(&["--bin", "shelf"], "Weigh each path through shelf's help"),
-                Example::new(&["--bin", "shelf", "--json"], "Print the weights as JSON"),
-                Example::new(
-                    &["--bin", "shelf", "--usage"],
-                    "Add the figures of shelf's own usage log",
-                ),
-            ])
-            .document(WEIGH),
-        Leaf::new(&["crumbkit", "docs"])
-            .examples(&[Example::new(
-                &["--bin", "shelf"],
-                "Write shelf's reference to its docs/commands.md",
-            )])
-            .effects(Effects::additive().idempotent())
-            .document(DOCS),
-        Leaf::new(&["crumbkit", "commands", "list"])
-            .examples(&[Example::new(&[], "List every command")])
-            .document(COMMANDS_LIST),
-    ]);
+pub const TOOL: Tool = Tool::new().help(
+    Help::new()
+        .root(&["crumbkit"])
+        .groups(&[Group::new(
+            &["crumbkit"],
+            &[
+                Goal::new("Measure a tool's help", &["weigh"]),
+                Goal::new("Write a tool's reference", &["docs"]),
+                Goal::new("Explore the commands", &["commands"]),
+            ],
+        )])
+        .leaves(&[
+            Leaf::new(&["crumbkit", "weigh"])
+                .examples(&[
+                    Example::new(&["--bin", "shelf"], "Weigh each path through shelf's help"),
+                    Example::new(&["--bin", "shelf", "--json"], "Print the weights as JSON"),
+                    Example::new(
+                        &["--bin", "shelf", "--usage"],
+                        "Add the figures of shelf's own usage log",
+                    ),
+                ])
+                .document(WEIGH),
+            Leaf::new(&["crumbkit", "docs"])
+                .examples(&[Example::new(
+                    &["--bin", "shelf"],
+                    "Write shelf's reference to its docs/commands.md",
+                )])
+                .effects(Effects::additive().idempotent())
+                .document(DOCS),
+            Leaf::new(&["crumbkit", "commands", "list"])
+                .examples(&[Example::new(&[], "List every command")])
+                .document(COMMANDS_LIST),
+        ]),
+);
 
 /// cargo-crumbkit's opt-outs from crumbkit's conventions, which its tests
 /// pass to every check that takes them.

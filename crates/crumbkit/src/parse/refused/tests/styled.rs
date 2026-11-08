@@ -3,10 +3,10 @@
 
 use super::refused;
 #[cfg(feature = "color")]
-use super::{refused_by, tool};
-use crate::Sink;
+use super::{refused_by, tree};
 #[cfg(feature = "color")]
-use crate::help::Guide;
+use crate::tool::Output;
+use crate::{Sink, Tool};
 
 /// Prints the refusal of `tool planets show mars --srt name` with
 /// `print_to` into a sink whose error writer wants styles when `styled` is
@@ -44,12 +44,13 @@ fn print_to_writes_plain_text_to_a_sink_whose_error_writer_wants_no_styles() {
 
 #[cfg(feature = "color")]
 #[test]
-fn print_decides_error_styles_from_the_commands_colour_choice_and_the_guides_terminal_detection() {
-    const OFF: Guide = Guide::new().without_terminal_detection("The test runs in a terminal.");
+fn print_decides_error_styles_from_the_commands_colour_choice_and_the_tools_terminal_detection() {
+    const OFF: Tool = Tool::new()
+        .output(Output::new().without_terminal_detection("The test runs in a terminal."));
     let args = ["tool", "comets"];
     let detecting = refused(&args);
-    let never = refused_by(tool().color(clap::ColorChoice::Never), &Guide::new(), &args);
-    let off = refused_by(tool(), &OFF, &args);
+    let never = refused_by(tree().color(clap::ColorChoice::Never), &Tool::new(), &args);
+    let off = refused_by(tree(), &OFF, &args);
 
     assert_eq!(
         detecting.output().refusal_colour(),

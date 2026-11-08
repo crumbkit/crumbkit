@@ -8,7 +8,7 @@ use crate::record::{Name, Run};
 /// Returns a tool with a global flag and a global option, a branch with a
 /// visible alias, a listing with a long flag, a short-only flag and an
 /// option with a default, and a leaf that takes ids.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("shelf")
         .arg(
             Arg::new("json")
@@ -49,7 +49,7 @@ fn words(line: &str) -> Vec<OsString> {
 
 /// Returns what the usage log records for `line`, which clap accepts.
 fn accepted(line: &str) -> Run {
-    let mut command = tool();
+    let mut command = tree();
     let matches = command.try_get_matches_from_mut(words(line)).unwrap();
     let mut run = Run::default();
     parsed(&mut run, &command, &matches);
@@ -60,7 +60,7 @@ fn accepted(line: &str) -> Run {
 /// the command path that the walk in `parse` finds and the flag with the id
 /// `nearest` of the command at that path as the nearest flag.
 fn rejected(line: &str, path: &[&str], nearest: Option<&str>) -> Run {
-    let mut command = tool();
+    let mut command = tree();
     let _ = command.try_get_matches_from_mut(words(line)).unwrap_err();
     let path: Vec<String> = path.iter().map(|name| (*name).to_owned()).collect();
     let node = path

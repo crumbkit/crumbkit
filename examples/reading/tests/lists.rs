@@ -158,7 +158,7 @@ fn a_directory_without_lists_adds_no_command() -> io::Result<()> {
     // `to-read` names no command.
     let refused = check_twin(
         &reading::command(&reading::lists_in(empty.path())),
-        &reading::GUIDE,
+        &reading::TOOL,
         &examples,
         &Failing::new(&codes::CLI_USAGE, &["to-read", "list"]),
         &["commands", "list"],
@@ -401,7 +401,7 @@ fn entries_set_refuses_an_empty_expect_and_admits_its_twin_with_a_title() {
     // reason for the refusal (TEST-1).
     let refused = check_twin(
         &reading::command(&reading::lists_in(Path::new(LISTS))),
-        &reading::GUIDE,
+        &reading::TOOL,
         &examples,
         &Failing::new(
             &codes::CLI_USAGE,
@@ -442,7 +442,7 @@ fn entries_set_refuses_a_title_with_a_line_break_and_admits_its_twin_without_one
     // so the line break is the reason for the refusal (TEST-1).
     let refused = check_twin(
         &reading::command(&reading::lists_in(Path::new(LISTS))),
-        &reading::GUIDE,
+        &reading::TOOL,
         &examples,
         &Failing::new(
             &codes::CLI_USAGE,

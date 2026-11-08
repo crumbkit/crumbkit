@@ -26,8 +26,8 @@ const SLOW: u64 = 1_000;
 /// never holds a record's line.
 #[derive(Debug)]
 pub(crate) struct Tally {
-    /// The exit code of a refused command line, which the tool's guide
-    /// decides and which is 2 unless the guide lists another (ADR-0002).
+    /// The exit code of a refused command line, which the tool record
+    /// decides and which is 2 unless the tool record lists another (ADR-0002).
     refusal: u8,
     /// The number of runs.
     runs: u64,

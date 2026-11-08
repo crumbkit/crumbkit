@@ -1,12 +1,13 @@
 //! Tests for the names check.
 
 use clap::{Arg, ArgAction, Command};
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 
 use super::check_names;
 use crate::Pages;
 use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
+use crumbkit::help::Help;
 
 #[test]
 fn commands_and_arguments_with_one_name_and_one_short_form_pass() {
@@ -170,27 +171,27 @@ fn a_visible_alias_passes_when_an_opt_out_names_its_command() {
     check_names(&shelf, Pages::clap(), ALLOW);
 }
 
-/// Names one alias, for a guide that shows a person's aliases on the root's
-/// help.
+/// Names one alias, for a tool record that shows a person's aliases on the
+/// root's help.
 fn names(_: &Command) -> Vec<String> {
     vec!["mine".to_owned()]
 }
 
 #[test]
-fn a_guide_that_names_personal_aliases_on_the_root_s_help_fails_without_an_opt_out() {
-    const GUIDE: Guide = Guide::new().personal_aliases(names);
+fn a_tool_that_names_personal_aliases_on_the_root_s_help_fails_without_an_opt_out() {
+    const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(names));
     let shelf = Command::new("shelf").subcommand(Command::new("books"));
 
     assert_eq!(
-        panic_message(|| check_names(&shelf, Pages::rendered(&GUIDE), &[])).unwrap(),
+        panic_message(|| check_names(&shelf, Pages::rendered(&TOOL), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
-         shelf: the guide names a person's aliases on the root's help, and help shows one name for each command"
+         shelf: the tool record names a person's aliases on the root's help, and help shows one name for each command"
     );
 }
 
 #[test]
-fn a_guide_that_names_personal_aliases_passes_with_an_opt_out_for_the_root() {
-    const GUIDE: Guide = Guide::new().personal_aliases(names);
+fn a_tool_that_names_personal_aliases_passes_with_an_opt_out_for_the_root() {
+    const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(names));
     const ALLOW: &[Allow] = &[Allow::new(
         Rule::PersonalAliases,
         "",
@@ -198,5 +199,5 @@ fn a_guide_that_names_personal_aliases_passes_with_an_opt_out_for_the_root() {
     )];
     let shelf = Command::new("shelf").subcommand(Command::new("books"));
 
-    check_names(&shelf, Pages::rendered(&GUIDE), ALLOW);
+    check_names(&shelf, Pages::rendered(&TOOL), ALLOW);
 }

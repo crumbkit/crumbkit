@@ -1,4 +1,4 @@
-//! reading's static command-line grammar and the guide of its static
+//! reading's static command-line grammar and the tool record of its static
 //! commands. The commands that reading adds for its lists are in
 //! `graft.rs`.
 
@@ -6,10 +6,10 @@ use std::num::NonZeroUsize;
 
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
-use crumbkit::help::{Effects, Example, Guide, Leaf};
+use crumbkit::help::{Effects, Example, Help, Leaf};
 use crumbkit::pick::{Choices, Menu};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::{DryRun, Expect, NoInput, Page, ViewFlags, Yes};
+use crumbkit::{DryRun, Expect, NoInput, Page, Tool, ViewFlags, Yes};
 
 use crate::lists::{
     ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, LISTS_LIST, LISTS_SHOW, WHERE,
@@ -47,13 +47,10 @@ const LISTS: &[Choices] = &[Choices::new("list", choices)];
 /// reading list, under `Commands`. `crate::guide` adds a leaf for each
 /// list's commands at run time. A person at a terminal who leaves out
 /// `--list` picks a list from the menu.
-pub const GUIDE: Guide = Guide::new()
-    .picker(&MENU)
-    .root_verbs(
+pub const TOOL: Tool = Tool::new().help(Help::new().root_verbs(
         &["where"],
         "People ask where their lists are kept, and the directory belongs to no one list.",
-    )
-    .leaves(&[
+    ).leaves(&[
     Leaf::new(&["entries", "list"])
         .examples(&[Example::new(
             &["--list", "to-read"],
@@ -166,7 +163,7 @@ pub const GUIDE: Guide = Guide::new()
         .examples(&[Example::new(&[], "Print the directory that holds reading's lists")])
         .effects(Effects::read_only())
         .document(WHERE),
-]);
+])).picker(&MENU);
 
 /// The resources of reading's static grammar, and its root verb `where`.
 #[derive(Debug, Subcommand)]

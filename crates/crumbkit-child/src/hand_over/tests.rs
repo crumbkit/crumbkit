@@ -12,10 +12,11 @@ use std::process::{self, ExitCode, ExitStatus};
 use clap::{CommandFactory as _, Parser};
 
 use super::{hand_over_to, respond_text};
-use crumbkit::help::{Exit, Guide};
-use crumbkit::{Output, Sink, Spelling, ViewFlags};
+use crumbkit::help::Exit;
+use crumbkit::{Output, Sink, Spelling, Tool, ViewFlags};
 
 use crate::testing::assert_one_word_apart;
+use crumbkit::tool::Failures;
 
 // The process tests run their children through `sh` and send them Unix
 // signals.
@@ -25,7 +26,7 @@ mod process_tests;
 /// A tool with the output flags and nothing else.
 #[derive(Parser)]
 #[command(name = "vault")]
-struct Tool {
+struct Cli {
     #[command(flatten)]
     view: ViewFlags,
 }
@@ -34,12 +35,12 @@ struct Tool {
 /// tool that parses with clap alone builds it.
 fn output(flags: &[&str]) -> Output {
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
-    let view = Tool::try_parse_from(&words).unwrap().view;
+    let view = Cli::try_parse_from(&words).unwrap().view;
     Output::new(
         view,
         crumbkit::DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         words,
     )
     .unwrap()
@@ -225,19 +226,19 @@ error: --fields selects the columns of a table, and this command hands the termi
     assert_eq!(responded.err, expected);
 }
 
-/// A guide that gives a refused command line the exit code 64.
-const USAGE_64: Guide = Guide::new().exits(&[
-    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE])
-]);
+/// A tool record that gives a refused command line the exit code 64.
+const USAGE_64: Tool = Tool::new().failures(Failures::new().exits(&[
+    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
+]));
 
 #[test]
-fn a_refused_json_exits_with_the_code_that_the_guide_gives_a_refused_command_line() {
+fn a_refused_json_exits_with_the_code_that_the_tool_gives_a_refused_command_line() {
     let words = ["vault", "--json"];
-    let view = Tool::try_parse_from(words).unwrap().view;
+    let view = Cli::try_parse_from(words).unwrap().view;
     let output = Output::new(
         view,
         crumbkit::DryRun::default(),
-        Tool::command(),
+        Cli::command(),
         &USAGE_64,
         words,
     )
@@ -253,24 +254,24 @@ const DOTS: Spelling =
     Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
 
 /// Parses `vault` followed by `flags` into the output of the run, as a tool
-/// that parses with clap alone and sets the dotted spelling on its guide
+/// that parses with clap alone and sets the dotted spelling on its tool record
 /// builds it.
 fn dotted(flags: &[&str]) -> Output {
-    const GUIDE: Guide = Guide::new().spelling(DOTS);
+    const TOOL: Tool = Tool::new().failures(Failures::new().spelling(DOTS));
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
-    let view = Tool::try_parse_from(&words).unwrap().view;
+    let view = Cli::try_parse_from(&words).unwrap().view;
     Output::new(
         view,
         crumbkit::DryRun::default(),
-        Tool::command(),
-        &GUIDE,
+        Cli::command(),
+        &TOOL,
         words,
     )
     .unwrap()
 }
 
 #[test]
-fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_argument() {
+fn a_tool_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_argument() {
     let output = dotted(&["--json"]);
 
     let responded = respond(|sink| hand_over_to(sink, output, command("vi")));

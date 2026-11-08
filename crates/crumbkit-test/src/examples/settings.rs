@@ -17,7 +17,7 @@ use crate::runs::{Dir, Location};
 /// path of the built binary, only for that package's integration tests and
 /// benchmarks. An integration test can import only from a library, so the
 /// package needs a library target that exports the clap command and the
-/// guide, and the binary calls that library:
+/// tool record, and the binary calls that library:
 ///
 /// ```
 /// use crumbkit_test::{Allow, Examples, Rule};
@@ -73,7 +73,7 @@ impl<'a> Examples<'a> {
     /// `dir` holds only example golden files and `.stdin` files, because
     /// the check counts every `.txt` and `.stderr` file in it that no
     /// checked example produces as stale, and every `.stdin` file that no
-    /// example of the guide names.
+    /// example of the tool record names.
     #[must_use]
     pub const fn new(binary: &'a str, dir: &'a str) -> Self {
         Self {

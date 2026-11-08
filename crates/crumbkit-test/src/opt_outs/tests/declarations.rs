@@ -1,17 +1,18 @@
-//! Tests for the customisations section of the opt-out report, which lists
+//! Tests for the declarations section of the opt-out report, which lists
 //! the tool's declarations without a reason or a cost.
 
 use clap::Command;
 use crumbkit::codes::CLI_USAGE;
-use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
+use crumbkit::help::{Exit, Help, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Call, Code, Document, Prose};
+use crumbkit::{Call, Code, Document, Prose, Tool};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
 
 use super::{read, run_guided};
-use crate::opt_outs::customisations::customisations;
+use crate::opt_outs::declarations::declarations;
 use crate::temp::TempDir;
+use crumbkit::tool::Failures;
 
 /// Returns the call that a refused `books show` command line offers instead.
 fn version_call(_: &RefusalContext<'_>) -> Vec<Call> {
@@ -30,23 +31,28 @@ fn id_hint(_: &RefusalContext<'_>) -> Option<String> {
 /// The tool's code for crumbkit's usage code.
 const USAGE: Code = Code::new("shelf", "cli", "usage");
 
-/// A guide that declares a rename, an exit for the renamed usage code,
+/// A tool record that declares a rename, an exit for the renamed usage code,
 /// refusal alternatives and a refusal hint for every command line, and a
 /// leaf that passes on its program's exit code and offers its own
 /// alternatives and hint when its command line is refused.
-const DECLARING: Guide = Guide::new()
-    .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
-    .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
-    .refusal_alternatives(version_call)
-    .refusal_hint(id_hint)
-    .leaves(&[Leaf::new(&["books", "show"])
-        .passes_on_exit("the pager")
-        .refusal_alternatives(version_call)
-        .refusal_hint(id_hint)]);
+const DECLARING: Tool = Tool::new()
+    .help(
+        Help::new().leaves(&[Leaf::new(&["books", "show"])
+            .passes_on_exit("the pager")
+            .refusal_alternatives(version_call)
+            .refusal_hint(id_hint)]),
+    )
+    .failures(
+        Failures::new()
+            .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
+            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
+            .refusal_alternatives(version_call)
+            .refusal_hint(id_hint),
+    );
 
 #[test]
-fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost() {
-    let dir = TempDir::new("opt-outs-customisations").unwrap();
+fn the_report_lists_declarations_under_declarations_without_a_reason_or_a_cost() {
+    let dir = TempDir::new("opt-outs-declarations").unwrap();
 
     run_guided(&DECLARING, &dir, Action::Overwrite);
 
@@ -54,7 +60,7 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 7 customisations, which need no reason.\n\
+         shelf declares 7 declarations, which need no reason.\n\
          \n\
          code-rename: every run of shelf\n\
          \x20 Declares: Runs print shelf::cli::usage in place of shelf::cli::usage.\n\
@@ -80,21 +86,21 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(report["data"], json!([]));
     assert_eq!(
-        report["customisations"][4],
+        report["declarations"][4],
         json!({
             "declaration": "passes-on-exit",
             "applies_to": "shelf books show",
             "declares": "The command exits with the exit code of the pager.",
         })
     );
-    assert_eq!(report["customisations"].as_array().unwrap().len(), 7);
+    assert_eq!(report["declarations"].as_array().unwrap().len(), 7);
 }
 
 #[test]
-fn a_report_without_declarations_leaves_out_customisations() {
-    let dir = TempDir::new("opt-outs-no-customisations").unwrap();
+fn a_report_without_declarations_leaves_out_declarations() {
+    let dir = TempDir::new("opt-outs-no-declarations").unwrap();
 
-    run_guided(&Guide::new(), &dir, Action::Overwrite);
+    run_guided(&Tool::new(), &dir, Action::Overwrite);
 
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(report, json!({ "schema": "shelf/opt-outs/v1", "data": [] }));
@@ -102,10 +108,11 @@ fn a_report_without_declarations_leaves_out_customisations() {
 
 #[test]
 fn a_leaf_that_prints_no_result_adds_nothing_to_the_report() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).prints_no_result()]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().leaves(&[Leaf::new(&["books", "show"]).prints_no_result()]));
     let dir = TempDir::new("opt-outs-no-result").unwrap();
 
-    run_guided(&GUIDE, &dir, Action::Overwrite);
+    run_guided(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -114,12 +121,13 @@ fn a_leaf_that_prints_no_result_adds_nothing_to_the_report() {
 }
 
 #[test]
-fn an_exit_that_lists_the_tool_s_own_code_is_no_customisation() {
+fn an_exit_that_lists_the_tool_s_own_code_is_no_declaration() {
     const MINE: Code = Code::new("shelf", "books", "not_found");
-    const GUIDE: Guide = Guide::new().exits(&[Exit::new(3, "No such book.").failures(&[&MINE])]);
+    const TOOL: Tool = Tool::new()
+        .failures(Failures::new().exits(&[Exit::new(3, "No such book.").failures(&[&MINE])]));
     let dir = TempDir::new("opt-outs-own-exit").unwrap();
 
-    run_guided(&GUIDE, &dir, Action::Overwrite);
+    run_guided(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -131,21 +139,21 @@ const BOOK_SHOW: Document<Prose<String>> = Document::new("shelf", "book-show", 1
 const VERSION: Document<Prose<String>> = Document::new("shelf", "version", 1, "The version.");
 
 #[test]
-fn a_document_named_other_than_its_command_path_is_a_document_name_customisation() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+fn a_document_named_other_than_its_command_path_is_a_document_name_declaration() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         Leaf::new(&["books", "show"]).document(BOOK_SHOW),
         Leaf::new(&["version"]).document(VERSION),
         Leaf::new(&["meta", "schemas"]).document(SCHEMAS_LIST),
-    ]);
+    ]));
     let dir = TempDir::new("opt-outs-document-name").unwrap();
 
-    run_guided(&GUIDE, &dir, Action::Overwrite);
+    run_guided(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 1 customisation, which needs no reason.\n\
+         shelf declares 1 declaration, which needs no reason.\n\
          \n\
          document-name: shelf books show\n\
          \x20 Declares: The command prints shelf/book-show/v1, where its path gives the name books-show.\n"
@@ -155,27 +163,28 @@ fn a_document_named_other_than_its_command_path_is_a_document_name_customisation
 #[test]
 fn a_cargo_subcommand_names_its_documents_after_the_path_below_its_own_name() {
     const WEIGH: Document<Prose<String>> = Document::new("crumbkit", "weigh", 1, "The weights.");
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["crumbkit", "weigh"]).document(WEIGH)]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().leaves(&[Leaf::new(&["crumbkit", "weigh"]).document(WEIGH)]));
 
-    assert!(customisations(&Command::new("cargo"), &GUIDE, &[]).is_empty());
+    assert!(declarations(&Command::new("cargo"), &TOOL, &[]).is_empty());
 }
 
 #[test]
-fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_customisations() {
+fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_declarations() {
     let shelf = Command::new("shelf").subcommand(
         Command::new("reading_lists")
             .subcommand(Command::new("ExportAll"))
             .subcommand(Command::new("list")),
     );
-    let listed = |guide: &Guide| -> Vec<_> {
-        customisations(&shelf, guide, &[])
+    let listed = |tool: &Tool| -> Vec<_> {
+        declarations(&shelf, tool, &[])
             .into_iter()
-            .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+            .map(|entry| (entry.kind, entry.applies_to, entry.declares))
             .collect()
     };
 
     assert_eq!(
-        listed(&Guide::new().dashed_forms()),
+        listed(&Tool::new().dashed_forms()),
         [
             (
                 "dashed-forms",
@@ -194,21 +203,26 @@ fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_cust
             ),
         ]
     );
-    assert_eq!(listed(&Guide::new()), Vec::new());
+    assert_eq!(listed(&Tool::new()), Vec::new());
 }
 
 #[test]
-fn a_leaf_s_rename_and_an_exit_that_lists_it_are_customisations_of_that_command() {
+fn a_leaf_s_rename_and_an_exit_that_lists_it_are_declarations_of_that_command() {
     const MOVED: Code = Code::new("shelf", "books", "moved");
-    const GUIDE: Guide = Guide::new()
-        .exits(&[Exit::new(6, "A book moved during the import.").failures(&[&MOVED])])
-        .leaves(&[Leaf::new(&["books", "import"])
-            .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]);
+    const TOOL: Tool = Tool::new()
+        .help(
+            Help::new().leaves(&[Leaf::new(&["books", "import"])
+                .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]),
+        )
+        .failures(
+            Failures::new()
+                .exits(&[Exit::new(6, "A book moved during the import.").failures(&[&MOVED])]),
+        );
     let shelf = Command::new("shelf");
 
-    let listed: Vec<_> = customisations(&shelf, &GUIDE, &[])
+    let listed: Vec<_> = declarations(&shelf, &TOOL, &[])
         .into_iter()
-        .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+        .map(|entry| (entry.kind, entry.applies_to, entry.declares))
         .collect();
 
     assert_eq!(
@@ -242,13 +256,13 @@ impl crumbkit::Row for Removed {
 }
 
 #[test]
-fn rows_that_print_their_own_text_line_are_a_text_line_customisation() {
+fn rows_that_print_their_own_text_line_are_a_text_line_declaration() {
     const BOOKS_REMOVE: Document<Vec<Removed>> =
         Document::new("shelf", "books-remove", 1, "The removed books.");
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS_REMOVE)]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS_REMOVE)]));
 
-    let list = customisations(&Command::new("shelf"), &GUIDE, &[]);
+    let list = declarations(&Command::new("shelf"), &TOOL, &[]);
 
     let list = serde_json::to_value(&list).unwrap();
     assert_eq!(
@@ -276,13 +290,13 @@ impl crumbkit::Row for RemovedShelf {
 }
 
 #[test]
-fn rows_that_print_their_children_under_them_are_a_children_customisation() {
+fn rows_that_print_their_children_under_them_are_a_children_declaration() {
     const SHELVES_REMOVE: Document<Vec<RemovedShelf>> =
         Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]));
 
-    let list = customisations(&Command::new("shelf"), &GUIDE, &[]);
+    let list = declarations(&Command::new("shelf"), &TOOL, &[]);
 
     let list = serde_json::to_value(&list).unwrap();
     assert_eq!(
@@ -328,13 +342,13 @@ impl crumbkit::Row for FoldedShelf {
 }
 
 #[test]
-fn the_children_customisation_of_rows_at_column_1_does_not_call_them_indented() {
+fn the_children_declaration_of_rows_at_column_1_does_not_call_them_indented() {
     const SHELVES_REMOVE: Document<Vec<FlushShelf>> =
         Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]));
 
-    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE, &[])).unwrap();
+    let list = serde_json::to_value(declarations(&Command::new("shelf"), &TOOL, &[])).unwrap();
 
     assert_eq!(
         list[0]["declares"],
@@ -343,13 +357,13 @@ fn the_children_customisation_of_rows_at_column_1_does_not_call_them_indented() 
 }
 
 #[test]
-fn the_children_customisation_quotes_the_row_type_s_own_help_text() {
+fn the_children_declaration_quotes_the_row_type_s_own_help_text() {
     const SHELVES_REMOVE: Document<Vec<FoldedShelf>> =
         Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]));
 
-    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE, &[])).unwrap();
+    let list = serde_json::to_value(declarations(&Command::new("shelf"), &TOOL, &[])).unwrap();
 
     assert_eq!(
         list[0]["declares"],
@@ -373,10 +387,11 @@ impl crumbkit::Row for WholeLined {
 }
 
 #[test]
-fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_customisation_of_one_leaf() {
+fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_declaration_of_one_leaf() {
     const BOOKS_SHOW: Document<Vec<WholeLined>> =
         Document::new("shelf", "books-show", 1, "The books.");
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]));
     const ALLOW: &[crate::Allow] = &[crate::Allow::new(
         crate::Rule::RowsWhole,
         "books show",
@@ -386,7 +401,7 @@ fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_customisation_of_on
 
     super::super::check(
         &super::shelf(),
-        &GUIDE,
+        &TOOL,
         ALLOW,
         &crate::Budgets::new(),
         None,
@@ -402,7 +417,7 @@ fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_customisation_of_on
     assert!(text.contains("text-line: shelf books show\n"), "{text}");
     let json: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(json["data"][0]["rule"], json!("documents/rows-whole"));
-    assert_eq!(json["customisations"][0]["declaration"], json!("text-line"));
+    assert_eq!(json["declarations"][0]["declaration"], json!("text-line"));
 }
 
 /// Joins the segments of a code with `.`, a custom spelling.
@@ -411,15 +426,17 @@ const DOTS: crumbkit::Spelling = crumbkit::Spelling::custom(|code, f| {
 });
 
 #[test]
-fn a_custom_spelling_is_a_customisation_and_spells_every_listed_code() {
-    const GUIDE: Guide = Guide::new()
-        .spelling(DOTS)
-        .codes(&[Rename::new(&CLI_USAGE, &USAGE)]);
+fn a_custom_spelling_is_a_declaration_and_spells_every_listed_code() {
+    const TOOL: Tool = Tool::new().failures(
+        Failures::new()
+            .spelling(DOTS)
+            .codes(&[Rename::new(&CLI_USAGE, &USAGE)]),
+    );
     let shelf = Command::new("shelf");
 
-    let listed: Vec<_> = customisations(&shelf, &GUIDE, &[])
+    let listed: Vec<_> = declarations(&shelf, &TOOL, &[])
         .into_iter()
-        .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+        .map(|entry| (entry.kind, entry.applies_to, entry.declares))
         .collect();
 
     assert_eq!(
@@ -441,24 +458,26 @@ fn a_custom_spelling_is_a_customisation_and_spells_every_listed_code() {
 }
 
 #[test]
-fn a_guide_that_sets_the_colon_spelling_lists_no_spelling() {
-    const GUIDE: Guide = Guide::new().spelling(crumbkit::Spelling::COLONS);
+fn a_tool_that_sets_the_colon_spelling_lists_no_spelling() {
+    const TOOL: Tool = Tool::new().failures(Failures::new().spelling(crumbkit::Spelling::COLONS));
 
-    assert!(customisations(&Command::new("shelf"), &GUIDE, &[]).is_empty());
+    assert!(declarations(&Command::new("shelf"), &TOOL, &[]).is_empty());
 }
 
 #[test]
-fn each_example_that_needs_a_precondition_is_an_example_precondition_customisation() {
+fn each_example_that_needs_a_precondition_is_an_example_precondition_declaration() {
     use crumbkit::help::Example;
 
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).examples(&[
-        Example::new(&[], "Print the first page of books"),
-        Example::new(&["--all"], "Print every book from the server").needs(&["server"]),
-        Example::new(&["--author", "Jane Austen"], "Compare two reports")
-            .needs(&["server", "reports"]),
-    ])]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["books", "list"]).examples(&[
+            Example::new(&[], "Print the first page of books"),
+            Example::new(&["--all"], "Print every book from the server").needs(&["server"]),
+            Example::new(&["--author", "Jane Austen"], "Compare two reports")
+                .needs(&["server", "reports"]),
+        ])]),
+    );
 
-    let list = customisations(&Command::new("shelf"), &GUIDE, &[]);
+    let list = declarations(&Command::new("shelf"), &TOOL, &[]);
 
     let list = serde_json::to_value(&list).unwrap();
     assert_eq!(

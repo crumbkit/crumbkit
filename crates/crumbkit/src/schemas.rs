@@ -3,13 +3,13 @@
 //! prints the JSON Schema of each, so an agent learns the shape of a
 //! document from the tool itself (ADR-0035).
 //!
-//! The documents come from the tool's [`Guide`]: each leaf that declares
-//! the document it prints with [`Leaf::document`](crate::help::Leaf::document)
-//! adds that document, and crumbkit adds `<tool>/failure/v1`, which every
-//! command prints when it fails with `--json`. Each
-//! [`FileFormat`](crate::help::FileFormat) that the guide declares with
-//! [`Guide::file_formats`] adds the schema of a file that users write and no
-//! command prints, after the leaves' documents.
+//! The documents come from the tool's [`Tool`]: each leaf that declares the
+//! document it prints with [`Leaf::document`](crate::help::Leaf::document) adds
+//! that document, and crumbkit adds `<tool>/failure/v1`, which every command
+//! prints when it fails with `--json`. Each
+//! [`FileFormat`](crate::help::FileFormat) that the tool record declares with
+//! [`Help::file_formats`](crate::help::Help::file_formats) adds the schema of a
+//! file that users write and no command prints, after the leaves' documents.
 //!
 //! The tool owns the commands. It adds a `schemas` resource with a `list`
 //! subcommand that takes [`SchemasList`] and a `show` subcommand that takes
@@ -22,7 +22,8 @@
 //! use std::process::ExitCode;
 //!
 //! use clap::{CommandFactory, Parser, Subcommand};
-//! use crumbkit::help::{Guide, Leaf};
+//! use crumbkit::Tool;
+//! use crumbkit::help::{Help, Leaf};
 //! use crumbkit::schemas::{self, SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 //! use crumbkit::ViewFlags;
 //!
@@ -53,13 +54,13 @@
 //!     Show(SchemasShow),
 //! }
 //!
-//! const GUIDE: Guide = Guide::new().leaves(&[
+//! const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
 //!     Leaf::new(&["schemas", "list"]).document(SCHEMAS_LIST),
 //!     Leaf::new(&["schemas", "show"]).document(SCHEMAS_SHOW),
-//! ]);
+//! ]));
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, args);
+//!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &TOOL, args);
 //!     let (cli, mut output) = match parsed {
 //!         Ok(parsed) => parsed,
 //!         Err(stop) => return stop.exit_code(),
@@ -69,11 +70,11 @@
 //!             // `list` and `show` build the command tree in `output`,
 //!             // so each runs before `finish`.
 //!             SchemasCommand::List(args) => {
-//!                 let result = schemas::list(&mut output, &GUIDE, &args);
+//!                 let result = schemas::list(&mut output, &TOOL, &args);
 //!                 crumbkit::finish(output, SCHEMAS_LIST, result)
 //!             }
 //!             SchemasCommand::Show(args) => {
-//!                 let result = schemas::show(&mut output, &GUIDE, &args);
+//!                 let result = schemas::show(&mut output, &TOOL, &args);
 //!                 crumbkit::finish(output, SCHEMAS_SHOW, result)
 //!             }
 //!         },
@@ -103,8 +104,9 @@ pub(crate) use self::envelope::stream_schema;
 pub(crate) use self::envelope::{envelope, file_format};
 pub use self::row::{SchemaRow, SchemaShowRow};
 pub use self::served::{Served, documents};
-use crate::help::Guide;
-use crate::{Batch, Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, codes};
+use crate::{
+    Batch, Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, Tool, codes,
+};
 
 #[cfg(test)]
 mod tests;
@@ -196,11 +198,11 @@ pub struct SchemasShow {
 /// `finish` as it passes any handler's result.
 pub fn list(
     output: &mut Output,
-    guide: &Guide,
+    tool: &Tool,
     args: &SchemasList,
 ) -> Result<Listing<SchemaRow>, Error> {
     let root = output.command();
-    let rows = documents(root, guide).iter().map(SchemaRow::new).collect();
+    let rows = documents(root, tool).iter().map(SchemaRow::new).collect();
     Ok(args.page.first_of(rows).described("documents").next(
         Call::new(SHOW_PATH).arg("ids"),
         "prints the JSON Schema of each document.",
@@ -222,11 +224,11 @@ pub fn list(
 /// passes it to `finish` as it passes any handler's result.
 pub fn show(
     output: &mut Output,
-    guide: &Guide,
+    tool: &Tool,
     args: &SchemasShow,
 ) -> Result<Batch<SchemaShowRow, Error>, Error> {
     let root = output.command();
-    let served = documents(root, guide);
+    let served = documents(root, tool);
     let mut batch = Batch::new(SHOW_PATH, "ids", &args.ids);
     for id in &args.ids {
         let result = match served.iter().find(|document| document.id() == *id) {

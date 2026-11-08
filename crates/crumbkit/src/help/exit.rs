@@ -1,11 +1,10 @@
-//! Exit codes that a tool declares in its guide, which `<tool> help
+//! Exit codes that a tool declares in its tool record, which `<tool> help
 //! exit-codes` and `commands list` describe.
 
 use std::fmt::Write as _;
 use std::ops::RangeInclusive;
 
-use super::Guide;
-use crate::Code;
+use crate::{Code, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -16,7 +15,7 @@ pub(crate) const TOPIC: &str = "exit-codes";
 
 /// crumbkit's own exit codes and their meanings, which `<tool> help
 /// exit-codes` lists before the tool's codes (ADR-0002). It leaves out 2
-/// when the guide gives a refused command line another code. The meaning
+/// when the tool record gives a refused command line another code. The meaning
 /// of 1 names the rows that report a problem, because
 /// [`exit::problem_rows`](crate::exit::problem_rows) returns 1.
 const CRUMBKIT: [(u8, &str); 3] = [
@@ -35,17 +34,19 @@ const CRUMBKIT: [(u8, &str); 3] = [
 /// a download that ran out of time, or a range of codes with one meaning,
 /// such as the codes that a command passes on from a test suite it runs.
 ///
-/// A tool declares its codes in its [`Guide`], which `<tool> help
+/// A tool declares its codes in its [`Tool`], which `<tool> help
 /// exit-codes` and `commands list` read:
 ///
 /// ```
-/// use crumbkit::help::{Exit, Guide};
+/// use crumbkit::Tool;
+/// use crumbkit::help::Exit;
+/// use crumbkit::tool::Failures;
 ///
-/// const GUIDE: Guide = Guide::new().exits(&[
+/// const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
 ///     Exit::new(124, "The download ran out of time.").commands(&[&["books", "import"]]),
-/// ]);
+/// ]));
 ///
-/// assert_eq!(GUIDE.get_exits()[0].code(), 124);
+/// assert_eq!(TOOL.get_failures().get_exits()[0].code(), 124);
 /// ```
 ///
 /// An exit can list the failure codes that end a run with it, the tool's
@@ -56,30 +57,38 @@ const CRUMBKIT: [(u8, &str); 3] = [
 ///
 /// ```
 /// use crumbkit::Code;
-/// use crumbkit::help::{Exit, Guide};
+/// use crumbkit::Tool;
+/// use crumbkit::help::Exit;
+/// use crumbkit::tool::Failures;
 ///
 /// const TIMED_OUT: Code = Code::new("shelf", "download", "timed_out");
 ///
-/// const GUIDE: Guide = Guide::new().exits(&[
-///     Exit::new(124, "The download ran out of time.").failures(&[&TIMED_OUT]),
-/// ]);
+/// const TOOL: Tool = Tool::new().failures(
+///     Failures::new()
+///         .exits(&[Exit::new(124, "The download ran out of time.").failures(&[&TIMED_OUT])]),
+/// );
 ///
-/// assert_eq!(GUIDE.get_exits()[0].get_failures(), [&TIMED_OUT]);
+/// assert_eq!(TOOL.get_failures().get_exits()[0].get_failures(), [&TIMED_OUT]);
 /// ```
 ///
 /// A command that passes on the exit code of another program declares the
-/// range of codes it passes on with [`Exit::range`], and the guide's leaf
+/// range of codes it passes on with [`Exit::range`], and the tool record's leaf
 /// for it declares [`Leaf::passes_on_exit`](super::Leaf::passes_on_exit):
 ///
 /// ```
-/// use crumbkit::help::{Exit, Guide};
+/// use crumbkit::Tool;
+/// use crumbkit::help::Exit;
+/// use crumbkit::tool::Failures;
 ///
-/// const GUIDE: Guide = Guide::new().exits(&[
-///     Exit::range(3, 125, "The test suite failed with this code.").commands(&[&["suite", "run"]]),
-///     Exit::new(130, "Ctrl-C ended the run."),
-/// ]);
+/// const TOOL: Tool = Tool::new().failures(
+///     Failures::new().exits(&[
+///         Exit::range(3, 125, "The test suite failed with this code.")
+///             .commands(&[&["suite", "run"]]),
+///         Exit::new(130, "Ctrl-C ended the run."),
+///     ]),
+/// );
 ///
-/// assert_eq!(GUIDE.get_exits()[0].codes(), 3..=125);
+/// assert_eq!(TOOL.get_failures().get_exits()[0].codes(), 3..=125);
 /// ```
 ///
 /// 0 means success, 1 and 2 keep crumbkit's meanings, and a shell reports
@@ -149,14 +158,14 @@ impl Exit {
         self
     }
 
-    /// Sets the failure codes that end a run with the code. A run whose
-    /// first failure has one of `codes` exits with this code in place of
-    /// crumbkit's default (ADR-0037). A range names no single code to exit
-    /// with, so the failures of a range never decide a run's exit, and
-    /// crumbkit-test's `check_exit_codes` fails on a range that lists
-    /// any. A code may be one of crumbkit's, such
-    /// as `crumbkit::codes::CLI_USAGE`, or the tool's rename of it from
-    /// [`Guide::codes`](super::Guide::codes), and either covers both.
+    /// Sets the failure codes that end a run with the code. A run whose first
+    /// failure has one of `codes` exits with this code in place of crumbkit's
+    /// default (ADR-0037). A range names no single code to exit with, so the
+    /// failures of a range never decide a run's exit, and crumbkit-test's
+    /// `check_exit_codes` fails on a range that lists any. A code may be one of
+    /// crumbkit's, such as `crumbkit::codes::CLI_USAGE`, or the tool's rename
+    /// of it from [`Failures::codes`](crate::tool::Failures::codes), and either
+    /// covers both.
     #[must_use]
     pub const fn failures(mut self, codes: &'static [&'static Code]) -> Self {
         self.failures = codes;
@@ -228,13 +237,13 @@ impl Exit {
 }
 
 /// Returns the text that `<tool> help exit-codes` prints, where `tool` is
-/// the tool's name: crumbkit's codes that `guide` keeps, then each code or
-/// range of `guide` in order,
+/// the tool's name: crumbkit's codes that `tool` keeps, then each code or
+/// range of `tool` in order,
 /// each with its meaning and, for a code that only some commands return,
 /// those commands, a line for each leaf that passes on a program's exit
 /// code, and a closing line about the codes that a shell reports.
-pub(crate) fn text(tool: &str, guide: &Guide) -> String {
-    let exits = guide.get_exits();
+pub(crate) fn text(tool_name: &str, tool: &Tool) -> String {
+    let exits = tool.get_failures().get_exits();
     let labels: Vec<String> = exits.iter().map(Exit::label).collect();
     let width = labels
         .iter()
@@ -245,7 +254,7 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
     let mut text = String::from("Exit codes\n");
     // Writing to a `String` cannot fail.
     for (code, meaning) in CRUMBKIT {
-        if code == 2 && !refuses_with_2(guide) {
+        if code == 2 && !refuses_with_2(tool) {
             continue;
         }
         let _ = writeln!(text, "  {code:<width$}  {meaning}");
@@ -254,7 +263,7 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
         let _ = write!(text, "  {label:<width$}  {}", exit.meaning);
         for (index, path) in exit.commands.iter().enumerate() {
             let lead = if index == 0 { " Commands: " } else { ", " };
-            let _ = write!(text, "{lead}`{tool}");
+            let _ = write!(text, "{lead}`{tool_name}");
             for name in *path {
                 let _ = write!(text, " {name}");
             }
@@ -265,7 +274,8 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
         }
         text.push('\n');
     }
-    let passing: Vec<_> = guide
+    let passing: Vec<_> = tool
+        .get_help()
         .get_leaves()
         .iter()
         .filter_map(|leaf| Some((leaf.path().join(" "), leaf.get_passes_on_exit()?)))
@@ -276,12 +286,12 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
     for (path, program) in passing {
         let _ = writeln!(
             text,
-            "`{tool} {path}` passes on the exit code of {program}."
+            "`{tool_name} {path}` passes on the exit code of {program}."
         );
     }
     let _ = writeln!(
         text,
-        "\nA shell reports 126 and above for its own reasons, such as 127 when it cannot find {tool} and 130 when Ctrl-C ends it."
+        "\nA shell reports 126 and above for its own reasons, such as 127 when it cannot find {tool_name} and 130 when Ctrl-C ends it."
     );
     text
 }
@@ -290,27 +300,27 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
 /// names the exit codes and the topic that describes them, such as
 /// ``Exit codes: 0, 1 and 2 apply to every command, and shelf adds 3 and
 /// 124-125. `shelf help exit-codes` describes them.``
-pub(crate) fn note(tool: &str, guide: &Guide) -> String {
-    let mut note = String::from(if refuses_with_2(guide) {
+pub(crate) fn note(tool_name: &str, tool: &Tool) -> String {
+    let mut note = String::from(if refuses_with_2(tool) {
         "Exit codes: 0, 1 and 2 apply to every command"
     } else {
         "Exit codes: 0 and 1 apply to every command"
     });
-    let exits = guide.get_exits();
+    let exits = tool.get_failures().get_exits();
     for (index, exit) in exits.iter().enumerate() {
         let lead = match index {
-            0 => format!(", and {tool} adds "),
+            0 => format!(", and {tool_name} adds "),
             _ if index + 1 == exits.len() => " and ".to_owned(),
             _ => ", ".to_owned(),
         };
         let _ = write!(note, "{lead}{}", exit.label());
     }
-    let _ = write!(note, ". `{tool} help {TOPIC}` describes them.");
+    let _ = write!(note, ". `{tool_name} help {TOPIC}` describes them.");
     note
 }
 
 /// Returns whether a refused command line exits with crumbkit's 2 under
-/// `guide`, which lists no other code for it.
-fn refuses_with_2(guide: &Guide) -> bool {
-    guide.failure_exit(&[], &crate::codes::CLI_USAGE) == 2
+/// `tool`, which lists no other code for it.
+fn refuses_with_2(tool: &Tool) -> bool {
+    tool.failure_exit(&[], &crate::codes::CLI_USAGE) == 2
 }

@@ -6,9 +6,8 @@ use clap::{CommandFactory as _, FromArgMatches as _, Parser, Subcommand};
 use serde_json::{Value, json};
 
 use super::{BUDGET, STAR_BATCH, Star, parsed, star, stars};
-use crate::help::Guide;
 use crate::output::tests::{Finished, finish_output};
-use crate::{Batch, Document, Error, Output, ViewFlags};
+use crate::{Batch, Document, Error, Output, Tool, ViewFlags};
 
 /// A tool with a global option before its subcommands, one subcommand that
 /// takes its keys as a positional argument and one that takes them after a
@@ -73,12 +72,12 @@ fn output(args: &[String]) -> Output {
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    Output::new(view, crate::DryRun::default(), command, &guide(), args).unwrap()
+    Output::new(view, crate::DryRun::default(), command, &tool(), args).unwrap()
 }
 
-/// Returns a guide with the budget of [`BUDGET`].
-fn guide() -> Guide {
-    Guide::new().output_budget(BUDGET, "the tests print little")
+/// Returns a tool record with the budget of [`BUDGET`].
+fn tool() -> Tool {
+    Tool::new().output(crate::tool::Output::new().budget(BUDGET, "the tests print little"))
 }
 
 /// Finishes the batch of the command at `path` with the command line
@@ -173,7 +172,7 @@ fn a_batch_s_recovery_without_the_caller_s_words_runs_the_batch_s_command_alone(
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(&args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    let output = Output::new(view, crate::DryRun::default(), command, &guide(), ["tool"]).unwrap();
+    let output = Output::new(view, crate::DryRun::default(), command, &tool(), ["tool"]).unwrap();
 
     let finished = finish_output(output, STAR_BATCH, batch(&["show"]));
 

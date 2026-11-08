@@ -6,11 +6,11 @@ use std::process::ExitCode;
 use clap::{Arg, ArgAction, Command};
 
 use super::{Effects, Items};
-use crate::help::{Example, Guide, Leaf};
-use crate::{Sink, parse_to};
+use crate::help::{Example, Help, Leaf};
+use crate::{Sink, Tool, parse_to};
 
 /// A tool with a global flag and one leaf, `tool planets remove`.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .subcommand_required(true)
         .arg(
@@ -29,21 +29,22 @@ fn tool() -> Command {
         )
 }
 
-/// Runs `parse_to` over `tool()` with `guide` for `args`, which ask for
+/// Runs `parse_to` over `tree()` with `tool` for `args`, which ask for
 /// help, and returns the page it printed.
-fn help(guide: &Guide, args: &[&str]) -> String {
+fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
+    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }
 
-/// The guide of `tool()`, whose leaf is destructive and idempotent.
-const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
-    .effects(Effects::destructive().idempotent())]);
+/// The tool record of `tree()`, whose leaf is destructive and idempotent.
+const TOOL: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .effects(Effects::destructive().idempotent())]),
+);
 
 #[test]
 fn a_read_only_command_is_idempotent_and_destroys_nothing() {
@@ -127,12 +128,12 @@ Examples:
 Effects: destructive, idempotent, closed-world.
 Global flags: --json. `tool planets remove --help` describes them.
 ";
-    assert_eq!(help(&GUIDE, &["tool", "planets", "remove", "-h"]), expected);
+    assert_eq!(help(&TOOL, &["tool", "planets", "remove", "-h"]), expected);
 }
 
 #[test]
 fn long_help_prints_the_effects_after_the_examples() {
-    let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);
+    let page = help(&TOOL, &["tool", "planets", "remove", "--help"]);
 
     assert!(
         page.ends_with(
@@ -168,10 +169,9 @@ fn help_names_each_combination_of_change_repetition_and_world() {
 
 #[test]
 fn a_leaf_without_effects_prints_no_effects_line() {
-    const PLAIN: Guide =
-        Guide::new()
-            .leaves(&[Leaf::new(&["planets", "remove"])
-                .examples(&[Example::new(&["ceres"], "Remove Ceres")])]);
+    const PLAIN: Tool = Tool::new().help(Help::new().leaves(&[
+        Leaf::new(&["planets", "remove"]).examples(&[Example::new(&["ceres"], "Remove Ceres")]),
+    ]));
 
     let page = help(&PLAIN, &["tool", "planets", "remove", "-h"]);
 
@@ -189,16 +189,18 @@ impl crate::Row for Removal {
     const COLUMNS: &'static [&'static str] = &["name"];
 }
 
-/// The guide of `tool()`, whose leaf prints a stream of removals.
-const STREAM: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
-    .effects(Effects::destructive().idempotent())
-    .stream(crate::Document::<crate::Stream<Removal>>::new(
-        "tool",
-        "planets-remove",
-        1,
-        "Each removed planet.",
-    ))]);
+/// The tool record of `tree()`, whose leaf prints a stream of removals.
+const STREAM: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .effects(Effects::destructive().idempotent())
+        .stream(crate::Document::<crate::Stream<Removal>>::new(
+            "tool",
+            "planets-remove",
+            1,
+            "Each removed planet.",
+        ))]),
+);
 
 /// The line that the help of a stream leaf prints after its effects.
 const OUTPUT_LINE: &str =
@@ -220,16 +222,18 @@ fn long_help_of_a_stream_leaf_prints_the_output_line_after_the_effects() {
     assert!(page.ends_with(&expected), "{page}");
 }
 
-/// The guide of `tool()`, whose leaf prints a file's bytes.
-const BYTES: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
-    .effects(Effects::destructive().idempotent())
-    .document(crate::Document::<crate::Bytes>::new(
-        "tool",
-        "planets-remove",
-        1,
-        "The removed planet's file.",
-    ))]);
+/// The tool record of `tree()`, whose leaf prints a file's bytes.
+const BYTES: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .effects(Effects::destructive().idempotent())
+        .document(crate::Document::<crate::Bytes>::new(
+            "tool",
+            "planets-remove",
+            1,
+            "The removed planet's file.",
+        ))]),
+);
 
 /// The line that the help of a bytes leaf prints after its effects.
 const BYTES_LINE: &str = "Output: the bytes unchanged, and --json prints them as text or base64.";
@@ -270,20 +274,22 @@ impl crate::Headed for File {
     }
 }
 
-/// The guide of `tool()`, whose leaf prints each removed planet's file
+/// The tool record of `tree()`, whose leaf prints each removed planet's file
 /// under a header.
-const HEADED: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
-    .effects(Effects::destructive().idempotent())
-    .document(
-        crate::Document::<crate::Batch<File, crate::Error>>::new(
-            "tool",
-            "planets-remove",
-            1,
-            "The removed planets' files.",
-        )
-        .headed(),
-    )]);
+const HEADED: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .effects(Effects::destructive().idempotent())
+        .document(
+            crate::Document::<crate::Batch<File, crate::Error>>::new(
+                "tool",
+                "planets-remove",
+                1,
+                "The removed planets' files.",
+            )
+            .headed(),
+        )]),
+);
 
 #[test]
 fn help_of_a_headed_leaf_prints_the_headed_output_line_after_the_effects() {
@@ -339,17 +345,19 @@ impl crate::Headed for BareFile {
 
 #[test]
 fn short_help_of_a_headed_leaf_whose_row_type_has_no_columns_points_at_its_json_fields() {
-    const BARE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
-        .document(
-            crate::Document::<crate::Batch<BareFile, crate::Error>>::new(
-                "tool",
-                "planets-remove",
-                1,
-                "The removed planets' files.",
-            )
-            .headed(),
-        )]);
+    const BARE: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+            .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+            .document(
+                crate::Document::<crate::Batch<BareFile, crate::Error>>::new(
+                    "tool",
+                    "planets-remove",
+                    1,
+                    "The removed planets' files.",
+                )
+                .headed(),
+            )]),
+    );
 
     let page = help(&BARE, &["tool", "planets", "remove", "-h"]);
 
@@ -361,7 +369,7 @@ fn short_help_of_a_headed_leaf_whose_row_type_has_no_columns_points_at_its_json_
 
 #[test]
 fn a_leaf_that_prints_one_document_prints_no_output_line() {
-    let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);
+    let page = help(&TOOL, &["tool", "planets", "remove", "--help"]);
 
     assert!(!page.contains("Output:"), "{page}");
 }
@@ -380,16 +388,19 @@ impl crate::Row for Check {
     const PROBLEM: Option<&'static str> = Some("problem");
 }
 
-/// The guide of `tool()`, whose leaf prints rows that can report a problem.
-const PROBLEMS: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
-    .effects(Effects::destructive().idempotent())
-    .document(crate::Document::<Vec<Check>>::new(
-        "tool",
-        "planets-remove",
-        1,
-        "The removed planets.",
-    ))]);
+/// The tool record of `tree()`, whose leaf prints rows that can report a
+/// problem.
+const PROBLEMS: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .effects(Effects::destructive().idempotent())
+        .document(crate::Document::<Vec<Check>>::new(
+            "tool",
+            "planets-remove",
+            1,
+            "The removed planets.",
+        ))]),
+);
 
 /// The line that the help of a leaf whose rows name a problem field prints
 /// after its effects.
@@ -487,11 +498,13 @@ fn a_read_only_command_or_a_write_without_guards_has_no_writes_line() {
     assert_eq!(Effects::destructive().writes_line(false), None);
 }
 
-/// The guide of `tool()`, whose leaf replaces data and applies all its
+/// The tool record of `tree()`, whose leaf replaces data and applies all its
 /// items or none.
-const REPLACING: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
-    .effects(Effects::replacing().all_or_none())]);
+const REPLACING: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .effects(Effects::replacing().all_or_none())]),
+);
 
 #[test]
 fn both_help_pages_print_the_writes_line_after_the_effects_line() {
@@ -516,11 +529,13 @@ fn the_writes_object_holds_replaces_expect_and_items() {
     assert_eq!(super::guards(None, false), None);
 }
 
-/// The guide of `tool()`, whose leaf passes on the exit code of the
+/// The tool record of `tree()`, whose leaf passes on the exit code of the
 /// program that removes the planets.
-const PASSES_ON: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
-    .effects(Effects::destructive().idempotent())
-    .passes_on_exit("the planet remover")]);
+const PASSES_ON: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .effects(Effects::destructive().idempotent())
+        .passes_on_exit("the planet remover")]),
+);
 
 #[test]
 fn help_of_a_leaf_that_passes_on_a_program_s_exit_code_names_the_program_after_the_effects() {

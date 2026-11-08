@@ -27,7 +27,7 @@ An example that runs only where something is present, such as a container
 daemon, needs no opt-out. It names that precondition with `Example::needs`,
 a run that lacks it skips the example
 ([example runs](../checks/end-to-end.md#example-runs)), and the report lists
-it among the customisations.
+it among the declarations.
 
 Why: ADR-0036, ADR-0090, ADR-0163.
 
@@ -82,10 +82,10 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
 - A tool declares its verbs to `check_grammar`, and its
   [root verbs](declarations.md#root-verbs) once. The rule that keeps a
   resource from answering to a root verb's word has no opt-out.
-- `check_guide` takes opt-outs for its example rule and its document rule
-  alone. A tool that wants clap's list for a command leaves the command
-  out of its guide, and each other problem of the guide is a name or a
-  declaration that the tool can correct.
+- `check_guide` takes opt-outs for its example rule and its document rule alone.
+  A tool that wants clap's list for a command leaves the command out of its tool
+  record, and each other problem of the tool record is a name or a declaration
+  that the tool can correct.
 - The help checks take budgets in place of opt-outs
   ([help checks](../help/checks.md)).
 - `check_mounts` exists to keep crumbkit's commands at fixed paths.
@@ -100,9 +100,9 @@ Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104, ADR-0105, ADR-0165.
 A tool pins its opt-outs in a report with `check_opt_outs`, which compares a
 text and a JSON golden file. Each entry names the rule, the command line, the
 reason and what skipping the rule costs an agent. The report also lists each
-help or path budget that the tool set and the guide's
+help or path budget that the tool set and the tool record's
 [output budget](../output/budget/README.md), as `output-budget/run`, and
-each guide setting that departs from the conventions with a reason:
+each tool record setting that departs from the conventions with a reason:
 
 - a [JSON layout](../output/json-layout.md), as `json-layout/pretty`;
 - [terminal detection](../output/terminal.md) turned off, as
@@ -116,8 +116,8 @@ line: a help, path or output budget.
 A reviewer then sees a new opt-out as a change to the golden files, and an
 agent reads the JSON to learn where the tool departs from crumbkit's
 conventions. After the opt-outs, the report lists the tool's
-[declarations](declarations.md#the-customisations-section) under the
-customisations.
+[declarations](declarations.md#the-declarations-section) under the
+declarations.
 
 The report is a test check only, because a tool's opt-outs live in its
 tests. Every other check runs without it, so a tool turns checks on one at a

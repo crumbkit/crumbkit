@@ -24,7 +24,7 @@ failure to its key even when a key repeats. `key` and `index` sit before
 follows the `error:` line in its text. They are members of the failure and
 sit outside `fields`. A failure pushed after the last key has neither. A
 batch with at least one failure exits with the code of its first failure,
-which is 1 unless the guide declares another for that failure's code
+which is 1 unless the tool record declares another for that failure's code
 ([exit codes](../../failures/exit-codes.md)). The over-budget failure that names
 the answers left out prints after the batch's own failures.
 

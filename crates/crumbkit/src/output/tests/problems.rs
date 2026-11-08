@@ -10,11 +10,11 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::{Failing, Tool, finish_output, finish_with};
+use super::{Cli, Failing, finish_output, finish_with};
 use crate::answered::answered;
-use crate::help::Guide;
+use crate::tool::Failures;
 use crate::{
-    Batch, Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, finish_to,
+    Batch, Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Tool, finish_to,
 };
 
 const CHECKS: Document<Listing<Check>> = Document::new("lint", "checks", 1, "The test rows.");
@@ -129,9 +129,10 @@ fn a_single_row_and_a_list_whose_rows_report_a_problem_exit_with_1() {
 
 #[test]
 fn a_batch_failure_decides_the_exit_before_a_row_that_reports_a_problem() {
-    const MAPPED: Guide =
-        Guide::new()
-            .exits(&[crate::help::Exit::new(3, "A check is unreadable.").failures(&[&UNREADABLE])]);
+    const MAPPED: Tool = Tool::new()
+        .failures(Failures::new().exits(&[
+            crate::help::Exit::new(3, "A check is unreadable.").failures(&[&UNREADABLE]),
+        ]));
     let output = guided(&MAPPED, &[]);
     let batch = answered(vec![broken("one")], vec![Unreadable]);
 
@@ -146,7 +147,7 @@ fn a_row_that_the_output_budget_left_unprinted_still_decides_the_exit() {
     let mut rows: Vec<Check> = (0..40).map(|n| passing(&"a".repeat(n + 60))).collect();
     rows.push(broken("last"));
     let output = guided(
-        &Guide::new().output_budget(1024, "the tests print little"),
+        &Tool::new().output(crate::tool::Output::new().budget(1024, "the tests print little")),
         &[],
     );
 
@@ -314,11 +315,11 @@ fn a_listing_from_all_rows_without_a_limit_counts_its_problem_rows_as_before() {
     );
 }
 
-/// Returns the output flags for `flags` with `guide`, as `Output::new`
+/// Returns the output flags for `flags` with `tool`, as `Output::new`
 /// builds them.
-fn guided(guide: &Guide, flags: &[&str]) -> Output {
+fn guided(tool: &Tool, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    super::built_with(Tool::command(), guide, &args)
+    super::built_with(Cli::command(), tool, &args)
 }
 
 /// The state of a job, which decides whether the job reports a problem.

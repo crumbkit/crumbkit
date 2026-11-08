@@ -40,7 +40,7 @@ fn the_output_of_a_command_added_for_a_list_reads_the_view_flags_after_it() {
     let parsed = crumbkit::parse_to::<Parsed, _, _, _, _>(
         &mut crumbkit::Sink::new(out, err),
         crate::command(&lists),
-        &crate::guide(&lists),
+        &crate::tool(&lists),
         ["reading", "to-read", "list", "--json"],
     );
 

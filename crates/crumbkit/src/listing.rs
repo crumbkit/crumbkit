@@ -396,7 +396,7 @@ impl<R: Row, S> Listing<R, S> {
 
     /// Returns the summary that [`Listing::summary`] set, or `None` when
     /// the tool set none. The getter has the `get_` prefix because the
-    /// builder takes the plain name, as `Guide` and `Leaf` getters do.
+    /// builder takes the plain name, as `Tool` and `Leaf` getters do.
     #[must_use]
     pub const fn get_summary(&self) -> Option<&S> {
         self.summary.as_ref()

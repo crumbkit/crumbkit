@@ -31,7 +31,7 @@ its reasons.
   [pickers](effects/pickers.md) and [write guards](effects/write-guards.md).
 - [Schemas](schemas/README.md): JSON documents, their ids and schemas, and
   the [schema commands](schemas/commands.md).
-- [Adoption](adoption/README.md): the guide, the core crate, the public
+- [Adoption](adoption/README.md): the tool record, the core crate, the public
   API, [opt-outs](adoption/opt-outs.md) and
   [declarations](adoption/declarations.md).
 - [Run observer](run-observer/README.md): the observers that hear what

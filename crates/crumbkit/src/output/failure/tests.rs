@@ -34,7 +34,7 @@ const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets", 1, "The
 /// A tool with a `list` command that a recovery can name.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -157,12 +157,12 @@ struct Finished {
 /// parses with clap alone builds it, and finishes `failure` into memory.
 fn fail_with(flags: &[&str], failure: impl Into<Error>) -> Finished {
     let args = ["tool", "list"].iter().chain(flags);
-    let view = Tool::try_parse_from(args.clone()).unwrap().view;
+    let view = Cli::try_parse_from(args.clone()).unwrap().view;
     let output = Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &crate::help::Guide::new(),
+        Cli::command(),
+        &crate::Tool::new(),
         args,
     )
     .unwrap();
@@ -454,12 +454,12 @@ fn an_unknown_field_on_a_failed_run_of_a_tool_that_parses_with_clap_alone_prints
 
 #[test]
 fn finish_prints_a_crumbkit_error_as_it_prints_the_failure_inside() {
-    let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
+    let view = Cli::try_parse_from(["tool", "list"]).unwrap().view;
     let output = Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &crate::help::Guide::new(),
+        Cli::command(),
+        &crate::Tool::new(),
         ["tool", "list"],
     )
     .unwrap();
@@ -487,14 +487,14 @@ impl Write for Failing {
 
 /// Returns the output of `tool list --json`.
 fn json() -> Output {
-    let view = Tool::try_parse_from(["tool", "list", "--json"])
+    let view = Cli::try_parse_from(["tool", "list", "--json"])
         .unwrap()
         .view;
     Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &crate::help::Guide::new(),
+        Cli::command(),
+        &crate::Tool::new(),
         ["tool", "list", "--json"],
     )
     .unwrap()

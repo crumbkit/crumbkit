@@ -2,7 +2,7 @@
 //! public-domain books, and needs no network or credentials.
 //!
 //! The library holds the whole tool, and the `shelf` binary calls [`run`].
-//! It exports the parser and the guide, so shelf's integration tests can
+//! It exports the parser and the tool record, so shelf's integration tests can
 //! pass them to crumbkit-test's checks beside the built binary.
 
 mod books;
@@ -21,7 +21,7 @@ use crate::cli::{
     AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, SchemasCommand,
     SelfCommand,
 };
-pub use crate::cli::{Cli, GUIDE};
+pub use crate::cli::{Cli, TOOL};
 
 #[cfg(test)]
 mod tests;
@@ -31,9 +31,9 @@ mod tests;
 pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
 
 /// Parses the process's command line, runs the command and returns the
-/// process's exit code. `crumbkit::parse_from` takes shelf's guide, which gives
-/// its help goal headings and help topics. It prints help, the version or a
-/// refused command line and returns the exit code. `crumbkit::finish` prints
+/// process's exit code. `crumbkit::parse_from` takes shelf's tool record, which
+/// gives its help goal headings and help topics. It prints help, the version or
+/// a refused command line and returns the exit code. `crumbkit::finish` prints
 /// the result or the failure in the format that the output flags choose and
 /// returns the process's exit code.
 ///
@@ -69,7 +69,7 @@ where
     let command = Cli::command();
     let file = crumbkit_aliases::file(command.get_name());
     let args = crumbkit_aliases::expand(&command, args, file.as_deref());
-    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, args) {
+    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &TOOL, args) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
@@ -104,19 +104,19 @@ where
         // `finish` takes `output` in turn.
         Resource::Commands { command } => match command {
             CommandsCommand::List(args) => {
-                let result = crumbkit::commands::list(&mut output, &GUIDE, &args);
+                let result = crumbkit::commands::list(&mut output, &TOOL, &args);
                 let document = crumbkit::commands::COMMANDS_LIST;
                 crumbkit::finish(output, document, result)
             }
         },
         Resource::Schemas { command } => match command {
             SchemasCommand::List(args) => {
-                let result = crumbkit::schemas::list(&mut output, &GUIDE, &args);
+                let result = crumbkit::schemas::list(&mut output, &TOOL, &args);
                 let document = crumbkit::schemas::SCHEMAS_LIST;
                 crumbkit::finish(output, document, result)
             }
             SchemasCommand::Show(args) => {
-                let result = crumbkit::schemas::show(&mut output, &GUIDE, &args);
+                let result = crumbkit::schemas::show(&mut output, &TOOL, &args);
                 let document = crumbkit::schemas::SCHEMAS_SHOW;
                 crumbkit::finish(output, document, result)
             }
@@ -124,7 +124,7 @@ where
         Resource::SelfCommand { command } => match command {
             SelfCommand::Usage(args) => {
                 let result =
-                    Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&mut output, &GUIDE, &args));
+                    Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&mut output, &TOOL, &args));
                 let document = crumbkit_usage::SELF_USAGE;
                 crumbkit::finish(output, document, result)
             }
@@ -132,7 +132,7 @@ where
                 command: FiguresCommand::List(args),
             } => {
                 let result =
-                    Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&mut output, &GUIDE, &args));
+                    Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&mut output, &TOOL, &args));
                 let document = crumbkit_usage::SELF_FIGURES_LIST;
                 crumbkit::finish(output, document, result)
             }

@@ -10,7 +10,7 @@ cargo gives the path of a built binary, `CARGO_BIN_EXE_<name>`, only to the
 integration tests of the binary's own package. A tool therefore runs these
 checks from such a test. An integration test imports only from a library, so
 that package has a library target that exports the clap command and the
-guide, and its binary calls the library, as shelf's does.
+tool record, and its binary calls the library, as shelf's does.
 
 One [`Examples`](../../../crates/crumbkit-test/src/examples/settings.rs) value
 holds the settings that every such check shares: the binary, the golden
@@ -67,7 +67,7 @@ Why: ADR-0005, ADR-0053, ADR-0088.
 ## Example runs
 
 [`check_examples`](../../../crates/crumbkit-test/src/examples.rs) runs
-every example of every leaf in the guide, so each command line that help
+every example of every leaf in the tool record, so each command line that help
 shows is a run that works. It runs the examples of hidden commands, because
 their own help lists them. The rustdoc of `check_examples` lists every
 problem it reports. These rules matter most to a tool's author:
@@ -102,7 +102,7 @@ problem it reports. These rules matter most to a tool's author:
   never reads, rewrites or deletes them, so the run that provides it owns
   them. `check_guide` still parses every example, skipped or not, and
   `check_opt_outs` lists each example that needs a precondition among the
-  [customisations](../adoption/declarations.md#the-customisations-section),
+  [declarations](../adoption/declarations.md#the-declarations-section),
   because the example is correct and needs no reason.
 - The output weight read from a golden file counts the bytes of a
   placeholder in place of the value it replaced.
@@ -160,9 +160,9 @@ refused one by one word added, removed or replaced, and that the tool accepts
   passes to both `check_twins` and `check_recoveries`.
 - A code of crumbkit or of one of its add-on crates, such as crumbkit-child,
   needs no twin and no declaration, because that crate raises the failure.
-  crumbkit-test reads these codes from `crumbkit::codes::ALL` and from its
-  own list of the add-on crates' codes. A declared code that a `Rename` of
-  the guide or of a leaf prints in place of one of them needs no twin either.
+  crumbkit-test reads these codes from `crumbkit::codes::ALL` and from its own
+  list of the add-on crates' codes. A declared code that a `Rename` of the tool
+  record or of a leaf prints in place of one of them needs no twin either.
 - Every other code is the tool's code, whatever its component. It must be
   declared, and it needs a twin, an `Unprovoked` entry or an
   `Allow::untwinned` opt-out.

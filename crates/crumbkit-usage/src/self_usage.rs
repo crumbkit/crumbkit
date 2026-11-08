@@ -8,7 +8,7 @@
 //!
 //! ```ignore
 //! Resource::SelfCommand { command: SelfCommand::Usage(args) } => {
-//!     let result = crumbkit_usage::findings(&mut output, &GUIDE, &args);
+//!     let result = crumbkit_usage::findings(&mut output, &TOOL, &args);
 //!     let result = Ok::<_, crumbkit::Error>(result);
 //!     crumbkit::finish(output, crumbkit_usage::SELF_USAGE, result)
 //! }
@@ -39,8 +39,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::report::{Figures, Finding, Kind, Report, Tally, read};
-use crumbkit::help::Guide;
-use crumbkit::{Call, Document, Listing, Output};
+use crumbkit::{Call, Document, Listing, Output, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -133,8 +132,8 @@ pub(super) struct CommandFigures {
 struct ExitRuns {
     /// The exit code, from 3 to 255.
     exit: u8,
-    /// What the tool's guide says the code means for the command, or null
-    /// when the guide declares no such code for it.
+    /// What the tool record says the code means for the command, or null
+    /// when the tool record declares no such code for it.
     meaning: Option<&'static str>,
     /// The runs that exited with the code.
     runs: u64,
@@ -185,7 +184,7 @@ struct CallerRuns {
 /// Returns the findings in the usage log of the tool whose command `output`
 /// holds, which it builds in full through [`Output::command`], for the runs that ended in the `--since`
 /// duration before now, for the tool to pass to [`finish`](crumbkit::finish)
-/// with [`SELF_USAGE`]. `guide` is the tool's guide, whose exit codes give
+/// with [`SELF_USAGE`]. `tool` is the tool record, whose exit codes give
 /// the meaning of each exit from 3 in a command's figures.
 ///
 /// It reads the file that `--log` names, or else `usage.jsonl` in the
@@ -204,11 +203,17 @@ struct CallerRuns {
 #[must_use]
 pub fn findings(
     output: &mut Output,
-    guide: &Guide,
+    tool: &Tool,
     args: &SelfUsage,
 ) -> Listing<FindingRow, UsageSummary> {
-    let tool = output.command();
-    report_from(tool, guide, open(tool, args), args.since, SystemTime::now())
+    let tool_name = output.command();
+    report_from(
+        tool_name,
+        tool,
+        open(tool_name, args),
+        args.since,
+        SystemTime::now(),
+    )
 }
 
 /// Opens the usage log that `args` names, or else the log of `tool`, to
@@ -241,19 +246,19 @@ fn day_of(time: SystemTime) -> String {
 
 /// Returns the findings in `log` for the runs that ended in the `since`
 /// duration before `now`, checked against `tool`, as [`findings`]
-/// describes for `guide`.
+/// describes for `tool`.
 fn report_from(
-    tool: &Command,
-    guide: &Guide,
+    tool_name: &Command,
+    tool: &Tool,
     log: Option<impl BufRead>,
     since: Duration,
     now: SystemTime,
 ) -> Listing<FindingRow, UsageSummary> {
-    let (report, summary) = summarize(tool, guide, log, since, now);
+    let (report, summary) = summarize(tool_name, tool, log, since, now);
     let rows: Vec<FindingRow> = report
         .findings
         .iter()
-        .map(|finding| row(tool.get_name(), guide, finding, &report))
+        .map(|finding| row(tool_name.get_name(), tool, finding, &report))
         .collect();
     let total = rows.len();
     Listing::new(rows, total)
@@ -267,11 +272,11 @@ fn report_from(
 
 /// Returns the report of the runs in `log` that ended in the `since`
 /// duration before `now`, checked against `tool`, and its summary. A run
-/// that exited with the code that `guide` gives a refused command line
+/// that exited with the code that `tool` gives a refused command line
 /// counts as refused.
 pub(super) fn summarize(
-    tool: &Command,
-    guide: &Guide,
+    tool_name: &Command,
+    tool: &Tool,
     log: Option<impl BufRead>,
     since: Duration,
     now: SystemTime,
@@ -282,9 +287,9 @@ pub(super) fn summarize(
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
-    let mut tally = Tally::new(guide.failure_exit(&[], &crumbkit::codes::CLI_USAGE));
+    let mut tally = Tally::new(tool.failure_exit(&[], &crumbkit::codes::CLI_USAGE));
     if let Some(log) = log {
-        read(log, start_ms, tool, &mut tally);
+        read(log, start_ms, tool_name, &mut tally);
     }
     let mut report = tally.report();
     let summary = UsageSummary {
@@ -312,8 +317,8 @@ pub(super) fn summarize(
 }
 
 /// Returns the row of `finding` in `report` for the tool named `tool`,
-/// whose guide is `guide`.
-fn row(tool: &str, guide: &Guide, finding: &Finding, report: &Report) -> FindingRow {
+/// whose tool record is `tool`.
+fn row(tool_name: &str, tool: &Tool, finding: &Finding, report: &Report) -> FindingRow {
     // Every finding names a command that the report has figures for.
     let figures = report
         .commands
@@ -321,7 +326,7 @@ fn row(tool: &str, guide: &Guide, finding: &Finding, report: &Report) -> Finding
         .ok()
         .and_then(|index| report.commands.get(index));
     let command = if finding.command.is_empty() {
-        tool.to_owned()
+        tool_name.to_owned()
     } else {
         finding.command.clone()
     };
@@ -332,7 +337,7 @@ fn row(tool: &str, guide: &Guide, finding: &Finding, report: &Report) -> Finding
         suggestion: suggestion(finding, figures),
         code: finding.code.clone(),
         figures: figures.map_or_else(CommandFigures::none, |figures| {
-            CommandFigures::of(figures, guide)
+            CommandFigures::of(figures, tool)
         }),
     }
 }
@@ -377,8 +382,8 @@ fn suggestion(finding: &Finding, figures: Option<&Figures>) -> String {
 
 impl CommandFigures {
     /// Returns the figures that `figures` holds, with the meaning that
-    /// `guide` gives each exit code for the command.
-    pub(super) fn of(figures: &Figures, guide: &Guide) -> Self {
+    /// `tool` gives each exit code for the command.
+    pub(super) fn of(figures: &Figures, tool: &Tool) -> Self {
         let path: Vec<&str> = if figures.command.is_empty() {
             Vec::new()
         } else {
@@ -389,7 +394,8 @@ impl CommandFigures {
             .iter()
             .map(|&(exit, runs)| ExitRuns {
                 exit,
-                meaning: guide
+                meaning: tool
+                    .get_failures()
                     .get_exits()
                     .iter()
                     .find(|declared| declared.codes().contains(&exit) && declared.covers(&path))

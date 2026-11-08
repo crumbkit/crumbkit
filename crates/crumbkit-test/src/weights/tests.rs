@@ -1,7 +1,8 @@
 //! Tests for the path weight check.
 
 use clap::Command;
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::Tool;
+use crumbkit::help::{Example, Help, Leaf};
 
 use super::{PathBudgets, check_path_weights, output_weight, path_totals};
 use crate::Budget;
@@ -22,11 +23,13 @@ fn shelf() -> Command {
         )
 }
 
-/// A guide whose `books list` has two examples.
-const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).examples(&[
-    Example::new(&[], "Print the first page of books"),
-    Example::new(&["--all"], "Print every book"),
-])]);
+/// A tool record whose `books list` has two examples.
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[Leaf::new(&["books", "list"]).examples(
+    &[
+        Example::new(&[], "Print the first page of books"),
+        Example::new(&["--all"], "Print every book"),
+    ],
+)]));
 
 /// Returns the size in bytes of the `-h` page of the command at `path`.
 ///
@@ -34,7 +37,7 @@ const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).example
 /// instead of writing it out.
 fn size(path: &str) -> u64 {
     let shelf = shelf();
-    let pages = pages(&shelf, Pages::rendered(&GUIDE), "-h", &mut Vec::new());
+    let pages = pages(&shelf, Pages::rendered(&TOOL), "-h", &mut Vec::new());
     pages
         .iter()
         .find(|(visit, _)| visit.path() == path)
@@ -57,7 +60,7 @@ fn paths_within_crumbkit_s_default_budget_pass() {
 
     check_path_weights(
         &shelf(),
-        Pages::rendered(&GUIDE),
+        Pages::rendered(&TOOL),
         &PathBudgets::new(dir.path().to_str().unwrap()),
     );
 }
@@ -71,7 +74,7 @@ fn a_path_over_its_budget_fails_with_its_pages_and_output() {
     let budgets = PathBudgets::new(dir.path().to_str().unwrap()).nodes(&leaves);
 
     assert_eq!(
-        panic_message(|| check_path_weights(&shelf(), Pages::rendered(&GUIDE), &budgets)).unwrap(),
+        panic_message(|| check_path_weights(&shelf(), Pages::rendered(&TOOL), &budgets)).unwrap(),
         format!(
             "the command tree breaks crumbkit's path weight rules:\n\
              shelf books list: the path reads {} bytes, {pages} of -h pages and 40 of output, over its budget of {budget} bytes",
@@ -92,7 +95,7 @@ fn a_command_s_budget_wins_over_the_path_budget() {
         )
         .nodes(&leaves);
 
-    check_path_weights(&shelf(), Pages::rendered(&GUIDE), &budgets);
+    check_path_weights(&shelf(), Pages::rendered(&TOOL), &budgets);
 }
 
 #[test]
@@ -107,7 +110,7 @@ fn a_tool_can_raise_a_budget_above_crumbkit_s_default_with_a_reason() {
         .path(8_001, "Every path reads a long root page.")
         .nodes(NODES);
 
-    check_path_weights(&shelf(), Pages::rendered(&GUIDE), &budgets);
+    check_path_weights(&shelf(), Pages::rendered(&TOOL), &budgets);
 }
 
 #[test]
@@ -120,7 +123,7 @@ fn a_command_s_budget_that_names_no_command_or_a_hidden_one_fails_the_check() {
     let budgets = PathBudgets::new(dir.path().to_str().unwrap()).nodes(NODES);
 
     assert_eq!(
-        panic_message(|| check_path_weights(&shelf(), Pages::rendered(&GUIDE), &budgets)).unwrap(),
+        panic_message(|| check_path_weights(&shelf(), Pages::rendered(&TOOL), &budgets)).unwrap(),
         "the command tree breaks crumbkit's path weight rules:\n\
          the budget of `books purge` names no visible command below the root\n\
          the budget of `books gone` names no visible command below the root"
@@ -150,16 +153,16 @@ fn help_only_path_budgets_count_only_the_help_pages() {
 }
 
 #[test]
-fn help_only_path_budgets_fail_with_a_guide_that_gives_examples() {
+fn help_only_path_budgets_fail_with_a_tool_that_gives_examples() {
     assert_eq!(
         panic_message(|| check_path_weights(
             &shelf(),
-            Pages::rendered(&GUIDE),
+            Pages::rendered(&TOOL),
             &PathBudgets::help_only()
         ))
         .unwrap(),
         "the command tree breaks crumbkit's path weight rules:\n\
-         shelf books list: the guide gives the command examples, and `PathBudgets::help_only` reads no example golden files, so the path counts no output; `PathBudgets::new` names their directory"
+         shelf books list: the tool record gives the command examples, and `PathBudgets::help_only` reads no example golden files, so the path counts no output; `PathBudgets::new` names their directory"
     );
 }
 
@@ -170,7 +173,7 @@ fn a_golden_directory_that_is_a_file_fails_the_check() {
     let budgets = PathBudgets::new(file.to_str().unwrap());
 
     let message =
-        panic_message(|| check_path_weights(&shelf(), Pages::rendered(&GUIDE), &budgets)).unwrap();
+        panic_message(|| check_path_weights(&shelf(), Pages::rendered(&TOOL), &budgets)).unwrap();
 
     assert!(
         message.starts_with(&format!(
@@ -273,7 +276,7 @@ fn a_binary_s_pages_count_toward_its_path_totals() {
     let budgets = PathBudgets::new(dir.path().to_str().unwrap()).path(199, "A test.");
 
     assert_eq!(
-        panic_message(|| check_path_weights(&shelf(), Pages::binary(&GUIDE, &examples), &budgets))
+        panic_message(|| check_path_weights(&shelf(), Pages::binary(&TOOL, &examples), &budgets))
             .unwrap(),
         "the command tree breaks crumbkit's path weight rules:\n\
          shelf books list: the path reads 200 bytes, 160 of -h pages and 40 of output, over its budget of 199 bytes"

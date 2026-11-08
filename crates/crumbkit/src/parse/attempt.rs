@@ -9,11 +9,11 @@ use clap::parser::ValueSource;
 use clap::{ArgMatches, Command, FromArgMatches};
 
 use super::pick;
-use crate::ViewFlags;
-use crate::help::{Guide, Leaf, ViewFlag, view};
+use crate::help::{Leaf, ViewFlag, view};
 use crate::output::{dry_run, fields};
 use crate::refusal::Refusal;
 use crate::view::View;
+use crate::{Tool, ViewFlags};
 
 /// What one parse of the command line found.
 pub(super) struct Attempt<C> {
@@ -38,14 +38,14 @@ pub(super) struct Attempt<C> {
 pub(super) fn attempt<C: FromArgMatches>(
     command: &mut Command,
     args: Vec<OsString>,
-    guide: &Guide,
+    tool: &Tool,
 ) -> Result<Attempt<C>, clap::Error> {
     let mut matches = command.try_get_matches_from_mut(args)?;
     crate::events::parsed(command, &matches);
     let no_input = pick::no_input(&matches);
     let (path, node, level) = deepest(command, &matches);
     let dry_run = dry_run::typed(level);
-    let view = refusal(node, level, &path, guide);
+    let view = refusal(node, level, &path, tool);
     C::from_arg_matches_mut(&mut matches).map(|parsed| Attempt {
         parsed,
         view,
@@ -77,7 +77,7 @@ pub(super) fn deepest<'a>(
 /// the view flags that the caller typed.
 ///
 /// It first refuses the first view flag, in the order `--fields`, `--long`,
-/// `--full`, that the leaf of `guide` at `path` does not offer (ADR-0016),
+/// `--full`, that the leaf of `tool` at `path` does not offer (ADR-0016),
 /// unless the flag adds nothing to the leaf's JSON, as
 /// [`Leaf::adds_nothing`] decides (ADR-0149). `finish` and `stream` print
 /// the note for such a flag. `path` names `node`, the deepest command that
@@ -98,7 +98,7 @@ pub(super) fn refusal(
     node: &Command,
     level: &ArgMatches,
     path: &[&str],
-    guide: &Guide,
+    tool: &Tool,
 ) -> Result<View, Box<Refusal>> {
     let typed = |id: &str| {
         let global = node
@@ -110,7 +110,11 @@ pub(super) fn refusal(
             && level.ids().any(|known| known == id)
             && level.value_source(id) == Some(ValueSource::CommandLine)
     };
-    let leaf = guide.get_leaves().iter().find(|leaf| leaf.path() == path);
+    let leaf = tool
+        .get_help()
+        .get_leaves()
+        .iter()
+        .find(|leaf| leaf.path() == path);
     let json = typed("json");
     let unoffered = leaf.and_then(|leaf| {
         ViewFlag::ALL.into_iter().find_map(|flag| {

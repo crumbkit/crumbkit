@@ -72,7 +72,7 @@
       }
     }
   ],
-  "customisations": [
+  "declarations": [
     {
       "declaration": "root-verbs",
       "applies_to": "reading where",

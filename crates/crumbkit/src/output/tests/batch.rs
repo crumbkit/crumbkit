@@ -111,7 +111,7 @@ const PLANETS: Document<Batch<Planet, Missing>> =
 /// that takes many names.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -138,12 +138,12 @@ struct Finished {
 /// tool that parses with clap alone builds it.
 fn output(flags: &[&str]) -> Output {
     let args = ["tool", "show", "Saturn"].iter().chain(flags);
-    let view = Tool::try_parse_from(args.clone()).unwrap().view;
+    let view = Cli::try_parse_from(args.clone()).unwrap().view;
     Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &crate::help::Guide::new(),
+        Cli::command(),
+        &crate::Tool::new(),
         args,
     )
     .unwrap()

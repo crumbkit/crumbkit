@@ -24,13 +24,12 @@ terminal through its own writer ([help](../help/README.md)). `parse` and
 terminal and terminal detection is on.
 
 On success, `parse` returns the tool's parsed type and an
-[`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the
-view flags, the command tree, the guide's settings with the spelling of its
-codes, the words the caller
-typed with any values that a [picker](../effects/pickers.md) added, whether
-the caller passed `--no-input` or `--dry-run`, and the code renames of the
-leaf that the words name. `Output::confirm` repeats those words with `--yes`
-in its recovery.
+[`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the view
+flags, the command tree, the tool record's settings with the spelling of its
+codes, the words the caller typed with any values that a
+[picker](../effects/pickers.md) added, whether the caller passed `--no-input` or
+`--dry-run`, and the code renames of the leaf that the words name.
+`Output::confirm` repeats those words with `--yes` in its recovery.
 
 A tool flattens [`ViewFlags`](../../../crates/crumbkit/src/output/build.rs)
 into its clap types to accept `--json`, `--fields`, `--long` and `--full`.
@@ -39,7 +38,7 @@ reads them through the `Output`. A tool that does not flatten `ViewFlags`
 parses with every view flag off.
 
 A tool that parses with clap alone builds its `Output` with
-`Output::new(view, dry_run, command, &GUIDE, args)`, where `dry_run` is the
+`Output::new(view, dry_run, command, &TOOL, args)`, where `dry_run` is the
 `DryRun` that the command parsed, or `DryRun::default()` in a tool without
 the flag, and `args` is the argv with the program name first. `Output::new`
 returns `Err` with the `Stop` of a refused command line when `--full` comes
@@ -49,7 +48,7 @@ error, so a tool's `main` returns the stop's code as it does after `parse`.
 `Output::new_to` prints the refusal to a sink instead. `Output::new` finds
 the leaf that the words name, so the run gets that leaf's code renames, and
 it keeps the words for the `--yes` recovery. It takes the spelling of codes
-from the guide, as `parse` does. It reads no `--no-input`.
+from the tool record, as `parse` does. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before `parse_from`, as the
@@ -61,32 +60,30 @@ Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002, ADR-0102.
 
 ## The Stop of a run that parse ended
 
-When `parse` prints help, the version or a refusal, it ends the run and
-returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a
-bare `ExitCode`. `try_parse` returns the `Stop` of help or the version
-inside `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a
-refusal. A tool's `main` returns `stop.exit_code()`. A tool that prints
-more before it exits reads `Stop::output`, whose `Output::is_json` says
-whether the caller asked for JSON, or, after `Refused::as_json`, which form
-the refusal printed in. `Stop::exit` returns the same exit code
-as a `u8`: 0 after help or the version, the code that the guide lists for a
-refused command line, which is 2 unless an exit lists the refusal, and 1
-when the page could not be written. A tool that records the exit of a
-stopped run, such as in a log of its own, or passes it on reads that
-number, because an `ExitCode` cannot be read back. `Stop::printed` returns
-a `Printed` that says what printed before the run ended: `Help` for `-h`,
-`--help` or the word `help`, `Version`, `Topic` for a topic that `help`
-at the root prints, `Refusal` for a refused command line or for view flags
-that cannot work together, and `Failure` for the failure of a picker's
-source. A tool that records the outcome of a stopped run in a history of
-its own reads it, because the number is 0 after help, the version and a
-topic alike. `Printed` is `#[non_exhaustive]`. A `Stop` offers `path`,
-`flags` and `value` as a `Refused` does, and they read the caller's words
-in the same way, so a tool that prints a note after a help page reads a
-global option such as `--format` from it, and `tool help planets` reports
-no flags. The
-`Output`, the path and the words inside a `Stop` sit in a `Box`, which
-costs one allocation only on a run that `parse` ends.
+When `parse` prints help, the version or a refusal, it ends the run and returns
+a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a bare
+`ExitCode`. `try_parse` returns the `Stop` of help or the version inside
+`Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a refusal. A
+tool's `main` returns `stop.exit_code()`. A tool that prints more before it
+exits reads `Stop::output`, whose `Output::is_json` says whether the caller
+asked for JSON, or, after `Refused::as_json`, which form the refusal printed in.
+`Stop::exit` returns the same exit code as a `u8`: 0 after help or the version,
+the code that the tool record lists for a refused command line, which is 2
+unless an exit lists the refusal, and 1 when the page could not be written. A
+tool that records the exit of a stopped run, such as in a log of its own, or
+passes it on reads that number, because an `ExitCode` cannot be read back.
+`Stop::printed` returns a `Printed` that says what printed before the run ended:
+`Help` for `-h`, `--help` or the word `help`, `Version`, `Topic` for a topic
+that `help` at the root prints, `Refusal` for a refused command line or for view
+flags that cannot work together, and `Failure` for the failure of a picker's
+source. A tool that records the outcome of a stopped run in a history of its own
+reads it, because the number is 0 after help, the version and a topic alike.
+`Printed` is `#[non_exhaustive]`. A `Stop` offers `path`, `flags` and `value` as
+a `Refused` does, and they read the caller's words in the same way, so a tool
+that prints a note after a help page reads a global option such as `--format`
+from it, and `tool help planets` reports no flags. The `Output`, the path and
+the words inside a `Stop` sit in a `Box`, which costs one allocation only on a
+run that `parse` ends.
 
 Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111, ADR-0136, ADR-0160.
 
@@ -118,7 +115,7 @@ Why: ADR-0015, ADR-0076, ADR-0094.
 
 ## Dashed forms of command names
 
-When the tool's guide declares `Guide::dashed_forms`, `parse` replaces each
+When the tool record declares `Tool::dashed_forms`, `parse` replaces each
 typed dashed form, such as `reading-lists`, with the command's own name,
 such as `reading_lists`, before anything else reads the words. clap, help,
 refusals, the usage log and the parsed words then name the command as the
@@ -131,7 +128,7 @@ Why: ADR-0015, ADR-0056.
 ## Refused command lines
 
 A command line that clap refuses prints as a failure with the code
-`<tool>::cli::usage` and exits with 2, unless the tool's guide lists
+`<tool>::cli::usage` and exits with 2, unless the tool record lists
 another [exit code](../failures/exit-codes.md) for it. With `--json`, the
 refusal prints as a `<tool>/failure/v1` document on standard output. The
 rustdoc of `parse_to` states the message and the recovery.
@@ -158,7 +155,7 @@ styles on standard error when crumbkit's `color` feature is on. `parse`,
 `parse_from` and `Refused::print` decide once, from the environment and
 standard error:
 
-- The command's `ColorChoice::Never`, and a guide that turns terminal
+- The command's `ColorChoice::Never`, and a tool record that turns terminal
   detection off, keep the refusal plain.
 - A non-empty `NO_COLOR` keeps the refusal plain, even with
   `CLICOLOR_FORCE` set.
@@ -224,8 +221,8 @@ command line comes back as `Unparsed::Refused` with a
 A `Refused` holds what the refusal prints and what the run knew:
 
 - `message`, `code` and `recovery`, which the refusal prints, with the code
-  after the guide's renames and the recovery after the tool's declared hint
-  or calls, so a tool that prints its own document prints its hint;
+  after the tool record's renames and the recovery after the tool's declared
+  hint or calls, so a tool that prints its own document prints its hint;
 - `exit`, the exit code that the run ends with once the refusal prints;
 - `output`, the output flags as far as the walk found them;
 - `typed`, the words after the program name as the caller typed them;
@@ -329,7 +326,7 @@ impl FromArgMatches for WithMatches {
 }
 ```
 
-The tool calls `crumbkit::parse::<WithMatches>(Cli::command(), &GUIDE)` and
+The tool calls `crumbkit::parse::<WithMatches>(Cli::command(), &TOOL)` and
 reads a subcommand's sources through `ArgMatches::subcommand_matches`.
 crumbkit reads `--json`, `--dry-run`, `--no-input` and the view flags from
 the matches before the tool's type runs, so the wrapper changes nothing

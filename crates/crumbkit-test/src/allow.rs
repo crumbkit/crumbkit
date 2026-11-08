@@ -115,7 +115,7 @@ impl Allow {
     ///
     /// `path` is the leaf's path below the command passed to the check,
     /// such as `"books list"`, and `words` are the example's words after
-    /// it, exactly as the guide's `Example::new` declares them, such as
+    /// it, exactly as the tool record's `Example::new` declares them, such as
     /// `&["--author", "Jane Austen"]`. [`check_opt_outs`] names the opt-out
     /// by the example's command line, such as
     /// `shelf books list --author 'Jane Austen'`. The example check fails on
@@ -256,14 +256,14 @@ impl Allow {
     /// subcommands that sit directly under the root on purpose, such as
     /// `start` and `stop`, with the tool's `reason` for the whole list.
     ///
-    /// It is the test-time form of `Guide::root_verbs`, for a tool that does
+    /// It is the test-time form of `Help::root_verbs`, for a tool that does
     /// not want root help to list its root verbs under their own heading. It
     /// is no opt-out: [`check_grammar`] passes each of `verbs` without an
     /// opt-out from [`Rule::RootLeaf`], fails a declared verb that names no
     /// visible command without subcommands directly under the root, and
-    /// fails a tool that also declares root verbs on its guide.
+    /// fails a tool that also declares root verbs on its tool record.
     /// [`check_opt_outs`] lists the declaration with its reason among the
-    /// customisations. Every other check ignores it.
+    /// declarations. Every other check ignores it.
     ///
     /// ```
     /// use crumbkit_test::Allow;

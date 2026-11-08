@@ -1,8 +1,8 @@
-//! Tests for the guide check of the field that `Row::CHILDREN` names
+//! Tests for the tool record check of the field that `Row::CHILDREN` names
 //! and the text that `Row::CHILDREN_HELP` sets (ADR-0120, ADR-0137).
 
-use crumbkit::help::Guide;
-use crumbkit::{Batch, Bytes, Document, Error, Headed, Row};
+use crumbkit::help::Help;
+use crumbkit::{Batch, Bytes, Document, Error, Headed, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -143,15 +143,15 @@ impl Row for ChildlessBook {
     const CHILDREN_HELP: Option<&'static str> = Some("one line for each chapter.");
 }
 
-/// Returns the problem that `check_guide` reports for a guide whose
+/// Returns the problem that `check_guide` reports for a tool record whose
 /// `books list` leaf has `document`, without the heading line.
 fn problem<T: crumbkit::Rows>(document: Document<T>) -> String {
-    let guide = Guide::new().leaves(Box::leak(Box::new([
+    let tool = Tool::new().help(Help::new().leaves(Box::leak(Box::new([
         leaf(&["books", "list"]).document(document),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ])));
-    let message = panic_message(|| check_guide(&shelf(), &guide, &[])).unwrap();
+    ]))));
+    let message = panic_message(|| check_guide(&shelf(), &tool, &[])).unwrap();
     message
         .strip_prefix("the command tree breaks crumbkit's guide rules:\n")
         .unwrap_or(&message)
@@ -160,7 +160,7 @@ fn problem<T: crumbkit::Rows>(document: Document<T>) -> String {
 
 #[test]
 fn a_row_type_whose_children_field_is_a_documented_field_outside_the_columns_passes() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(Document::<Vec<Book>>::new(
             "shelf",
             "books-list",
@@ -169,13 +169,13 @@ fn a_row_type_whose_children_field_is_a_documented_field_outside_the_columns_pas
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_guide(&shelf(), &TOOL, &[]);
 }
 
 #[test]
-fn check_guide_fails_on_a_children_field_that_is_not_a_field_of_the_row_type() {
+fn check_tool_fails_on_a_children_field_that_is_not_a_field_of_the_row_type() {
     let document = Document::<Vec<MisspeltBook>>::new("shelf", "books-list", 1, "The test rows.");
 
     assert_eq!(
@@ -185,7 +185,7 @@ fn check_guide_fails_on_a_children_field_that_is_not_a_field_of_the_row_type() {
 }
 
 #[test]
-fn check_guide_fails_on_a_children_field_without_a_doc_comment() {
+fn check_tool_fails_on_a_children_field_without_a_doc_comment() {
     let document =
         Document::<Vec<UndocumentedBook>>::new("shelf", "books-list", 1, "The test rows.");
 
@@ -196,7 +196,7 @@ fn check_guide_fails_on_a_children_field_without_a_doc_comment() {
 }
 
 #[test]
-fn check_guide_fails_on_a_children_field_that_is_also_a_column() {
+fn check_tool_fails_on_a_children_field_that_is_also_a_column() {
     let document = Document::<Vec<ColumnBook>>::new("shelf", "books-list", 1, "The test rows.");
 
     assert_eq!(
@@ -206,7 +206,7 @@ fn check_guide_fails_on_a_children_field_that_is_also_a_column() {
 }
 
 #[test]
-fn check_guide_fails_on_a_children_field_that_is_also_a_long_column() {
+fn check_tool_fails_on_a_children_field_that_is_also_a_long_column() {
     let document = Document::<Vec<LongColumnBook>>::new("shelf", "books-list", 1, "The test rows.");
 
     assert_eq!(
@@ -216,7 +216,7 @@ fn check_guide_fails_on_a_children_field_that_is_also_a_long_column() {
 }
 
 #[test]
-fn check_guide_fails_on_a_headed_leaf_whose_row_type_names_a_children_field() {
+fn check_tool_fails_on_a_headed_leaf_whose_row_type_names_a_children_field() {
     let document =
         Document::<Batch<ChapteredFile, Error>>::new("shelf", "books-list", 1, "The test rows.")
             .headed();
@@ -229,7 +229,7 @@ fn check_guide_fails_on_a_headed_leaf_whose_row_type_names_a_children_field() {
 
 #[test]
 fn a_row_type_whose_children_help_is_one_sentence_on_one_line_passes() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(Document::<Vec<DescribedBook<0>>>::new(
             "shelf",
             "books-list",
@@ -238,9 +238,9 @@ fn a_row_type_whose_children_help_is_one_sentence_on_one_line_passes() {
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_guide(&shelf(), &TOOL, &[]);
 }
 
 /// The problem that `check_guide` reports for a children text that help
@@ -248,7 +248,7 @@ fn a_row_type_whose_children_help_is_one_sentence_on_one_line_passes() {
 const NOT_ONE_LINE: &str = "shelf books list: the row type's CHILDREN_HELP is empty or holds a control character, such as a line feed, so help cannot print it on the one Children: line; write the text as one line";
 
 #[test]
-fn check_guide_fails_on_an_empty_children_help() {
+fn check_tool_fails_on_an_empty_children_help() {
     let document =
         Document::<Vec<DescribedBook<1>>>::new("shelf", "books-list", 1, "The test rows.");
 
@@ -261,7 +261,7 @@ fn check_guide_fails_on_an_empty_children_help() {
 }
 
 #[test]
-fn check_guide_fails_on_a_children_help_that_holds_a_line_feed() {
+fn check_tool_fails_on_a_children_help_that_holds_a_line_feed() {
     let document =
         Document::<Vec<DescribedBook<2>>>::new("shelf", "books-list", 1, "The test rows.");
 
@@ -269,7 +269,7 @@ fn check_guide_fails_on_a_children_help_that_holds_a_line_feed() {
 }
 
 #[test]
-fn check_guide_fails_on_a_children_help_that_holds_an_escape_code() {
+fn check_tool_fails_on_a_children_help_that_holds_an_escape_code() {
     let document =
         Document::<Vec<DescribedBook<3>>>::new("shelf", "books-list", 1, "The test rows.");
 
@@ -277,7 +277,7 @@ fn check_guide_fails_on_a_children_help_that_holds_an_escape_code() {
 }
 
 #[test]
-fn check_guide_fails_on_a_children_help_without_a_full_stop() {
+fn check_tool_fails_on_a_children_help_without_a_full_stop() {
     let document =
         Document::<Vec<DescribedBook<4>>>::new("shelf", "books-list", 1, "The test rows.");
 
@@ -288,7 +288,7 @@ fn check_guide_fails_on_a_children_help_without_a_full_stop() {
 }
 
 #[test]
-fn check_guide_fails_on_a_children_help_without_a_children_field() {
+fn check_tool_fails_on_a_children_help_without_a_children_field() {
     let document = Document::<Vec<ChildlessBook>>::new("shelf", "books-list", 1, "The test rows.");
 
     assert_eq!(

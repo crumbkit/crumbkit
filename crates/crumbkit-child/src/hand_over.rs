@@ -23,14 +23,14 @@
 //!
 //! The child's output is text that the terminal shows, so `--json` and
 //! `--fields` are refused with `<tool>::cli::usage` and the exit code of a
-//! refused command line, which is 2 unless the guide lists another, before
-//! the program starts. `--long` changes nothing. A tool that wants a
+//! refused command line, which is 2 unless the tool record lists another,
+//! before the program starts. `--long` changes nothing. A tool that wants a
 //! child's JSON runs the child itself and reads its output.
 //!
 //! A child that cannot run fails as `finish` prints a failure, with one of
-//! these codes in the spelling that the tool's guide sets, or the tool's
-//! own code when its guide renames it. Each exits with 1 unless an
-//! [`Exit`](crumbkit::help::Exit) of the guide lists the code:
+//! these codes in the spelling that the tool record sets, or the tool's
+//! own code when its tool record renames it. Each exits with 1 unless an
+//! [`Exit`](crumbkit::help::Exit) of the tool record lists the code:
 //!
 //! - `<tool>::child::not_found`, when the program does not exist.
 //! - `<tool>::child::not_started`, when the operating system refused to
@@ -73,7 +73,7 @@ mod tests;
 /// It runs no child and refuses with `<tool>::cli::usage` when the caller
 /// passed `--json` or `--fields`, because the child's output is text that
 /// the terminal shows. The refusal exits with the code of a refused command
-/// line, which is 2 unless the guide lists another. The module
+/// line, which is 2 unless the tool record lists another. The module
 /// documentation lists the failures of a child that cannot start.
 ///
 /// It takes `output` by value, as [`finish`](crumbkit::finish) does,
@@ -133,7 +133,7 @@ fn respond_text<O: Write, W: Write>(
 }
 
 /// Prints `failure` as `finish` prints a failure, reports its exit code to
-/// the observer, and returns it. The exit code is the one that the guide
+/// the observer, and returns it. The exit code is the one that the tool record
 /// gives the failure's code: the exit that lists it, 2 for a refused
 /// command line, and otherwise 1 (ADR-0042).
 fn fail<O: Write, W: Write>(

@@ -170,7 +170,7 @@ pub(crate) const fn unoffered(printed: &Printed, flag: ViewFlag) -> Option<Unoff
 /// Returns the refusal of `flag` on a command that does not offer it for
 /// `reason`. The refusal names the flag under `fields`, and it prints as a
 /// refused command line does, with the code `<tool>::cli::usage` and exit
-/// code 2, or the guide's rename and exit for them.
+/// code 2, or the tool record's rename and exit for them.
 pub(crate) fn refusal(flag: ViewFlag, reason: Unoffered) -> Refusal {
     let does = match flag {
         ViewFlag::Fields => "--fields selects the columns of a table",

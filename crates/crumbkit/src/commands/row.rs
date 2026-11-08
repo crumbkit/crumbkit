@@ -1,5 +1,5 @@
 //! The row that `commands list` prints for each command of a branch, and
-//! how it is read from the runtime command tree and the tool's guide.
+//! how it is read from the runtime command tree and the tool record.
 
 use clap::{Arg, ArgAction, Command};
 use serde::Serialize;
@@ -8,8 +8,8 @@ use serde::ser::{SerializeStruct, Serializer};
 use crate::expect::takes_expect;
 use crate::help::effects::Guards;
 use crate::help::words::quote;
-use crate::help::{Effects, Guide, Leaf, effects, goal_sections};
-use crate::{Row, Shape};
+use crate::help::{Effects, Leaf, effects, goal_sections};
+use crate::{Row, Shape, Tool};
 
 mod schema;
 #[cfg(test)]
@@ -72,7 +72,7 @@ struct Argument {
     one_of: Vec<String>,
 }
 
-/// One example of a command, from the guide's leaf for the command.
+/// One example of a command, from the tool record's leaf for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandExample {
     // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
@@ -81,7 +81,7 @@ struct CommandExample {
 }
 
 /// One column of the result that a command prints, from the document of
-/// the guide's leaf for the command.
+/// the tool record's leaf for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandColumn {
     // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
@@ -99,7 +99,7 @@ struct CommandGoal {
     commands: Vec<String>,
 }
 
-/// One exit code that the guide declares for the command.
+/// One exit code that the tool record declares for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandExit {
     // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
@@ -113,28 +113,32 @@ impl CommandRow {
     /// tree is `path`, the real names of its subcommands. `parent` is the
     /// command above it, or `None` for the first command of the branch,
     /// whose row then lists every global argument it has, including those
-    /// it inherits. `guide` holds the leaf whose examples and columns the
+    /// it inherits. `tool` holds the leaf whose examples and columns the
     /// row lists, the exit codes that cover the command and the group whose
     /// goal headings the row lists.
     ///
     /// The row reads only the command's name, about texts and arguments,
-    /// and the guide. It never reads a command's help template,
+    /// and the tool record. It never reads a command's help template,
     /// `before_help` or `after_help`, where `crumbkit::parse` adds its help
     /// lines on the walked path, and it reads `Arg::is_hide_set`, which
     /// `parse` never changes, so a row is the same whichever path the
     /// caller typed.
     pub(super) fn new(
-        tool: &str,
+        tool_name: &str,
         path: &[&str],
         command: &Command,
         parent: Option<&Command>,
-        guide: &Guide,
+        tool: &Tool,
     ) -> Self {
-        let line = std::iter::once(tool)
+        let line = std::iter::once(tool_name)
             .chain(path.iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
-        let leaf = guide.get_leaves().iter().find(|leaf| leaf.path() == path);
+        let leaf = tool
+            .get_help()
+            .get_leaves()
+            .iter()
+            .find(|leaf| leaf.path() == path);
         let examples = leaf.map_or_else(Vec::new, |leaf| {
             leaf.get_examples()
                 .iter()
@@ -158,7 +162,8 @@ impl CommandRow {
                 })
                 .collect()
         });
-        let exits = guide
+        let exits = tool
+            .get_failures()
             .get_exits()
             .iter()
             .filter(|exit| exit.covers(path))
@@ -170,7 +175,8 @@ impl CommandRow {
             .collect();
         // `check_guide` rejects two groups with one path. `rfind` follows
         // help's rule that the last such group's headings show.
-        let group = guide
+        let group = tool
+            .get_help()
             .get_groups()
             .iter()
             .rfind(|group| group.path() == path);

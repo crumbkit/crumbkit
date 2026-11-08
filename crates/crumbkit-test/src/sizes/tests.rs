@@ -1,12 +1,13 @@
 //! Tests for the help size check.
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 
 use super::{Budgets, check_help_sizes};
 use crate::Budget;
 use crate::pages::{Pages, pages};
 use crate::testing::panic_message;
+use crumbkit::help::Help;
 
 /// A tool with one group of two visible leaves and a hidden one.
 fn shelf() -> Command {
@@ -28,12 +29,7 @@ fn shelf() -> Command {
 /// writing it out.
 fn size(path: &str) -> usize {
     let shelf = shelf();
-    let pages = pages(
-        &shelf,
-        Pages::rendered(&Guide::new()),
-        "-h",
-        &mut Vec::new(),
-    );
+    let pages = pages(&shelf, Pages::rendered(&Tool::new()), "-h", &mut Vec::new());
     pages
         .iter()
         .find(|(visit, _)| visit.path() == path)
@@ -43,7 +39,7 @@ fn size(path: &str) -> usize {
 
 #[test]
 fn pages_within_crumbkit_s_default_budgets_pass() {
-    check_help_sizes(&shelf(), Pages::rendered(&Guide::new()), &Budgets::new());
+    check_help_sizes(&shelf(), Pages::rendered(&Tool::new()), &Budgets::new());
 }
 
 #[test]
@@ -54,7 +50,7 @@ fn a_page_over_its_budget_fails_the_check() {
         .leaf(30, "A test.");
 
     assert_eq!(
-        panic_message(|| check_help_sizes(&shelf(), Pages::rendered(&Guide::new()), &BUDGETS))
+        panic_message(|| check_help_sizes(&shelf(), Pages::rendered(&Tool::new()), &BUDGETS))
             .unwrap(),
         format!(
             "the command tree breaks crumbkit's help size rules:\n\
@@ -78,7 +74,7 @@ fn a_command_s_budget_wins_over_the_budget_of_its_class() {
             .nodes(&[Budget::new("books list", 1_200, "A test.")]);
 
     assert_eq!(
-        panic_message(|| check_help_sizes(&shelf(), Pages::rendered(&Guide::new()), &BUDGETS))
+        panic_message(|| check_help_sizes(&shelf(), Pages::rendered(&Tool::new()), &BUDGETS))
             .unwrap(),
         format!(
             "the command tree breaks crumbkit's help size rules:\n\
@@ -100,7 +96,7 @@ fn a_tool_can_raise_any_budget_above_crumbkit_s_default_with_a_reason() {
             "The listing has many filters.",
         )]);
 
-    check_help_sizes(&shelf(), Pages::rendered(&Guide::new()), &BUDGETS);
+    check_help_sizes(&shelf(), Pages::rendered(&Tool::new()), &BUDGETS);
 }
 
 #[test]
@@ -111,7 +107,7 @@ fn a_command_s_budget_that_names_no_command_or_a_hidden_one_fails_the_check() {
     ]);
 
     assert_eq!(
-        panic_message(|| check_help_sizes(&shelf(), Pages::rendered(&Guide::new()), &BUDGETS))
+        panic_message(|| check_help_sizes(&shelf(), Pages::rendered(&Tool::new()), &BUDGETS))
             .unwrap(),
         "the command tree breaks crumbkit's help size rules:\n\
          the budget of `books lst` names no visible command below the root\n\
@@ -126,7 +122,7 @@ fn a_command_whose_page_fails_to_render_reports_only_the_missing_page() {
         .subcommand(Command::new("books").subcommand(Command::new("list").disable_help_flag(true)));
 
     assert_eq!(
-        panic_message(|| check_help_sizes(&shelf, Pages::rendered(&Guide::new()), &BUDGETS))
+        panic_message(|| check_help_sizes(&shelf, Pages::rendered(&Tool::new()), &BUDGETS))
             .unwrap(),
         "the command tree breaks crumbkit's help size rules:\n\
          shelf books list -h: the command line prints no help page"
@@ -149,10 +145,10 @@ fn a_binary_s_page_is_measured_from_what_it_prints_on_standard_output() {
         ],
     );
     let examples = crate::Examples::new(&binary, "");
-    let guide = Guide::new();
+    let tool = Tool::new();
 
     assert_eq!(
-        panic_message(|| check_help_sizes(&shelf(), Pages::binary(&guide, &examples), &BUDGETS))
+        panic_message(|| check_help_sizes(&shelf(), Pages::binary(&tool, &examples), &BUDGETS))
             .unwrap(),
         "the command tree breaks crumbkit's help size rules:\n\
          shelf books list -h: the page has 31 bytes, over its budget of 30 bytes"
@@ -161,23 +157,23 @@ fn a_binary_s_page_is_measured_from_what_it_prints_on_standard_output() {
 
 #[test]
 fn the_root_verbs_heading_counts_towards_the_root_s_budget() {
-    const GUIDE: Guide =
-        Guide::new().root_verbs(&["version"], "People type `shelf version` from habit.");
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().root_verbs(&["version"], "People type `shelf version` from habit."));
     let shelf = shelf().subcommand(Command::new("version").about("Print the version"));
-    let root = |guide: &Guide| {
-        pages(&shelf, Pages::rendered(guide), "-h", &mut Vec::new())
+    let root = |tool: &Tool| {
+        pages(&shelf, Pages::rendered(tool), "-h", &mut Vec::new())
             .iter()
             .find(|(visit, _)| visit.path() == "shelf")
             .map(|(_, page)| page.len())
             .unwrap()
     };
-    let (plain, headed) = (root(&Guide::new()), root(&GUIDE));
+    let (plain, headed) = (root(&Tool::new()), root(&TOOL));
     let budgets = Budgets::new().root(u64::try_from(plain).unwrap(), "A test.");
 
     assert!(headed > plain, "{headed} {plain}");
-    check_help_sizes(&shelf, Pages::rendered(&Guide::new()), &budgets);
+    check_help_sizes(&shelf, Pages::rendered(&Tool::new()), &budgets);
     assert_eq!(
-        panic_message(|| check_help_sizes(&shelf, Pages::rendered(&GUIDE), &budgets)).unwrap(),
+        panic_message(|| check_help_sizes(&shelf, Pages::rendered(&TOOL), &budgets)).unwrap(),
         format!(
             "the command tree breaks crumbkit's help size rules:\n\
              shelf -h: the page has {headed} bytes, over its budget of {plain} bytes"

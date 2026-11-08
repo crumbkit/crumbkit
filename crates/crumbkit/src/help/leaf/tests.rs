@@ -10,11 +10,18 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 
 use super::{Column, Example, Leaf};
-use crate::help::{Guide, extend};
-use crate::{Document, Prose, Row, Sink, parse_to};
+use crate::help::{Help, extend};
+use crate::{Document, Prose, Row, Sink, Tool, parse_to};
+
+mod document;
+
+/// Returns a tool record whose help declares `leaves`.
+const fn leaves(leaves: &'static [Leaf]) -> Tool {
+    Tool::new().help(Help::new().leaves(leaves))
+}
 
 /// A tool with a global flag and one group of two leaves.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .about("Explore a small solar system")
         .subcommand_required(true)
@@ -70,13 +77,12 @@ const EXAMPLES: &[Example] = &[
     Example::new(&["--all"], "List every planet"),
 ];
 
-/// Runs `parse_to` over `tool()` with `guide`, for `args` that ask for help,
+/// Runs `parse_to` over `tree()` with `tool`, for `args` that ask for help,
 /// and returns the help page it printed.
-fn help(guide: &Guide, args: &[&str]) -> String {
+fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
+    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
@@ -84,7 +90,7 @@ fn help(guide: &Guide, args: &[&str]) -> String {
 
 #[test]
 fn short_help_lists_the_examples_after_the_options_then_the_global_flags_and_the_next_line() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"])
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"])
         .examples(EXAMPLES)
         .document(PLANETS)]);
 
@@ -104,12 +110,12 @@ Examples:
 Global flags: --json. `tool planets list --help` describes them.
 Next: tool planets list --help explains each column.
 ";
-    assert_eq!(help(&GUIDE, &["tool", "planets", "list", "-h"]), expected);
+    assert_eq!(help(&TOOL, &["tool", "planets", "list", "-h"]), expected);
 }
 
 #[test]
 fn long_help_lists_each_example_with_its_description_and_then_the_columns() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"])
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"])
         .examples(EXAMPLES)
         .document(PLANETS)]);
 
@@ -143,17 +149,17 @@ Columns that --long adds:
   moons  The number of the planet's known moons.
 ";
     assert_eq!(
-        help(&GUIDE, &["tool", "planets", "list", "--help"]),
+        help(&TOOL, &["tool", "planets", "list", "--help"]),
         expected
     );
 }
 
 #[test]
 fn a_leaf_without_a_document_shows_its_examples_without_a_next_line_or_columns() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"]).examples(EXAMPLES)]);
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"]).examples(EXAMPLES)]);
 
-    let short = help(&GUIDE, &["tool", "planets", "list", "-h"]);
-    let long = help(&GUIDE, &["tool", "planets", "list", "--help"]);
+    let short = help(&TOOL, &["tool", "planets", "list", "-h"]);
+    let long = help(&TOOL, &["tool", "planets", "list", "--help"]);
 
     assert!(
         short.ends_with(
@@ -180,10 +186,10 @@ Global flags: --json. `tool planets list --help` describes them.
 
 #[test]
 fn a_leaf_without_examples_has_no_examples_section() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"]).document(PLANETS)]);
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"]).document(PLANETS)]);
 
-    let short = help(&GUIDE, &["tool", "planets", "list", "-h"]);
-    let long = help(&GUIDE, &["tool", "planets", "list", "--help"]);
+    let short = help(&TOOL, &["tool", "planets", "list", "-h"]);
+    let long = help(&TOOL, &["tool", "planets", "list", "--help"]);
 
     assert!(!short.contains("Examples:"), "{short}");
     assert!(
@@ -200,10 +206,10 @@ fn a_leaf_without_examples_has_no_examples_section() {
 #[test]
 fn a_leaf_whose_document_is_prose_has_no_column_line_and_no_columns_section() {
     const COUNT: Document<Prose<String>> = Document::new("tool", "count", 1, "The count.");
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"]).document(COUNT)]);
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"]).document(COUNT)]);
 
-    let short = help(&GUIDE, &["tool", "planets", "list", "-h"]);
-    let long = help(&GUIDE, &["tool", "planets", "list", "--help"]);
+    let short = help(&TOOL, &["tool", "planets", "list", "-h"]);
+    let long = help(&TOOL, &["tool", "planets", "list", "--help"]);
 
     assert!(!short.contains("explains each column"), "{short}");
     assert!(!long.contains("Columns:"), "{long}");
@@ -211,11 +217,11 @@ fn a_leaf_whose_document_is_prose_has_no_column_line_and_no_columns_section() {
 
 #[test]
 fn an_example_without_a_description_prints_its_command_line_alone_in_long_help() {
-    const GUIDE: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["planets", "show"])
+    const TOOL: Tool =
+        leaves(&[Leaf::new(&["planets", "show"])
             .examples(&[Example::new(&["Mars", "Ceres's moon"], "")])]);
 
-    let long = help(&GUIDE, &["tool", "planets", "show", "--help"]);
+    let long = help(&TOOL, &["tool", "planets", "show", "--help"]);
 
     assert!(
         long.ends_with("Examples:\n  tool planets show Mars 'Ceres'\\''s moon'\n"),
@@ -226,10 +232,10 @@ fn an_example_without_a_description_prints_its_command_line_alone_in_long_help()
 #[test]
 fn an_example_holds_the_preconditions_that_it_needs_and_help_does_not_show_them() {
     const EXAMPLE: Example = Example::new(&["--all"], "Restart every container").needs(&["docker"]);
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["planets", "show"]).examples(&[EXAMPLE])]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["planets", "show"]).examples(&[EXAMPLE])]));
 
-    let long = help(&GUIDE, &["tool", "planets", "show", "--help"]);
+    let long = help(&TOOL, &["tool", "planets", "show", "--help"]);
 
     assert_eq!(EXAMPLE.get_needs(), ["docker"]);
     assert!(
@@ -258,15 +264,16 @@ impl Row for Moon {
     const COLUMNS: &'static [&'static str] = &["name", "planet"];
 }
 
-/// A guide whose `tool planets show` prints moons.
-const MOONS: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "show"]).document(Document::<
-    Vec<Moon>,
->::new(
-    "tool",
-    "moons",
-    1,
-    "The test rows.",
-))]);
+/// A tool record whose `tool planets show` prints moons.
+const MOONS: Tool =
+    leaves(&[
+        Leaf::new(&["planets", "show"]).document(Document::<Vec<Moon>>::new(
+            "tool",
+            "moons",
+            1,
+            "The test rows.",
+        )),
+    ]);
 
 #[test]
 fn a_column_without_a_description_prints_its_name_alone() {
@@ -310,16 +317,18 @@ impl Row for Counted {
 
 #[test]
 fn the_schema_is_built_only_when_the_words_ask_for_long_help() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "show"]).document(
-        Document::<Vec<Counted>>::new("tool", "counted", 1, "The test rows."),
-    )]);
+    const TOOL: Tool =
+        leaves(&[
+            Leaf::new(&["planets", "show"]).document(Document::<Vec<Counted>>::new(
+                "tool",
+                "counted",
+                1,
+                "The test rows.",
+            )),
+        ]);
     let run = |args: &[&str]| {
-        let _ = parse_to::<(), _, _, _, _>(
-            &mut Sink::new(Vec::new(), Vec::new()),
-            tool(),
-            &GUIDE,
-            args,
-        );
+        let _ =
+            parse_to::<(), _, _, _, _>(&mut Sink::new(Vec::new(), Vec::new()), tree(), &TOOL, args);
         SCHEMAS.get()
     };
 
@@ -333,14 +342,14 @@ fn the_schema_is_built_only_when_the_words_ask_for_long_help() {
 
 #[test]
 fn a_leaf_off_the_typed_path_keeps_its_help() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"])
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"])
         .examples(EXAMPLES)
         .document(PLANETS)]);
 
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(Vec::new(), Vec::new()),
-        tool(),
-        &GUIDE,
+        tree(),
+        &TOOL,
         ["tool", "planets", "show", "Mars"],
     );
 
@@ -358,11 +367,11 @@ fn a_leaf_off_the_typed_path_keeps_its_help() {
 
 #[test]
 fn extend_gives_each_leaf_its_examples_and_no_columns() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"])
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"])
         .examples(EXAMPLES)
         .document(PLANETS)]);
 
-    let mut tree = extend(tool(), &GUIDE);
+    let mut tree = extend(tree(), &TOOL);
     let list = tree
         .find_subcommand_mut("planets")
         .and_then(|planets| planets.find_subcommand_mut("list"))
@@ -382,7 +391,7 @@ fn extend_gives_each_leaf_its_examples_and_no_columns() {
 
 #[test]
 fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"])
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"])
         .examples(EXAMPLES)
         .document(PLANETS)]);
 
@@ -391,8 +400,8 @@ fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse()
         let mut err = Vec::new();
         let result = parse_to::<(), _, _, _, _>(
             &mut Sink::new(&mut out, &mut err),
-            extend(tool(), &GUIDE),
-            &GUIDE,
+            extend(tree(), &TOOL),
+            &TOOL,
             ["tool", "planets", "list", flag],
         );
 
@@ -400,7 +409,7 @@ fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse()
         let page = String::from_utf8(out).unwrap();
         assert_eq!(
             page,
-            help(&GUIDE, &["tool", "planets", "list", flag]),
+            help(&TOOL, &["tool", "planets", "list", flag]),
             "{flag}"
         );
     }
@@ -408,12 +417,12 @@ fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse()
 
 #[test]
 fn extend_applies_only_the_first_of_two_leaves_with_one_path() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = leaves(&[
         Leaf::new(&["planets", "show"]).examples(&[Example::new(&["Mars"], "")]),
         Leaf::new(&["planets", "show"]).examples(&[Example::new(&["Venus"], "")]),
     ]);
 
-    let mut tree = extend(tool(), &GUIDE);
+    let mut tree = extend(tree(), &TOOL);
     let show = tree
         .find_subcommand_mut("planets")
         .and_then(|planets| planets.find_subcommand_mut("show"))
@@ -559,42 +568,4 @@ fn column_descriptions_of_a_leaf_without_a_document_is_empty() {
     let leaf = Leaf::new(&["planets", "list"]).examples(EXAMPLES);
 
     assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
-}
-
-#[test]
-fn a_leaf_returns_the_document_it_declares_and_no_document_when_it_declares_none() {
-    let leaf = Leaf::new(&["planets", "list"]).document(PLANETS);
-
-    let document = leaf.get_document().unwrap();
-
-    assert_eq!(document.to_string(), "tool/planets/v1");
-    assert_eq!(document.description(), "The test rows.");
-    assert!(Leaf::new(&["planets", "list"]).get_document().is_none());
-}
-
-#[test]
-fn a_leaf_builds_the_schema_of_the_whole_document_it_declares() {
-    let leaf = Leaf::new(&["planets", "list"]).document(PLANETS);
-
-    assert_eq!(
-        leaf.document_schema(),
-        Some(crate::schemas::document_schema(PLANETS))
-    );
-    assert_eq!(Leaf::new(&["planets", "list"]).document_schema(), None);
-}
-
-#[test]
-fn a_leaf_returns_the_shape_of_its_document_and_none_for_a_stream_or_no_document() {
-    const STREAM: Document<crate::Stream<Planet>> =
-        Document::new("tool", "planets-watch", 1, "Each planet.");
-
-    assert_eq!(
-        Leaf::new(&["planets", "list"]).document(PLANETS).shape(),
-        Some(crate::Shape::List)
-    );
-    assert_eq!(
-        Leaf::new(&["planets", "watch"]).stream(STREAM).shape(),
-        None
-    );
-    assert_eq!(Leaf::new(&["planets", "list"]).shape(), None);
 }

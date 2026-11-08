@@ -4,8 +4,7 @@
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory as _, FromArgMatches, Parser, Subcommand};
-use crumbkit::help::Guide;
-use crumbkit::{Sink, ViewFlags};
+use crumbkit::{Sink, Tool, ViewFlags};
 
 /// A tool with a `list` command.
 #[derive(Debug, Parser)]
@@ -67,7 +66,7 @@ fn a_tool_keeps_the_matches_by_cloning_them_before_its_type_takes_the_values() {
     let parsed = crumbkit::try_parse_to::<WithMatches, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         Cli::command(),
-        &Guide::new(),
+        &Tool::new(),
         ["tool", "list", "--all"],
     );
 

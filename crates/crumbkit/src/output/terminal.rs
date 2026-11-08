@@ -1,5 +1,5 @@
 //! `Output::progress_allowed`, which decides whether a tool may draw
-//! progress from `--json`, the guide's terminal detection and standard
+//! progress from `--json`, the tool record's terminal detection and standard
 //! error (ADR-0049), and the width of the terminal that a text table fits
 //! (ADR-0121), and what decides whether a refusal on standard error and a
 //! table's cells on standard output are styled (ADR-0131, ADR-0150).
@@ -12,10 +12,10 @@ use super::Output;
 mod tests;
 
 impl Output {
-    /// Reports whether the tool may draw progress, such as a spinner or a
-    /// bar, on standard error. It is true only when `--json` is off, the
-    /// tool's guide keeps terminal detection on
-    /// ([`Guide::without_terminal_detection`](crate::help::Guide::without_terminal_detection)),
+    /// Reports whether the tool may draw progress, such as a spinner or a bar,
+    /// on standard error. It is true only when `--json` is off, the tool record
+    /// keeps terminal detection on
+    /// ([`tool::Output::without_terminal_detection`](crate::tool::Output::without_terminal_detection)),
     /// and standard error is a terminal.
     ///
     /// A tool draws progress with any library it likes when this is true,
@@ -33,22 +33,22 @@ impl Output {
     }
 
     /// Returns the number of columns of the terminal that standard output
-    /// is, which `finish` fits a text table to, or `None` when the guide
+    /// is, which `finish` fits a text table to, or `None` when the tool record
     /// turns terminal detection off, standard output is not a terminal, or
     /// the terminal does not report its width.
     pub(super) fn read_terminal_width(&self) -> Option<usize> {
         width(!self.no_terminal, crate::sink::stdout_width)
     }
 
-    /// Reports whether the cells of a text table that `finish` prints
-    /// carry their styles: the guide keeps terminal detection on, standard
+    /// Reports whether the cells of a text table that `finish` prints carry
+    /// their styles: the tool record keeps terminal detection on, standard
     /// output is a terminal, and the colour variables and the command's
     /// `ColorChoice` allow colour, as for a refusal (ADR-0150).
     pub(super) fn read_result_styles(&self) -> bool {
         crate::sink::stdout_styles(self.command.get_color(), !self.no_terminal)
     }
 
-    /// Returns the command's `ColorChoice` and whether the guide keeps
+    /// Returns the command's `ColorChoice` and whether the tool record keeps
     /// terminal detection on, which decide with the environment and
     /// standard error whether a refusal on standard error is styled
     /// (ADR-0131).

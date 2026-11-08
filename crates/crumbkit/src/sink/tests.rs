@@ -257,7 +257,7 @@ fn the_colour_rule_wants_no_styles_when_the_command_never_colours() {
 }
 
 #[test]
-fn the_colour_rule_wants_no_styles_when_the_guide_turns_terminal_detection_off() {
+fn the_colour_rule_wants_no_styles_when_the_tool_turns_terminal_detection_off() {
     for (variables, terminal) in [(UNSET, true), (FORCED, false), (FORCED, true)] {
         assert!(!wants_styles(variables, terminal, ColorChoice::Auto, false));
     }

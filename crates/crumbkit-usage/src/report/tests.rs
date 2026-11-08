@@ -7,7 +7,7 @@ use serde_json::json;
 
 use super::entry::Entry;
 use super::{LONGEST, Report, Tally, read};
-use crate::testing::tool;
+use crate::testing::tree;
 
 /// Returns one line of the log for a run of `command` that ended `at`
 /// seconds after the Unix epoch.
@@ -33,7 +33,7 @@ fn line(at: u64, command: &str) -> String {
 /// seconds after the Unix epoch.
 fn report(log: &[u8], since: u64) -> Report {
     let mut tally = Tally::new(2);
-    read(Cursor::new(log), since * 1000, &tool(), &mut tally);
+    read(Cursor::new(log), since * 1000, &tree(), &mut tally);
     tally.report()
 }
 
@@ -124,7 +124,7 @@ fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
     read(
         BufReader::with_capacity(7, log.as_bytes()),
         0,
-        &tool(),
+        &tree(),
         &mut tally,
     );
 
@@ -277,7 +277,7 @@ proptest! {
         }),
     ) {
         let mut tally = Tally::new(2);
-        let tool = tool();
+        let tool = tree();
         read(Cursor::new(log_of(&runs[..split])), 0, &tool, &mut tally);
         read(Cursor::new(log_of(&runs[split..])), 0, &tool, &mut tally);
 

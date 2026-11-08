@@ -13,7 +13,7 @@ impl Leaf {
     /// crumbkit-test's `check_twin`, `check_twins` and `check_recoveries`
     /// then let a failure of the command that no exit lists end with any
     /// code but 0, and they still require a listed failure and a refused
-    /// command line to exit as the guide declares (ADR-0037).
+    /// command line to exit as the tool record declares (ADR-0037).
     #[must_use]
     pub const fn passes_on_exit(mut self, program: &'static str) -> Self {
         self.passes_on_exit = Some(program);
@@ -21,8 +21,8 @@ impl Leaf {
     }
 
     /// Returns the program that [`Leaf::passes_on_exit`] set, or `None` when
-    /// the command exits as the guide's exits declare. The name has clap's
-    /// `get_` prefix, because `passes_on_exit` is the builder method.
+    /// the command exits as the tool record's exits declare. The name has
+    /// clap's `get_` prefix, because `passes_on_exit` is the builder method.
     #[must_use]
     pub const fn get_passes_on_exit(&self) -> Option<&'static str> {
         self.passes_on_exit

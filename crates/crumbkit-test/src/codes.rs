@@ -1,18 +1,17 @@
 //! The codes check, which a tool's test runs over every failure code the tool
 //! can print.
 
-use crumbkit::Code;
-use crumbkit::help::Guide;
+use crumbkit::{Code, Tool};
 
 use crate::tree;
 
 #[cfg(test)]
 mod tests;
 
-/// Checks a tool's failure codes as the spelling of `guide` prints them, and
+/// Checks a tool's failure codes as the spelling of `tool` prints them, and
 /// panics, as a failed test assertion does, naming every problem it finds.
 ///
-/// A tool passes the guide that it passes to `parse` or `Output::new`, so
+/// A tool passes the tool record that it passes to `parse` or `Output::new`, so
 /// the check spells each code as the tool prints it.
 ///
 /// `codes` holds the `CODES` list of each of the tool's error types. A code
@@ -35,20 +34,20 @@ mod tests;
 ///
 /// ```
 /// use crumbkit::Code;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
 ///
-/// crumbkit_test::check_codes(&Guide::new(), &[&[&NOT_FOUND], &[&TIMED_OUT]]);
+/// crumbkit_test::check_codes(&Tool::new(), &[&[&NOT_FOUND], &[&TIMED_OUT]]);
 /// ```
 ///
 /// # Panics
 ///
 /// Panics when any code breaks a rule above. The message lists each problem
 /// on its own line and names each code as the `Code::new` call that makes it.
-pub fn check_codes(guide: &Guide, codes: &[&[&Code]]) {
-    let spelling = guide.get_spelling();
+pub fn check_codes(tool: &Tool, codes: &[&[&Code]]) {
+    let spelling = tool.get_failures().get_spelling();
     let mut problems = Vec::new();
     let mut spelled: Vec<(String, &Code)> = Vec::new();
     for &code in codes.iter().flat_map(|list| list.iter()) {

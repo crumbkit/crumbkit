@@ -1,6 +1,6 @@
 //! The calls and the hint that a refusal of a leaf's command line offers as
 //! its recovery and alternatives, which functions of the tool build from the
-//! refusal, set on the leaf or on the guide for every leaf that sets none
+//! refusal, set on the leaf or on the tool record for every leaf that sets none
 //! (ADR-0056, ADR-0078, ADR-0123).
 
 use std::ffi::OsString;
@@ -9,16 +9,17 @@ use clap::Command;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 
 use super::Leaf;
-use crate::Call;
-use crate::help::Guide;
+use crate::{Call, Tool};
 
 #[cfg(test)]
 mod tests;
 
-/// What clap refused in a command line that names a leaf, which the
-/// functions from [`Leaf::refusal_alternatives`],
-/// [`Guide::refusal_alternatives`], [`Leaf::refusal_hint`] and
-/// [`Guide::refusal_hint`] read to build their calls and hints.
+/// What clap refused in a command line that names a leaf, which the functions
+/// from [`Leaf::refusal_alternatives`],
+/// [`Failures::refusal_alternatives`](crate::tool::Failures::refusal_alternatives),
+/// [`Leaf::refusal_hint`] and
+/// [`Failures::refusal_hint`](crate::tool::Failures::refusal_hint) read to
+/// build their calls and hints.
 ///
 /// The fields are private so that a later release can add more of the
 /// refusal without breaking a tool's function.
@@ -147,19 +148,21 @@ impl Leaf {
     /// The first call that crumbkit keeps becomes the refusal's recovery in
     /// place of the command's `-h`, and the `-h` call becomes the first
     /// alternative, followed by the other kept calls in the order that the
-    /// function returned them. The `-h` call names the deepest command on
-    /// the typed path that has a help flag, and a path without one offers
-    /// no `-h` call. When crumbkit keeps no call, the `-h` call stays the
-    /// recovery. A hint from [`Leaf::refusal_hint`] or
-    /// [`Guide::refusal_hint`] takes the recovery before any call, and the
-    /// kept calls then all follow the `-h` call. A `--limit` above its bound
-    /// keeps its recovery, which replaces `--limit` with `--all`, and offers
-    /// the kept calls after crumbkit's own alternatives. The refusal keeps
-    /// its code and its exit code.
+    /// function returned them. The `-h` call names the deepest command on the
+    /// typed path that has a help flag, and a path without one offers no `-h`
+    /// call. When crumbkit keeps no call, the `-h` call stays the recovery. A
+    /// hint from [`Leaf::refusal_hint`] or
+    /// [`Failures::refusal_hint`](crate::tool::Failures::refusal_hint) takes
+    /// the recovery before any call, and the kept calls then all follow the
+    /// `-h` call. A `--limit` above its bound keeps its recovery, which
+    /// replaces `--limit` with `--all`, and offers the kept calls after
+    /// crumbkit's own alternatives. The refusal keeps its code and its exit
+    /// code.
     ///
     /// The leaf's function replaces the function of
-    /// [`Guide::refusal_alternatives`] for this command line, and one that
-    /// wants the guide's calls too calls the guide's function itself.
+    /// [`Failures::refusal_alternatives`](crate::tool::Failures::refusal_alternatives)
+    /// for this command line, and one that wants the tool record's calls too
+    /// calls the tool record's function itself.
     #[must_use]
     pub const fn refusal_alternatives(
         mut self,
@@ -206,21 +209,22 @@ impl Leaf {
     /// ```
     ///
     /// A command line names the command when its words reach it, as for
-    /// [`Leaf::refusal_alternatives`]. When the function returns a
-    /// sentence, it becomes the refusal's recovery as a
-    /// [`Recovery::Hint`](crate::Recovery::Hint), which the text form
-    /// prints on the first `help:` line and the failure document prints as
-    /// a `hint`. The command's `-h` call becomes the first alternative,
-    /// followed by the calls that crumbkit keeps from
-    /// [`Leaf::refusal_alternatives`] or [`Guide::refusal_alternatives`] in
-    /// their order. When the function returns `None`, the refusal recovers
-    /// as it would without it. A `--limit` above its bound keeps its
-    /// recovery, which replaces `--limit` with `--all`, and offers the
-    /// sentence after crumbkit's own alternatives and before the kept
-    /// calls. The refusal keeps its code and its exit code.
+    /// [`Leaf::refusal_alternatives`]. When the function returns a sentence, it
+    /// becomes the refusal's recovery as a
+    /// [`Recovery::Hint`](crate::Recovery::Hint), which the text form prints on
+    /// the first `help:` line and the failure document prints as a `hint`. The
+    /// command's `-h` call becomes the first alternative, followed by the calls
+    /// that crumbkit keeps from [`Leaf::refusal_alternatives`] or
+    /// [`Failures::refusal_alternatives`](crate::tool::Failures::refusal_alternatives)
+    /// in their order. When the function returns `None`, the refusal recovers
+    /// as it would without it. A `--limit` above its bound keeps its recovery,
+    /// which replaces `--limit` with `--all`, and offers the sentence after
+    /// crumbkit's own alternatives and before the kept calls. The refusal keeps
+    /// its code and its exit code.
     ///
     /// The leaf's function replaces the function of
-    /// [`Guide::refusal_hint`] for this command line.
+    /// [`Failures::refusal_hint`](crate::tool::Failures::refusal_hint) for this
+    /// command line.
     #[must_use]
     pub const fn refusal_hint(mut self, hint: fn(&RefusalContext<'_>) -> Option<String>) -> Self {
         self.refusal_hint = Some(hint);
@@ -236,131 +240,34 @@ impl Leaf {
     }
 }
 
-impl Guide {
-    /// Sets the function that builds the alternatives for a refused command
-    /// line whose command has no function of its own from
-    /// [`Leaf::refusal_alternatives`], including a command with no leaf in
-    /// the guide (ADR-0056).
-    ///
-    /// A tool whose correction is one rule for every command, such as
-    /// rewriting a refused value and keeping the corrected line when it
-    /// parses, declares it here once. crumbkit treats the calls that it
-    /// returns as it treats a leaf's calls: the first call that renders and
-    /// whose line parses becomes the refusal's recovery in place of `-h`,
-    /// unless a hint from [`Guide::refusal_hint`] or [`Leaf::refusal_hint`]
-    /// takes it, and the `-h` call becomes the first alternative. A leaf's
-    /// own function replaces this one for the leaf's command line:
-    ///
-    /// ```
-    /// use crumbkit::Call;
-    /// use crumbkit::help::{Guide, RefusalContext};
-    ///
-    /// /// Offers the refused line with `.json` cut from the refused value.
-    /// fn without_json(context: &RefusalContext<'_>) -> Vec<Call> {
-    ///     let Some(value) = context.value() else {
-    ///         return Vec::new();
-    ///     };
-    ///     let Some(stem) = value.strip_suffix(".json") else {
-    ///         return Vec::new();
-    ///     };
-    ///     let words = context.words().iter().map(|word| {
-    ///         let word = word.to_string_lossy();
-    ///         if word == value { stem.to_owned() } else { word.into_owned() }
-    ///     });
-    ///     vec![Call::typed(words.collect())]
-    /// }
-    ///
-    /// const GUIDE: Guide = Guide::new().refusal_alternatives(without_json);
-    /// # assert!(GUIDE.get_refusal_alternatives().is_some());
-    /// ```
-    #[must_use]
-    pub const fn refusal_alternatives(
-        mut self,
-        alternatives: fn(&RefusalContext<'_>) -> Vec<Call>,
-    ) -> Self {
-        self.refusal_alternatives = Some(alternatives);
-        self
-    }
-
-    /// Returns the function that [`Guide::refusal_alternatives`] set, or
-    /// `None` when a command without a function of its own offers
-    /// crumbkit's alternatives alone. The name has clap's `get_` prefix,
-    /// because `refusal_alternatives` is the builder method.
-    #[must_use]
-    pub const fn get_refusal_alternatives(&self) -> Option<fn(&RefusalContext<'_>) -> Vec<Call>> {
-        self.refusal_alternatives
-    }
-
-    /// Returns the function that builds the alternatives for a refused
-    /// command line that names the command at `path`: the function of the
-    /// command's leaf, or else the guide's, or `None` when neither is set.
+impl Tool {
+    /// Returns the function that builds the alternatives for a refused command
+    /// line that names the command at `path`: the function of the command's
+    /// leaf, or else the tool record's, or `None` when neither is set.
     pub(crate) fn refusal_function(
         &self,
         path: &[String],
     ) -> Option<fn(&RefusalContext<'_>) -> Vec<Call>> {
-        self.leaves
+        self.get_help()
+            .get_leaves()
             .iter()
             .find(|leaf| leaf.path() == path)
             .and_then(Leaf::get_refusal_alternatives)
-            .or(self.refusal_alternatives)
+            .or(self.get_failures().get_refusal_alternatives())
     }
 
-    /// Sets the function that returns the hint for a refused command line
-    /// whose command has no function of its own from
-    /// [`Leaf::refusal_hint`], including a command with no leaf in the
-    /// guide (ADR-0123).
-    ///
-    /// A tool whose instruction is one rule for every command, such as
-    /// telling the caller to put an unknown flag after `--` at any command
-    /// that passes the words after `--` to a program, declares it here
-    /// once. crumbkit treats the sentence that it returns as it treats a
-    /// leaf's: the sentence becomes the refusal's recovery, and the `-h`
-    /// call becomes the first alternative. A leaf's own function replaces
-    /// this one for the leaf's command line:
-    ///
-    /// ```
-    /// use clap::Arg;
-    /// use clap::error::ErrorKind;
-    /// use crumbkit::help::{Guide, RefusalContext};
-    ///
-    /// /// Tells the caller where the program's words go.
-    /// fn after_dashes(context: &RefusalContext<'_>) -> Option<String> {
-    ///     let forwards = context.command().get_positionals().any(Arg::is_last_set);
-    ///     (forwards && context.kind() == ErrorKind::UnknownArgument).then(|| {
-    ///         "put everything the tool should pass to the program it runs after `--`"
-    ///             .to_owned()
-    ///     })
-    /// }
-    ///
-    /// const GUIDE: Guide = Guide::new().refusal_hint(after_dashes);
-    /// # assert!(GUIDE.get_refusal_hint().is_some());
-    /// ```
-    #[must_use]
-    pub const fn refusal_hint(mut self, hint: fn(&RefusalContext<'_>) -> Option<String>) -> Self {
-        self.refusal_hint = Some(hint);
-        self
-    }
-
-    /// Returns the function that [`Guide::refusal_hint`] set, or `None`
-    /// when a command without a function of its own offers no hint. The
-    /// name has clap's `get_` prefix, because `refusal_hint` is the builder
-    /// method.
-    #[must_use]
-    pub const fn get_refusal_hint(&self) -> Option<fn(&RefusalContext<'_>) -> Option<String>> {
-        self.refusal_hint
-    }
-
-    /// Returns the function that returns the hint for a refused command
-    /// line that names the command at `path`: the function of the
-    /// command's leaf, or else the guide's, or `None` when neither is set.
+    /// Returns the function that returns the hint for a refused command line
+    /// that names the command at `path`: the function of the command's leaf, or
+    /// else the tool record's, or `None` when neither is set.
     pub(crate) fn refusal_hint_function(
         &self,
         path: &[String],
     ) -> Option<fn(&RefusalContext<'_>) -> Option<String>> {
-        self.leaves
+        self.get_help()
+            .get_leaves()
             .iter()
             .find(|leaf| leaf.path() == path)
             .and_then(Leaf::get_refusal_hint)
-            .or(self.refusal_hint)
+            .or(self.get_failures().get_refusal_hint())
     }
 }

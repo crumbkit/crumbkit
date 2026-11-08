@@ -1,4 +1,4 @@
-//! Tests for picking a missing argument: what `parse_to` asks the guide's
+//! Tests for picking a missing argument: what `parse_to` asks the tool record's
 //! picker, what it adds to the command line, and when it refuses instead.
 
 use std::io::{self, BufRead, Write};
@@ -6,17 +6,17 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, FromArgMatches};
 
-use crate::help::{Guide, Leaf};
+use crate::help::{Help, Leaf};
 use crate::pick::{Answer, Choice, Choices, Picker, Question};
 use crate::twins::assert_one_word_apart;
-use crate::{Error, Sink, Stop, parse_to};
+use crate::{Error, Sink, Stop, Tool, parse_to};
 
 /// A tool whose `show` takes a required `--list` and an optional `--sort`,
 /// whose `get` takes a required positional `NAME` with possible values,
 /// whose `take` takes one or more positional `ID`s, whose `find` takes
 /// a required `--pattern` without any choices, and whose `shelve` takes a
 /// required `--list` and a required `--shelf`.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .subcommand_required(true)
         .arg(
@@ -152,12 +152,14 @@ fn offline() -> Result<Vec<Choice>, Error> {
     Err(Offline.into())
 }
 
-const GUIDE: Guide = Guide::new().picker(&SCRIPTED).leaves(&[
-    Leaf::new(&["show"]).choices(&[Choices::new("list", lists)]),
-    // A source for `name`, which has possible values, is never called.
-    Leaf::new(&["get"]).choices(&[Choices::new("name", offline)]),
-    Leaf::new(&["take"]).choices(&[Choices::new("ids", ids)]),
-]);
+const TOOL: Tool = Tool::new()
+    .help(Help::new().leaves(&[
+        Leaf::new(&["show"]).choices(&[Choices::new("list", lists)]),
+        // A source for `name`, which has possible values, is never called.
+        Leaf::new(&["get"]).choices(&[Choices::new("name", offline)]),
+        Leaf::new(&["take"]).choices(&[Choices::new("ids", ids)]),
+    ]))
+    .picker(&SCRIPTED);
 
 /// The matches that clap parsed, as the tool's parsed type.
 struct Matches(ArgMatches);
@@ -180,14 +182,14 @@ struct Run {
     err: String,
 }
 
-/// Parses `tool` followed by `words` with `guide`, answering any question
+/// Parses `tool` followed by `words` with `tool`, answering any question
 /// with `answer` when `interactive`.
-fn run(guide: &Guide, words: &[&str], answer: &str, interactive: bool) -> Run {
+fn run(tool: &Tool, words: &[&str], answer: &str, interactive: bool) -> Run {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::with_input(&mut out, &mut err, answer.as_bytes(), interactive);
     let args = std::iter::once("tool").chain(words.iter().copied());
-    let result = parse_to::<Matches, _, _, _, _>(&mut sink, tool(), guide, args);
+    let result = parse_to::<Matches, _, _, _, _>(&mut sink, tree(), tool, args);
     Run {
         result,
         out: String::from_utf8(out).unwrap(),
@@ -200,7 +202,7 @@ fn run(guide: &Guide, words: &[&str], answer: &str, interactive: bool) -> Run {
 /// or the terminal causes keeps the words and changes only that.
 #[track_caller]
 fn admits(words: &[&str], answer: &str, interactive: bool) {
-    let admitted = run(&GUIDE, words, answer, interactive);
+    let admitted = run(&TOOL, words, answer, interactive);
     assert!(admitted.result.is_ok(), "{}", admitted.err);
 }
 
@@ -221,7 +223,7 @@ fn code(run: &Run) -> ExitCode {
 
 #[test]
 fn a_missing_option_is_picked_and_added_before_any_double_dash() {
-    let run = run(&GUIDE, &["show", "--sort", "id"], "0\n", true);
+    let run = run(&TOOL, &["show", "--sort", "id"], "0\n", true);
     assert_eq!(words(&run), ["show", "--sort", "id", "--list=to read"]);
     let (matches, _) = run.result.as_ref().unwrap();
     let show = matches.0.subcommand_matches("show").unwrap();
@@ -238,29 +240,29 @@ fn a_missing_option_is_picked_and_added_before_any_double_dash() {
 
 #[test]
 fn a_missing_positional_with_possible_values_offers_them_without_calling_the_source() {
-    let run = run(&GUIDE, &["get"], "1\n", true);
+    let run = run(&TOOL, &["get"], "1\n", true);
     assert_eq!(words(&run), ["get", "venus"]);
     assert!(run.err.starts_with("pick NAME for tool get: mars, venus\n"));
 }
 
 #[test]
 fn several_picked_values_of_a_positional_are_added_in_the_order_picked() {
-    let run = run(&GUIDE, &["take"], "2 0\n", true);
+    let run = run(&TOOL, &["take"], "2 0\n", true);
     assert_eq!(words(&run), ["take", "3", "1"]);
 }
 
 #[test]
 fn a_picked_positional_that_starts_with_a_hyphen_follows_a_double_dash() {
-    const GUIDE: Guide = Guide::new()
-        .picker(&SCRIPTED)
-        .leaves(&[Leaf::new(&["take"]).choices(&[Choices::new("ids", lists)])]);
-    let run = run(&GUIDE, &["take"], "1\n", true);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["take"]).choices(&[Choices::new("ids", lists)])]))
+        .picker(&SCRIPTED);
+    let run = run(&TOOL, &["take"], "1\n", true);
     assert_eq!(words(&run), ["take", "--", "-done"]);
 }
 
 #[test]
 fn a_command_line_with_json_still_picks() {
-    let run = run(&GUIDE, &["show", "--json"], "0\n", true);
+    let run = run(&TOOL, &["show", "--json"], "0\n", true);
     assert_eq!(words(&run), ["show", "--json", "--list=to read"]);
     assert_eq!(run.out, "");
 }
@@ -268,8 +270,8 @@ fn a_command_line_with_json_still_picks() {
 #[test]
 fn a_cancelled_pick_prints_the_refusal_that_parse_prints_without_a_picker() {
     admits(&["show"], "0\n", true);
-    let picked = run(&GUIDE, &["show"], "\n", true);
-    let refused = run(&Guide::new(), &["show"], "", true);
+    let picked = run(&TOOL, &["show"], "\n", true);
+    let refused = run(&Tool::new(), &["show"], "", true);
     assert_eq!(code(&picked), ExitCode::from(2));
     let refusal = picked.err.split_once('\n').unwrap().1;
     assert_eq!(refusal, refused.err);
@@ -278,21 +280,21 @@ fn a_cancelled_pick_prints_the_refusal_that_parse_prints_without_a_picker() {
 #[test]
 fn an_answer_outside_the_list_is_refused() {
     admits(&["show"], "0\n", true);
-    let run = run(&GUIDE, &["show"], "7\n", true);
+    let run = run(&TOOL, &["show"], "7\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
 }
 
 #[test]
 fn an_answer_with_more_values_than_the_argument_takes_is_refused() {
     admits(&["show"], "0\n", true);
-    let run = run(&GUIDE, &["show"], "0 1\n", true);
+    let run = run(&TOOL, &["show"], "0 1\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
 }
 
 #[test]
 fn a_sink_where_nobody_can_answer_refuses_without_asking() {
     admits(&["show"], "0\n", true);
-    let run = run(&GUIDE, &["show"], "0\n", false);
+    let run = run(&TOOL, &["show"], "0\n", false);
     assert_eq!(code(&run), ExitCode::from(2));
     assert!(!run.err.contains("pick"));
 }
@@ -301,14 +303,16 @@ fn a_sink_where_nobody_can_answer_refuses_without_asking() {
 fn no_input_refuses_without_asking() {
     assert_one_word_apart(&["show", "--no-input"], &["show"]);
     admits(&["show"], "0\n", true);
-    let run = run(&GUIDE, &["show", "--no-input"], "0\n", true);
+    let run = run(&TOOL, &["show", "--no-input"], "0\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
     assert!(!run.err.contains("pick"));
 }
 
 #[test]
 fn with_terminal_detection_off_a_missing_argument_is_refused_without_asking_the_picker() {
-    const QUIET: Guide = GUIDE.without_terminal_detection("Our CI runs in a pseudo-terminal.");
+    const QUIET: Tool = TOOL.output(
+        crate::tool::Output::new().without_terminal_detection("Our CI runs in a pseudo-terminal."),
+    );
     assert_one_word_apart(&["show"], &["show", "--list=a"]);
     let admitted = run(&QUIET, &["show", "--list=a"], "", true);
     assert!(admitted.result.is_ok(), "{}", admitted.err);
@@ -321,27 +325,33 @@ fn with_terminal_detection_off_a_missing_argument_is_refused_without_asking_the_
 fn an_argument_without_choices_is_refused_without_asking() {
     assert_one_word_apart(&["find"], &["find", "--pattern=mars"]);
     admits(&["find", "--pattern=mars"], "0\n", true);
-    let run = run(&GUIDE, &["find"], "0\n", true);
+    let run = run(&TOOL, &["find"], "0\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
     assert!(!run.err.contains("pick"));
 }
 
 #[test]
 fn a_failed_source_prints_its_failure_and_exits_with_1() {
-    const GUIDE: Guide = Guide::new()
-        .picker(&SCRIPTED)
-        .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]);
-    let run = run(&GUIDE, &["find"], "0\n", true);
+    const TOOL: Tool = Tool::new()
+        .help(
+            Help::new()
+                .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]),
+        )
+        .picker(&SCRIPTED);
+    let run = run(&TOOL, &["find"], "0\n", true);
     assert_eq!(code(&run), ExitCode::FAILURE);
     assert!(run.err.contains("the catalogue is offline"), "{}", run.err);
 }
 
 #[test]
 fn a_failed_source_reports_that_a_failure_printed() {
-    const GUIDE: Guide = Guide::new()
-        .picker(&SCRIPTED)
-        .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]);
-    let run = run(&GUIDE, &["find"], "0\n", true);
+    const TOOL: Tool = Tool::new()
+        .help(
+            Help::new()
+                .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]),
+        )
+        .picker(&SCRIPTED);
+    let run = run(&TOOL, &["find"], "0\n", true);
 
     let printed = run.result.as_ref().err().map(Stop::printed);
 
@@ -350,10 +360,13 @@ fn a_failed_source_reports_that_a_failure_printed() {
 
 #[test]
 fn a_failed_source_s_stop_reports_the_path_to_the_command_that_it_picked_for() {
-    const GUIDE: Guide = Guide::new()
-        .picker(&SCRIPTED)
-        .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]);
-    let run = run(&GUIDE, &["find", "--json"], "0\n", true);
+    const TOOL: Tool = Tool::new()
+        .help(
+            Help::new()
+                .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]),
+        )
+        .picker(&SCRIPTED);
+    let run = run(&TOOL, &["find", "--json"], "0\n", true);
 
     let stop = run.result.as_ref().err();
 
@@ -363,11 +376,13 @@ fn a_failed_source_s_stop_reports_the_path_to_the_command_that_it_picked_for() {
 
 #[test]
 fn a_failed_source_after_a_pick_reports_only_the_flags_that_the_caller_typed() {
-    const GUIDE: Guide = Guide::new()
-        .picker(&SCRIPTED)
-        .leaves(&[Leaf::new(&["shelve"])
-            .choices(&[Choices::new("list", lists), Choices::new("shelf", offline)])]);
-    let run = run(&GUIDE, &["shelve", "--json"], "0\n", true);
+    const TOOL: Tool = Tool::new()
+        .help(
+            Help::new().leaves(&[Leaf::new(&["shelve"])
+                .choices(&[Choices::new("list", lists), Choices::new("shelf", offline)])]),
+        )
+        .picker(&SCRIPTED);
+    let run = run(&TOOL, &["shelve", "--json"], "0\n", true);
 
     let stop = run.result.as_ref().err();
 
@@ -379,20 +394,23 @@ fn a_failed_source_after_a_pick_reports_only_the_flags_that_the_caller_typed() {
 
 #[test]
 fn a_parsed_command_line_with_no_input_records_it() {
-    let run = run(&GUIDE, &["show", "--list", "a", "--no-input"], "", true);
+    let run = run(&TOOL, &["show", "--list", "a", "--no-input"], "", true);
     let (_, parsed) = run.result.as_ref().unwrap();
     assert!(parsed.no_input());
-    let run = self::run(&GUIDE, &["show", "--list", "a"], "", true);
+    let run = self::run(&TOOL, &["show", "--list", "a"], "", true);
     assert!(!run.result.as_ref().unwrap().1.no_input());
 }
 
 #[test]
 fn parse_reports_how_many_arguments_a_picker_filled_and_the_exit_of_a_failed_source() {
-    const FAILING: Guide = Guide::new()
-        .picker(&SCRIPTED)
-        .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]);
+    const FAILING: Tool = Tool::new()
+        .help(
+            Help::new()
+                .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]),
+        )
+        .picker(&SCRIPTED);
 
-    let picked = crate::events::testing::watch(|| drop(run(&GUIDE, &["show"], "0\n", true)));
+    let picked = crate::events::testing::watch(|| drop(run(&TOOL, &["show"], "0\n", true)));
     let failed = crate::events::testing::watch(|| drop(run(&FAILING, &["find"], "0\n", true)));
 
     assert_eq!(picked[1..], ["parsed tool show", "picked 1"]);

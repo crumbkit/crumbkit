@@ -26,7 +26,7 @@ pub(crate) use fields::{can_be_empty, properties};
 /// missing in every row, so the text table leaves its column out, and JSON
 /// holds `null` for it. crumbkit-test's
 /// `check_guide` fails on such a name in the row type of each leaf that the
-/// tool's guide gives a document, and on a column whose field has no doc
+/// tool record gives a document, and on a column whose field has no doc
 /// comment, because a leaf's `--help` describes each column with it.
 ///
 /// ```

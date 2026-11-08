@@ -1,13 +1,14 @@
 //! Tests for shelf as a whole that read its private items. The convention
-//! tests, which need only shelf's public command tree and guide, live in
+//! tests, which need only shelf's public command tree and tool record, live in
 //! `tests/conventions.rs`.
 
 use crate::books::BooksError;
-use crate::cli::GUIDE;
+use crate::cli::TOOL;
+use crumbkit::help::Help;
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(&GUIDE, &[BooksError::CODES]);
+    crumbkit_test::check_codes(&TOOL, &[BooksError::CODES]);
 }
 
 /// The choices of the whole catalogue, as `books::choices` offers them when
@@ -19,20 +20,24 @@ fn catalogue() -> Result<Vec<crumbkit::pick::Choice>, crumbkit::Error> {
 #[test]
 fn books_show_without_ids_asks_the_menu_and_shows_the_picked_books() {
     use clap::CommandFactory as _;
-    use crumbkit::help::{Guide, Leaf};
+    use crumbkit::Tool;
+    use crumbkit::help::Leaf;
     use crumbkit::pick::Choices;
 
     static MENU: crumbkit::pick::Menu = crumbkit::pick::Menu::new();
-    const GUIDE: Guide = Guide::new()
-        .picker(&MENU)
-        .leaves(&[Leaf::new(&["books", "show"]).choices(&[Choices::new("ids", catalogue)])]);
+    const TOOL: Tool =
+        Tool::new()
+            .help(Help::new().leaves(&[
+                Leaf::new(&["books", "show"]).choices(&[Choices::new("ids", catalogue)]),
+            ]))
+            .picker(&MENU);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = crumbkit::Sink::with_input(&mut out, &mut err, &b"austen\n1\n"[..], true);
     let parsed = crumbkit::parse_to::<crate::Cli, _, _, _, _>(
         &mut sink,
         crate::Cli::command(),
-        &GUIDE,
+        &TOOL,
         ["shelf", "books", "show"],
     );
 

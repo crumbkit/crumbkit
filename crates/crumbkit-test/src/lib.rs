@@ -109,9 +109,9 @@ pub use crate::weights::{PathBudgets, check_path_weights};
 // tool calls them, so they stay out of the documentation.
 #[doc(hidden)]
 pub use crate::weights::{UnreadableGolden, output_weight, path_totals};
-// crumbkit's guide, which several checks and `Pages::rendered` and
+// crumbkit's tool record, which several checks and `Pages::rendered` and
 // `Pages::binary` take. A tool names it from crumbkit, which it already
 // depends on. The re-export stays for an adopter that imports it from here,
 // out of the documentation, so the type has one documented path.
 #[doc(hidden)]
-pub use crumbkit::help::Guide;
+pub use crumbkit::Tool;

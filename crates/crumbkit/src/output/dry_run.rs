@@ -38,7 +38,7 @@ pub(crate) const ID: &str = "crumbkit_dry_run";
 ///
 /// ```
 /// use clap::{CommandFactory as _, Parser};
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit::{DryRun, Output, ViewFlags};
 ///
 /// /// Remove books from the catalogue.
@@ -52,7 +52,7 @@ pub(crate) const ID: &str = "crumbkit_dry_run";
 ///
 /// let words = ["books-remove", "--dry-run"];
 /// let args = BooksRemove::parse_from(words);
-/// let output = Output::new(args.view, args.dry_run, BooksRemove::command(), &Guide::new(), words);
+/// let output = Output::new(args.view, args.dry_run, BooksRemove::command(), &Tool::new(), words);
 /// assert!(output.unwrap().is_dry_run());
 /// ```
 ///

@@ -1,17 +1,18 @@
 //! Tests for help topics: what `parse_to` prints for `help` and for help
-//! pages with a guide that has topics.
+//! pages with a tool record that has topics.
 
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::Topic;
-use crate::help::{Exit, Guide, exit};
+use crate::help::{Exit, Help, exit};
+use crate::tool::Failures;
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, parse_to};
+use crate::{Sink, Tool, parse_to};
 
 /// A tool with a global flag and one group.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .about("Explore a small solar system")
         .subcommand_required(true)
@@ -40,8 +41,8 @@ const ORBITS: Topic = Topic::new(
 /// A topic whose text has no final line break and whose summary is empty.
 const UNITS: Topic = Topic::new("units", "", "Masses are in Earth masses.");
 
-/// A guide with both topics.
-const GUIDE: Guide = Guide::new().topics(&[ORBITS, UNITS]);
+/// A tool record with both topics.
+const TOOL: Tool = Tool::new().help(Help::new().topics(&[ORBITS, UNITS]));
 
 /// What `parse_to` printed, and the exit code it returned.
 struct Printed {
@@ -50,13 +51,13 @@ struct Printed {
     err: String,
 }
 
-/// Runs `parse_to` over `command` with `guide`, for `args` that do not
+/// Runs `parse_to` over `command` with `tool`, for `args` that do not
 /// parse, and returns what it printed.
-fn run(command: Command, guide: &Guide, args: &[&str]) -> Printed {
+fn run(command: Command, tool: &Tool, args: &[&str]) -> Printed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, guide, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     Printed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),
@@ -64,10 +65,10 @@ fn run(command: Command, guide: &Guide, args: &[&str]) -> Printed {
     }
 }
 
-/// Runs `parse_to` over `tool()` with `guide`, for `args` that print a page,
+/// Runs `parse_to` over `tree()` with `tool`, for `args` that print a page,
 /// and returns the page.
-fn page(guide: &Guide, args: &[&str]) -> String {
-    let printed = run(tool(), guide, args);
+fn page(tool: &Tool, args: &[&str]) -> String {
+    let printed = run(tree(), tool, args);
     assert_eq!(printed.code, Some(ExitCode::SUCCESS));
     assert_eq!(printed.err, "");
     printed.out
@@ -75,22 +76,22 @@ fn page(guide: &Guide, args: &[&str]) -> String {
 
 #[test]
 fn help_with_a_topic_s_name_prints_its_text() {
-    assert_eq!(page(&GUIDE, &["tool", "help", "orbits"]), ORBITS.text());
+    assert_eq!(page(&TOOL, &["tool", "help", "orbits"]), ORBITS.text());
 }
 
 #[test]
 fn a_topic_s_text_ends_with_one_line_break_when_the_tool_leaves_it_out() {
     assert_eq!(
-        page(&GUIDE, &["tool", "help", "units"]),
+        page(&TOOL, &["tool", "help", "units"]),
         "Masses are in Earth masses.\n"
     );
 }
 
 #[test]
 fn help_without_words_prints_what_the_root_s_long_help_prints() {
-    let long = page(&GUIDE, &["tool", "--help"]);
+    let long = page(&TOOL, &["tool", "--help"]);
 
-    assert_eq!(page(&GUIDE, &["tool", "help"]), long);
+    assert_eq!(page(&TOOL, &["tool", "help"]), long);
     assert!(
         long.contains("\nTopics: orbits, units, exit-codes. `tool help <TOPIC>` prints one.\n"),
         "{long}"
@@ -114,9 +115,9 @@ Global flags: --json. `tool --help` describes them.
 Topics: orbits, units, exit-codes. `tool help <TOPIC>` prints one.
 Next: tool <COMMAND> -h
 ";
-    let long = page(&GUIDE, &["tool", "--help"]);
+    let long = page(&TOOL, &["tool", "--help"]);
 
-    assert_eq!(page(&GUIDE, &["tool", "-h"]), short);
+    assert_eq!(page(&TOOL, &["tool", "-h"]), short);
     assert!(
         long.ends_with(
             "\n\nTopics: orbits, units, exit-codes. `tool help <TOPIC>` prints one.\nNext: tool <COMMAND> -h\n"
@@ -127,52 +128,53 @@ Next: tool <COMMAND> -h
 
 #[test]
 fn a_group_s_help_does_not_name_the_topics() {
-    let group = page(&GUIDE, &["tool", "planets", "-h"]);
+    let group = page(&TOOL, &["tool", "planets", "-h"]);
 
     assert!(!group.contains("Topics:"), "{group}");
 }
 
 #[test]
 fn a_command_wins_over_a_topic_with_the_same_name() {
-    const GUIDE: Guide = Guide::new().topics(&[Topic::new("planets", "", "Planets.\n")]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().topics(&[Topic::new("planets", "", "Planets.\n")]));
 
     assert_eq!(
-        page(&GUIDE, &["tool", "help", "planets"]),
-        page(&GUIDE, &["tool", "planets", "--help"])
+        page(&TOOL, &["tool", "help", "planets"]),
+        page(&TOOL, &["tool", "planets", "--help"])
     );
 }
 
 #[test]
 fn help_ignores_flags_after_a_topic_s_name() {
     assert_eq!(
-        page(&GUIDE, &["tool", "help", "orbits", "--json"]),
+        page(&TOOL, &["tool", "help", "orbits", "--json"]),
         ORBITS.text()
     );
 }
 
 #[test]
 fn a_repeated_topic_name_is_named_once_and_the_first_topic_prints() {
-    const GUIDE: Guide = Guide::new().topics(&[
+    const TOOL: Tool = Tool::new().help(Help::new().topics(&[
         ORBITS,
         Topic::new("orbits", "A second summary", "A second text.\n"),
-    ]);
+    ]));
 
-    let short = page(&GUIDE, &["tool", "-h"]);
+    let short = page(&TOOL, &["tool", "-h"]);
 
     assert!(
         short.contains("\nTopics: orbits, exit-codes. `tool help <TOPIC>` prints one.\n"),
         "{short}"
     );
-    assert_eq!(page(&GUIDE, &["tool", "help", "orbits"]), ORBITS.text());
+    assert_eq!(page(&TOOL, &["tool", "help", "orbits"]), ORBITS.text());
 }
 
 #[test]
 fn a_root_with_its_own_help_command_gets_no_topics_and_clap_parses_that_command() {
-    let tool = tool().subcommand(Command::new("assist").alias("help"));
+    let tool = tree().subcommand(Command::new("assist").alias("help"));
 
     assert_one_word_apart(&["tool", "help", "orbits"], &["tool", "help"]);
-    assert_eq!(run(tool.clone(), &GUIDE, &["tool", "help"]).code, None);
-    let printed = run(tool, &GUIDE, &["tool", "help", "orbits"]);
+    assert_eq!(run(tool.clone(), &TOOL, &["tool", "help"]).code, None);
+    let printed = run(tool, &TOOL, &["tool", "help", "orbits"]);
 
     assert_eq!(printed.code, Some(ExitCode::from(2)));
     assert_eq!(
@@ -183,9 +185,9 @@ fn a_root_with_its_own_help_command_gets_no_topics_and_clap_parses_that_command(
 
 #[test]
 fn a_root_with_its_own_help_command_names_no_topics_in_its_help() {
-    let tool = tool().subcommand(Command::new("assist").alias("help"));
+    let tool = tree().subcommand(Command::new("assist").alias("help"));
 
-    let short = run(tool, &GUIDE, &["tool", "-h"]).out;
+    let short = run(tool, &TOOL, &["tool", "-h"]).out;
 
     assert!(!short.contains("Topics:"), "{short}");
 }
@@ -204,9 +206,9 @@ Options:
 
 Topics: orbits, units, exit-codes. `tool help <TOPIC>` prints one.
 ";
-    assert_eq!(run(tool.clone(), &GUIDE, &["tool", "-h"]).out, expected);
+    assert_eq!(run(tool.clone(), &TOOL, &["tool", "-h"]).out, expected);
     assert_eq!(
-        run(tool, &GUIDE, &["tool", "help", "orbits"]).out,
+        run(tool, &TOOL, &["tool", "help", "orbits"]).out,
         ORBITS.text()
     );
 }
@@ -216,29 +218,30 @@ fn help_without_words_prints_the_long_help_of_a_root_without_subcommands() {
     let tool = Command::new("tool").about("Weigh a planet");
 
     assert_eq!(
-        run(tool.clone(), &GUIDE, &["tool", "help"]).out,
-        run(tool, &GUIDE, &["tool", "--help"]).out
+        run(tool.clone(), &TOOL, &["tool", "help"]).out,
+        run(tool, &TOOL, &["tool", "--help"]).out
     );
 }
 
 #[test]
 fn help_exit_codes_prints_crumbkit_s_codes_and_the_tool_s_codes() {
-    const GUIDE: Guide = Guide::new().exits(&[Exit::new(124, "The telescope ran out of time.")]);
+    const TOOL: Tool = Tool::new()
+        .failures(Failures::new().exits(&[Exit::new(124, "The telescope ran out of time.")]));
 
     assert_eq!(
-        page(&GUIDE, &["tool", "help", "exit-codes"]),
-        exit::text("tool", &GUIDE)
+        page(&TOOL, &["tool", "help", "exit-codes"]),
+        exit::text("tool", &TOOL)
     );
-    assert!(page(&GUIDE, &["tool", "help", "exit-codes"]).contains("  124  The telescope"));
+    assert!(page(&TOOL, &["tool", "help", "exit-codes"]).contains("  124  The telescope"));
 }
 
 #[test]
 fn a_tool_without_topics_names_the_exit_codes_topic_in_its_help() {
-    let short = page(&Guide::new(), &["tool", "-h"]);
+    let short = page(&Tool::new(), &["tool", "-h"]);
 
     assert_eq!(
-        page(&Guide::new(), &["tool", "help", "exit-codes"]),
-        exit::text("tool", &Guide::new())
+        page(&Tool::new(), &["tool", "help", "exit-codes"]),
+        exit::text("tool", &Tool::new())
     );
     assert!(
         short.contains("\nTopics: exit-codes. `tool help <TOPIC>` prints one.\n"),
@@ -248,17 +251,18 @@ fn a_tool_without_topics_names_the_exit_codes_topic_in_its_help() {
 
 #[test]
 fn crumbkit_s_exit_codes_topic_prints_in_place_of_a_tool_topic_with_its_name() {
-    const GUIDE: Guide = Guide::new().topics(&[Topic::new("exit-codes", "Mine", "Mine.\n")]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().topics(&[Topic::new("exit-codes", "Mine", "Mine.\n")]));
 
-    let short = page(&GUIDE, &["tool", "-h"]);
+    let short = page(&TOOL, &["tool", "-h"]);
 
     assert!(
         short.contains("\nTopics: exit-codes. `tool help <TOPIC>` prints one.\n"),
         "{short}"
     );
     assert_eq!(
-        page(&GUIDE, &["tool", "help", "exit-codes"]),
-        exit::text("tool", &GUIDE)
+        page(&TOOL, &["tool", "help", "exit-codes"]),
+        exit::text("tool", &TOOL)
     );
 }
 
@@ -266,7 +270,7 @@ fn crumbkit_s_exit_codes_topic_prints_in_place_of_a_tool_topic_with_its_name() {
 fn a_root_without_subcommands_or_topics_names_no_topics_in_its_help() {
     let tool = Command::new("tool").about("Weigh a planet");
 
-    let short = run(tool, &Guide::new(), &["tool", "-h"]).out;
+    let short = run(tool, &Tool::new(), &["tool", "-h"]).out;
 
     assert!(!short.contains("Topics:"), "{short}");
 }

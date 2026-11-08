@@ -11,12 +11,13 @@ mod tests;
 
 /// Returns the names of the entries of the aliases file of the tool whose
 /// clap root is `command` that expand, in name order, for the tool to pass
-/// to `crumbkit::help::Guide::personal_aliases`:
+/// to `Help::personal_aliases`:
 ///
 /// ```
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
+/// use crumbkit::help::Help;
 ///
-/// const GUIDE: Guide = Guide::new().personal_aliases(crumbkit_aliases::names);
+/// const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(crumbkit_aliases::names));
 /// ```
 ///
 /// It reads the file that [`file`](crate::file) names for the root's name.

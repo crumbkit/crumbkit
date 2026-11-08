@@ -9,8 +9,7 @@ use std::fmt::Write as _;
 use std::fs;
 
 use clap::Command;
-use crumbkit::help::Guide;
-use crumbkit::{Code, Spelling};
+use crumbkit::{Code, Spelling, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -19,6 +18,7 @@ use crate::allow::{Allow, Rule};
 use crate::examples::Examples;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
+use crumbkit::tool::Failures;
 
 mod add_ons;
 mod all;
@@ -57,7 +57,7 @@ const OTHERS: &[Unprovoked<'_>] = &[
 const SHOW_7: &[Failing<'_>] = &[Failing::new(&NOT_FOUND, &["books", "show", "7"])];
 
 /// The tool's command tree: `tool books show` and `tool books list`.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool").subcommand(
         Command::new("books")
             .subcommand(Command::new("show"))
@@ -117,17 +117,17 @@ impl Setup {
     }
 }
 
-/// Runs the check of `recoveries` on `tool()` with `action`.
+/// Runs the check of `recoveries` on `tree()` with `action`.
 fn check_with(setup: &Setup, recoveries: &Recoveries<'_>, action: Action) {
-    check_in(setup, &Guide::new(), recoveries, action);
+    check_in(setup, &Tool::new(), recoveries, action);
 }
 
-/// Checks `recoveries` against `setup`'s tool with `guide`, as `check_with`
-/// does with a guide that sets no spelling.
-fn check_in(setup: &Setup, guide: &Guide, recoveries: &Recoveries<'_>, action: Action) {
+/// Checks `recoveries` against `setup`'s tool with `tool`, as `check_with`
+/// does with a tool record that sets no spelling.
+fn check_in(setup: &Setup, tool: &Tool, recoveries: &Recoveries<'_>, action: Action) {
     check(
-        &tool(),
-        guide,
+        &tree(),
+        tool,
         recoveries,
         &setup.golden(),
         &Assert::new().action(action),
@@ -458,12 +458,12 @@ fn an_undeclared_code_from_a_declared_component_fails_the_check_in_a_custom_spel
         ],
     );
 
-    let guide = Guide::new().spelling(DOTS);
+    let tool = Tool::new().failures(Failures::new().spelling(DOTS));
     let recoveries = Recoveries::new(Examples::new(&setup.script, ""), CODES)
         .starts(SHOW_7)
         .unprovoked(OTHERS);
     let problems =
-        panic_message(|| check_in(&setup, &guide, &recoveries, Action::Overwrite)).unwrap();
+        panic_message(|| check_in(&setup, &tool, &recoveries, Action::Overwrite)).unwrap();
 
     assert!(
         problems.contains(

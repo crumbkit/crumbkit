@@ -1,4 +1,4 @@
-//! Steps 3 and 4 of the tutorial: the pantry tool's guide gives its leaf
+//! Steps 3 and 4 of the tutorial: the pantry tool record gives its leaf
 //! examples, effects and a document, and its tests check it against
 //! crumbkit's conventions.
 
@@ -6,8 +6,8 @@ use std::fmt;
 use std::process::ExitCode;
 
 use clap::{Args, CommandFactory, Parser, Subcommand};
-use crumbkit::help::{Effects, Example, Guide, Leaf};
-use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, ViewFlags};
+use crumbkit::help::{Effects, Example, Help, Leaf};
+use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -81,14 +81,17 @@ const JARS_LIST: Document<Listing<Jar>> = Document::new(
     "One page of the jars in the pantry.",
 );
 
-/// pantry's guide: the examples, effects and document of `pantry jars list`.
-const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["jars", "list"])
-    .examples(&[
-        Example::new(&[], "Print the first page of jars"),
-        Example::new(&["--shelf", "top"], "Print the jars on the top shelf"),
-    ])
-    .effects(Effects::read_only())
-    .document(JARS_LIST)]);
+/// pantry's tool record: the examples, effects and document of `pantry jars
+/// list`.
+const TOOL: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["jars", "list"])
+        .examples(&[
+            Example::new(&[], "Print the first page of jars"),
+            Example::new(&["--shelf", "top"], "Print the jars on the top shelf"),
+        ])
+        .effects(Effects::read_only())
+        .document(JARS_LIST)]),
+);
 
 /// The code of a shelf that holds no jar.
 const SHELF_NOT_FOUND: Code = Code::new("pantry", "shelves", "not_found");
@@ -149,7 +152,7 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 }
 
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &GUIDE);
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &TOOL);
     let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),

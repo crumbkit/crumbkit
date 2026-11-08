@@ -95,7 +95,7 @@ fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> Out
     }
     OutputAssert::new(check_twin(
         &shelf::Cli::command(),
-        &shelf::GUIDE,
+        &shelf::TOOL,
         &SHELF,
         &failing,
         admitted,

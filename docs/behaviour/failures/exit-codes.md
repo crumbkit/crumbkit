@@ -21,10 +21,10 @@ Why: ADR-0037, ADR-0050, ADR-0042.
 ## Declaring codes
 
 A tool declares the exit codes it returns besides crumbkit's 0, 1 and 2 in
-its `Guide`, each an `Exit` with a one-sentence meaning and, optionally, the
+its `Tool`, each an `Exit` with a one-sentence meaning and, optionally, the
 command paths that return it. A code without paths covers every command, and
 a path covers its command and every command below it. The declaration lives
-on the `Guide`, because most codes apply to many commands.
+on the `Tool`, because most codes apply to many commands.
 
 `Exit::new` declares one code. A single code runs from 3 to 125, or from 129
 to 159 for a run that a signal ended, because a shell reports such a run as
@@ -34,21 +34,20 @@ from a first to a last code with one meaning, for a command that passes on
 another program's exit code, and a range runs from 3 to 255. `Exit::codes`
 returns the codes that an exit holds, and `Exit::code` returns the first.
 
-An `Exit` lists failure codes with `Exit::failures`. A run whose first
-failure has a listed code exits with that code in place of 1, in `finish`, a
-batch, a prose result and a stream alike. A listed code may be one of
-crumbkit's, such as the code of a refused command line, or the tool's rename
-of it. A rename that a leaf declares with `Leaf::codes` counts only in runs
-of that leaf's command, so an exit that lists a leaf's code covers the
-failure only there. The first failure decides, because the usage log and the
-`crumbkit.finish` span record its code, so a recorded `code` explains its
-`exit`. The guide holds the mapping beside the meaning, so crumbkit-test can
-predict each run's exit. A range names no single code to exit with, so the
-failures that a range lists never decide a run's exit, and such a failure
-exits with 1.
+An `Exit` lists failure codes with `Exit::failures`. A run whose first failure
+has a listed code exits with that code in place of 1, in `finish`, a batch, a
+prose result and a stream alike. A listed code may be one of crumbkit's, such as
+the code of a refused command line, or the tool's rename of it. A rename that a
+leaf declares with `Leaf::codes` counts only in runs of that leaf's command, so
+an exit that lists a leaf's code covers the failure only there. The first
+failure decides, because the usage log and the `crumbkit.finish` span record its
+code, so a recorded `code` explains its `exit`. The tool record holds the
+mapping beside the meaning, so crumbkit-test can predict each run's exit. A
+range names no single code to exit with, so the failures that a range lists
+never decide a run's exit, and such a failure exits with 1.
 
 The `Output` that `parse` returns, and the one that `Output::new` builds,
-copy the exits from the guide. A code from
+copy the exits from the tool record. A code from
 `Code::runtime` cannot be listed, so its failure exits with 1.
 
 Why: ADR-0037, ADR-0056, ADR-0060, ADR-0103.
@@ -66,10 +65,10 @@ and its text table ends with a note that names the codes and the topic
 ([commands list](../help/commands-list.md)). Each exit of a row holds `exit`
 and `last`, which equals `exit` for a single code.
 
-A tool that another program runs with fixed words sets `Guide::root` to the
+A tool that another program runs with fixed words sets `Help::root` to the
 path of the command that callers run first. cargo runs `cargo crumbkit help`
 as `cargo-crumbkit crumbkit help`, so cargo-crumbkit's clap root is `cargo`
-and its guide's root is `crumbkit`. That command answers `help` with the
+and its tool record's root is `crumbkit`. That command answers `help` with the
 topics, and its help has the `Topics:` line. The topic lines and the
 `commands list` note start with the clap root's name and the root's path,
 such as `cargo crumbkit help exit-codes`, so every printed command runs.
@@ -84,8 +83,8 @@ crumbkit-test's `check_exit_codes` reports each declaration that would give a
 code two meanings or leave a caller unable to read it, as its rustdoc lists.
 
 - `check_twin` and `check_recoveries` fail a run that exits otherwise than
-  `Guide::failure_exit` decides for the run's command path, unless its leaf passes on a program's exit
-  code.
+  `Tool::failure_exit` decides for the run's command path, unless its leaf
+  passes on a program's exit code.
 - A single code from 126 to 128 or from 160 to 255 needs an opt-out of
   `exit-codes/shell-code`, and 1 or 2 an opt-out of
   `exit-codes/shared-exit`, that covers every command returning it
@@ -100,7 +99,7 @@ crumbkit never checks the declarations at run time, so a wrong declaration
 cannot end a run.
 
 `self usage` and `self figures list` count each command's runs that exited
-with each code from 3, with the meaning that the guide declares for that
+with each code from 3, with the meaning that the tool record declares for that
 command, or null ([usage report](../usage-log/report.md)). A code inside a
 declared range gets the range's meaning.
 

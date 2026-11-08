@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 use snapbox::Assert;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 
@@ -19,9 +19,9 @@ mod tests;
 /// assertion does, naming every problem it finds.
 ///
 /// The documents are those that `crumbkit::schemas::documents` serves for
-/// `command` and `guide`, which `schemas show` prints: the document of each
-/// leaf of `guide` whose command is visible, and each file format that
-/// `Guide::file_formats` registers. The check skips the documents
+/// `command` and `tool`, which `schemas show` prints: the document of each
+/// leaf of `tool` whose command is visible, and each file format that
+/// `Help::file_formats` registers. The check skips the documents
 /// of the component `crumbkit`, such as `crumbkit/failure/v1` and
 /// `crumbkit/commands-list/v1`, because crumbkit's own tests pin their
 /// schemas. The golden file of a document is named after its id, such as
@@ -56,11 +56,11 @@ mod tests;
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 ///
 /// let shelf = Command::new("shelf");
 ///
-/// crumbkit_test::check_schema_goldens(&shelf, &Guide::new(), "tests/golden/schemas");
+/// crumbkit_test::check_schema_goldens(&shelf, &Tool::new(), "tests/golden/schemas");
 /// ```
 ///
 /// # Panics
@@ -69,21 +69,21 @@ mod tests;
 /// `SNAPSHOTS=overwrite` cannot write or delete a file. Each problem in the
 /// message starts on a new line and names the document by its id, such as
 /// `shelf/books-list/v1`.
-pub fn check_schema_goldens(command: &Command, guide: &Guide, dir: impl AsRef<Path>) {
+pub fn check_schema_goldens(command: &Command, tool: &Tool, dir: impl AsRef<Path>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, guide, dir.as_ref(), &assert);
+    check(command, tool, dir.as_ref(), &assert);
 }
 
 /// Runs [`check_schema_goldens`] with `assert`, whose action decides
 /// whether the check compares or overwrites, so a test chooses the action
 /// without setting `SNAPSHOTS`.
-fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
+fn check(command: &Command, tool: &Tool, dir: &Path, assert: &Assert) {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let mut problems = Vec::new();
-    find_conflicts(command, guide, &mut problems);
+    find_conflicts(command, tool, &mut problems);
     // Each golden file name with the id of the document that has it.
     let mut names: Vec<(String, String)> = Vec::new();
-    for served in crumbkit::schemas::documents(command, guide) {
+    for served in crumbkit::schemas::documents(command, tool) {
         let document = served.document();
         if document.component() == "crumbkit" {
             continue;
@@ -120,11 +120,12 @@ fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
     tree::report("golden schema rules", &problems);
 }
 
-/// Adds a problem to `problems` for each pair of leaves of `guide` that
+/// Adds a problem to `problems` for each pair of leaves of `tool` that
 /// declare one document id with different schemas, naming both command
 /// lines below `command`.
-fn find_conflicts(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
-    let leaves: Vec<_> = guide
+fn find_conflicts(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
+    let leaves: Vec<_> = tool
+        .get_help()
         .get_leaves()
         .iter()
         .filter_map(|leaf| Some((leaf, leaf.get_document()?.to_string())))

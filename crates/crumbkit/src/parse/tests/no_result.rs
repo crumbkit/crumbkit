@@ -8,18 +8,19 @@ use std::process::ExitCode;
 use clap::{Args as _, Command};
 
 use super::parse_to;
-use crate::help::{Guide, Leaf};
+use crate::help::{Help, Leaf};
 use crate::twins::assert_one_word_apart;
-use crate::{Code, Failure, Output, Recovery, Sink};
+use crate::{Code, Failure, Output, Recovery, Sink, Tool};
 
-const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]);
+const TOOL: Tool =
+    Tool::new().help(Help::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]));
 
 /// The `Output:` line of a leaf that prints no result.
 const OUTPUT_LINE: &str =
     "Output: no result on standard output, and --json prints a failure as JSON.";
 
 /// A tool with crumbkit's output flags on its root and one leaf, `serve`.
-fn tool() -> Command {
+fn tree() -> Command {
     crate::ViewFlags::augment_args(Command::new("tool"))
         .subcommand_required(true)
         .subcommand(Command::new("serve").about("Serve until interrupted"))
@@ -34,12 +35,12 @@ struct Parsed {
     err: String,
 }
 
-/// Runs `parse_to` over `tool()` with the guide's leaf and `args`.
+/// Runs `parse_to` over `tree()` with the tool record's leaf and `args`.
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     let (code, output) = match result {
         Ok(((), output)) => (None, Some(output)),
         Err(stop) => (Some(ExitCode::from(stop)), None),

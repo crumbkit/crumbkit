@@ -8,19 +8,20 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
+use crate::Tool;
 use crate::expect;
-use crate::help::{self, Effects, Guide, Leaf, ViewFlag, leaf, topic};
+use crate::help::{self, Effects, Leaf, ViewFlag, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
-/// applies to each of those commands the groups of `guide` that name it. A
+/// applies to each of those commands the groups of `tool` that name it. A
 /// guided group off `path` keeps clap's help, so the work grows with the
-/// typed depth. When the tool `has_topics`, the lines of the guide's root
-/// name the guide's topics and `exit-codes`. When `aliases` is set, the
+/// typed depth. When the tool `has_topics`, the lines of the tool record's root
+/// name the tool record's topics and `exit-codes`. When `aliases` is set, the
 /// lines of the clap root name the aliases that it returns for the clap
 /// root.
 ///
 /// The deepest command on `path` also gets the sections of the leaf of
-/// `guide` whose path is `path`, the first when two leaves share it. Its
+/// `tool` whose path is `path`, the first when two leaves share it. Its
 /// `--help` describes the leaf's columns only when `long_help` is set,
 /// because that builds the row type's JSON Schema. Its help also leaves out
 /// each global view flag that the leaf does not offer, and so does its
@@ -37,23 +38,23 @@ use crate::help::{self, Effects, Guide, Leaf, ViewFlag, leaf, topic};
 /// `Command::build` would build the whole tree.
 pub(super) fn add_help_lines(
     command: &mut Command,
-    guide: &Guide,
+    tool: &Tool,
     has_topics: bool,
     aliases: Option<fn(&Command) -> Vec<String>>,
     path: &[String],
     long_help: bool,
 ) {
-    let root = guide.root_in(command);
-    let tool = command.get_name();
+    let root = tool.get_help().root_in(command);
+    let tool_name = command.get_name();
     let aliases = match aliases.map(|names| names(command)) {
         Some(names) if !names.is_empty() => format!(
-            "Personal aliases: {}. `{tool} aliases list` shows what each runs.",
+            "Personal aliases: {}. `{tool_name} aliases list` shows what each runs.",
             names.join(", ")
         ),
         _ => String::new(),
     };
     let topics = if has_topics {
-        topic::names(guide.get_topics()).join(", ")
+        topic::names(tool.get_help().get_topics()).join(", ")
     } else {
         String::new()
     };
@@ -61,7 +62,11 @@ pub(super) fn add_help_lines(
     let styles = command.get_styles();
     let header = *styles.get_header();
     let literal = *styles.get_literal();
-    let leaf = guide.get_leaves().iter().find(|leaf| leaf.path() == path);
+    let leaf = tool
+        .get_help()
+        .get_leaves()
+        .iter()
+        .find(|leaf| leaf.path() == path);
 
     let mut text = command.get_name().to_owned();
     // The ids and the text of the global flags of the commands so far.
@@ -79,7 +84,7 @@ pub(super) fn add_help_lines(
             .filter(|(id, _)| at_leaf.is_none_or(|leaf| offers(leaf, id)))
             .map(|(_, flag)| flag.as_str())
             .collect();
-        apply_groups(node, guide, &path[..depth], header, literal);
+        apply_groups(node, tool, &path[..depth], header, literal);
         let sections = match at_leaf {
             Some(leaf) => leaf_sections(leaf, node, &text, long_help, header, literal),
             None => Sections::default(),
@@ -152,22 +157,22 @@ fn offers(leaf: &Leaf, id: &str) -> bool {
     ViewFlag::from_id(id).is_none_or(|flag| leaf.offers(flag))
 }
 
-/// Applies to `node`, the command at `path`, each group of `guide` whose
-/// path is `path`, in guide order, and at the root the guide's root verbs,
-/// as [`help::extend`] applies them.
-fn apply_groups(node: &mut Command, guide: &Guide, path: &[String], header: Style, literal: Style) {
+/// Applies to `node`, the command at `path`, each group of `tool` whose path is
+/// `path`, in declared order, and at the root the tool record's root verbs, as
+/// [`help::extend`] applies them.
+fn apply_groups(node: &mut Command, tool: &Tool, path: &[String], header: Style, literal: Style) {
     let verbs = if path.is_empty() {
-        guide.root_verb_names()
+        tool.get_help().root_verb_names()
     } else {
         &[]
     };
-    for group in guide.get_groups() {
+    for group in tool.get_help().get_groups() {
         if group.path() == path {
             help::apply(node, group, verbs, header, literal);
         }
     }
     if path.is_empty() {
-        help::apply_root_verbs(node, guide.get_groups(), verbs, header, literal);
+        help::apply_root_verbs(node, tool.get_help().get_groups(), verbs, header, literal);
     }
 }
 
@@ -272,7 +277,7 @@ fn leaf_sections(
 struct Lines<'a> {
     /// The visible global flags of the command and of the commands above it.
     flags: &'a str,
-    /// The names of the topics, which only the guide's root has.
+    /// The names of the topics, which only the tool record's root has.
     topics: &'a str,
     /// The whole line that names a person's aliases, which only the clap
     /// root has.

@@ -4,7 +4,8 @@
 
 use std::fs;
 
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::Tool;
+use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 
 use super::{examples, run};
@@ -13,10 +14,13 @@ use crate::testing::panic_message;
 
 #[test]
 fn the_check_s_own_xdg_directories_are_redacted_by_their_variable_names() {
-    const XDG: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &[r#"echo "$XDG_CONFIG_HOME $XDG_DATA_HOME $XDG_STATE_HOME $XDG_CACHE_HOME""#],
-        "Print the XDG directories",
-    )])]);
+    const XDG: Tool =
+        Tool::new().help(
+            Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+                &[r#"echo "$XDG_CONFIG_HOME $XDG_DATA_HOME $XDG_STATE_HOME $XDG_CACHE_HOME""#],
+                "Print the XDG directories",
+            )])]),
+        );
     let dir = TempDir::new("examples-goldens-xdg").unwrap();
 
     run(&XDG, &examples(&dir), Action::Overwrite);
@@ -32,8 +36,10 @@ fn the_check_s_own_xdg_directories_are_redacted_by_their_variable_names() {
 
 #[test]
 fn a_wildcard_in_an_example_golden_file_is_literal_text() {
-    const LITERAL: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo literal"], "Print")])]);
+    const LITERAL: Tool = Tool::new().help(
+        Help::new()
+            .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo literal"], "Print")])]),
+    );
     let dir = TempDir::new("examples-wildcard").unwrap();
     dir.write("sh-c-echo-literal.txt", "lit[..]\n");
 

@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{admits, parse, parse_tree, tool};
+use super::{admits, parse, parse_tree, tree};
 
 /// A tool whose `planets` group holds the visible leaves `show` and `weigh`
 /// and the hidden leaf `orbit` between them.
@@ -22,7 +22,7 @@ fn tool_with_three_leaves() -> Command {
 #[test]
 fn a_command_line_that_stops_at_a_group_prints_the_group_s_help_page_on_standard_error_with_code_2()
 {
-    admits(tool(), &["tool", "planets"], &["tool", "planets", "weigh"]);
+    admits(tree(), &["tool", "planets"], &["tool", "planets", "weigh"]);
     let parsed = parse(&["tool", "planets"]);
     let page = parse(&["tool", "planets", "-h"]).out;
 
@@ -55,7 +55,7 @@ fn a_group_that_clap_refuses_without_its_page_prints_its_help_page_too() {
 fn a_command_line_that_stops_at_a_group_with_json_prints_the_failure_document_that_names_its_subcommands()
  {
     let refused = ["tool", "planets", "--json"];
-    admits(tool(), &refused, &["tool", "planets", "weigh", "--json"]);
+    admits(tree(), &refused, &["tool", "planets", "weigh", "--json"]);
     let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));

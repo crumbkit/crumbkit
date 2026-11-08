@@ -130,10 +130,10 @@ impl Goal {
     }
 }
 
-/// Gives `node`, the command at the path of `group`, a help template that
-/// holds the headed list of `group`'s goals and of `verbs`, the guide's root
-/// verbs when `node` is the root and otherwise none, with `header` as the style of
-/// each heading and `literal` as the style of each name. It leaves `node`
+/// Gives `node`, the command at the path of `group`, a help template that holds
+/// the headed list of `group`'s goals and of `verbs`, the tool record's root
+/// verbs when `node` is the root and otherwise none, with `header` as the style
+/// of each heading and `literal` as the style of each name. It leaves `node`
 /// unchanged when the list would be empty. [`extend`](super::extend) and
 /// [`parse`](crate::parse) both apply a group through it.
 ///
@@ -189,7 +189,7 @@ pub(crate) fn apply(
     }
 }
 
-/// Gives `root`, the tool's root, the headed list of `verbs`, the guide's
+/// Gives `root`, the tool's root, the headed list of `verbs`, the tool record's
 /// root verbs, when `groups` holds no group of the root, which would list
 /// them itself. A root without root verbs keeps clap's list.
 /// [`extend`](super::extend) and [`parse`](crate::parse) both call it.
@@ -208,7 +208,7 @@ pub(crate) fn apply_root_verbs(
 /// Returns the help template of a guided command, with `list` after the
 /// usage line and `header` as the style of its `Options:` heading.
 ///
-/// It is clap's default template with the guide's list in place of
+/// It is clap's default template with the tool record's list in place of
 /// `{all-args}`. An empty `list` leaves its place to `{before-help}`, which
 /// then holds the list, as [`apply`] describes.
 //

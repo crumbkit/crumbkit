@@ -32,9 +32,12 @@ fn a_directory_that_does_not_exist_holds_no_lists() {
 }
 
 #[test]
-fn a_tool_without_lists_has_the_guide_and_the_commands_of_its_static_grammar() {
-    let guide = crate::guide(&[]);
-    assert_eq!(guide.get_leaves().len(), crate::GUIDE.get_leaves().len());
+fn a_tool_without_lists_has_the_tool_and_the_commands_of_its_static_grammar() {
+    let tool = crate::tool(&[]);
+    assert_eq!(
+        tool.get_help().get_leaves().len(),
+        crate::TOOL.get_help().get_leaves().len()
+    );
     let command = crate::command(&[]);
     let names: Vec<&str> = command
         .get_subcommands()

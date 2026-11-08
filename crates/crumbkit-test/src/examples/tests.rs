@@ -9,7 +9,8 @@ use std::fs;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::Tool;
+use crumbkit::help::{Example, Help, Leaf};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -41,18 +42,18 @@ fn sh() -> Command {
         .subcommand(Command::new("-e").hide(true).subcommand(Command::new("-c")))
 }
 
-/// The guide of `sh()`, whose three examples each print one word, and whose
-/// last leaf names no command of `sh()`.
-const GUIDE: Guide = Guide::new().leaves(&[
+/// The tool record of `sh()`, whose three examples each print one word, and
+/// whose last leaf names no command of `sh()`.
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["-c"]).examples(&[
         Example::new(&["echo books"], "Print a word"),
         Example::new(&["echo authors"], "Print another word"),
     ]),
     Leaf::new(&["-e", "-c"]).examples(&[Example::new(&["echo shelves"], "Print a third word")]),
     Leaf::new(&["books"]).examples(&[Example::new(&[], "Run a script named books")]),
-]);
+]));
 
-/// The golden files of `GUIDE`, sorted by name.
+/// The golden files of `TOOL`, sorted by name.
 const FILES: [&str; 3] = [
     "sh-c-echo-authors.txt",
     "sh-c-echo-books.txt",
@@ -69,13 +70,13 @@ fn examples(dir: &TempDir) -> Examples<'_> {
     Examples::new(SH, dir.path().to_str().unwrap())
 }
 
-/// Runs the check of `guide` on `sh()` with `examples` and `action`, and
+/// Runs the check of `tool` on `sh()` with `examples` and `action`, and
 /// returns the notes of the examples that it skipped for their
 /// preconditions.
-fn run(guide: &Guide, examples: &Examples<'_>, action: Action) -> Vec<String> {
+fn run(tool: &Tool, examples: &Examples<'_>, action: Action) -> Vec<String> {
     check(
         &sh(),
-        guide,
+        tool,
         examples,
         &Assert::new().action(action),
         super::TIMEOUT,
@@ -88,7 +89,7 @@ fn overwrite_writes_each_example_s_standard_output_to_its_golden_file_and_delete
     dir.write("sh-c-echo-titles.txt", "titles\n");
     dir.write("notes.md", "Only .txt files are golden files.\n");
 
-    run(&GUIDE, &examples(&dir), Action::Overwrite);
+    run(&TOOL, &examples(&dir), Action::Overwrite);
 
     let mut expected: Vec<&str> = FILES.to_vec();
     expected.insert(0, "notes.md");
@@ -100,9 +101,9 @@ fn overwrite_writes_each_example_s_standard_output_to_its_golden_file_and_delete
 #[test]
 fn golden_files_that_hold_every_example_s_output_pass() {
     let dir = TempDir::new("examples-pass").unwrap();
-    run(&GUIDE, &examples(&dir), Action::Overwrite);
+    run(&TOOL, &examples(&dir), Action::Overwrite);
 
-    run(&GUIDE, &examples(&dir), Action::Verify);
+    run(&TOOL, &examples(&dir), Action::Verify);
 }
 
 #[test]
@@ -111,7 +112,7 @@ fn an_example_without_a_golden_file_fails_the_check() {
     let file = |name: &str| dir.path().join(name).display().to_string();
 
     assert_eq!(
-        panic_message(|| run(&GUIDE, &examples(&dir), Action::Verify)).unwrap(),
+        panic_message(|| run(&TOOL, &examples(&dir), Action::Verify)).unwrap(),
         format!(
             "the command tree breaks crumbkit's example rules:\n\
              sh -c 'echo books': the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it\n\
@@ -127,10 +128,10 @@ fn an_example_without_a_golden_file_fails_the_check() {
 #[test]
 fn a_golden_file_whose_content_differs_fails_the_check() {
     let dir = TempDir::new("examples-differs").unwrap();
-    run(&GUIDE, &examples(&dir), Action::Overwrite);
+    run(&TOOL, &examples(&dir), Action::Overwrite);
     dir.write("sh-c-echo-books.txt", "volumes\n");
 
-    let message = panic_message(|| run(&GUIDE, &examples(&dir), Action::Verify)).unwrap();
+    let message = panic_message(|| run(&TOOL, &examples(&dir), Action::Verify)).unwrap();
 
     let heading = format!(
         "the command tree breaks crumbkit's example rules:\n\
@@ -149,11 +150,11 @@ fn a_golden_file_whose_content_differs_fails_the_check() {
 #[test]
 fn a_stale_golden_file_fails_the_check() {
     let dir = TempDir::new("examples-stale").unwrap();
-    run(&GUIDE, &examples(&dir), Action::Overwrite);
+    run(&TOOL, &examples(&dir), Action::Overwrite);
     dir.write("sh-c-echo-titles.txt", "titles\n");
 
     assert_eq!(
-        panic_message(|| run(&GUIDE, &examples(&dir), Action::Verify)).unwrap(),
+        panic_message(|| run(&TOOL, &examples(&dir), Action::Verify)).unwrap(),
         format!(
             "the command tree breaks crumbkit's example rules:\n\
              the golden file `{}` belongs to no checked example, and `SNAPSHOTS=overwrite` deletes it",
@@ -164,8 +165,9 @@ fn a_stale_golden_file_fails_the_check() {
 
 #[test]
 fn an_example_that_exits_with_a_non_zero_code_fails_the_check_and_overwrite_writes_no_file() {
-    const FAILS: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo partial; exit 3"], "Fail")])]);
+    const FAILS: Tool = Tool::new().help(Help::new().leaves(&[
+        Leaf::new(&["-c"]).examples(&[Example::new(&["echo partial; exit 3"], "Fail")]),
+    ]));
     let dir = TempDir::new("examples-exit-code").unwrap();
 
     assert_eq!(
@@ -178,8 +180,10 @@ fn an_example_that_exits_with_a_non_zero_code_fails_the_check_and_overwrite_writ
 
 #[test]
 fn a_binary_that_cannot_start_fails_the_check_naming_its_path_and_the_error() {
-    const ONE: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print")])]);
+    const ONE: Tool = Tool::new().help(
+        Help::new()
+            .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print")])]),
+    );
     const MISSING: Examples<'_> = Examples::new("/nonexistent/sh", "tests/golden/examples");
 
     let message =
@@ -197,8 +201,9 @@ fn a_binary_that_cannot_start_fails_the_check_naming_its_path_and_the_error() {
 
 #[test]
 fn failed_runs_and_broken_rules_are_reported_under_their_own_headings() {
-    const FAILS: Guide =
-        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["exit 3"], "Fail")])]);
+    const FAILS: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["exit 3"], "Fail")])]),
+    );
     let dir = TempDir::new("examples-headings").unwrap();
 
     assert_eq!(
@@ -219,9 +224,9 @@ fn the_examples_of_a_command_that_an_opt_out_names_and_of_everything_below_it_ar
         "The output names the day.",
     )];
     let dir = TempDir::new("examples-allow").unwrap();
-    run(&GUIDE, &examples(&dir), Action::Overwrite);
+    run(&TOOL, &examples(&dir), Action::Overwrite);
 
-    run(&GUIDE, &examples(&dir).allow(ALLOW), Action::Overwrite);
+    run(&TOOL, &examples(&dir).allow(ALLOW), Action::Overwrite);
 
     assert_eq!(dir.names(), FILES[..2]);
 }
@@ -231,8 +236,7 @@ fn an_opt_out_that_names_no_command_fails_the_check() {
     let dir = TempDir::new("examples-no-command").unwrap();
 
     assert_eq!(
-        panic_message(|| run(&GUIDE, &examples(&dir).allow(NO_COMMAND), Action::Overwrite))
-            .unwrap(),
+        panic_message(|| run(&TOOL, &examples(&dir).allow(NO_COMMAND), Action::Overwrite)).unwrap(),
         "the command tree breaks crumbkit's example rules:\n\
          the opt-out from `examples/run` for `sh books` names no command"
     );
@@ -240,10 +244,10 @@ fn an_opt_out_that_names_no_command_fails_the_check() {
 
 #[test]
 fn each_run_has_a_cleared_environment_with_the_tool_s_variables_and_fresh_xdg_directories() {
-    const ENVIRONMENT: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+    const ENVIRONMENT: Tool = Tool::new().help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
         &[r#"echo "[$HOME] [$SHELF_DATA]"; for dir in "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"; do test -d "$dir" && echo "${dir#/}"; done"#],
         "Print the environment",
-    )])]);
+    )])]));
     let dir = TempDir::new("examples-environment").unwrap();
     let examples = examples(&dir).env(&[("SHELF_DATA", "tests/fixtures/books.json")]);
 
@@ -296,10 +300,10 @@ fn a_quoted_word_names_the_golden_file_as_its_unquoted_letters_do() {
 
 #[test]
 fn two_examples_with_one_golden_file_name_fail_the_check_naming_both_command_lines() {
-    const TWINS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[
+    const TWINS: Tool = Tool::new().help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[
         Example::new(&["echo books"], "Print a word"),
         Example::new(&["echo 'books'"], "Print the same word"),
-    ])]);
+    ])]));
     let dir = TempDir::new("examples-collision").unwrap();
 
     assert_eq!(

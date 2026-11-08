@@ -3,19 +3,20 @@
 
 use std::fs;
 
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::Tool;
+use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 
 use super::{examples, run};
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
-/// The guide of two examples: the first lists the working directory and
+/// The tool record of two examples: the first lists the working directory and
 /// writes a file there, and the second lists it again.
-const WRITE: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[
+const WRITE: Tool = Tool::new().help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[
     Example::new(&["ls; touch made"], "List and write"),
     Example::new(&["ls"], "List"),
-])]);
+])]));
 
 /// Returns a fixture that holds the file `marker`.
 fn fixture(label: &str) -> TempDir {
@@ -42,9 +43,11 @@ fn each_example_starts_in_its_own_copy_of_the_fresh_dir_fixture_and_sees_no_file
 
 #[test]
 fn the_fresh_directory_and_its_canonical_path_are_redacted_as_root() {
-    const PWD: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"])
-            .examples(&[Example::new(&["pwd -L; pwd -P"], "Print the directory")])]);
+    const PWD: Tool =
+        Tool::new().help(
+            Help::new().leaves(&[Leaf::new(&["-c"])
+                .examples(&[Example::new(&["pwd -L; pwd -P"], "Print the directory")])]),
+        );
     let dir = TempDir::new("examples-fresh-root").unwrap();
     let fixture = fixture("examples-fresh-root-fixture");
     let path = fixture.path().display().to_string();
@@ -97,8 +100,8 @@ fn a_symbolic_link_in_the_fresh_dir_fixture_fails_the_run() {
 
 #[test]
 fn fresh_dir_and_current_dir_replace_each_other() {
-    const LS: Guide =
-        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["ls"], "List")])]);
+    const LS: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["ls"], "List")])]));
     let dir = TempDir::new("examples-fresh-replace").unwrap();
     let fixture = fixture("examples-fresh-replace-fixture");
     let work = TempDir::new("examples-fresh-replace-work").unwrap();

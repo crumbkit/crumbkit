@@ -1,5 +1,5 @@
-//! The convention tests of shelf, which hold its command tree, guide, help
-//! pages and examples to crumbkit's conventions with crumbkit-test.
+//! The convention tests of shelf, which hold its command tree, tool record,
+//! help pages and examples to crumbkit's conventions with crumbkit-test.
 //!
 //! They live in an integration test so that the example check can run the
 //! built binary, whose path cargo sets only for integration tests, and so
@@ -13,7 +13,7 @@ use crumbkit_test::{
     Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Twin, Twins,
     Unprovoked,
 };
-use shelf::{Cli, GUIDE};
+use shelf::{Cli, TOOL};
 
 /// The reason that the example check skips the examples of `self usage` and
 /// `self figures list`.
@@ -48,14 +48,14 @@ const EXAMPLES: Examples<'_> =
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&GUIDE), ALLOW);
+    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&TOOL), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_list_show_summarize_usage_or_remove() {
     crumbkit_test::check_grammar(
         &Cli::command(),
-        Pages::rendered(&GUIDE),
+        Pages::rendered(&TOOL),
         &["summarize", "usage", "remove"],
         ALLOW,
     );
@@ -63,7 +63,7 @@ fn every_command_is_a_resource_followed_by_list_show_summarize_usage_or_remove()
 
 #[test]
 fn every_command_declares_its_effects() {
-    crumbkit_test::check_effects(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_effects(&Cli::command(), &TOOL, ALLOW);
 }
 
 #[test]
@@ -78,56 +78,52 @@ fn every_option_with_many_values_accepts_repeats_and_commas() {
 
 #[test]
 fn every_command_leaf_and_topic_meets_the_guide_rules() {
-    crumbkit_test::check_guide(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_guide(&Cli::command(), &TOOL, ALLOW);
 }
 
 #[test]
 fn every_exit_code_meets_the_exit_code_rules() {
-    crumbkit_test::check_exit_codes(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_exit_codes(&Cli::command(), &TOOL, ALLOW);
 }
 
 #[test]
 fn every_help_page_fits_its_size_budget() {
-    crumbkit_test::check_help_sizes(&Cli::command(), Pages::rendered(&GUIDE), &BUDGETS);
+    crumbkit_test::check_help_sizes(&Cli::command(), Pages::rendered(&TOOL), &BUDGETS);
 }
 
 #[test]
 fn every_path_through_the_help_fits_its_weight_budget() {
-    crumbkit_test::check_path_weights(&Cli::command(), Pages::rendered(&GUIDE), &PATH_BUDGETS);
+    crumbkit_test::check_path_weights(&Cli::command(), Pages::rendered(&TOOL), &PATH_BUDGETS);
 }
 
 #[test]
 fn every_help_page_matches_its_golden_file() {
-    crumbkit_test::check_help_goldens(
-        &Cli::command(),
-        Pages::rendered(&GUIDE),
-        "tests/golden/help",
-    );
+    crumbkit_test::check_help_goldens(&Cli::command(), Pages::rendered(&TOOL), "tests/golden/help");
 }
 
 #[test]
 fn every_document_schema_matches_its_golden_file() {
-    crumbkit_test::check_schema_goldens(&Cli::command(), &GUIDE, "tests/golden/schemas");
+    crumbkit_test::check_schema_goldens(&Cli::command(), &TOOL, "tests/golden/schemas");
 }
 
 #[test]
 fn every_document_is_named_after_the_path_of_the_command_that_prints_it() {
-    crumbkit_test::check_document_ids(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_document_ids(&Cli::command(), &TOOL, ALLOW);
 }
 
 #[test]
 fn every_crumbkit_command_sits_at_its_fixed_path() {
-    crumbkit_test::check_mounts(&Cli::command(), &GUIDE);
+    crumbkit_test::check_mounts(&Cli::command(), &TOOL);
 }
 
 #[test]
-fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
-    crumbkit_test::check_examples(&Cli::command(), &GUIDE, &EXAMPLES);
+fn every_example_in_the_tool_runs_and_prints_its_golden_output() {
+    crumbkit_test::check_examples(&Cli::command(), &TOOL, &EXAMPLES);
 }
 
 #[test]
 fn every_json_example_cuts_or_refuses_a_result_past_its_output_budget() {
-    crumbkit_test::check_output_budget(&Cli::command(), &GUIDE, &EXAMPLES);
+    crumbkit_test::check_output_budget(&Cli::command(), &TOOL, &EXAMPLES);
 }
 
 #[test]
@@ -139,7 +135,7 @@ fn every_command_matches_the_checked_in_command_reference() {
 fn every_opt_out_matches_the_opt_out_report() {
     crumbkit_test::check_opt_outs(
         &Cli::command(),
-        &GUIDE,
+        &TOOL,
         ALLOW,
         &BUDGETS,
         Some(&PATH_BUDGETS),
@@ -226,7 +222,7 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[shelf::CODES])
 
 #[test]
 fn every_recovery_leads_to_a_command_that_runs() {
-    crumbkit_test::check_recoveries(&Cli::command(), &GUIDE, &RECOVERIES, "tests/golden");
+    crumbkit_test::check_recoveries(&Cli::command(), &TOOL, &RECOVERIES, "tests/golden");
 }
 
 /// The settings of shelf's twin check: one twin for each declared code that
@@ -244,5 +240,5 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[shelf::CODES])
 
 #[test]
 fn every_declared_code_has_a_twin_that_the_tool_accepts() {
-    crumbkit_test::check_twins(&Cli::command(), &GUIDE, &TWINS);
+    crumbkit_test::check_twins(&Cli::command(), &TOOL, &TWINS);
 }

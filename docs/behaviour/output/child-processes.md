@@ -49,7 +49,7 @@ comes from. Such a leaf needs no document
 
 `check_twin`, `check_twins` and `check_recoveries` let a failure of such a
 leaf end with any code but 0 when no exit lists the failure. A listed
-failure and a refused command line still exit as `Guide::failure_exit`
+failure and a refused command line still exit as `Tool::failure_exit`
 decides. An unlisted failure never exits with a code that an exit gives
 listed failures, because a caller would read it as one of them. A failure
 on a leaf without the declaration must exit with 1, so a test that provokes
@@ -82,13 +82,12 @@ Why: ADR-0042, ADR-0029, ADR-0057.
 ## `--json` and `--fields`
 
 The child's output is text that the terminal shows, so `hand_over` refuses
-`--json` and `--fields` with `<tool>::cli::usage` before the child starts.
-The refusal happens when the command runs, so help still lists the global
-`--json`, and it exits with the code that the guide gives a refused command
-line, which is 2 unless the guide lists another. The `--json` refusal
-prints as a failure document on standard output, as every refusal under
-`--json` does, with `--json` as its `argument` field. A tool that wants a
-child's JSON runs the child itself, reads its standard output, and prints
-the value with `finish`.
+`--json` and `--fields` with `<tool>::cli::usage` before the child starts. The
+refusal happens when the command runs, so help still lists the global `--json`,
+and it exits with the code that the tool gives a refused command line,
+which is 2 unless the tool lists another. The `--json` refusal prints as
+a failure document on standard output, as every refusal under `--json` does,
+with `--json` as its `argument` field. A tool that wants a child's JSON runs the
+child itself, reads its standard output, and prints the value with `finish`.
 
 Why: ADR-0042, ADR-0095.

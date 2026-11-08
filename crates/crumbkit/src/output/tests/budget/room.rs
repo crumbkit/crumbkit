@@ -4,8 +4,8 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::help::Guide;
-use crate::{Batch, Document, Error, JsonLayout, Row};
+use crate::tool::Output;
+use crate::{Batch, Document, Error, JsonLayout, Row, Tool};
 
 use super::{STAR_BATCH, Star, budgeted, finish_output, guided, star};
 
@@ -19,12 +19,14 @@ fn answered(rows: Vec<Star>) -> Batch<Star, Error> {
 
 #[test]
 fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
-    let guide = Guide::new()
-        .output_budget(1 << 20, "the tests print little")
-        .json_layout(JsonLayout::Pretty {
-            reason: "the readers expect it",
-        });
-    let output = guided(&guide, &["--json", "--fields", "story"]);
+    let tool = Tool::new().output(
+        Output::new()
+            .budget(1 << 20, "the tests print little")
+            .json_layout(JsonLayout::Pretty {
+                reason: "the readers expect it",
+            }),
+    );
+    let output = guided(&tool, &["--json", "--fields", "story"]);
     let mut room = output.room(STAR_BATCH);
     let mut batch = answered(Vec::new());
     assert!(room.has_room(&batch));
@@ -36,7 +38,7 @@ fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
 
     assert_eq!(room.printed(), finished.out.len(), "{}", finished.out);
     let flags = ["--json", "--fields", "story"];
-    let nothing = finish_output(guided(&guide, &flags), STAR_BATCH, answered(Vec::new()));
+    let nothing = finish_output(guided(&tool, &flags), STAR_BATCH, answered(Vec::new()));
     assert_eq!(empty, nothing.out.len());
 }
 

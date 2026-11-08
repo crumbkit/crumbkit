@@ -47,7 +47,7 @@
       }
     }
   ],
-  "customisations": [
+  "declarations": [
     {
       "declaration": "refusal-alternatives",
       "applies_to": "shelf books show",

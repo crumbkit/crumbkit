@@ -8,9 +8,8 @@ use clap::{Arg, ArgAction, Command};
 
 use super::message::message;
 use super::{Stop, Unparsed, parse_to, try_parse_to};
-use crate::Sink;
-use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
+use crate::{Sink, Tool};
 
 mod aliases;
 mod alternatives;
@@ -36,7 +35,7 @@ mod views;
 
 /// A tool with two global flags, a version, and a group that holds a visible
 /// leaf with an alias and a hidden leaf.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .version("1.2.3")
         .about("Explore a small solar system")
@@ -98,10 +97,10 @@ struct Parsed {
     err: String,
 }
 
-/// Runs `parse_to` over `tool()` with `args` into memory, for a command line
+/// Runs `parse_to` over `tree()` with `args` into memory, for a command line
 /// that does not parse.
 fn parse(args: &[&str]) -> Parsed {
-    parse_tree(tool(), args)
+    parse_tree(tree(), args)
 }
 
 /// Runs `try_parse_to` over `command` with `args` into memory, for a
@@ -114,7 +113,7 @@ fn parse_tree(command: Command, args: &[&str]) -> Parsed {
     let result = try_parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         command,
-        &Guide::new(),
+        &Tool::new(),
         args,
     );
     let stop = result.err().map(|unparsed| match unparsed {
@@ -150,7 +149,7 @@ fn admits(command: Command, refused: &[&str], admitted: &[&str]) {
 fn a_refused_command_line_prints_the_usage_failure_on_standard_error_and_exits_with_code_2() {
     let refused = ["tool", "planets", "show", "Mars", "--srot", "name"];
     admits(
-        tool(),
+        tree(),
         &refused,
         &["tool", "planets", "show", "Mars", "--sort", "name"],
     );
@@ -173,7 +172,7 @@ fn a_refused_command_line_with_json_prints_the_failure_document_and_its_stop_ask
         "tool", "planets", "show", "Mars", "--srot", "name", "--json",
     ];
     admits(
-        tool(),
+        tree(),
         &refused,
         &[
             "tool", "planets", "show", "Mars", "--sort", "name", "--json",
@@ -209,8 +208,8 @@ fn a_value_of_an_option_that_allows_hyphen_values_is_no_request_for_json() {
         "Mars",
         "--srot",
     ];
-    admits(tool().arg(pattern.clone()), &refused, &refused[..6]);
-    let parsed = parse_tree(tool().arg(pattern), &refused);
+    admits(tree().arg(pattern.clone()), &refused, &refused[..6]);
+    let parsed = parse_tree(tree().arg(pattern), &refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.json, Some(false));
@@ -225,7 +224,7 @@ fn a_value_of_an_option_that_allows_hyphen_values_is_no_request_for_json() {
 #[test]
 fn the_recovery_names_a_command_typed_by_its_alias_by_its_real_name() {
     let refused = ["tool", "planets", "get", "--bogus"];
-    admits(tool(), &refused, &["tool", "planets", "get", "Mars"]);
+    admits(tree(), &refused, &["tool", "planets", "get", "Mars"]);
     let parsed = parse(&refused);
 
     assert!(parsed.err.contains("  help:  run `tool planets show -h`\n"));
@@ -234,7 +233,7 @@ fn the_recovery_names_a_command_typed_by_its_alias_by_its_real_name() {
 #[test]
 fn the_recovery_names_a_hidden_command_that_the_caller_typed() {
     let refused = ["tool", "planets", "weigh", "--bogus"];
-    admits(tool(), &refused, &refused[..3]);
+    admits(tree(), &refused, &refused[..3]);
     let parsed = parse(&refused);
 
     assert!(
@@ -247,7 +246,7 @@ fn the_recovery_names_a_hidden_command_that_the_caller_typed() {
 #[test]
 fn the_walk_stops_at_a_double_dash() {
     let refused = ["tool", "planets", "--", "show", "Mars"];
-    admits(tool(), &refused, &["tool", "planets", "show", "Mars"]);
+    admits(tree(), &refused, &["tool", "planets", "show", "Mars"]);
     let parsed = parse(&refused);
 
     assert!(parsed.err.contains("  help:  run `tool planets -h`\n"));
@@ -306,9 +305,9 @@ Options:
     assert_eq!(parsed.out, expected);
 }
 
-/// `tool()` with a global flag that the `planets` group defines.
+/// `tree()` with a global flag that the `planets` group defines.
 fn tool_with_a_group_global() -> Command {
-    tool().mut_subcommand("planets", |planets| {
+    tree().mut_subcommand("planets", |planets| {
         planets.arg(
             Arg::new("units")
                 .long("units")
@@ -383,7 +382,7 @@ Next: tool planets <COMMAND> -h
 
 #[test]
 fn a_tool_s_own_after_help_prints_before_crumbkit_s_lines_in_short_and_long_help() {
-    let tool = tool().after_help("Report bugs at https://example.org/bugs.");
+    let tool = tree().after_help("Report bugs at https://example.org/bugs.");
 
     let short = parse_tree(tool.clone(), &["tool", "-h"]).out;
     let long = parse_tree(tool, &["tool", "--help"]).out;
@@ -415,7 +414,7 @@ Next: tool <COMMAND> -h
 
 #[test]
 fn a_tool_s_own_after_long_help_prints_before_crumbkit_s_lines_in_long_help_only() {
-    let tool = tool()
+    let tool = tree()
         .after_help("Report bugs.")
         .after_long_help("Report bugs at https://example.org/bugs.");
 
@@ -458,8 +457,8 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(Failing(io::ErrorKind::BrokenPipe), &mut err),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         ["tool", "-h"],
     );
 
@@ -472,8 +471,8 @@ fn a_page_that_cannot_be_written_stops_with_exit_1() {
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(Failing(io::ErrorKind::Other), &mut err),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         ["tool", "-h"],
     );
 

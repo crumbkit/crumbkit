@@ -8,8 +8,8 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{COMMANDS_LIST, CommandRow, CommandsList, list};
-use crate::help::{Example, Goal, Group, Guide, Leaf};
-use crate::{Document, Error, Listing, Output, Row, Sink, finish_to};
+use crate::help::{Example, Goal, Group, Help, Leaf};
+use crate::{Document, Error, Listing, Output, Row, Sink, Tool, finish_to};
 
 mod arguments;
 mod exits;
@@ -36,29 +36,31 @@ impl Row for Book {
 
 const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1, "The test rows.");
 
-/// A guide with one leaf, whose example has a word that needs quoting, and
-/// a group for `books`, whose goals name its subcommands in an order of
+/// A tool record with one leaf, whose example has a word that needs quoting,
+/// and a group for `books`, whose goals name its subcommands in an order of
 /// their own and name the hidden `purge`, once beside a visible command and
 /// once alone.
-const GUIDE: Guide = Guide::new()
-    .groups(&[Group::new(
-        &["books"],
-        &[
-            Goal::new("Read", &["show", "purge", "list"]),
-            Goal::new("Clean", &["purge"]),
-        ],
-    )])
-    .leaves(&[Leaf::new(&["books", "list"])
-        .examples(&[
-            Example::new(&[], "Print the first page of books"),
-            Example::new(&["--form", "short stories"], "Print the collections"),
-        ])
-        .document(BOOKS_LIST)]);
+const TOOL: Tool = Tool::new().help(
+    Help::new()
+        .groups(&[Group::new(
+            &["books"],
+            &[
+                Goal::new("Read", &["show", "purge", "list"]),
+                Goal::new("Clean", &["purge"]),
+            ],
+        )])
+        .leaves(&[Leaf::new(&["books", "list"])
+            .examples(&[
+                Example::new(&[], "Print the first page of books"),
+                Example::new(&["--form", "short stories"], "Print the collections"),
+            ])
+            .document(BOOKS_LIST)]),
+);
 
 /// A tool with a global flag, a visible branch, a hidden branch, a hidden
 /// argument and the `commands list` command, as `crumbkit::parse` returns
 /// it with clap's generated `help` subcommand turned off.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("shelf")
         .about("Browse a catalogue")
         .version("1.0.0")
@@ -124,12 +126,12 @@ fn tool() -> Command {
 
 /// Returns the output of a run of the tool with every view flag off.
 fn output() -> Output {
-    Output::of(tool())
+    Output::of(tree())
 }
 
 /// Parses `words` after `shelf commands list` into the command's arguments.
 fn args(words: &[&str]) -> CommandsList {
-    let mut command = tool();
+    let mut command = tree();
     let matches = command
         .try_get_matches_from_mut(["shelf", "commands", "list"].iter().chain(words))
         .unwrap();
@@ -140,7 +142,7 @@ fn args(words: &[&str]) -> CommandsList {
 
 /// Lists the branch that `words` name and returns the listing as JSON.
 fn listed(words: &[&str]) -> Value {
-    serde_json::to_value(list(&mut output(), &GUIDE, &args(words)).unwrap()).unwrap()
+    serde_json::to_value(list(&mut output(), &TOOL, &args(words)).unwrap()).unwrap()
 }
 
 /// Returns the path of each row of `rows`.
@@ -183,7 +185,7 @@ struct Finished {
 fn finish(mut output: Output, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result: Result<Listing<CommandRow>, Error> = list(&mut output, &GUIDE, &args(words));
+    let result: Result<Listing<CommandRow>, Error> = list(&mut output, &TOOL, &args(words));
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
@@ -226,8 +228,8 @@ fn no_path_lists_the_whole_tree_and_leaves_out_a_hidden_command_and_everything_b
 
 #[test]
 fn a_path_resolves_an_alias_to_the_command_s_real_name() {
-    let mut output = Output::of(tool().mut_subcommand("books", |books| books.alias("book")));
-    let listing = list(&mut output, &GUIDE, &args(&["book", "show"])).unwrap();
+    let mut output = Output::of(tree().mut_subcommand("books", |books| books.alias("book")));
+    let listing = list(&mut output, &TOOL, &args(&["book", "show"])).unwrap();
     let rows = serde_json::to_value(listing).unwrap();
 
     assert_eq!(paths(&rows), ["shelf books show"]);
@@ -368,7 +370,7 @@ fn one_of_names_visible_required_group_members_and_conflicts_of_required_argumen
                 .required(true),
         )
         .group(ArgGroup::new("loose").args(["ids", "quiet"]));
-    let row = CommandRow::new("shelf", &["show"], &command, None, &Guide::new());
+    let row = CommandRow::new("shelf", &["show"], &command, None, &Tool::new());
     let row = serde_json::to_value(row).unwrap();
 
     let one_of: Value = row["arguments"]
@@ -432,13 +434,13 @@ fn a_command_without_a_leaf_has_no_examples_and_no_columns() {
 #[test]
 fn the_rows_are_the_same_from_the_command_that_parse_returns_after_it_added_help_lines() {
     let words = ["shelf", "books", "list"];
-    let ((), mut from_parse) = crate::parse_from::<(), _, _>(tool(), &GUIDE, words)
+    let ((), mut from_parse) = crate::parse_from::<(), _, _>(tree(), &TOOL, words)
         .ok()
         .unwrap();
 
-    let rows = list(&mut from_parse, &GUIDE, &args(&[])).unwrap();
+    let rows = list(&mut from_parse, &TOOL, &args(&[])).unwrap();
 
-    assert_eq!(rows, list(&mut output(), &GUIDE, &args(&[])).unwrap());
+    assert_eq!(rows, list(&mut output(), &TOOL, &args(&[])).unwrap());
 }
 
 #[test]
@@ -493,7 +495,7 @@ fn a_path_whose_first_word_names_no_command_recovers_with_the_whole_tree() {
 
 #[test]
 fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
-    let output = Output::of(tool().mut_subcommand("commands", |commands| commands.hide(true)));
+    let output = Output::of(tree().mut_subcommand("commands", |commands| commands.hide(true)));
 
     let finished = finish(output, &["comets"]);
 

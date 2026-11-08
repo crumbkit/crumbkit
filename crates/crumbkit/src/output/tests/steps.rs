@@ -8,7 +8,7 @@ use clap::CommandFactory as _;
 use serde_json::Value;
 
 use super::{
-    PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse_against, saturn,
+    Cli, PLANET_LISTING, Planet, finish_output, finish_with, mercury, parse_against, saturn,
 };
 use crate::conforms::conforms;
 use crate::schemas::document_schema;
@@ -136,7 +136,7 @@ fn the_json_of_a_listing_with_a_next_step_and_steps_matches_the_document_schema(
 #[test]
 fn a_step_that_names_a_hidden_command_is_left_out_of_the_text_and_of_next() {
     let hidden = clap::Command::new("purge").hide(true);
-    let flags = |flags: &[&str]| parse_against(Tool::command().subcommand(hidden.clone()), flags);
+    let flags = |flags: &[&str]| parse_against(Cli::command().subcommand(hidden.clone()), flags);
     let listing = || {
         two_of_eight()
             .step(Step::new("Purge the planets.").call(Call::new(&["purge"])))
@@ -176,7 +176,7 @@ fn a_step_whose_argument_holds_a_control_character_is_left_out_whole_and_json_ha
 
 #[test]
 fn steps_print_before_the_dry_run_line() {
-    let mut output = parse_against(Tool::command(), &[]);
+    let mut output = parse_against(Cli::command(), &[]);
     output.dry_run = true;
     let listing = two_of_eight().step(Step::new("Push the commit.").run(GIT, ["push"]));
 

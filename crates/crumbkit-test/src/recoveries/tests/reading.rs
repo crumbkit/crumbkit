@@ -1,13 +1,12 @@
 //! Tests for the recovery check on a tool that prints its failures without
 //! a crumbkit document: through a `FailureReader`, or as a `code:` line.
 
-use crumbkit::FieldValue;
 use crumbkit::form::{ReadFailure, RecoveryStep};
-use crumbkit::help::Guide;
+use crumbkit::{FieldValue, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
-use super::{Answer, CODES, OTHERS, SHOW_7, Setup, tool};
+use super::{Answer, CODES, OTHERS, SHOW_7, Setup, tree};
 use crate::allow::{Allow, Rule};
 use crate::examples::Examples;
 use crate::failures::FailureReader;
@@ -67,8 +66,8 @@ fn checked(
         .unprovoked(OTHERS);
     let message = panic_message(|| {
         check(
-            &tool(),
-            &Guide::new(),
+            &tree(),
+            &Tool::new(),
             &recoveries,
             &setup.golden(),
             &Assert::new().action(Action::Overwrite),

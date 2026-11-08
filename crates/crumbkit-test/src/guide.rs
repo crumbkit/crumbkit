@@ -1,10 +1,10 @@
-//! The guide check, which keeps a tool's goal headings, leaves and help
+//! The tool record check, which keeps a tool's goal headings, leaves and help
 //! topics in step with its command tree.
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
-use crumbkit::Shape;
-use crumbkit::help::{Column, Guide, Leaf, ViewFlag, quote};
+use crumbkit::help::{Column, Leaf, ViewFlag, quote};
+use crumbkit::{Shape, Tool};
 
 use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, DASHED_NAME};
@@ -14,19 +14,18 @@ mod document;
 #[cfg(test)]
 mod tests;
 
-/// Checks that `guide` names the commands of the tree of `command` as
+/// Checks that `tool` names the commands of the tree of `command` as
 /// crumbkit's goal headings list them and as its leaves describe them, and
 /// panics, as a failed test assertion does, naming every problem it finds.
 ///
-/// `crumbkit::parse` and `crumbkit::help::extend` never fail on a guide at
-/// runtime: they skip a group, a leaf or a name that matches no command,
-/// and list a visible subcommand that no goal names under a final
-/// `Commands` heading. This check catches each of those cases in a test
-/// instead. A group's path
-/// runs from `command`, and the check reads the tree as the tool built it,
+/// `crumbkit::parse` and `crumbkit::help::extend` never fail on a tool record
+/// at runtime: they skip a group, a leaf or a name that matches no command, and
+/// list a visible subcommand that no goal names under a final `Commands`
+/// heading. This check catches each of those cases in a test instead. A group's
+/// path runs from `command`, and the check reads the tree as the tool built it,
 /// so clap's generated `help` subcommand is never a child. It finds:
 ///
-/// - a root, set with `Guide::root`, whose path names no command, matching
+/// - a root, set with `Help::root`, whose path names no command, matching
 ///   real names only, because `parse` then answers topics at the clap root;
 /// - a group whose path names no command, matching real names only;
 /// - a group whose path names a command without subcommands;
@@ -151,29 +150,33 @@ mod tests;
 /// The check fails on such an opt-out that names no command or excuses no
 /// problem, so the opt-out goes once the command has an example or a
 /// document. The other rules take no opt-out, because a tool that wants
-/// clap's list for a command leaves that command out of the guide, and
+/// clap's list for a command leaves that command out of the tool record, and
 /// each other problem is a name or a declaration that the tool can
 /// correct. The check reads only the opt-outs of its own rules, so a tool
 /// passes the one list that it passes to every check.
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
+/// use crumbkit::Tool;
+/// use crumbkit::help::{Example, Goal, Group, Help, Leaf, Topic};
 ///
-/// const GUIDE: Guide = Guide::new()
-///     .groups(&[Group::new(
-///         &["books"],
-///         &[Goal::new("Read", &["list", "show"])],
-///     )])
-///     .leaves(&[
-///         Leaf::new(&["books", "list"]).examples(&[Example::new(&[], "Print the books")]),
-///         Leaf::new(&["books", "show"]).examples(&[Example::new(&[], "Show the first book")]),
-///     ])
-///     .topics(&[Topic::new(
-///         "catalogue",
-///         "Where the books come from",
-///         "The catalogue is built into the binary.\n",
-///     )]);
+/// const TOOL: Tool = Tool::new().help(
+///     Help::new()
+///         .groups(&[Group::new(
+///             &["books"],
+///             &[Goal::new("Read", &["list", "show"])],
+///         )])
+///         .leaves(&[
+///             Leaf::new(&["books", "list"]).examples(&[Example::new(&[], "Print the books")]),
+///             Leaf::new(&["books", "show"])
+///                 .examples(&[Example::new(&[], "Show the first book")]),
+///         ])
+///         .topics(&[Topic::new(
+///             "catalogue",
+///             "Where the books come from",
+///             "The catalogue is built into the binary.\n",
+///         )]),
+/// );
 ///
 /// let shelf = Command::new("shelf").subcommand(
 ///     Command::new("books")
@@ -181,26 +184,26 @@ mod tests;
 ///         .subcommand(Command::new("show")),
 /// );
 ///
-/// crumbkit_test::check_guide(&shelf, &GUIDE, &[]);
+/// crumbkit_test::check_guide(&shelf, &TOOL, &[]);
 /// ```
 ///
 /// # Panics
 ///
-/// Panics when the guide breaks a rule above, or when an opt-out from
+/// Panics when the tool record breaks a rule above, or when an opt-out from
 /// [`Rule::GuideExamples`] or [`Rule::GuideDocument`] names no command or
 /// excuses no problem. The
 /// message lists each problem on its own line and names each command by its
 /// path from `command`, such as `shelf books`.
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
-pub fn check_guide(command: &Command, guide: &Guide, allow: &[Allow]) {
+pub fn check_guide(command: &Command, tool: &Tool, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::GuideExamples, Rule::GuideDocument]);
     let mut problems = Vec::new();
-    let root = guide.get_root();
+    let root = tool.get_help().get_root();
     if tree::find(command, root.iter().copied()).is_none() {
         problems.push(format!("the root `{}` names no command", root.join(" ")));
     }
-    let groups = guide.get_groups();
+    let groups = tool.get_help().get_groups();
     for (index, group) in groups.iter().enumerate() {
         let path = group.path();
         let Some(node) = tree::find(command, path.iter().copied()) else {
@@ -213,7 +216,7 @@ pub fn check_guide(command: &Command, guide: &Guide, allow: &[Allow]) {
             .join(" ");
         if !node.has_subcommands() {
             problems.push(format!(
-                "{text}: the guide gives the command goals, and it has no subcommands to list under them"
+                "{text}: the tool record gives the command goals, and it has no subcommands to list under them"
             ));
             continue;
         }
@@ -269,23 +272,23 @@ pub fn check_guide(command: &Command, guide: &Guide, allow: &[Allow]) {
             }
         }
     }
-    check_leaves(command, guide, &mut allowances, &mut problems);
-    check_topics(command, guide, &mut problems);
+    check_leaves(command, tool, &mut allowances, &mut problems);
+    check_topics(command, tool, &mut problems);
     allowances.report(command, "guide rules", problems);
 }
 
-/// Adds a problem to `problems` for each leaf of `guide` that breaks a leaf
+/// Adds a problem to `problems` for each leaf of `tool` that breaks a leaf
 /// rule of [`check_guide`], and for each visible command without
 /// subcommands that no leaf with an example names and no opt-out in
 /// `allowances` covers.
 fn check_leaves(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     allowances: &mut Allowances<'_>,
     problems: &mut Vec<String>,
 ) {
-    let tool = command.get_name();
-    let leaves = guide.get_leaves();
+    let tool_name = command.get_name();
+    let leaves = tool.get_help().get_leaves();
     // clap builds the tree that it parses, so the examples parse against a
     // copy, and `command` stays as the tool built it for the other rules.
     let mut parser = command.clone();
@@ -295,13 +298,13 @@ fn check_leaves(
             problems.push(format!("the leaf `{}` names no command", path.join(" ")));
             continue;
         };
-        let text = std::iter::once(tool)
+        let text = std::iter::once(tool_name)
             .chain(path.iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
         if node.has_subcommands() {
             problems.push(format!(
-                "{text}: the guide declares the command a leaf, and it has subcommands"
+                "{text}: the tool record declares the command a leaf, and it has subcommands"
             ));
             continue;
         }
@@ -317,7 +320,7 @@ fn check_leaves(
             ));
         }
         for example in leaf.get_examples() {
-            let args = std::iter::once(tool)
+            let args = std::iter::once(tool_name)
                 .chain(path.iter().copied())
                 .chain(example.words().iter().copied());
             let line = command_line(&text, example.words());
@@ -528,11 +531,11 @@ pub(crate) fn command_line(text: &str, words: &[&str]) -> String {
     line
 }
 
-/// Adds a problem to `problems` for each topic of `guide` that breaks a
+/// Adds a problem to `problems` for each topic of `tool` that breaks a
 /// topic rule of [`check_guide`].
-fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
-    let tool = command.get_name();
-    let topics = guide.get_topics();
+fn check_topics(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
+    let tool_name = command.get_name();
+    let topics = tool.get_help().get_topics();
     for (index, topic) in topics.iter().enumerate() {
         let name = topic.name();
         if !crumbkit::is_dashed(name) {
@@ -541,7 +544,7 @@ fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
         // `find_subcommand` resolves aliases, as `parse` does.
         if let Some(subcommand) = command.find_subcommand(name) {
             problems.push(format!(
-                "the topic `{name}` is a name of the command `{tool} {}`, so `{tool} help {name}` prints that command's help",
+                "the topic `{name}` is a name of the command `{tool_name} {}`, so `{tool_name} help {name}` prints that command's help",
                 subcommand.get_name()
             ));
         }
@@ -549,7 +552,7 @@ fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
         // for a tool's topic with that name.
         if name == "exit-codes" {
             problems.push(format!(
-                "the topic `{name}` has the name of crumbkit's own topic, so `{tool} help {name}` prints crumbkit's exit codes in its place"
+                "the topic `{name}` has the name of crumbkit's own topic, so `{tool_name} help {name}` prints crumbkit's exit codes in its place"
             ));
         }
         if topic.text().trim().is_empty() {
@@ -563,7 +566,7 @@ fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             .count();
         if earlier == 1 {
             problems.push(format!(
-                "two topics are named `{name}`, and `{tool} help {name}` prints only the first"
+                "two topics are named `{name}`, and `{tool_name} help {name}` prints only the first"
             ));
         }
     }

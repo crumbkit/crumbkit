@@ -3,14 +3,13 @@
 use clap::{Args as _, Command, CommandFactory as _, Parser, Subcommand};
 
 use super::Yes;
-use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Call, DryRun, Error, NoInput, Output, Recovery, Sink, Spelling, ViewFlags};
+use crate::{Call, DryRun, Error, NoInput, Output, Recovery, Sink, Spelling, Tool, ViewFlags};
 
 /// A tool whose `remove` command takes `--dry-run` and `--yes`.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Commands,
     #[command(flatten)]
@@ -40,16 +39,16 @@ struct Confirmed {
 /// records a `--dry-run` among them, and asks "Remove Pluto?" with `input` as the caller's
 /// answer, through a sink that is `interactive` or not.
 fn confirm(words: &[&str], input: &str, interactive: bool) -> Confirmed {
-    confirm_with(&Guide::new(), words, input, interactive)
+    confirm_with(&Tool::new(), words, input, interactive)
 }
 
-/// Asks as [`confirm`] does, with the tool parsed against `guide`.
-fn confirm_with(guide: &Guide, words: &[&str], input: &str, interactive: bool) -> Confirmed {
+/// Asks as [`confirm`] does, with the tool parsed against `tool`.
+fn confirm_with(tool: &Tool, words: &[&str], input: &str, interactive: bool) -> Confirmed {
     let args = std::iter::once("tool").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let (tool, mut output) =
-        crate::parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), guide, args).unwrap();
-    let Commands::Remove { yes, .. } = tool.command;
+    let (tool_name, mut output) =
+        crate::parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), tool, args).unwrap();
+    let Commands::Remove { yes, .. } = tool_name.command;
     let mut err = Vec::new();
     let mut sink = Sink::with_input(Vec::new(), &mut err, input.as_bytes(), interactive);
     let result = output.confirm_to(&mut sink, yes, "Remove Pluto?");
@@ -127,12 +126,12 @@ fn without_a_terminal_the_run_fails_with_the_same_command_and_yes_as_its_recover
 #[test]
 fn a_tool_that_parses_with_clap_alone_gets_the_same_command_and_yes_as_its_recovery() {
     let words = ["tool", "remove", "pluto"];
-    let tool = Tool::try_parse_from(words).unwrap();
+    let tool = Cli::try_parse_from(words).unwrap();
     let mut output = Output::new(
         tool.view,
         DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         words,
     )
     .unwrap();
@@ -154,14 +153,14 @@ fn yes_is_the_flag_yes_and_serializes_as_one_field() {
     let arg = command.get_arguments().next().unwrap();
     assert_eq!(arg.get_long(), Some("yes"));
 
-    let tool = Tool::try_parse_from(["tool", "remove", "--yes"]).unwrap();
+    let tool = Cli::try_parse_from(["tool", "remove", "--yes"]).unwrap();
     let Commands::Remove { yes, .. } = tool.command;
     assert_eq!(serde_json::to_string(&yes).unwrap(), "{\"yes\":true}");
 }
 
 #[test]
 fn dry_run_and_yes_add_their_flags_and_no_argument_group() {
-    let command = Tool::command();
+    let command = Cli::command();
     let remove = command.find_subcommand("remove").unwrap();
 
     let groups: Vec<&str> = remove
@@ -195,8 +194,9 @@ fn no_input_fails_with_needs_yes_without_asking_at_a_terminal() {
 
 #[test]
 fn with_terminal_detection_off_confirm_fails_with_needs_yes_without_asking_at_a_terminal() {
-    const QUIET: Guide =
-        Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
+    const QUIET: Tool = Tool::new().output(
+        crate::tool::Output::new().without_terminal_detection("Our CI runs in a pseudo-terminal."),
+    );
     let refused = ["remove", "pluto"];
     let admitted = ["remove", "pluto", "--yes"];
     assert_one_word_apart(&refused, &admitted);
@@ -209,13 +209,14 @@ fn with_terminal_detection_off_confirm_fails_with_needs_yes_without_asking_at_a_
 }
 
 #[test]
-fn a_tool_that_parses_with_clap_alone_keeps_the_guides_terminal_detection() {
-    const QUIET: Guide =
-        Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
+fn a_tool_that_parses_with_clap_alone_keeps_the_tools_terminal_detection() {
+    const QUIET: Tool = Tool::new().output(
+        crate::tool::Output::new().without_terminal_detection("Our CI runs in a pseudo-terminal."),
+    );
     let mut output = Output::new(
         ViewFlags::new(),
         DryRun::default(),
-        Tool::command(),
+        Cli::command(),
         &QUIET,
         ["tool", "remove"],
     )

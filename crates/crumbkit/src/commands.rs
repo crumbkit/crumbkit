@@ -14,7 +14,7 @@
 //!
 //! use clap::{CommandFactory, Parser, Subcommand};
 //! use crumbkit::commands::{self, CommandsList};
-//! use crumbkit::help::Guide;
+//! use crumbkit::Tool;
 //! use crumbkit::ViewFlags;
 //!
 //! /// Browse a small catalogue.
@@ -42,10 +42,10 @@
 //!     List(CommandsList),
 //! }
 //!
-//! const GUIDE: Guide = Guide::new();
+//! const TOOL: Tool = Tool::new();
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, args);
+//!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &TOOL, args);
 //!     let (cli, mut output) = match parsed {
 //!         Ok(parsed) => parsed,
 //!         Err(stop) => return stop.exit_code(),
@@ -54,7 +54,7 @@
 //!         Resource::Commands { command: CommandsCommand::List(args) } => {
 //!             // `list` builds the command tree in `output`, so it runs
 //!             // before `finish`.
-//!             let result = commands::list(&mut output, &GUIDE, &args);
+//!             let result = commands::list(&mut output, &TOOL, &args);
 //!             crumbkit::finish(output, commands::COMMANDS_LIST, result)
 //!         }
 //!     }
@@ -75,8 +75,8 @@ use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
 pub use self::row::CommandRow;
-use crate::help::{Guide, exit};
-use crate::{Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, codes};
+use crate::help::exit;
+use crate::{Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, Tool, codes};
 
 #[cfg(test)]
 mod tests;
@@ -173,8 +173,8 @@ impl JsonSchema for CommandsList {
 /// in depth-first order. A hidden command and everything below it are left
 /// out, as help leaves them out. Each row holds the command's path from the
 /// tool's name, its about texts, its arguments, the examples and columns of
-/// the leaf in `guide` whose path names it, and the goal headings of the
-/// group in `guide` whose path names it.
+/// the leaf in `tool` whose path names it, and the goal headings of the
+/// group in `tool` whose path names it.
 ///
 /// A global argument is listed once: on the command that defines it, or on
 /// the branch's first row when a command above the branch defines it, so a
@@ -201,7 +201,7 @@ impl JsonSchema for CommandsList {
 /// `commands list`.
 pub fn list(
     output: &mut Output,
-    guide: &Guide,
+    tool: &Tool,
     args: &CommandsList,
 ) -> Result<Listing<CommandRow>, Error> {
     let root = output.command();
@@ -239,13 +239,13 @@ pub fn list(
                 &visit.path,
                 visit.command,
                 visit.parent,
-                guide,
+                tool,
             )
         })
         .collect();
     Ok(Listing::new(rows, total)
         .described("commands")
-        .note(exit::note(&guide.invocation(root), guide)))
+        .note(exit::note(&tool.get_help().invocation(root), tool)))
 }
 
 /// One visible command of the branch, with what its row needs to know.

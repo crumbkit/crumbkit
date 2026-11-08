@@ -15,10 +15,10 @@ use super::layout;
 use super::layout::JsonLayout;
 use super::table::escape_controls;
 use crate::help::rename::{self, Renames};
-use crate::help::{Exit, Guide, Leaf};
+use crate::help::{Exit, Leaf};
 use crate::parse::page;
 use crate::sink::role::{Deliver, Message, Role};
-use crate::{Code, Document, Failure, FieldValue, Spelling, ToolName};
+use crate::{Code, Document, Failure, FieldValue, Spelling, Tool, ToolName};
 
 #[cfg(feature = "miette")]
 pub(crate) mod label;
@@ -50,39 +50,39 @@ pub(crate) const DOCUMENT: Document<()> = FAILURE;
 /// rendered, because the call does not resolve.
 const UNAVAILABLE: &str = "the suggested command is not available";
 
-/// What the guide decides about each failure that crumbkit prints: the
+/// What the tool record decides about each failure that crumbkit prints: the
 /// layout of a JSON document, the exit codes and the renames of crumbkit's
 /// codes. Its default is one line, no exits and no renames.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Printing {
     /// The layout of a JSON document.
     pub(crate) layout: JsonLayout,
-    /// The exit codes that the tool's guide declares (ADR-0037).
+    /// The exit codes that the tool record declares (ADR-0037).
     pub(crate) exits: &'static [Exit],
-    /// The tool's own codes for crumbkit's failures, of the guide and of
+    /// The tool's own codes for crumbkit's failures, of the tool record and of
     /// the leaf of the run's command (ADR-0056, ADR-0060).
     pub(crate) renames: Renames,
 }
 
 impl Printing {
-    /// Returns what `guide` decides about failures before the run knows
-    /// its command, which reads the guide's renames alone.
-    pub(crate) fn of(guide: &Guide) -> Self {
-        Self::at(guide, None)
+    /// Returns what `tool` decides about failures before the run knows
+    /// its command, which reads the tool record's renames alone.
+    pub(crate) fn of(tool: &Tool) -> Self {
+        Self::at(tool, None)
     }
 
-    /// Returns what `guide` decides about the failures of a run of the
-    /// command of `leaf`, which reads the leaf's renames before the guide's.
-    pub(crate) fn at(guide: &Guide, leaf: Option<&Leaf>) -> Self {
+    /// Returns what `tool` decides about the failures of a run of the command
+    /// of `leaf`, which reads the leaf's renames before the tool record's.
+    pub(crate) fn at(tool: &Tool, leaf: Option<&Leaf>) -> Self {
         Self {
-            layout: guide.get_json_layout(),
-            exits: guide.get_exits(),
-            renames: Renames::with_leaf(guide, leaf),
+            layout: tool.get_output().get_json_layout(),
+            exits: tool.get_failures().get_exits(),
+            renames: Renames::with_leaf(tool, leaf),
         }
     }
 
     /// Returns the exit code of a run whose first failure has `code`, as
-    /// [`Guide::failure_exit`] describes.
+    /// [`Tool::failure_exit`] describes.
     pub(crate) fn exit(self, code: &'static Code) -> u8 {
         rename::failure_exit(self.exits, self.renames, code)
     }

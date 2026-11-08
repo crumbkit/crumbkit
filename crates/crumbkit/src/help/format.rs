@@ -1,4 +1,4 @@
-//! File formats, which a tool registers in its guide so that the schema
+//! File formats, which a tool registers in its tool record so that the schema
 //! commands serve them beside the documents that its commands print.
 
 use schemars::{JsonSchema, Schema};
@@ -8,25 +8,26 @@ use crate::Document;
 /// A file format that users write and no command prints, such as a
 /// configuration or manifest file, with its JSON Schema.
 ///
-/// A tool registers its formats with [`Guide::file_formats`](super::Guide::file_formats),
-/// and `schemas list` and `schemas show` serve each one after the documents
-/// that the tool's commands print (ADR-0035). The document's name says what
-/// the file holds, such as `shelf/config/v1`, because no command path names
-/// it. Its schema is the schema of `T` with the id as its `title` and the
-/// document's description, without crumbkit's envelope, because users write
-/// the file.
+/// A tool registers its formats with
+/// [`Help::file_formats`](crate::help::Help::file_formats), and `schemas list`
+/// and `schemas show` serve each one after the documents that the tool's
+/// commands print (ADR-0035). The document's name says what the file holds,
+/// such as `shelf/config/v1`, because no command path names it. Its schema is
+/// the schema of `T` with the id as its `title` and the document's description,
+/// without crumbkit's envelope, because users write the file.
 ///
 /// ```
 /// # #[derive(schemars::JsonSchema)]
 /// # struct Config { page: u32 }
 /// use crumbkit::Document;
-/// use crumbkit::help::{FileFormat, Guide};
+/// use crumbkit::Tool;
+/// use crumbkit::help::{FileFormat, Help};
 ///
 /// const CONFIG: Document<Config> =
 ///     Document::new("shelf", "config", 1, "The settings file that users write.");
 ///
 /// const FORMAT: FileFormat = FileFormat::new(CONFIG);
-/// const GUIDE: Guide = Guide::new().file_formats(&[FORMAT]);
+/// const TOOL: Tool = Tool::new().help(Help::new().file_formats(&[FORMAT]));
 ///
 /// assert_eq!(FORMAT.document().to_string(), "shelf/config/v1");
 /// ```

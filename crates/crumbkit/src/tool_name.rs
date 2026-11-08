@@ -18,7 +18,7 @@ const CRUMBKIT: &str = "crumbkit";
 /// document ids and environment variables, derived from the tool's name.
 ///
 /// A tool's output names the tool and never crumbkit. crumbkit derives the
-/// name from the tool's root command, as `crumbkit::help::Guide::tool_name`
+/// name from the tool's root command, as `crumbkit::Tool::tool_name`
 /// describes, and spells it as each place needs:
 ///
 /// - a document id keeps the name as it is, such as `my-tool/failure/v1`;

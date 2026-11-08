@@ -1,7 +1,7 @@
 //! Tests for the grammar check.
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 
 use super::check_grammar;
 use crate::Pages;
@@ -55,8 +55,8 @@ fn a_command_without_subcommands_directly_under_the_tool_fails() {
     );
 }
 
-/// A guide that declares dashed forms.
-const DASHED: Guide = Guide::new().dashed_forms();
+/// A tool record that declares dashed forms.
+const DASHED: Tool = Tool::new().dashed_forms();
 
 #[test]
 fn a_resource_name_that_is_not_lowercase_words_joined_by_single_dashes_fails_without_dashed_forms()
@@ -98,7 +98,7 @@ fn a_passed_verb_that_is_built_in_or_badly_formed_fails() {
 }
 
 #[test]
-fn a_resource_or_verb_named_in_another_style_passes_when_the_guide_declares_dashed_forms() {
+fn a_resource_or_verb_named_in_another_style_passes_when_the_tool_declares_dashed_forms() {
     let shelf = Command::new("shelf")
         .subcommand(Command::new("Books").subcommand(Command::new("export_all")))
         .subcommand(Command::new("reading_lists").subcommand(Command::new("list")))

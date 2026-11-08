@@ -1,8 +1,7 @@
 //! Tests for a refused line that stops at a group, which prints the
 //! group's help page in text and its failure in JSON (ADR-0118).
 
-use crumbkit::Code;
-use crumbkit::help::Guide;
+use crumbkit::{Code, Tool};
 
 use super::tree;
 use crate::examples::Examples;
@@ -42,7 +41,7 @@ fn a_refused_line_that_prints_a_group_s_help_page_passes_with_the_code_of_its_js
 
     let output = check_twin(
         &tree(),
-        &Guide::new(),
+        &Tool::new(),
         &examples,
         &Failing::new(&USAGE, &["books"]),
         &["books", "list"],
@@ -61,7 +60,7 @@ fn a_refused_line_that_prints_a_group_s_help_page_fails_when_its_json_run_prints
     let message = panic_message(|| {
         check_twin(
             &tree(),
-            &Guide::new(),
+            &Tool::new(),
             &examples,
             &Failing::new(&OTHER, &["books"]),
             &["books", "list"],

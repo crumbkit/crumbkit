@@ -1,12 +1,12 @@
 # JSON layout
 
 This page covers how a JSON document is laid out: one line by default, or
-indented when the tool sets a layout, and the order of the keys of each
-object. A tool sets the layout with a
+indented when the tool sets a layout, and the order of the keys of each object.
+A tool sets the layout with a
 [`JsonLayout`](../../../crates/crumbkit/src/output/layout.rs), which
-[`Guide::json_layout`](../../../crates/crumbkit/src/help/output.rs) takes,
-such as `Guide::new().json_layout(JsonLayout::Pretty { reason })`. Their
-rustdoc describes the settings themselves.
+[`tool::Output::json_layout`](../../../crates/crumbkit/src/output/declared.rs)
+takes, such as `tool::Output::new().json_layout(JsonLayout::Pretty { reason })`.
+Their rustdoc describes the settings themselves.
 
 ## One line by default
 
@@ -25,11 +25,11 @@ Why: ADR-0052, ADR-0081.
 ## The indented layout
 
 A tool whose readers need indented JSON sets
-`Guide::json_layout(JsonLayout::Pretty { reason })`. crumbkit then puts each
-field and each item of a whole document on a line of its own, indented by
-two spaces for each level, byte for byte as serde_json's pretty formatter
-writes it. The setting applies at a terminal and through a pipe alike, so
-OUTPUT-1 holds.
+`tool::Output::json_layout(JsonLayout::Pretty { reason })`. crumbkit then puts
+each field and each item of a whole document on a line of its own, indented by
+two spaces for each level, byte for byte as serde_json's pretty formatter writes
+it. The setting applies at a terminal and through a pipe alike, so OUTPUT-1
+holds.
 
 The setting covers the envelope, a document with
 `Envelope::Without`, the failure document and a refusal's failure
@@ -54,7 +54,7 @@ larger.
 
 - crumbkit-test's `check_opt_outs` lists the layout as `json-layout/pretty`
   with the tool's reason and that cost ([opt-outs](../adoption/opt-outs.md)).
-- `check_examples` reads the guide's layout. With `Pretty`, a `--json`
+- `check_examples` reads the tool's layout. With `Pretty`, a `--json`
   example of a leaf of one result must print exactly one document whose
   second line is indented by two spaces, and a stream keeps one document per
   line.

@@ -1,4 +1,4 @@
-//! Tests for runtime leaves and their join with a const guide.
+//! Tests for runtime leaves and their join with a const tool record.
 
 use std::process::ExitCode;
 
@@ -7,29 +7,36 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::RuntimeLeaf;
-use crate::help::{Column, Example, Exit, Goal, Group, Guide, Leaf, RefusalContext, Rename, Topic};
-use crate::{Call, Code, Document, Row, Sink, parse_to};
+use crate::help::{Column, Example, Exit, Goal, Group, Help, Leaf, RefusalContext, Rename, Topic};
+use crate::tool::Failures;
+use crate::{Call, Code, Document, Row, Sink, Tool, parse_to};
 
-const GUIDE: Guide = Guide::new()
-    .groups(&[Group::new(&[], &[Goal::new("Read", &["planets"])])])
-    .leaves(&[Leaf::new(&["planets", "list"]).examples(&[Example::new(&[], "List the planets")])])
-    .topics(&[Topic::new(
-        "orbits",
-        "How the orbits work",
-        "Planets orbit.\n",
-    )])
-    .exits(&[Exit::new(124, "The telescope ran out of time.")]);
+const TOOL: Tool = Tool::new()
+    .help(
+        Help::new()
+            .groups(&[Group::new(&[], &[Goal::new("Read", &["planets"])])])
+            .leaves(&[
+                Leaf::new(&["planets", "list"]).examples(&[Example::new(&[], "List the planets")])
+            ])
+            .topics(&[Topic::new(
+                "orbits",
+                "How the orbits work",
+                "Planets orbit.\n",
+            )]),
+    )
+    .failures(Failures::new().exits(&[Exit::new(124, "The telescope ran out of time.")]));
 
 #[test]
 fn runtime_leaves_follow_the_const_leaves_with_their_paths_and_examples_in_order() {
-    let guide = GUIDE.with_runtime_leaves(vec![
+    let tool = TOOL.with_runtime_leaves(vec![
         RuntimeLeaf::new(vec!["moons".to_owned(), "list".to_owned()])
             .example(Vec::new(), "List the moons".to_owned())
             .example(vec!["--all".to_owned()], "List every moon".to_owned()),
         RuntimeLeaf::new(vec!["comets".to_owned()]),
     ]);
 
-    let leaves: Vec<(&[&str], &[Example])> = guide
+    let leaves: Vec<(&[&str], &[Example])> = tool
+        .get_help()
         .get_leaves()
         .iter()
         .map(|leaf| (leaf.path(), leaf.get_examples()))
@@ -52,7 +59,7 @@ fn runtime_leaves_follow_the_const_leaves_with_their_paths_and_examples_in_order
         ]
     );
     assert!(
-        guide
+        tool.get_help()
             .get_leaves()
             .iter()
             .all(|leaf| leaf.get_document().is_none())
@@ -60,22 +67,25 @@ fn runtime_leaves_follow_the_const_leaves_with_their_paths_and_examples_in_order
 }
 
 #[test]
-fn runtime_leaves_keep_the_groups_topics_and_exit_codes_of_the_const_guide() {
-    let guide = GUIDE.with_runtime_leaves(Vec::new());
+fn runtime_leaves_keep_the_groups_topics_and_exit_codes_of_the_const_tool() {
+    let tool = TOOL.with_runtime_leaves(Vec::new());
 
-    assert_eq!(guide.get_groups(), GUIDE.get_groups());
-    assert_eq!(guide.get_topics(), GUIDE.get_topics());
-    assert_eq!(guide.get_exits(), GUIDE.get_exits());
-    assert_eq!(guide.get_leaves().len(), 1);
+    assert_eq!(tool.get_help().get_groups(), TOOL.get_help().get_groups());
+    assert_eq!(tool.get_help().get_topics(), TOOL.get_help().get_topics());
+    assert_eq!(
+        tool.get_failures().get_exits(),
+        TOOL.get_failures().get_exits()
+    );
+    assert_eq!(tool.get_help().get_leaves().len(), 1);
 }
 
 #[test]
 fn a_command_added_at_run_time_lists_the_examples_of_its_runtime_leaf_in_its_help() {
     let name = String::from("moons");
-    let tool = Command::new("tool").subcommand(
+    let tool_name = Command::new("tool").subcommand(
         Command::new(name.clone()).subcommand(Command::new("list").about("List the moons")),
     );
-    let guide = Guide::new().with_runtime_leaves(vec![
+    let tool = Tool::new().with_runtime_leaves(vec![
         RuntimeLeaf::new(vec![name, "list".to_owned()])
             .example(vec!["--all".to_owned()], "List every moon".to_owned()),
     ]);
@@ -83,8 +93,8 @@ fn a_command_added_at_run_time_lists_the_examples_of_its_runtime_leaf_in_its_hel
     let mut out = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, Vec::new()),
-        tool,
-        &guide,
+        tool_name,
+        &tool,
         ["tool", "moons", "list", "-h"],
     );
 
@@ -98,12 +108,13 @@ fn a_command_added_at_run_time_lists_the_examples_of_its_runtime_leaf_in_its_hel
 
 #[test]
 fn a_runtime_leaf_keeps_the_program_whose_exit_code_it_passes_on() {
-    let guide = Guide::new().with_runtime_leaves(vec![
+    let tool = Tool::new().with_runtime_leaves(vec![
         RuntimeLeaf::new(vec!["moons".to_owned(), "edit".to_owned()]).passes_on_exit("the editor"),
         RuntimeLeaf::new(vec!["moons".to_owned(), "list".to_owned()]),
     ]);
 
-    let programs: Vec<Option<&str>> = guide
+    let programs: Vec<Option<&str>> = tool
+        .get_help()
         .get_leaves()
         .iter()
         .map(Leaf::get_passes_on_exit)
@@ -114,7 +125,7 @@ fn a_runtime_leaf_keeps_the_program_whose_exit_code_it_passes_on() {
 /// The tool's own code for crumbkit's usage code.
 const BAD_LINE: Code = Code::new("tool", "cli", "bad_line");
 
-/// The guide's rename of crumbkit's usage code.
+/// The tool record's rename of crumbkit's usage code.
 const RENAMES: &[Rename] = &[Rename::new(&crate::codes::CLI_USAGE, &BAD_LINE)];
 
 /// Returns `tool moons list` for any refusal of a runtime leaf's command.
@@ -125,20 +136,22 @@ fn list_moons(_: &RefusalContext<'_>) -> Vec<Call> {
 #[test]
 fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call_and_prints_the_rename() {
     let name = String::from("moons");
-    let tool = Command::new("tool").subcommand(
+    let tool_name = Command::new("tool").subcommand(
         Command::new(name.clone())
             .subcommand(Command::new("list").about("List the moons"))
             .subcommand(Command::new("show").about("Show a moon")),
     );
-    let guide = Guide::new().codes(RENAMES).with_runtime_leaves(vec![
-        RuntimeLeaf::new(vec![name, "show".to_owned()]).refusal_alternatives(list_moons),
-    ]);
+    let tool = Tool::new()
+        .failures(Failures::new().codes(RENAMES))
+        .with_runtime_leaves(vec![
+            RuntimeLeaf::new(vec![name, "show".to_owned()]).refusal_alternatives(list_moons),
+        ]);
     let mut err = Vec::new();
 
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(Vec::new(), &mut err),
-        tool,
-        &guide,
+        tool_name,
+        &tool,
         ["tool", "moons", "show", "--bogus"],
     );
 
@@ -169,12 +182,12 @@ impl Row for Moon {
 const MOONS: Document<Vec<Moon>> = Document::new("tool", "moons-list", 1, "The test rows.");
 
 #[test]
-fn a_runtime_leaf_with_a_document_passes_the_document_to_its_leaf_in_the_joined_guide() {
-    let guide = Guide::new().with_runtime_leaves(vec![
+fn a_runtime_leaf_with_a_document_passes_the_document_to_its_leaf_in_the_joined_tool() {
+    let tool = Tool::new().with_runtime_leaves(vec![
         RuntimeLeaf::new(vec!["jupiter".to_owned(), "list".to_owned()]).document(MOONS),
     ]);
 
-    let leaf = &guide.get_leaves()[0];
+    let leaf = &tool.get_help().get_leaves()[0];
     assert_eq!(
         leaf.get_document().map(|document| document.to_string()),
         Some(MOONS.to_string())
@@ -191,22 +204,22 @@ fn a_runtime_leaf_with_a_document_passes_the_document_to_its_leaf_in_the_joined_
 fn the_long_help_of_a_runtime_leafs_command_lists_the_columns_of_its_document() {
     // clap prints the long help only when the command has some, so the
     // command has a long about text.
-    let tool = Command::new("tool").subcommand(
+    let tool_name = Command::new("tool").subcommand(
         Command::new("jupiter").subcommand(
             Command::new("list")
                 .about("List Jupiter's moons")
                 .long_about("List Jupiter's moons, one row for each."),
         ),
     );
-    let guide = Guide::new().with_runtime_leaves(vec![
+    let tool = Tool::new().with_runtime_leaves(vec![
         RuntimeLeaf::new(vec!["jupiter".to_owned(), "list".to_owned()]).document(MOONS),
     ]);
 
     let mut out = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, Vec::new()),
-        tool,
-        &guide,
+        tool_name,
+        &tool,
         ["tool", "jupiter", "list", "--help"],
     );
 
@@ -221,13 +234,13 @@ fn the_long_help_of_a_runtime_leafs_command_lists_the_columns_of_its_document() 
 }
 
 #[test]
-fn a_runtime_leaf_without_a_document_has_no_document_in_the_joined_guide() {
-    let guide = Guide::new().with_runtime_leaves(vec![
+fn a_runtime_leaf_without_a_document_has_no_document_in_the_joined_tool() {
+    let tool = Tool::new().with_runtime_leaves(vec![
         RuntimeLeaf::new(vec!["jupiter".to_owned(), "list".to_owned()])
             .example(Vec::new(), "List Jupiter's moons".to_owned()),
     ]);
 
-    let leaf = &guide.get_leaves()[0];
+    let leaf = &tool.get_help().get_leaves()[0];
     assert!(leaf.get_document().is_none());
     assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
 }

@@ -3,18 +3,21 @@
 
 use clap::Command;
 
-use super::{help, section, tool};
-use crate::help::{Goal, Group, Guide, extend};
+use super::{help, section, tree};
+use crate::Tool;
+use crate::help::{Goal, Group, Help, extend};
 
-/// A compact guide of `planets`, with two goals.
-const PLANETS: Guide = Guide::new().groups(&[Group::new(
-    &["planets"],
-    &[
-        Goal::new("Read", &["list", "show"]),
-        Goal::new("Change", &["rename"]),
-    ],
-)
-.compact()]);
+/// A compact tool record of `planets`, with two goals.
+const PLANETS: Tool = Tool::new().help(
+    Help::new().groups(&[Group::new(
+        &["planets"],
+        &[
+            Goal::new("Read", &["list", "show"]),
+            Goal::new("Change", &["rename"]),
+        ],
+    )
+    .compact()]),
+);
 
 #[test]
 fn a_group_lists_names_with_descriptions_until_its_builder_makes_it_compact() {
@@ -61,7 +64,7 @@ Options:
 
 #[test]
 fn extend_and_parse_print_the_same_compact_and_full_lists() {
-    let mut tree = extend(tool(), &PLANETS);
+    let mut tree = extend(tree(), &PLANETS);
     let planets = tree.find_subcommand_mut("planets").unwrap();
     let short = planets.render_help().to_string();
     let long = planets.render_long_help().to_string();
@@ -80,9 +83,10 @@ fn extend_and_parse_print_the_same_compact_and_full_lists() {
 
 #[test]
 fn a_compact_group_names_the_commands_that_no_goal_names_on_a_final_commands_line() {
-    const GUIDE: Guide =
-        Guide::new()
-            .groups(&[Group::new(&[], &[Goal::new("Explore", &["planets", "moons"])]).compact()]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new()
+            .groups(&[Group::new(&[], &[Goal::new("Explore", &["planets", "moons"])]).compact()]),
+    );
 
     let expected = "\
 Explore:   planets, moons
@@ -90,13 +94,14 @@ Commands:  constellations
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "-h"])), expected);
 }
 
 #[test]
 fn a_compact_group_s_short_help_leaves_out_aliases_and_hidden_commands() {
-    const GUIDE: Guide =
-        Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list", "weigh"])]).compact()]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list", "weigh"])]).compact()]),
+    );
     let tool = Command::new("tool")
         .subcommand(
             Command::new("list")
@@ -105,7 +110,7 @@ fn a_compact_group_s_short_help_leaves_out_aliases_and_hidden_commands() {
         )
         .subcommand(Command::new("weigh").about("Weigh a planet").hide(true));
 
-    let mut tree = extend(tool, &GUIDE);
+    let mut tree = extend(tool, &TOOL);
     let short = tree.render_help().to_string();
     let long = tree.render_long_help().to_string();
 
@@ -118,15 +123,15 @@ fn a_compact_group_s_short_help_leaves_out_aliases_and_hidden_commands() {
 
 #[test]
 fn a_compact_group_s_command_drops_its_own_before_help_as_a_list_with_a_brace_does() {
-    const GUIDE: Guide =
-        Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])]).compact()]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])]).compact()]));
     let tool = Command::new("tool")
         .about("Explore a small solar system")
         .before_help("The tool's own short text")
         .before_long_help("The tool's own long text")
         .subcommand(Command::new("list").about("List the planets"));
 
-    let mut tree = extend(tool, &GUIDE);
+    let mut tree = extend(tool, &TOOL);
     let short = tree.render_help().to_string();
     let long = tree.render_long_help().to_string();
 
@@ -144,11 +149,12 @@ fn a_compact_group_s_command_drops_its_own_before_help_as_a_list_with_a_brace_do
 
 #[test]
 fn a_compact_group_prints_a_heading_or_a_description_with_a_brace_as_written() {
-    const GUIDE: Guide =
-        Guide::new().groups(&[Group::new(&[], &[Goal::new("Read {all}", &["list"])]).compact()]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().groups(&[Group::new(&[], &[Goal::new("Read {all}", &["list"])]).compact()]),
+    );
     let tool = Command::new("tool").subcommand(Command::new("list").about("Print {version}"));
 
-    let mut tree = extend(tool, &GUIDE);
+    let mut tree = extend(tool, &TOOL);
     let short = tree.render_help().to_string();
     let long = tree.render_long_help().to_string();
 
@@ -162,7 +168,7 @@ fn a_compact_group_prints_a_heading_or_a_description_with_a_brace_as_written() {
 #[cfg(feature = "color")]
 #[test]
 fn a_compact_line_prints_its_heading_and_each_name_in_the_root_s_styles() {
-    let mut tree = extend(tool(), &PLANETS);
+    let mut tree = extend(tree(), &PLANETS);
     let planets = tree.find_subcommand_mut("planets").unwrap();
     let styles = planets.get_styles().clone();
     let (header, literal) = (styles.get_header(), styles.get_literal());

@@ -9,9 +9,9 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{Tool, built_with, finish_output, finish_with};
-use crate::help::Guide;
-use crate::{Document, Listing, Row};
+use super::{Cli, built_with, finish_output, finish_with};
+use crate::tool::Output;
+use crate::{Document, Listing, Row, Tool};
 
 /// An item of a cleanup run: a dry run removes nothing, and a real run
 /// removes each item unless removing it needs the caller's own step.
@@ -279,8 +279,8 @@ fn the_budget_cut_line_counts_the_printed_rows_against_the_listing_total() {
     let kept = (0..10).map(|_| item("cache/lock", Some("stop the server")));
     let removed = (0..10).map(|_| item("cache/a", None));
     let listing = summed(kept.chain(removed).collect());
-    let guide = Guide::new().output_budget(120, "the tests print little");
-    let output = built_with(Tool::command(), &guide, &["tool", "list"]);
+    let tool = Tool::new().output(Output::new().budget(120, "the tests print little"));
+    let output = built_with(Cli::command(), &tool, &["tool", "list"]);
 
     let finished = finish_output(output, CLEANUP, listing);
 

@@ -1,12 +1,13 @@
 //! Tests for goal headings: the help pages that `parse_to` prints with a
-//! guide, and the tree that `extend` returns.
+//! tool record, and the tree that `extend` returns.
 
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{Goal, Group, Guide, extend};
-use crate::{Sink, parse_to};
+use super::{Goal, Group, extend};
+use crate::help::Help;
+use crate::{Sink, Tool, parse_to};
 
 mod compact;
 mod root_verbs;
@@ -14,7 +15,7 @@ mod root_verbs;
 /// A tool with a global flag and three groups. The names have different
 /// lengths, `planets` has a hidden command, and `moons` has a command
 /// without a description.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .about("Explore a small solar system")
         .subcommand_required(true)
@@ -49,13 +50,12 @@ fn tool() -> Command {
         )
 }
 
-/// Runs `parse_to` over `tool()` with `guide`, for `args` that ask for help,
+/// Runs `parse_to` over `tree()` with `tool`, for `args` that ask for help,
 /// and returns the help page it printed.
-fn help(guide: &Guide, args: &[&str]) -> String {
+fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
+    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
@@ -72,13 +72,13 @@ fn section(page: &str) -> &str {
 
 #[test]
 fn a_guided_group_lists_its_children_under_each_goal_heading_in_guide_order() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &[],
         &[
             Goal::new("Explore", &["planets", "moons"]),
             Goal::new("Map", &["constellations"]),
         ],
-    )]);
+    )]));
 
     let expected = "\
 Explore a small solar system
@@ -99,18 +99,18 @@ Global flags: --json. `tool --help` describes them.
 Topics: exit-codes. `tool help <TOPIC>` prints one.
 Next: tool <COMMAND> -h
 ";
-    assert_eq!(help(&GUIDE, &["tool", "-h"]), expected);
+    assert_eq!(help(&TOOL, &["tool", "-h"]), expected);
 }
 
 #[test]
 fn a_guided_nested_group_lists_its_children_under_its_own_goals() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[
             Goal::new("Read", &["list", "show"]),
             Goal::new("Change", &["rename"]),
         ],
-    )]);
+    )]));
 
     let expected = "\
 Read
@@ -122,18 +122,18 @@ Change
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "planets", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "planets", "-h"])), expected);
 }
 
 #[test]
 fn a_guided_groups_long_help_lists_the_goal_headings_before_the_options() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[
             Goal::new("Read", &["list", "show"]),
             Goal::new("Change", &["rename"]),
         ],
-    )]);
+    )]));
 
     let expected = "\
 Work with planets
@@ -156,20 +156,20 @@ Options:
 
 Next: tool planets <COMMAND> -h
 ";
-    assert_eq!(help(&GUIDE, &["tool", "planets", "--help"]), expected);
+    assert_eq!(help(&TOOL, &["tool", "planets", "--help"]), expected);
 }
 
 #[test]
 fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[Goal::new("Read", &["list", "show", "rename"])],
-    )]);
+    )]));
 
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(Vec::new(), Vec::new()),
-        tool(),
-        &GUIDE,
+        tree(),
+        &TOOL,
         ["tool", "moons", "list"],
     );
 
@@ -188,14 +188,15 @@ fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
 
 #[test]
 fn a_guided_command_prints_its_own_before_help_above_its_about_and_the_goal_list_below_its_usage() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool")
         .about("Explore a small solar system")
         .before_help("The tool's own short text")
         .before_long_help("The tool's own long text")
         .subcommand(Command::new("list").about("List the planets"));
 
-    let page = extend(tool, &GUIDE).render_help().to_string();
+    let page = extend(tool, &TOOL).render_help().to_string();
 
     let expected = "\
 The tool's own short text
@@ -215,14 +216,15 @@ Options:
 
 #[test]
 fn a_guided_command_prints_its_own_before_long_help_in_its_long_help() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool")
         .about("Explore a small solar system")
         .before_help("The tool's own short text")
         .before_long_help("The tool's own long text")
         .subcommand(Command::new("list").about("List the planets"));
 
-    let page = extend(tool, &GUIDE).render_long_help().to_string();
+    let page = extend(tool, &TOOL).render_long_help().to_string();
 
     assert!(
         page.starts_with("The tool's own long text\n\nExplore a small solar system\n\nUsage: tool [COMMAND]\n\nRead\n  list  List the planets\n\nOptions:\n"),
@@ -232,12 +234,13 @@ fn a_guided_command_prints_its_own_before_long_help_in_its_long_help() {
 
 #[test]
 fn a_guided_command_whose_list_holds_a_brace_keeps_the_list_in_before_help() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool")
         .before_help("The tool's own short text")
         .subcommand(Command::new("list").about(r#"Print {"a": {"b": 1}} and {version}"#));
 
-    let page = extend(tool, &GUIDE).render_help().to_string();
+    let page = extend(tool, &TOOL).render_help().to_string();
 
     let expected = r#"Usage: tool [COMMAND]
 
@@ -252,10 +255,11 @@ Options:
 
 #[test]
 fn a_guided_page_without_long_help_keeps_clap_s_short_help_line() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool").subcommand(Command::new("list").about("List the planets"));
 
-    let page = extend(tool, &GUIDE).render_help().to_string();
+    let page = extend(tool, &TOOL).render_help().to_string();
 
     assert!(
         page.ends_with("Options:\n  -h, --help  Print help\n"),
@@ -265,8 +269,8 @@ fn a_guided_page_without_long_help_keeps_clap_s_short_help_line() {
 
 #[test]
 fn a_visible_command_that_no_goal_names_is_listed_under_a_final_commands_heading() {
-    const GUIDE: Guide =
-        Guide::new().groups(&[Group::new(&["planets"], &[Goal::new("Read", &["list"])])]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().groups(&[Group::new(&["planets"], &[Goal::new("Read", &["list"])])]));
 
     let expected = "\
 Read
@@ -278,15 +282,15 @@ Commands
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "planets", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "planets", "-h"])), expected);
 }
 
 #[test]
 fn a_goal_leaves_out_a_hidden_command() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[Goal::new("Read", &["list", "show", "weigh", "rename"])],
-    )]);
+    )]));
 
     let expected = "\
 Read
@@ -296,15 +300,15 @@ Read
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "planets", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "planets", "-h"])), expected);
 }
 
 #[test]
 fn a_goal_leaves_out_a_name_that_is_not_a_child_of_its_group() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[Goal::new("Read", &["list", "lsit", "show", "rename"])],
-    )]);
+    )]));
 
     let expected = "\
 Read
@@ -314,18 +318,18 @@ Read
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "planets", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "planets", "-h"])), expected);
 }
 
 #[test]
 fn a_goal_whose_commands_are_all_hidden_prints_no_heading() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[
             Goal::new("Read", &["list", "show", "rename"]),
             Goal::new("Measure", &["weigh"]),
         ],
-    )]);
+    )]));
 
     let expected = "\
 Read
@@ -335,18 +339,18 @@ Read
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "planets", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "planets", "-h"])), expected);
 }
 
 #[test]
 fn a_command_without_a_description_ends_its_line_at_its_name() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["moons"],
         &[
             Goal::new("Read", &["list"]),
             Goal::new("Change", &["forget"]),
         ],
-    )]);
+    )]));
 
     let expected = "\
 Read
@@ -357,18 +361,18 @@ Change
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "moons", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "moons", "-h"])), expected);
 }
 
 #[test]
-fn a_group_the_guide_does_not_name_keeps_clap_s_commands_list() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+fn a_group_the_tool_does_not_name_keeps_clap_s_commands_list() {
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &[],
         &[Goal::new(
             "Explore",
             &["planets", "moons", "constellations"],
         )],
-    )]);
+    )]));
 
     let expected = "\
 Commands:
@@ -378,43 +382,43 @@ Commands:
 
 Options:
 ";
-    assert_eq!(section(&help(&GUIDE, &["tool", "planets", "-h"])), expected);
+    assert_eq!(section(&help(&TOOL, &["tool", "planets", "-h"])), expected);
 }
 
 #[test]
-fn a_guide_path_that_names_no_command_or_a_command_without_subcommands_changes_nothing() {
-    const GUIDE: Guide = Guide::new().groups(&[
+fn a_tool_path_that_names_no_command_or_a_command_without_subcommands_changes_nothing() {
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[
         Group::new(&["comets"], &[Goal::new("Read", &["list"])]),
         Group::new(&["planets", "list"], &[Goal::new("Read", &["list"])]),
-    ]);
+    ]));
 
     for args in [
         ["tool", "-h"].as_slice(),
         &["tool", "planets", "list", "-h"],
     ] {
-        assert_eq!(help(&GUIDE, args), help(&Guide::new(), args), "{args:?}");
+        assert_eq!(help(&TOOL, args), help(&Tool::new(), args), "{args:?}");
     }
 }
 
 #[test]
 fn a_guided_list_prints_each_visible_alias_after_the_description_as_clap_s_list_does() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["moons"],
         &[Goal::new("Read", &["list", "forget"])],
-    )]);
-    let tool = tool().mut_subcommand("moons", |moons| {
+    )]));
+    let command = tree().mut_subcommand("moons", |moons| {
         moons
             .mut_subcommand("list", |list| {
                 list.visible_aliases(["ls", "l"]).alias("hidden")
             })
             .mut_subcommand("forget", |forget| forget.visible_alias("drop"))
     });
-    let page = |guide: &Guide| {
+    let page = |tool: &Tool| {
         let mut out = Vec::new();
         let _ = parse_to::<(), _, _, _, _>(
             &mut Sink::new(&mut out, Vec::new()),
-            tool.clone(),
-            guide,
+            command.clone(),
+            tool,
             ["tool", "moons", "-h"],
         );
         String::from_utf8(out).unwrap()
@@ -427,8 +431,8 @@ Read
 
 Options:
 ";
-    assert_eq!(section(&page(&GUIDE)), expected);
-    let clap = page(&Guide::new());
+    assert_eq!(section(&page(&TOOL)), expected);
+    let clap = page(&Tool::new());
     assert!(
         clap.contains("  list    List the moons [aliases: ls, l]\n"),
         "{clap}"
@@ -453,9 +457,9 @@ impl crate::pick::Picker for Nobody {
 static NOBODY: Nobody = Nobody;
 
 #[test]
-fn a_guide_has_no_picker_until_its_builder_sets_one() {
-    assert!(Guide::new().get_picker().is_none());
-    assert!(Guide::new().picker(&NOBODY).get_picker().is_some());
+fn a_tool_has_no_picker_until_its_builder_sets_one() {
+    assert!(Tool::new().get_picker().is_none());
+    assert!(Tool::new().picker(&NOBODY).get_picker().is_some());
 }
 
 #[expect(

@@ -6,6 +6,7 @@ mod build;
 mod children;
 mod columns;
 mod confirm;
+pub(crate) mod declared;
 mod direct;
 pub(crate) mod dry_run;
 mod envelope;
@@ -47,7 +48,7 @@ mod tests;
 
 /// The output of one run: the view flags that the caller typed, the command
 /// tree that the tool parsed against, the words that the caller typed and
-/// what the tool's guide decides about printing.
+/// what the tool record decides about printing.
 ///
 /// [`parse`](crate::parse()) returns it beside the tool's parsed type, and
 /// a tool that parses with clap alone builds it with [`Output::new`]. Both
@@ -98,32 +99,32 @@ pub struct Output {
     /// Whether the caller passed `--no-input`.
     no_input: bool,
 
-    /// Whether the tool's guide turned terminal detection off (ADR-0049).
+    /// Whether the tool record turned terminal detection off (ADR-0049).
     no_terminal: bool,
 
     /// The layout of a whole JSON document (ADR-0052).
     json_layout: JsonLayout,
 
-    /// The most bytes that the run prints on standard output: the guide's
+    /// The most bytes that the run prints on standard output: the tool record's
     /// budget or crumbkit's default, lowered by the environment (ADR-0046).
     budget: usize,
 
-    /// The exit codes that the tool's guide declares. A failure whose code
+    /// The exit codes that the tool record declares. A failure whose code
     /// one of them lists ends the run with that exit code (ADR-0037).
     exits: &'static [Exit],
 
-    /// The tool's own codes for crumbkit's failures, of the guide and of
+    /// The tool's own codes for crumbkit's failures, of the tool record and of
     /// the leaf of the parsed command (ADR-0056, ADR-0060).
     renames: Renames,
 
-    /// The guide's spelling of the run's codes, which writes the tool's
+    /// The tool record's spelling of the run's codes, which writes the tool's
     /// name in crumbkit's own codes. The tool's name also names crumbkit's
     /// documents and variables (ADR-0079).
     spelling: Spelling,
 }
 
 impl Output {
-    /// The output budget of a tool whose guide sets none: 1 MiB, the most
+    /// The output budget of a tool whose tool record sets none: 1 MiB, the most
     /// bytes that one run prints on standard output (ADR-0046).
     pub const DEFAULT_BUDGET: usize = budget::DEFAULT;
 
@@ -131,7 +132,7 @@ impl Output {
     /// standard output.
     ///
     /// The budget is the one that the tool's
-    /// [`Guide::output_budget`](crate::help::Guide::output_budget) sets, or
+    /// [`tool::Output::budget`](crate::tool::Output::budget) sets, or
     /// [`Output::DEFAULT_BUDGET`], lowered by the variable
     /// `<TOOL>_OUTPUT_BUDGET` when it holds a smaller whole number of
     /// bytes. A handler reads it before `finish` to fetch no more rows than
@@ -199,8 +200,8 @@ impl Output {
         self.view.fields()
     }
 
-    /// Returns the guide's spelling and `document`, with the tool's name in
-    /// place of `crumbkit` in crumbkit's own codes and documents (ADR-0079).
+    /// Returns the tool record's spelling and `document`, with the tool's name
+    /// in place of `crumbkit` in crumbkit's own codes and documents (ADR-0079).
     pub(crate) const fn named<T>(&self, document: Document<T>) -> (Spelling, Document<T>) {
         (self.spelling, self.spelling.tool().document(document))
     }
@@ -211,7 +212,7 @@ impl Output {
         &self.command
     }
 
-    /// Returns what the tool's guide decides about the run's failures: the
+    /// Returns what the tool record decides about the run's failures: the
     /// JSON layout, the exit codes and the renames.
     pub(crate) const fn printing(&self) -> Printing {
         Printing {
@@ -233,12 +234,12 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 ///
 /// A tool's `main` calls it last with the handler's `result` and returns its
 /// exit code. It behaves as [`finish_to`] does with a sink over the process's
-/// standard output and standard error that has a width: when standard
-/// output is a terminal and the guide keeps terminal detection on, `finish`
-/// gives its sink the terminal's number of columns, so a text table wider
-/// than the terminal narrows its columns to fit, and the output budget
-/// still counts the unfitted table (ADR-0121). `finish_to` fits a table to
-/// the width that its sink has, which [`Sink::fitted`] sets (ADR-0134).
+/// standard output and standard error that has a width: when standard output is
+/// a terminal and the tool record keeps terminal detection on, `finish` gives
+/// its sink the terminal's number of columns, so a text table wider than the
+/// terminal narrows its columns to fit, and the output budget still counts the
+/// unfitted table (ADR-0121). `finish_to` fits a table to the width that its
+/// sink has, which [`Sink::fitted`] sets (ADR-0134).
 ///
 /// It takes `output` by value, because a run prints one result, so `main`
 /// cannot call it twice with one `Output` (ADR-0094):
@@ -256,7 +257,7 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 ///     crumbkit::ViewFlags::new(),
 ///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
-///     &crumbkit::help::Guide::new(),
+///     &crumbkit::Tool::new(),
 ///     ["reading"],
 /// )
 /// .unwrap();
@@ -284,16 +285,16 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// and returns the exit code that [`finish`] would return, as a number.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, so they
-/// check a command's exact output and exit code without starting a process.
-/// A tool that needs the exit code as a number, such as one that does more
-/// work after it prints, calls it with [`Sink::standard`]. `ExitCode` cannot
-/// be read back as a number, and a guide can give a failure any code from 3
-/// to 125, so the number comes from here.
+/// check a command's exact output and exit code without starting a process. A
+/// tool that needs the exit code as a number, such as one that does more work
+/// after it prints, calls it with [`Sink::standard`]. `ExitCode` cannot be read
+/// back as a number, and a tool record can give a failure any code from 3 to
+/// 125, so the number comes from here.
 ///
 /// An `Ok` value prints to the sink's output writer. The text format is a
 /// table with a header row, and an empty result prints the header alone. The
 /// JSON format is one line holding an object, or the object indented by two
-/// spaces when the guide sets [`JsonLayout::Pretty`] (ADR-0052),
+/// spaces when the tool record sets [`JsonLayout::Pretty`] (ADR-0052),
 /// with the `schema` id of `document` and the result under `data`; a single
 /// row's `data` is an object, and a `Vec`'s is an array.
 ///
@@ -370,12 +371,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
 /// for each error in the failure's `source()` chain, and a `url:` line
 /// follows the `code:` line when the failure has a url. The code prints in
-/// the spelling that `output` took from the guide. A
+/// the spelling that `output` took from the tool record. A
 /// [`Recovery::Run`](crate::Recovery::Run) call is rendered against the
 /// command tree that `output` holds, and prints as `no next step: the
 /// suggested command is not available` when the call does not resolve. With
 /// `--json`, the failure prints to the output writer as one
-/// `<tool>/failure/v1` document, on one line or in the guide's layout,
+/// `<tool>/failure/v1` document, on one line or in the tool record's layout,
 /// which `--full` and `--fields` do not change.
 ///
 /// The result prints within [`Output::budget`] bytes on the output writer.
@@ -405,36 +406,35 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// the result prints. [`parse`](crate::parse()) refuses such a name before
 /// the handler runs on a leaf that declares a document. The refusal prints as a failure does, with the message
 /// `--fields names an unknown field 'radius'`, the code `<tool>::cli::usage`
-/// in the guide's spelling, and the hint `use the valid fields: a, b`.
+/// in the tool record's spelling, and the hint `use the valid fields: a, b`.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. When the result is a failure, or a batch or prose
-/// result with at least one failure, the exit code belongs to the run's
-/// first failure: the code of the guide's [`Exit`] whose
-/// [`Exit::failures`] list that failure's printed code, or 1 when none
-/// does, also after the reader closed the pipe early (ADR-0037). The
-/// printed code is the tool's own code when the guide renames one of
-/// crumbkit's with [`Guide::codes`](crate::help::Guide::codes). The guide reaches
+/// result with at least one failure, the exit code belongs to the run's first
+/// failure: the code of the tool record's [`Exit`] whose [`Exit::failures`]
+/// list that failure's printed code, or 1 when none does, also after the reader
+/// closed the pipe early (ADR-0037). The printed code is the tool's own code
+/// when the tool record renames one of crumbkit's with
+/// [`Failures::codes`](crate::tool::Failures::codes). The tool record reaches
 /// `finish` through the `Output` that [`parse`](crate::parse()) or
-/// [`Output::new`] returns. The exit code is
-/// 1 as well when a write fails for any other reason, or when the
-/// result cannot be serialized, and the cause of a failed write goes to the
-/// sink's error writer before a batch's failures. It is the exit code of a
-/// refused command line, 2 unless the guide lists another, when `--fields`
-/// names an unknown field, or when the result cannot use a view flag that
-/// the caller passed, which are checked before the result prints. When
-/// `result` is a failure, `finish_to` checks no view flag and prints the
-/// failure, because a tool may print an early failure in another document
-/// than the one its leaf declares, and the `Output` already holds only a
-/// view that every printer accepts (ADR-0093). A prose or bytes result
-/// cannot use `--fields`, `--long` or `--full`, rows without long columns
-/// cannot use `--long` unless the document lists only the rows that report
-/// a problem or declares a long note (ADR-0139), and a document without
-/// the envelope cannot use `--full` (ADR-0016). When the JSON already holds
-/// the whole result, as for a document without the envelope, a headed
-/// document or rows of a type that sets `Row::WHOLE`, `--long` and `--full`
-/// with `--json` are accepted, print the document that `--json` alone
-/// prints, and deliver a note that the flag adds nothing (ADR-0149).
+/// [`Output::new`] returns. The exit code is 1 as well when a write fails for
+/// any other reason, or when the result cannot be serialized, and the cause of
+/// a failed write goes to the sink's error writer before a batch's failures. It
+/// is the exit code of a refused command line, 2 unless the tool record lists
+/// another, when `--fields` names an unknown field, or when the result cannot
+/// use a view flag that the caller passed, which are checked before the result
+/// prints. When `result` is a failure, `finish_to` checks no view flag and
+/// prints the failure, because a tool may print an early failure in another
+/// document than the one its leaf declares, and the `Output` already holds only
+/// a view that every printer accepts (ADR-0093). A prose or bytes result cannot
+/// use `--fields`, `--long` or `--full`, rows without long columns cannot use
+/// `--long` unless the document lists only the rows that report a problem or
+/// declares a long note (ADR-0139), and a document without the envelope cannot
+/// use `--full` (ADR-0016). When the JSON already holds the whole result, as
+/// for a document without the envelope, a headed document or rows of a type
+/// that sets `Row::WHOLE`, `--long` and `--full` with `--json` are accepted,
+/// print the document that `--json` alone prints, and deliver a note that the
+/// flag adds nothing (ADR-0149).
 ///
 /// A run without a failure whose rows report a problem, as
 /// [`Row::is_problem`](crate::Row::is_problem) decides, exits with 1, also

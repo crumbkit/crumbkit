@@ -142,17 +142,17 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_in_the_order_its_field
 
     const UNPLACED: Document<Stream<Unplaced>> =
         Document::new("birds", "unplaced-watch", 1, "Each sighting as it arrives.");
-    let mut command = super::Tool::command();
+    let mut command = super::Cli::command();
     let matches = command
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
-    let view = super::Tool::from_arg_matches(&matches).unwrap().view;
-    let guide = crate::help::Guide::new();
+    let view = super::Cli::from_arg_matches(&matches).unwrap().view;
+    let tool = crate::Tool::new();
     let output = crate::Output::new(
         view,
         crate::DryRun::default(),
         command,
-        &guide,
+        &tool,
         ["birds", "watch"],
     )
     .unwrap();

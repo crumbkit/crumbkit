@@ -7,7 +7,7 @@ use crumbkit::{Error, Listing, Output, Sink, finish_to};
 use serde_json::{Value, json};
 
 use super::{ALIASES_LIST, AliasRow, AliasesList, list, listing};
-use crate::testing::tool;
+use crate::testing::tree;
 
 /// The path that the personal rows name as their source.
 const FILE: &str = "/home/ada/.config/shelf/aliases.toml";
@@ -17,8 +17,8 @@ fn output() -> Output {
     Output::new(
         crumbkit::ViewFlags::new(),
         crumbkit::DryRun::default(),
-        tool(),
-        &crumbkit::help::Guide::new(),
+        tree(),
+        &crumbkit::Tool::new(),
         ["shelf"],
     )
     .unwrap()
@@ -26,7 +26,7 @@ fn output() -> Output {
 
 /// Parses `words` after `shelf aliases list` into the command's arguments.
 fn args(words: &[&str]) -> AliasesList {
-    let mut command = tool();
+    let mut command = tree();
     let matches = command
         .try_get_matches_from_mut(["shelf", "aliases", "list"].iter().chain(words))
         .unwrap();
@@ -38,7 +38,7 @@ fn args(words: &[&str]) -> AliasesList {
 /// Returns the rows for an aliases file at [`FILE`] that holds `text`, as
 /// JSON.
 fn listed(text: &str) -> Value {
-    let listing = listing(&tool(), Some(Path::new(FILE)), Some(text), &args(&[]));
+    let listing = listing(&tree(), Some(Path::new(FILE)), Some(text), &args(&[]));
     serde_json::to_value(listing.unwrap()).unwrap()
 }
 
@@ -224,7 +224,7 @@ fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_y
 
 #[test]
 fn a_note_on_standard_error_names_a_file_that_exists_even_when_it_is_empty() {
-    let listing = listing(&tool(), Some(Path::new(FILE)), Some(""), &args(&[]));
+    let listing = listing(&tree(), Some(Path::new(FILE)), Some(""), &args(&[]));
 
     let finished = finish(output(), listing.map_err(Error::from));
 
@@ -242,7 +242,7 @@ fn a_note_on_standard_error_names_a_file_that_exists_even_when_it_is_empty() {
 fn a_page_cut_by_a_limit_counts_every_alias_with_a_problem_in_its_note() {
     let text = "bad = 3\nbooks = [\"books\", \"show\", \"1\"]\n";
     let listing = listing(
-        &tool(),
+        &tree(),
         Some(Path::new(FILE)),
         Some(text),
         &args(&["--limit", "1"]),
@@ -263,7 +263,7 @@ fn a_page_cut_by_a_limit_counts_every_alias_with_a_problem_in_its_note() {
 
 #[test]
 fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
-    let listing = listing(&tool(), None, None, &args(&[]));
+    let listing = listing(&tree(), None, None, &args(&[]));
 
     let finished = finish(output(), listing.map_err(Error::from));
 
@@ -308,7 +308,7 @@ fn a_file_that_cannot_be_read_fails_with_its_path_and_the_reason() {
 #[test]
 fn a_file_that_cannot_be_parsed_fails_with_the_line_and_the_parser_s_message() {
     let error = listing(
-        &tool(),
+        &tree(),
         Some(Path::new(FILE)),
         Some("mine = [\"books\"]\nours = ["),
         &args(&[]),

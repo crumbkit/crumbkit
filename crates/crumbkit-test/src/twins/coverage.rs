@@ -2,8 +2,8 @@
 //! each declared code.
 
 use clap::Command;
-use crumbkit::help::{Guide, Leaf};
-use crumbkit::{Code, Spelling};
+use crumbkit::help::Leaf;
+use crumbkit::{Code, Spelling, Tool};
 
 use super::{Admitted, named, refuse, tool_name, twin};
 use crate::allow::{Allow, Rule};
@@ -118,8 +118,8 @@ impl<'a> Twins<'a> {
     /// Returns the settings that run the binary of `examples` with its
     /// environment and require a twin for each code of `codes`, the `CODES`
     /// list of each of the tool's error types, with no twin and no
-    /// unprovoked code. [`check_twins`] spells the codes as the tool's
-    /// guide does.
+    /// unprovoked code. [`check_twins`] spells the codes as the
+    /// tool record does.
     #[must_use]
     pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
         Self {
@@ -160,9 +160,10 @@ impl<'a> Twins<'a> {
     }
 }
 
-/// Runs every twin of `twins` as [`check_twin`](crate::check_twin) runs one, for the tool whose
-/// unbuilt command tree is `command` and whose guide is `guide`, and panics, as a failed test assertion does, naming
-/// every problem it finds (TEST-1).
+/// Runs every twin of `twins` as [`check_twin`](crate::check_twin) runs one,
+/// for the tool whose unbuilt command tree is `command` and whose tool record
+/// is `tool`, and panics, as a failed test assertion does, naming every problem
+/// it finds (TEST-1).
 ///
 /// It finds:
 ///
@@ -171,7 +172,7 @@ impl<'a> Twins<'a> {
 /// - a twin whose refused line's code is neither a declared code nor a code
 ///   of crumbkit or of one of its add-on crates, which it does not run;
 /// - a declared code that no twin refuses, [`Twins::unprovoked`] does not
-///   list, no opt-out made with [`Allow::untwinned`] names and the guide
+///   list, no opt-out made with [`Allow::untwinned`] names and the tool record
 ///   does not print in place of a code of crumbkit or of an add-on crate;
 /// - an untwinned opt-out whose refused line, run with `--json` added,
 ///   exits with code 0 or fails with another code;
@@ -189,17 +190,17 @@ impl<'a> Twins<'a> {
 /// changes. [`check_twin`](crate::check_twin) runs its lines as written,
 /// because its caller compares the output in the form that the test chose.
 ///
-/// A twin may refuse with a code of crumbkit or of one of its add-on
-/// crates, such as `crumbkit::cli::usage` or crumbkit-child's
-/// `crumbkit::child::not_found`. The check requires no twin and no
-/// declaration for such a code, and no twin for a declared code that the
-/// guide's [`Guide::codes`](crumbkit::help::Guide::codes) or a leaf prints
-/// in place of one, because a crumbkit crate raises that failure. The check
-/// reads these codes from `crumbkit::codes::ALL` and from crumbkit-test's
-/// list of the add-on crates' codes, as the recovery check does. Every
-/// other code is the tool's code, whatever its component. A code in the
-/// `crumbkit` component that neither list holds must be declared and needs
-/// a twin, an entry in [`Twins::unprovoked`] or an untwinned opt-out.
+/// A twin may refuse with a code of crumbkit or of one of its add-on crates,
+/// such as `crumbkit::cli::usage` or crumbkit-child's
+/// `crumbkit::child::not_found`. The check requires no twin and no declaration
+/// for such a code, and no twin for a declared code that the tool record's
+/// [`Failures::codes`](crumbkit::tool::Failures::codes) or a leaf prints in
+/// place of one, because a crumbkit crate raises that failure. The check reads
+/// these codes from `crumbkit::codes::ALL` and from crumbkit-test's list of the
+/// add-on crates' codes, as the recovery check does. Every other code is the
+/// tool's code, whatever its component. A code in the `crumbkit` component that
+/// neither list holds must be declared and needs a twin, an entry in
+/// [`Twins::unprovoked`] or an untwinned opt-out.
 ///
 /// The check reads the untwinned opt-outs from the
 /// [`Examples::allow`](crate::Examples::allow) list of the settings'
@@ -213,22 +214,25 @@ impl<'a> Twins<'a> {
 ///
 /// Panics when a rule above is broken. The message lists each problem on
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
-pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
-    let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
+pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
+    let spelling = tool
+        .get_failures()
+        .get_spelling()
+        .for_tool(tool.tool_name(command));
     let declared: Vec<&Code> = twins.codes.to_vec();
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();
-        if !declared.contains(&code) && !crumbkit_owned(guide, code) {
-            let tool = tool_name(&twins.examples);
+        if !declared.contains(&code) && !crumbkit_owned(tool, code) {
+            let name = tool_name(&twins.examples);
             problems.push(format!(
                 "the refused line `{}` fails with {}, which is not a declared code or a code of crumbkit or of one of its add-on crates",
-                command_line(&tool, pair.refused.words()),
+                command_line(&name, pair.refused.words()),
                 spelling.spell(code)
             ));
             continue;
         }
-        if let Err(problem) = run_pair(command, guide, twins, pair) {
+        if let Err(problem) = run_pair(command, tool, twins, pair) {
             problems.push(problem);
         }
     }
@@ -250,7 +254,7 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
             failing.own_env(),
         );
         let opt_out = format!("the opt-out from `{}` for {line}", Rule::NoTwin.id());
-        if crumbkit_owned(guide, code) {
+        if crumbkit_owned(tool, code) {
             problems.push(format!(
                 "{opt_out} names {text}, a code of crumbkit or of one of its add-on crates or the rename of one, which needs no twin, so it is stale"
             ));
@@ -271,13 +275,13 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
             let words = json_lines(failing.words(), &[]).0;
             let words: Vec<&str> = words.iter().map(String::as_str).collect();
             let run = failing.with_words(&words);
-            if let Err(problem) = refuse(command, guide, &twins.examples, &run) {
+            if let Err(problem) = refuse(command, tool, &twins.examples, &run) {
                 problems.push(format!("{opt_out}: {problem}"));
             }
         }
     }
     for &code in &declared {
-        if !crumbkit_owned(guide, code)
+        if !crumbkit_owned(tool, code)
             && !listed(code)
             && !refused(code)
             && !untwinned.contains(&code)
@@ -300,7 +304,7 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
             ));
         }
     }
-    unheld(guide, spelling, &declared, &mut problems);
+    unheld(tool, spelling, &declared, &mut problems);
     assert!(
         problems.is_empty(),
         "the tool's twins break crumbkit's twin rule:\n{}",
@@ -308,16 +312,16 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
     );
 }
 
-/// Pushes a problem for each failure code that an exit of `guide` lists and
+/// Pushes a problem for each failure code that an exit of `tool` lists and
 /// `declared`, the codes of the tool's `CODES` lists, does not hold. A code
 /// of crumbkit or of one of its add-on crates, or the tool's rename of one,
 /// needs no `CODES` list, because a crumbkit crate raises the failure.
-fn unheld(guide: &Guide, spelling: Spelling, declared: &[&Code], problems: &mut Vec<String>) {
-    for exit in guide.get_exits() {
+fn unheld(tool: &Tool, spelling: Spelling, declared: &[&Code], problems: &mut Vec<String>) {
+    for exit in tool.get_failures().get_exits() {
         for &code in exit.get_failures() {
-            if !declared.contains(&code) && !crumbkit_owned(guide, code) {
+            if !declared.contains(&code) && !crumbkit_owned(tool, code) {
                 problems.push(format!(
-                    "{}: the guide's exit code {} lists the failure code, and no CODES list holds it",
+                    "{}: the tool record's exit code {} lists the failure code, and no CODES list holds it",
                     spelling.spell(code),
                     exit.code()
                 ));
@@ -331,7 +335,7 @@ fn unheld(guide: &Guide, spelling: Spelling, declared: &[&Code], problems: &mut 
 /// [`check_twin`](crate::check_twin).
 fn run_pair(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     twins: &Twins<'_>,
     pair: &Twin<'_>,
 ) -> Result<(), String> {
@@ -342,7 +346,7 @@ fn run_pair(
     let admitted = pair
         .variable
         .map_or(Admitted::Words(&admitted), Admitted::Without);
-    twin(command, guide, &twins.examples, &refused, admitted).map(drop)
+    twin(command, tool, &twins.examples, &refused, admitted).map(drop)
 }
 
 /// Returns the words of the refused and the admitted line of a twin as
@@ -365,10 +369,10 @@ fn json_lines(refused: &[&str], admitted: &[&str]) -> (Vec<String>, Vec<String>)
 }
 
 /// Returns whether `code` is a code of crumbkit or of one of its add-on
-/// crates, or the tool's code that `guide` prints in place of one. A
+/// crates, or the tool's code that `tool` prints in place of one. A
 /// crumbkit crate raises such a failure, so the code needs no twin.
-fn crumbkit_owned(guide: &Guide, code: &Code) -> bool {
-    is_library_code(code) || renamed_to(guide, code)
+fn crumbkit_owned(tool: &Tool, code: &Code) -> bool {
+    is_library_code(code) || renamed_to(tool, code)
 }
 
 /// Returns whether `code` is a code of crumbkit or of one of its add-on
@@ -377,11 +381,15 @@ fn is_library_code(code: &Code) -> bool {
     library_codes().any(|listed| listed == code)
 }
 
-/// Returns whether `guide`, or one of its leaves, prints `code` in place of
+/// Returns whether `tool`, or one of its leaves, prints `code` in place of
 /// a code of crumbkit or of one of its add-on crates.
-fn renamed_to(guide: &Guide, code: &Code) -> bool {
-    let leaves = guide.get_leaves().iter().flat_map(Leaf::get_codes);
-    guide
+fn renamed_to(tool: &Tool, code: &Code) -> bool {
+    let leaves = tool
+        .get_help()
+        .get_leaves()
+        .iter()
+        .flat_map(Leaf::get_codes);
+    tool.get_failures()
         .get_codes()
         .iter()
         .chain(leaves)

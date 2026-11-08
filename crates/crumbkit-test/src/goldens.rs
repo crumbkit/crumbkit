@@ -19,7 +19,7 @@ mod tests;
 /// failed test assertion does, naming every problem it finds.
 ///
 /// A page is the plain text that `crumbkit::parse` prints for the command's
-/// path and the flag with the guide of `pages`, as a caller reads it on a
+/// path and the flag with the tool record of `pages`, as a caller reads it on a
 /// pipe, or what the tool's binary prints, as [`Pages`] chooses. The check
 /// skips each hidden command and everything below it, because help never
 /// shows them. The golden file of a page is named after the command's path
@@ -51,14 +51,14 @@ mod tests;
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit_test::Pages;
 ///
 /// let shelf = Command::new("shelf")
 ///     .about("Browse a small catalogue")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 ///
-/// crumbkit_test::check_help_goldens(&shelf, Pages::rendered(&Guide::new()), "tests/golden/help");
+/// crumbkit_test::check_help_goldens(&shelf, Pages::rendered(&Tool::new()), "tests/golden/help");
 /// ```
 ///
 /// # Panics

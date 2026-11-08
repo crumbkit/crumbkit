@@ -10,8 +10,7 @@ use std::os::unix::ffi::OsStrExt as _;
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, Command};
-use crumbkit::Code;
-use crumbkit::help::Guide;
+use crumbkit::{Code, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -109,7 +108,7 @@ fn report(recoveries: &Recoveries<'_>, label: &str) -> String {
     let problems = panic_message(|| {
         check(
             &tree(),
-            &Guide::new(),
+            &Tool::new(),
             recoveries,
             &dir,
             &Assert::new().action(Action::Overwrite),
@@ -271,7 +270,7 @@ fn a_test_builds_a_twin_a_recovery_start_and_an_untwinned_opt_out_from_a_directo
     let twins = Twins::new(examples, CODES).pairs(&pairs);
     let recoveries = Recoveries::new(examples, CODES).starts(&starts);
 
-    let twin_problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+    let twin_problems = panic_message(|| check_twins(&tree(), &Tool::new(), &twins));
     let report = report(&recoveries, "runtime-scan-golden");
 
     assert_eq!(twin_problems, None);
@@ -360,7 +359,7 @@ fn a_variable_twin_takes_a_variable_name_that_the_test_builds_at_run_time() {
         .pairs(&pairs)
         .unprovoked(&unprovoked);
 
-    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+    let problems = panic_message(|| check_twins(&tree(), &Tool::new(), &twins));
 
     assert_eq!(problems, None);
 }

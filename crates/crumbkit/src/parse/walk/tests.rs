@@ -6,12 +6,12 @@ use std::ffi::OsString;
 use clap::{Arg, ArgAction, Command};
 
 use super::{command_path, given, help_word, program_stem, walk};
-use crate::help::Guide;
+use crate::Tool;
 
 /// A tool whose root has a global option, an option with two values, an
 /// option with any number of values and a flag, and whose `planets` group,
 /// aliased `worlds`, has an option of its own.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .arg(
             Arg::new("fields")
@@ -53,7 +53,7 @@ fn args(words: &[&str]) -> Vec<OsString> {
 
 /// Returns the path that the walk finds in `words`.
 fn path(words: &[&str]) -> Vec<String> {
-    walk(&tool(), &args(words)).path
+    walk(&tree(), &args(words)).path
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn an_option_with_any_number_of_values_takes_words_until_the_next_flag() {
 
 #[test]
 fn an_option_that_allows_hyphen_values_takes_a_word_that_starts_with_a_hyphen() {
-    let walked = walk(&tool(), &args(&["--pattern", "--help", "planets"]));
+    let walked = walk(&tree(), &args(&["--pattern", "--help", "planets"]));
 
     assert_eq!(walked.path, ["planets"]);
     assert!(!walked.long_help);
@@ -113,38 +113,38 @@ fn the_walk_reads_a_global_option_of_a_command_above_the_current_one() {
 
 #[test]
 fn command_path_names_real_commands_and_stops_at_the_first_positional_value() {
-    let tool = tool();
+    let tool = tree();
 
     assert_eq!(
-        command_path(&tool, &Guide::new(), &["-f", "id", "worlds", "show"]),
+        command_path(&tool, &Tool::new(), &["-f", "id", "worlds", "show"]),
         ["planets", "show"]
     );
     assert_eq!(
-        command_path(&tool, &Guide::new(), &["planets", "7", "show"]),
+        command_path(&tool, &Tool::new(), &["planets", "7", "show"]),
         ["planets"]
     );
 }
 
 #[test]
-fn command_path_follows_a_dashed_form_only_when_the_guide_declares_dashed_forms() {
+fn command_path_follows_a_dashed_form_only_when_the_tool_declares_dashed_forms() {
     let tool = Command::new("tool")
         .subcommand(Command::new("reading_lists").subcommand(Command::new("list")));
     let words = ["reading-lists", "list"];
 
     assert_eq!(
-        command_path(&tool, &Guide::new().dashed_forms(), &words),
+        command_path(&tool, &Tool::new().dashed_forms(), &words),
         ["reading_lists", "list"]
     );
     assert_eq!(
-        command_path(&tool, &Guide::new(), &words),
+        command_path(&tool, &Tool::new(), &words),
         Vec::<String>::new()
     );
 }
 
-/// Returns each value that `given` reads in `words` over `tool()`, as the
+/// Returns each value that `given` reads in `words` over `tree()`, as the
 /// option's id and the value.
 fn values(words: &[&str]) -> Vec<(String, String)> {
-    let tool = tool();
+    let tool = tree();
     given(&tool, words, false)
         .values
         .iter()
@@ -212,8 +212,8 @@ fn given_gives_no_value_to_a_flag_a_positional_value_or_an_unknown_name() {
 
 #[test]
 fn the_walk_reports_help_typed_as_a_flag_and_not_as_a_value() {
-    assert!(walk(&tool(), &args(&["planets", "--help"])).long_help);
-    assert!(!walk(&tool(), &args(&["planets", "--", "--help"])).long_help);
+    assert!(walk(&tree(), &args(&["planets", "--help"])).long_help);
+    assert!(!walk(&tree(), &args(&["planets", "--", "--help"])).long_help);
 }
 
 /// Returns whether the walk over `command` reads `words` as a request for
@@ -232,13 +232,13 @@ fn json_flag(global: bool) -> Arg {
 
 #[test]
 fn a_json_word_that_no_command_on_the_path_declares_is_no_request_for_json() {
-    assert!(!json(&tool(), &["--json", "planets"]));
-    assert!(!json(&tool(), &["planets", "show", "--json"]));
+    assert!(!json(&tree(), &["--json", "planets"]));
+    assert!(!json(&tree(), &["planets", "show", "--json"]));
 }
 
 #[test]
 fn a_global_json_flag_on_the_root_counts_on_every_command_below_it() {
-    let tool = tool().arg(json_flag(true));
+    let tool = tree().arg(json_flag(true));
 
     assert!(json(&tool, &["planets", "show", "--json"]));
     assert!(json(&tool, &["--json", "planets"]));
@@ -246,7 +246,7 @@ fn a_global_json_flag_on_the_root_counts_on_every_command_below_it() {
 
 #[test]
 fn a_json_flag_that_only_the_root_declares_counts_only_before_the_subcommand() {
-    let tool = tool().arg(json_flag(false));
+    let tool = tree().arg(json_flag(false));
 
     assert!(json(&tool, &["--json", "planets"]));
     assert!(!json(&tool, &["planets", "--json"]));
@@ -254,7 +254,7 @@ fn a_json_flag_that_only_the_root_declares_counts_only_before_the_subcommand() {
 
 #[test]
 fn a_json_flag_that_a_subcommand_declares_counts_after_its_name() {
-    let tool = tool().mut_subcommand("planets", |planets| planets.arg(json_flag(false)));
+    let tool = tree().mut_subcommand("planets", |planets| planets.arg(json_flag(false)));
 
     assert!(json(&tool, &["planets", "--json"]));
     assert!(!json(&tool, &["--json", "planets"]));
@@ -263,14 +263,14 @@ fn a_json_flag_that_a_subcommand_declares_counts_after_its_name() {
 #[test]
 fn the_search_for_help_skips_the_value_of_an_option() {
     let found = help_word(
-        &tool(),
+        &tree(),
         &[],
         false,
         &args(&["planets", "--sort", "id", "help"]),
     );
 
     assert_eq!(found.map(|help| help.position), Some(4));
-    assert!(help_word(&tool(), &[], false, &args(&["planets", "--sort", "help"])).is_none());
+    assert!(help_word(&tree(), &[], false, &args(&["planets", "--sort", "help"])).is_none());
 }
 
 #[test]

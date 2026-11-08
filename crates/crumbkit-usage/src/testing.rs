@@ -51,7 +51,7 @@ impl Drop for TempDir {
 
 /// Returns a built tool named shelf with a global `--full`, `books list`
 /// with `--all`, `--limit` and `-n`, and `books show` with ids.
-pub(super) fn tool() -> Command {
+pub(super) fn tree() -> Command {
     let flag = |name: &'static str| Arg::new(name).long(name).action(ArgAction::SetTrue);
     let mut tool = Command::new("shelf")
         .arg(flag("full").global(true))

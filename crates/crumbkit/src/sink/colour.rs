@@ -1,6 +1,6 @@
 //! What decides whether crumbkit writes styles to a standard stream: the
 //! colour variables of the environment, whether the stream is a terminal,
-//! the command's `ColorChoice` and the guide's terminal detection
+//! the command's `ColorChoice` and the tool record's terminal detection
 //! (ADR-0131, ADR-0133, ADR-0150).
 
 use std::ffi::{OsStr, OsString};
@@ -12,12 +12,12 @@ use super::{Sink, stderr_is_terminal, stdout_is_terminal};
 
 impl Sink<StdoutLock<'static>, Stderr> {
     /// Returns the standard sink that [`parse`](crate::parse) and
-    /// [`parse_from`](crate::parse_from) print a refusal to. Its error
-    /// writer wants clap's styles as [`wants_styles`] decides from
-    /// `NO_COLOR`, `CLICOLOR_FORCE`, `CLICOLOR`, `TERM`, whether standard
-    /// error is a terminal, the command's `choice` and the guide's terminal
-    /// `detection` (ADR-0131, ADR-0133). Without crumbkit's `color` feature
-    /// it wants none.
+    /// [`parse_from`](crate::parse_from) print a refusal to. Its error writer
+    /// wants clap's styles as [`wants_styles`] decides from `NO_COLOR`,
+    /// `CLICOLOR_FORCE`, `CLICOLOR`, `TERM`, whether standard error is a
+    /// terminal, the command's `choice` and the tool record's terminal
+    /// `detection` (ADR-0131, ADR-0133). Without crumbkit's `color` feature it
+    /// wants none.
     pub(crate) fn standard_for_refusal(choice: ColorChoice, detection: bool) -> Self {
         let styled = cfg!(feature = "color")
             && wants_styles(variables(), stderr_is_terminal(), choice, detection);
@@ -28,7 +28,7 @@ impl Sink<StdoutLock<'static>, Stderr> {
 /// Reports whether the result on standard output carries the styles of a
 /// text table's cells, which [`finish`](crate::finish) asks its sink for:
 /// [`wants_styles`] decides from the colour variables, whether standard
-/// output is a terminal, the command's `choice` and the guide's terminal
+/// output is a terminal, the command's `choice` and the tool record's terminal
 /// `detection` (ADR-0150). A run without detection reads no variable and
 /// asks about no stream.
 pub(crate) fn stdout_styles(choice: ColorChoice, detection: bool) -> bool {

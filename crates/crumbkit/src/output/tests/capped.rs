@@ -3,11 +3,9 @@
 
 use clap::{CommandFactory as _, Parser};
 
-use super::{
-    PLANET_LISTING, Planet, Tool, built_with, finish_output, finish_with, mercury, saturn,
-};
-use crate::help::Guide;
-use crate::{Call, Listing, Page};
+use super::{Cli, PLANET_LISTING, Planet, built_with, finish_output, finish_with, mercury, saturn};
+use crate::tool::Output;
+use crate::{Call, Listing, Page, Tool};
 
 /// Returns `count` planets, alternating Mercury and Saturn.
 fn planets(count: usize) -> Vec<Planet> {
@@ -167,8 +165,8 @@ fn a_capped_listing_prints_the_tools_note_and_next_step_after_its_footer() {
 #[test]
 fn a_capped_listing_cut_by_the_budget_gives_no_count() {
     let args = ["tool", "list"];
-    let guide = Guide::new().output_budget(64, "the tests print little");
-    let output = built_with(Tool::command(), &guide, &args);
+    let tool = Tool::new().output(Output::new().budget(64, "the tests print little"));
+    let output = built_with(Cli::command(), &tool, &args);
     let listing = Listing::new(planets(40), 40)
         .capped(true)
         .described("planets");

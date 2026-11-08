@@ -8,27 +8,28 @@ use clap::Command;
 use super::page::print_text;
 use super::stop::{Printed, Stop};
 use super::walk::{Kind, Words, walk};
-use crate::help::{Guide, topic};
+use crate::Tool;
+use crate::help::topic;
 use crate::sink::role::Deliver;
 
 #[cfg(test)]
 mod tests;
 
-/// Reports whether the guide's root `root` in `command` answers the word
+/// Reports whether the tool record's root `root` in `command` answers the word
 /// `help` with topics: it has no command named or aliased `help`, and it has
 /// subcommands or the tool declares topics.
-pub(super) fn has_topics(command: &Command, root: &[&str], guide: &Guide) -> bool {
+pub(super) fn has_topics(command: &Command, root: &[&str], tool: &Tool) -> bool {
     let node = root.iter().fold(command, |node, name| {
         node.find_subcommand(name).unwrap_or(node)
     });
     node.find_subcommand("help").is_none()
-        && (node.has_subcommands() || !guide.get_topics().is_empty())
+        && (node.has_subcommands() || !tool.get_help().get_topics().is_empty())
 }
 
-/// Returns the topic that `help` at the guide's root prints without clap,
+/// Returns the topic that `help` at the tool record's root prints without clap,
 /// for `args`, the command line with the program name first, whose word
 /// `help` is at `position`: a topic's text when the one word after `help`
-/// that names something names a topic of `guide` or `exit-codes`, and no
+/// that names something names a topic of `tool` or `exit-codes`, and no
 /// command or alias directly below the root has that name. It returns
 /// `None` otherwise, and the caller asks clap for help instead, so `help`
 /// alone prints the root's long help (ADR-0101).
@@ -41,19 +42,23 @@ pub(super) fn has_topics(command: &Command, root: &[&str], guide: &Guide) -> boo
 // the topic as text. A topic in JSON replaces this when a caller needs it.
 pub(super) fn topic_page(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     args: &[OsString],
     position: usize,
 ) -> Option<String> {
     let mut words = naming_words(command, args, position)
         .into_iter()
         .filter_map(|index| args.get(index));
-    let root = guide.root_in(command).iter().fold(command, |node, name| {
-        node.find_subcommand(name).unwrap_or(node)
-    });
+    let root = tool
+        .get_help()
+        .root_in(command)
+        .iter()
+        .fold(command, |node, name| {
+            node.find_subcommand(name).unwrap_or(node)
+        });
     match (words.next(), words.next()) {
         (Some(word), None) if root.find_subcommand(word).is_none() => {
-            topic::text(command.get_name(), guide, word.to_str()?)
+            topic::text(command.get_name(), tool, word.to_str()?)
         }
         _ => None,
     }
@@ -91,9 +96,9 @@ fn naming_words(command: &Command, args: &[OsString], position: usize) -> Vec<us
 }
 
 /// Prints `page`, the topic that the word `help` at `position` asked for at
-/// the guide's root, to `sink`, and returns the `Stop` of the run, after
+/// the tool record's root, to `sink`, and returns the `Stop` of the run, after
 /// parsing `args`, the command line with the program name first, against
-/// `command` with `guide`.
+/// `command` with `tool`.
 //
 // RUST-10: a topic prints as plain text, also on a terminal and to a
 // styled sink, because crumbkit builds it without styles and only the
@@ -103,30 +108,26 @@ fn naming_words(command: &Command, args: &[OsString], position: usize) -> Vec<us
 pub(super) fn print_topic(
     sink: &mut dyn Deliver,
     command: Command,
-    guide: &Guide,
+    tool: &Tool,
     args: &[OsString],
     position: usize,
     page: &str,
 ) -> Stop {
     let code = print_text(sink, page);
     if crate::events::observed() {
-        let root = guide.root_in(&command).iter().map(|&name| name.to_owned());
+        let root = tool
+            .get_help()
+            .root_in(&command)
+            .iter()
+            .map(|&name| name.to_owned());
         crate::events::helped(&command, &root.collect::<Vec<_>>(), true, code);
     }
     // Only this path ends before the walk of the words in `parse`, so it
     // walks the words for `--json` here.
     let json = walk(&command, args).json;
-    // A topic prints only at the guide's root, so the path is empty.
+    // A topic prints only at the tool record's root, so the path is empty.
     let words = without_help(args, position);
-    Stop::new(
-        Printed::Topic,
-        code,
-        json,
-        command,
-        guide,
-        Vec::new(),
-        words,
-    )
+    Stop::new(Printed::Topic, code, json, command, tool, Vec::new(), words)
 }
 
 /// Turns `help` at `position` into a request for clap's long help: it

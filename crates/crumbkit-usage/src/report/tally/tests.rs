@@ -261,7 +261,7 @@ fn a_command_with_a_refused_run_is_a_usage_error_finding_that_counts_them() {
 }
 
 #[test]
-fn a_tool_whose_guide_gives_a_refusal_another_exit_counts_runs_with_that_exit_as_refused() {
+fn a_tool_whose_record_gives_a_refusal_another_exit_counts_runs_with_that_exit_as_refused() {
     let exited = |at, exit| {
         let mut entry = Entry::run("a", at, "books show");
         entry.exit = Some(exit);

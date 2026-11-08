@@ -1,4 +1,4 @@
-//! The example test of cargo-crumbkit. It runs every example in the guide
+//! The example test of cargo-crumbkit. It runs every example in the tool record
 //! against the built binary and compares each run's standard output with its
 //! golden file under `tests/golden/examples/` (ADR-0005).
 //! `SNAPSHOTS=overwrite cargo test` writes, rewrites and deletes those files.
@@ -12,7 +12,7 @@
 //! the workspace, so cargo-crumbkit opts out of running it, and
 //! `tests/docs.rs` runs `docs` with a file in a temporary directory.
 
-use cargo_crumbkit::{ALLOW, Cli, GUIDE};
+use cargo_crumbkit::{ALLOW, Cli, TOOL};
 use clap::CommandFactory as _;
 use crumbkit_test::Examples;
 
@@ -70,7 +70,7 @@ const TARGET_DIR: (&str, &str) = (
 const QUIET: (&str, &str) = ("CARGO_TERM_QUIET", "true");
 
 #[test]
-fn every_example_in_the_guide_runs_prints_its_golden_output_and_keeps_its_output_budget() {
+fn every_example_in_the_tool_runs_prints_its_golden_output_and_keeps_its_output_budget() {
     let passed: Vec<(&str, String)> = PASSED
         .iter()
         .chain(&PLATFORM_PASSED)
@@ -101,8 +101,8 @@ fn every_example_in_the_guide_runs_prints_its_golden_output_and_keeps_its_output
     .env(&env)
     .allow(ALLOW);
 
-    crumbkit_test::check_examples(&Cli::command(), &GUIDE, &examples);
-    crumbkit_test::check_output_budget(&Cli::command(), &GUIDE, &examples);
+    crumbkit_test::check_examples(&Cli::command(), &TOOL, &examples);
+    crumbkit_test::check_output_budget(&Cli::command(), &TOOL, &examples);
 }
 
 /// Builds shelf as weigh's cargo will, with the environment `env` alone, and

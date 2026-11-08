@@ -48,26 +48,26 @@ pub const HEADED_LINE: &str = "Output: each answer's bytes unchanged, under a ==
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
 ///
-/// A tool lists its leaves in its [`Guide`](super::Guide):
+/// A tool lists its leaves in its [`Tool`](super::Tool):
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::Document;
-/// use crumbkit::help::{Example, Guide, Leaf};
+/// use crumbkit::{Document, Tool, help::{Example, Help, Leaf}};
 ///
 /// const BOOKS_LIST: Document<Vec<Book>> =
 ///     Document::new("shelf", "books-list", 1, "The books in the catalogue.");
 ///
-/// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
+/// const LEAVES: &[Leaf] = &[Leaf::new(&["books", "list"])
 ///     .examples(&[
 ///         Example::new(&[], "Print the first page of books"),
 ///         Example::new(&["--all"], "Print every book"),
 ///     ])
-///     .document(BOOKS_LIST)]);
+///     .document(BOOKS_LIST)];
+/// const TOOL: Tool = Tool::new().help(Help::new().leaves(LEAVES));
 ///
-/// assert_eq!(GUIDE.get_leaves()[0].path(), ["books", "list"]);
+/// assert_eq!(TOOL.get_help().get_leaves()[0].path(), ["books", "list"]);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Leaf {
@@ -87,7 +87,7 @@ pub struct Leaf {
     /// no result.
     no_result: bool,
     /// The program whose exit code the command passes on, or `None` when
-    /// the command exits as the guide's exits declare.
+    /// the command exits as the tool record's exits declare.
     passes_on_exit: Option<&'static str>,
     /// The function that builds the calls that a refusal of a command line
     /// that names the command offers as its recovery and alternatives.
@@ -166,7 +166,7 @@ impl Leaf {
     }
 
     /// Sets the sources of the values of the command's arguments, which the
-    /// guide's [`Guide::picker`](super::Guide::picker) offers when the
+    /// tool record's [`Tool::picker`](super::Tool::picker) offers when the
     /// caller leaves a required argument out (ADR-0043). An argument with
     /// possible values offers them and never calls its source.
     /// crumbkit-test's `check_guide` fails on a source whose argument id
@@ -191,11 +191,11 @@ impl Leaf {
     /// [`Prose`](crate::Prose) document has no columns, so its leaf's help
     /// lists none and its `-h` points at none.
     ///
-    /// The leaf keeps the document's id and description, the row type's
-    /// column lists, and functions that build the JSON Schemas of the row
-    /// type and of the whole document, so one guide holds leaves whose rows
-    /// have different types. [`schemas`](crate::schemas) serves each
-    /// leaf's document from them.
+    /// The leaf keeps the document's id and description, the row type's column
+    /// lists, and functions that build the JSON Schemas of the row type and of
+    /// the whole document, so one tool record holds leaves whose rows have
+    /// different types. [`schemas`](crate::schemas) serves each leaf's document
+    /// from them.
     #[must_use]
     pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
         self.columns = Some(Columns {
@@ -219,7 +219,7 @@ impl Leaf {
     /// Returns the leaf with the document and columns of `other`, which
     /// [`Leaf::document`] or [`Leaf::stream`] set, or without a document
     /// when `other` has none. A runtime leaf's document reaches its leaf in
-    /// the joined guide this way.
+    /// the joined tool record this way.
     pub(crate) const fn with_document_of(mut self, other: &Self) -> Self {
         self.columns = other.columns;
         self

@@ -48,7 +48,7 @@ pub(crate) struct Command {
     pub(crate) long_about: Option<String>,
     /// The arguments, in definition order.
     pub(crate) arguments: Vec<Argument>,
-    /// The examples, in guide order.
+    /// The examples, in declared order.
     pub(crate) examples: Vec<Example>,
     /// The columns of the result.
     pub(crate) columns: Vec<Column>,

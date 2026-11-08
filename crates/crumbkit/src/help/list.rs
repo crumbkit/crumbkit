@@ -14,7 +14,7 @@ use super::Goal;
 #[cfg(test)]
 mod tests;
 
-/// The heading under which root help lists the root verbs that the guide
+/// The heading under which root help lists the root verbs that the tool record
 /// declares and no goal names (ADR-0165).
 pub(super) const ROOT_VERBS: &str = "Verbs";
 

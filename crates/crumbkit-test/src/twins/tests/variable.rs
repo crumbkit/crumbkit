@@ -1,8 +1,7 @@
 //! Tests for twins that differ by one environment variable, and for the
 //! variables of a failing line.
 
-use crumbkit::Code;
-use crumbkit::help::Guide;
+use crumbkit::{Code, Tool};
 
 use super::tree;
 use crate::examples::Examples;
@@ -49,7 +48,7 @@ fn checked(pairs: &[Twin<'_>]) -> Option<String> {
     let path = dir.path().join("tool").display().to_string();
     let examples = Examples::new(&path, "").env(&[("BOOKS", "/b")]);
     let twins = Twins::new(examples, &[&[&TOO_DEEP, &NO_SHELF]]).pairs(pairs);
-    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
+    panic_message(|| check_twins(&tree(), &Tool::new(), &twins))
 }
 
 #[test]
@@ -118,7 +117,7 @@ esac
 
     let output = check_twin(
         &tree(),
-        &Guide::new(),
+        &Tool::new(),
         &examples,
         &refused,
         &["books", "show", "2"],

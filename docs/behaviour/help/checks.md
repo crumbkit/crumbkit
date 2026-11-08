@@ -81,7 +81,7 @@ Why: ADR-0025, ADR-0033.
 through snapbox ([golden files](../checks/golden-files.md)). It fails on a
 stale file, so its directory holds only help golden files. The help checks
 print help without a person's aliases, through
-`Guide::without_personal_aliases`, so the golden files are the same on every
+`Help::without_personal_aliases`, so the golden files are the same on every
 machine.
 
 Why: ADR-0025, ADR-0004, ADR-0027.

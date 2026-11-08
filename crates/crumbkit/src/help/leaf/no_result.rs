@@ -36,10 +36,12 @@ impl Leaf {
     /// ```no_run
     /// use std::process::ExitCode;
     ///
-    /// use crumbkit::help::{Guide, Leaf};
+    /// use crumbkit::Tool;
+    /// use crumbkit::help::{Help, Leaf};
     /// use crumbkit::{Failure, Output, Sink};
     ///
-    /// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]);
+    /// const TOOL: Tool =
+    ///     Tool::new().help(Help::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]));
     ///
     /// /// Ends a run of `serve` with `failure`, such as the interrupt that
     /// /// stopped the server.

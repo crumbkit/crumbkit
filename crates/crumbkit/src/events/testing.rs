@@ -11,7 +11,7 @@ use super::{Finished, OBSERVERS, Observer, RefusalEvent, TraceIds};
 use crate::{Code, Spelling};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
-/// prints in the spelling that the tool's guide sets, where the colon
+/// prints in the spelling that the tool record sets, where the colon
 /// spelling would join them with `::`.
 pub(super) const DOTS: Spelling =
     Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));

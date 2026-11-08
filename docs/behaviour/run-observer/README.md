@@ -31,7 +31,7 @@ owns that read in every build.
 
 The `events` module has no cargo feature, so a call site in crumbkit has no
 `cfg` of its own and every build compiles the same reports. The reports take
-no guide, because `ended`, `tolerated`, crumbkit-aliases' `aliased`, the
+no tool record, because `ended`, `tolerated`, crumbkit-aliases' `aliased`, the
 usage log's signal thread and `trace::child_env` have none.
 
 Why: ADR-0057, ADR-0075, ADR-0048.

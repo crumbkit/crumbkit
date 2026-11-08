@@ -1,4 +1,6 @@
 use super::{Ran, judge, judge_text};
+use crumbkit::help::Help;
+use crumbkit::tool::Failures;
 
 /// Returns a run that exited with `code` and printed `stdout` and `stderr`.
 const fn ran<'a>(code: i32, stdout: &'a str, stderr: &'a str) -> Ran<'a> {
@@ -126,15 +128,16 @@ const PICKY: &[&str] = &[
 #[test]
 fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_example() {
     use clap::Command;
-    use crumbkit::help::{Example, Guide, Leaf};
+    use crumbkit::Tool;
+    use crumbkit::help::{Example, Leaf};
 
     use crate::allow::Allow;
     use crate::examples::{Examples, example_golden_name};
     use crate::guide::command_line;
     use crate::temp::TempDir;
 
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(PICKY, "Print")])]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(PICKY, "Print")])]));
     const ALLOW: &[Allow] = &[Allow::example("-c", PICKY, "The output names the day.")];
     let sh = Command::new("sh").subcommand(Command::new("-c"));
     let goldens = TempDir::new("output-budget-inputs").unwrap();
@@ -148,8 +151,8 @@ fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_exa
     );
     let examples = Examples::new("/bin/sh", &dir).current_dir(&path);
 
-    let problems = super::check(&sh, &GUIDE, &examples, super::TIMEOUT);
-    let skipped = super::check(&sh, &GUIDE, &examples.allow(ALLOW), super::TIMEOUT);
+    let problems = super::check(&sh, &TOOL, &examples, super::TIMEOUT);
+    let skipped = super::check(&sh, &TOOL, &examples.allow(ALLOW), super::TIMEOUT);
 
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert!(
@@ -163,7 +166,8 @@ fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_exa
 #[test]
 fn the_output_budget_check_skips_an_example_whose_precondition_the_run_does_not_provide() {
     use clap::Command;
-    use crumbkit::help::{Example, Guide, Leaf};
+    use crumbkit::Tool;
+    use crumbkit::help::{Example, Leaf};
 
     use crate::examples::Examples;
     use crate::temp::TempDir;
@@ -174,16 +178,16 @@ fn the_output_budget_check_skips_an_example_whose_precondition_the_run_does_not_
         r#"test -n "$SH_OUTPUT_BUDGET" && exit 4; echo printed"#,
         "--json",
     ];
-    const GUIDE: Guide = Guide::new().leaves(&[
-        Leaf::new(&["-c"]).examples(&[Example::new(BREAKS, "Print").needs(&["docker"])])
-    ]);
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
+        Leaf::new(&["-c"]).examples(&[Example::new(BREAKS, "Print").needs(&["docker"])]),
+    ]));
     let sh = Command::new("sh").subcommand(Command::new("-c"));
     let goldens = TempDir::new("output-budget-needs").unwrap();
     let dir = goldens.path().display().to_string();
     let examples = Examples::new("/bin/sh", &dir);
 
-    let skipped = super::check(&sh, &GUIDE, &examples, super::TIMEOUT);
-    let ran = super::check(&sh, &GUIDE, &examples.provides(&["docker"]), super::TIMEOUT);
+    let skipped = super::check(&sh, &TOOL, &examples, super::TIMEOUT);
+    let ran = super::check(&sh, &TOOL, &examples.provides(&["docker"]), super::TIMEOUT);
 
     assert_eq!(skipped, Vec::<String>::new());
     assert_eq!(ran.len(), 1, "{ran:?}");
@@ -203,20 +207,21 @@ fn a_run_with_the_budget_that_does_not_end_within_the_timeout_is_stopped_and_bre
     use std::time::Duration;
 
     use clap::Command;
-    use crumbkit::help::{Example, Guide, Leaf};
+    use crumbkit::Tool;
+    use crumbkit::help::{Example, Leaf};
 
     use crate::examples::Examples;
     use crate::temp::TempDir;
 
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(STALLS, "Print")])]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(STALLS, "Print")])]));
     let sh = Command::new("sh").subcommand(Command::new("-c"));
     let goldens = TempDir::new("output-budget-stalls").unwrap();
     let dir = goldens.path().display().to_string();
 
     let problems = super::check(
         &sh,
-        &GUIDE,
+        &TOOL,
         &Examples::new("/bin/sh", &dir),
         Duration::from_millis(200),
     );
@@ -231,7 +236,7 @@ fn a_run_with_the_budget_that_does_not_end_within_the_timeout_is_stopped_and_bre
 }
 
 #[test]
-fn a_guide_that_gives_the_over_budget_failure_another_exit_code_makes_that_code_the_failed_one() {
+fn a_tool_that_gives_the_over_budget_failure_another_exit_code_makes_that_code_the_failed_one() {
     let stdout = "{\"code\":\"sh::output::over_budget\",\"fields\":{\"budget\":100}}\n";
     assert_eq!(judge(&ran(9, stdout, ""), 100, 9, false), None);
     let problem = judge(&ran(1, stdout, ""), 100, 9, false).expect("a problem");
@@ -251,22 +256,28 @@ const FAILS_WITH_9: &[&str] = &[
 fn a_leaf_whose_rename_of_the_over_budget_failure_an_exit_lists_makes_that_code_the_failed_one() {
     use clap::Command;
     use crumbkit::Code;
-    use crumbkit::help::{Example, Exit, Guide, Leaf, Rename};
+    use crumbkit::Tool;
+    use crumbkit::help::{Example, Exit, Leaf, Rename};
 
     use crate::examples::Examples;
     use crate::temp::TempDir;
 
     const TOO_LONG: Code = Code::new("sh", "output", "too_long");
-    const GUIDE: Guide = Guide::new()
-        .exits(&[Exit::new(9, "The output was too long.").failures(&[&TOO_LONG])])
-        .leaves(&[Leaf::new(&["-c"])
-            .examples(&[Example::new(FAILS_WITH_9, "Print")])
-            .codes(&[Rename::new(&crumbkit::codes::OUTPUT_OVER_BUDGET, &TOO_LONG)])]);
+    const TOOL: Tool = Tool::new()
+        .help(
+            Help::new().leaves(&[Leaf::new(&["-c"])
+                .examples(&[Example::new(FAILS_WITH_9, "Print")])
+                .codes(&[Rename::new(&crumbkit::codes::OUTPUT_OVER_BUDGET, &TOO_LONG)])]),
+        )
+        .failures(
+            Failures::new()
+                .exits(&[Exit::new(9, "The output was too long.").failures(&[&TOO_LONG])]),
+        );
     let sh = Command::new("sh").subcommand(Command::new("-c"));
     let goldens = TempDir::new("output-budget-leaf-exit").unwrap();
     let dir = goldens.path().display().to_string();
 
-    let problems = super::check(&sh, &GUIDE, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
+    let problems = super::check(&sh, &TOOL, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
 
     assert_eq!(problems, Vec::<String>::new());
 }
@@ -371,7 +382,8 @@ impl crumbkit::Headed for File {
 #[test]
 fn the_output_budget_check_runs_the_text_examples_of_a_headed_leaf() {
     use clap::Command;
-    use crumbkit::help::{Example, Guide, Leaf};
+    use crumbkit::Tool;
+    use crumbkit::help::{Example, Leaf};
     use crumbkit::{Batch, Document, Error};
 
     use crate::examples::Examples;
@@ -379,14 +391,16 @@ fn the_output_budget_check_runs_the_text_examples_of_a_headed_leaf() {
 
     const FILES: Document<Batch<File, Error>> =
         Document::new("sh", "files", 1, "The files.").headed();
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(TEXT_FAILS_WITH_3, "Print")])
-        .document(FILES)]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(TEXT_FAILS_WITH_3, "Print")])
+            .document(FILES)]),
+    );
     let sh = Command::new("sh").subcommand(Command::new("-c"));
     let goldens = TempDir::new("output-budget-headed").unwrap();
     let dir = goldens.path().display().to_string();
 
-    let problems = super::check(&sh, &GUIDE, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
+    let problems = super::check(&sh, &TOOL, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
 
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert!(

@@ -29,7 +29,7 @@ pub use envelope::Envelope;
 /// path starts below `cargo <name>`, so `cargo crumbkit weigh` prints
 /// `crumbkit/weigh/v1`. A document that no command prints on its own, such
 /// as `<tool>/failure/v1`, names what it holds. crumbkit-test's
-/// `check_document_ids` checks the rule for every leaf of a tool's guide,
+/// `check_document_ids` checks the rule for every leaf of a tool record,
 /// and a tool can opt out of it for a command with a stated reason.
 ///
 /// The description is what `schemas list` shows for the document and the

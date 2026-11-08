@@ -30,7 +30,7 @@ shelf's book table shows each title in bold
 The text table that `finish` prints shows its cells' styles when all of
 these hold, checked in this order:
 
-1. The guide keeps terminal detection on
+1. The tool record keeps terminal detection on
    ([terminal detection](../terminal.md#turning-detection-off)).
 2. The command's `ColorChoice` is not `Never`.
 3. `NO_COLOR` is unset or empty.

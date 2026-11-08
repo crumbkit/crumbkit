@@ -8,6 +8,7 @@
 ## Children
 
 - [ADR-0160. Names and visibility before the first release](0160-names-and-visibility-before-the-first-release.md)
+- [ADR-0180. Tool and its records replace Guide](0180-tool-record-replaces-guide.md)
 
 ## Context
 

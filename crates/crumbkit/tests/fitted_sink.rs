@@ -6,15 +6,14 @@ use std::ops::ControlFlow;
 use std::process::ExitCode;
 
 use clap::{CommandFactory as _, Parser, Subcommand};
-use crumbkit::help::Guide;
-use crumbkit::{Document, Error, Listing, Output, Row, Sink, Stream, ViewFlags};
+use crumbkit::{Document, Error, Listing, Output, Row, Sink, Stream, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
 /// A tool with a `list` command and a `watch` command.
 #[derive(Parser)]
 #[command(name = "library")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -66,16 +65,16 @@ fn books() -> Vec<Book> {
     ]
 }
 
-/// Parses `library` followed by `args` with `guide`, and returns the
+/// Parses `library` followed by `args` with `tool`, and returns the
 /// output, or `None` when the line does not parse.
-fn parse(guide: &Guide, args: &[&str]) -> Option<Output> {
+fn parse(tool: &Tool, args: &[&str]) -> Option<Output> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["library"].iter().chain(args);
-    let parsed = crumbkit::parse_to::<Tool, _, _, _, _>(
+    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        Tool::command(),
-        guide,
+        Cli::command(),
+        tool,
         words,
     );
     parsed.ok().map(|(_tool, output)| output)
@@ -87,17 +86,17 @@ struct Printed {
     err: String,
 }
 
-/// Finishes `value` from `library list` with `flags` and `guide` into the
+/// Finishes `value` from `library list` with `flags` and `tool` into the
 /// tool's own sink, which `width` gives its width, or returns `None` when
 /// the line does not parse or the output is not UTF-8.
 fn list<T: crumbkit::Rows>(
-    guide: &Guide,
+    tool: &Tool,
     flags: &[&str],
     document: Document<T>,
     value: T,
     width: Option<usize>,
 ) -> Option<Printed> {
-    let output = parse(guide, &[&["list"], flags].concat())?;
+    let output = parse(tool, &[&["list"], flags].concat())?;
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err).fitted(width);
@@ -113,7 +112,7 @@ fn list<T: crumbkit::Rows>(
 /// own sink, which `width` gives its width, or returns `None` when the line
 /// does not parse.
 fn list_books(flags: &[&str], width: Option<usize>) -> Option<Printed> {
-    list(&Guide::new(), flags, BOOKS, books(), width)
+    list(&Tool::new(), flags, BOOKS, books(), width)
 }
 
 #[test]
@@ -181,7 +180,8 @@ fn json_through_a_fitted_sink_is_the_same_as_through_an_unfitted_sink() {
 
 #[test]
 fn the_output_budget_counts_the_unfitted_table_through_a_fitted_sink() {
-    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let tool =
+        Tool::new().output(crumbkit::tool::Output::new().budget(1024, "the tests print little"));
     let listing = || {
         let rows: Vec<Book> = (0..30)
             .map(|number| Book {
@@ -192,8 +192,8 @@ fn the_output_budget_counts_the_unfitted_table_through_a_fitted_sink() {
         Listing::new(rows, 30).described("books")
     };
 
-    let fitted = list(&guide, &[], BOOK_LISTING, listing(), Some(40)).unwrap();
-    let unfitted = list(&guide, &[], BOOK_LISTING, listing(), None).unwrap();
+    let fitted = list(&tool, &[], BOOK_LISTING, listing(), Some(40)).unwrap();
+    let unfitted = list(&tool, &[], BOOK_LISTING, listing(), None).unwrap();
 
     assert_ne!(fitted.out, unfitted.out, "the table was not fitted");
     assert_eq!(fitted.out.lines().count(), unfitted.out.lines().count());
@@ -208,7 +208,7 @@ fn the_output_budget_counts_the_unfitted_table_through_a_fitted_sink() {
 #[test]
 fn a_stream_through_a_fitted_sink_prints_its_table_unfitted() {
     let watch = |width: Option<usize>| {
-        let output = parse(&Guide::new(), &["watch"]).unwrap();
+        let output = parse(&Tool::new(), &["watch"]).unwrap();
         let mut out = Vec::new();
         let mut err = Vec::new();
         let mut sink = Sink::new(&mut out, &mut err).fitted(width);
@@ -262,7 +262,7 @@ fn a_fitted_table_fits_the_width_while_a_child_line_wider_than_the_width_prints_
         reference: reference.clone(),
     }];
 
-    let printed = list(&Guide::new(), &[], CATALOGUE, rows, Some(30)).unwrap();
+    let printed = list(&Tool::new(), &[], CATALOGUE, rows, Some(30)).unwrap();
 
     let expected =
         format!("TITLE                    SHELF\nThe Adventures of Sher…  crime\n{reference}\n");

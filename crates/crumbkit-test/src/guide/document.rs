@@ -1,4 +1,4 @@
-//! The guide check's document rule, which a leaf whose effects change
+//! The tool record check's document rule, which a leaf whose effects change
 //! something meets with a document or the declaration that it prints no
 //! result (ADR-0016, ADR-0105, ADR-0115, ADR-0143).
 

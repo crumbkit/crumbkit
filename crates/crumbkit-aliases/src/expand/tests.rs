@@ -4,7 +4,7 @@ use std::ffi::OsString;
 use std::path::Path;
 
 use super::{expand, expand_with};
-use crate::testing::tool;
+use crate::testing::tree;
 
 /// An aliases file with one alias that takes extra words after its own.
 const MINE: &str = r#"mine = ["books", "list", "--long"]"#;
@@ -17,13 +17,13 @@ fn os(words: &[&str]) -> Vec<OsString> {
 /// Expands `words` against the test tool with an aliases file that holds
 /// `text`.
 fn expanded(text: &str, words: &[&str]) -> Vec<OsString> {
-    expand_with(&tool(), os(words), || Some(text.to_owned()))
+    expand_with(&tree(), os(words), || Some(text.to_owned()))
 }
 
 /// Expands `words` against the test tool and fails the test if `expand`
 /// reads the aliases file.
 fn expanded_unread(words: &[&str]) -> Vec<OsString> {
-    expand_with(&tool(), os(words), || {
+    expand_with(&tree(), os(words), || {
         panic!("expand read the aliases file for {words:?}")
     })
 }
@@ -79,8 +79,8 @@ fn a_missing_file_or_no_file_leaves_the_arguments_unchanged() {
     let missing = Path::new(env!("CARGO_MANIFEST_DIR")).join("no-such-aliases.toml");
     let words = ["shelf", "mine"];
 
-    assert_eq!(expand(&tool(), words, Some(&missing)), os(&words));
-    assert_eq!(expand(&tool(), words, None), os(&words));
+    assert_eq!(expand(&tree(), words, Some(&missing)), os(&words));
+    assert_eq!(expand(&tree(), words, None), os(&words));
 }
 
 #[test]

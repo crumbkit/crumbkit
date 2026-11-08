@@ -64,7 +64,7 @@ impl Failure for Missing {
 /// A tool with a `count` command and a `list` command that a recovery names.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -90,12 +90,12 @@ fn finish_with(flags: &[&str], prose: Prose<Count, Missing>) -> Finished {
     let document: Document<Prose<Count, Missing>> =
         Document::new("solar", "count", 1, "The number of planets.");
     let args = ["tool", "count"].iter().chain(flags);
-    let view = Tool::try_parse_from(args.clone()).unwrap().view;
+    let view = Cli::try_parse_from(args.clone()).unwrap().view;
     let output = crate::Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &crate::help::Guide::new(),
+        Cli::command(),
+        &crate::Tool::new(),
         args,
     )
     .unwrap();

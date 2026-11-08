@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use clap::error::ErrorKind;
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
-use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, RefusalContext, Topic};
+use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf, RefusalContext, Topic};
 use crumbkit::pick::{Choices, Menu};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::{Call, DryRun, NoInput, Page, ViewFlags, Yes};
+use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
 use crumbkit_usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
 use schemars::JsonSchema;
@@ -70,100 +70,103 @@ fn list_books(context: &RefusalContext<'_>) -> Vec<Call> {
 /// leaves out the ids of `shelf books show` picks books from the menu, and a
 /// refused `shelf books show` recovers with `shelf books list`, except when
 /// it types ids beside `--from`.
-pub const GUIDE: Guide = Guide::new()
-    .picker(&MENU)
-    .groups(&[Group::new(
-        &[],
-        &[
-            Goal::new("Browse the catalogue", &["books"]),
-            Goal::new("Explore the commands", &["commands", "schemas"]),
-            Goal::new("Review how shelf is used", &["self"]),
-        ],
-    )
-    .compact()])
-    .leaves(&[
-        Leaf::new(&["books", "list"])
-            .examples(&[
-                Example::new(&[], "Print the first page of books"),
-                Example::new(&["--all"], "Print every book"),
+pub const TOOL: Tool = Tool::new()
+    .help(
+        Help::new()
+            .groups(&[Group::new(
+                &[],
+                &[
+                    Goal::new("Browse the catalogue", &["books"]),
+                    Goal::new("Explore the commands", &["commands", "schemas"]),
+                    Goal::new("Review how shelf is used", &["self"]),
+                ],
+            )
+            .compact()])
+            .leaves(&[
+                Leaf::new(&["books", "list"])
+                    .examples(&[
+                        Example::new(&[], "Print the first page of books"),
+                        Example::new(&["--all"], "Print every book"),
+                    ])
+                    .effects(Effects::read_only())
+                    .document(BOOKS_LIST),
+                Leaf::new(&["books", "show"])
+                    .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
+                    .effects(Effects::read_only())
+                    .document(BOOKS_SHOW)
+                    .choices(BOOK_IDS)
+                    .refusal_alternatives(list_books),
+                Leaf::new(&["books", "summarize"])
+                    .examples(&[
+                        Example::new(&[], "Summarize the whole catalogue"),
+                        Example::new(&["2", "5"], "Summarize books 2 and 5"),
+                    ])
+                    .effects(Effects::read_only())
+                    .document(BOOKS_SUMMARIZE),
+                Leaf::new(&["books", "remove"])
+                    .examples(&[
+                        Example::new(
+                            &["2", "--dry-run"],
+                            "Print the book that removing book 2 would remove",
+                        ),
+                        Example::new(&["2", "--yes"], "Remove book 2 without asking"),
+                    ])
+                    .effects(Effects::destructive().idempotent().all_or_none())
+                    .document(BOOKS_REMOVE),
+                Leaf::new(&["commands", "list"])
+                    .examples(&[
+                        Example::new(&[], "List every command"),
+                        Example::new(
+                            &["books"],
+                            "List the books command and the commands below it",
+                        ),
+                        Example::new(
+                            &["books", "list", "--json", "--full"],
+                            "Print books list with its arguments, examples and columns as JSON",
+                        ),
+                    ])
+                    .effects(Effects::read_only())
+                    .document(COMMANDS_LIST),
+                Leaf::new(&["schemas", "list"])
+                    .examples(&[Example::new(&[], "List every document that shelf prints")])
+                    .effects(Effects::read_only())
+                    .document(SCHEMAS_LIST),
+                Leaf::new(&["schemas", "show"])
+                    .examples(&[Example::new(
+                        &["shelf/books-list/v1"],
+                        "Print the JSON Schema of the document that books list prints",
+                    )])
+                    .effects(Effects::read_only())
+                    .document(SCHEMAS_SHOW),
+                Leaf::new(&["self", "usage"])
+                    .examples(&[
+                        Example::new(&[], "Report the findings of the last 7 days"),
+                        Example::new(&["--since", "1d"], "Report the findings of the last day"),
+                    ])
+                    .effects(Effects::read_only())
+                    .document(SELF_USAGE),
+                Leaf::new(&["self", "figures", "list"])
+                    .examples(&[
+                        Example::new(
+                            &[],
+                            "Print the figures of each command over the last 7 days",
+                        ),
+                        Example::new(
+                            &["--log", "usage.jsonl"],
+                            "Print the figures of the commands in a copy of the usage log",
+                        ),
+                    ])
+                    .effects(Effects::read_only())
+                    .document(SELF_FIGURES_LIST),
             ])
-            .effects(Effects::read_only())
-            .document(BOOKS_LIST),
-        Leaf::new(&["books", "show"])
-            .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
-            .effects(Effects::read_only())
-            .document(BOOKS_SHOW)
-            .choices(BOOK_IDS)
-            .refusal_alternatives(list_books),
-        Leaf::new(&["books", "summarize"])
-            .examples(&[
-                Example::new(&[], "Summarize the whole catalogue"),
-                Example::new(&["2", "5"], "Summarize books 2 and 5"),
-            ])
-            .effects(Effects::read_only())
-            .document(BOOKS_SUMMARIZE),
-        Leaf::new(&["books", "remove"])
-            .examples(&[
-                Example::new(
-                    &["2", "--dry-run"],
-                    "Print the book that removing book 2 would remove",
-                ),
-                Example::new(&["2", "--yes"], "Remove book 2 without asking"),
-            ])
-            .effects(Effects::destructive().idempotent().all_or_none())
-            .document(BOOKS_REMOVE),
-        Leaf::new(&["commands", "list"])
-            .examples(&[
-                Example::new(&[], "List every command"),
-                Example::new(
-                    &["books"],
-                    "List the books command and the commands below it",
-                ),
-                Example::new(
-                    &["books", "list", "--json", "--full"],
-                    "Print books list with its arguments, examples and columns as JSON",
-                ),
-            ])
-            .effects(Effects::read_only())
-            .document(COMMANDS_LIST),
-        Leaf::new(&["schemas", "list"])
-            .examples(&[Example::new(&[], "List every document that shelf prints")])
-            .effects(Effects::read_only())
-            .document(SCHEMAS_LIST),
-        Leaf::new(&["schemas", "show"])
-            .examples(&[Example::new(
-                &["shelf/books-list/v1"],
-                "Print the JSON Schema of the document that books list prints",
+            .topics(&[Topic::new(
+                "catalogue",
+                "Where shelf's books come from and how their ids work",
+                include_str!("cli/catalogue.txt"),
             )])
-            .effects(Effects::read_only())
-            .document(SCHEMAS_SHOW),
-        Leaf::new(&["self", "usage"])
-            .examples(&[
-                Example::new(&[], "Report the findings of the last 7 days"),
-                Example::new(&["--since", "1d"], "Report the findings of the last day"),
-            ])
-            .effects(Effects::read_only())
-            .document(SELF_USAGE),
-        Leaf::new(&["self", "figures", "list"])
-            .examples(&[
-                Example::new(
-                    &[],
-                    "Print the figures of each command over the last 7 days",
-                ),
-                Example::new(
-                    &["--log", "usage.jsonl"],
-                    "Print the figures of the commands in a copy of the usage log",
-                ),
-            ])
-            .effects(Effects::read_only())
-            .document(SELF_FIGURES_LIST),
-    ])
-    .topics(&[Topic::new(
-        "catalogue",
-        "Where shelf's books come from and how their ids work",
-        include_str!("cli/catalogue.txt"),
-    )])
-    .personal_aliases(crumbkit_aliases::names);
+            .personal_aliases(crumbkit_aliases::names),
+    )
+    .picker(&MENU);
 
 /// The resources that shelf serves.
 #[derive(Debug, Subcommand)]

@@ -8,16 +8,19 @@ use std::process::ExitCode;
 use clap::{CommandFactory as _, Parser};
 
 use super::PLANETS;
-use crate::help::{Exit, Guide};
+use crate::help::Exit;
+use crate::tool::Failures;
 use crate::twins::assert_one_word_apart;
-use crate::{Code, Failure, Output, Recovery, Sink};
+use crate::{Code, Failure, Output, Recovery, Sink, Tool};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
-/// A guide that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
-const GUIDE: Guide = Guide::new()
-    .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]);
+/// A tool record that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
+const TOOL: Tool = Tool::new().failures(
+    Failures::new()
+        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]),
+);
 
 /// A failure with the code it was given.
 #[derive(Debug)]
@@ -44,22 +47,22 @@ impl Failure for Failed {
 /// A tool with the output flags and nothing else.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(flatten)]
     view: crate::ViewFlags,
 }
 
-/// Parses `tool` followed by `flags`, and builds the output with `GUIDE`,
+/// Parses `tool` followed by `flags`, and builds the output with `TOOL`,
 /// as a tool that parses with clap alone builds it.
 fn guided(flags: &[&str]) -> Output {
-    let view = Tool::try_parse_from(["tool"].iter().chain(flags))
+    let view = Cli::try_parse_from(["tool"].iter().chain(flags))
         .unwrap()
         .view;
     Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &GUIDE,
+        Cli::command(),
+        &TOOL,
         ["tool"].iter().chain(flags),
     )
     .unwrap()
@@ -85,7 +88,7 @@ fn printed<R>(print: impl FnOnce(&mut Sink<&mut Vec<u8>, &mut Vec<u8>>) -> R) ->
 }
 
 #[test]
-fn listed_exit_gives_the_exit_that_the_guide_lists_and_none_for_an_unlisted_code() {
+fn listed_exit_gives_the_exit_that_the_tool_lists_and_none_for_an_unlisted_code() {
     let output = guided(&[]);
     assert_eq!(output.listed_exit(&TIMED_OUT), Some(124));
     assert_eq!(output.listed_exit(&NOT_FOUND), None);

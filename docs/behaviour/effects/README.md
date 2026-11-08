@@ -12,9 +12,9 @@ themselves.
 
 ## Declaring effects
 
-An agent cannot tell from a command's name whether the command changes
-anything, whether a repeat is safe, or whether it destroys data. Each leaf in
-the guide therefore declares its `Effects` with `Leaf::effects`, beside its
+An agent cannot tell from a command's name whether the command changes anything,
+whether a repeat is safe, or whether it destroys data. Each leaf in the tool
+record therefore declares its `Effects` with `Leaf::effects`, beside its
 examples and document.
 
 The effects use the vocabulary of the Model Context Protocol's tool

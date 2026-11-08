@@ -172,7 +172,7 @@ answer exists on every path, because `parse` returns a `Stop` whose `Output`
 holds the `--json` that the walk found.
 
 A tool draws progress with a library of its choice, and only when
-`Output::progress_allowed` is true: `--json` is off, the guide keeps
+`Output::progress_allowed` is true: `--json` is off, the tool keeps
 [terminal detection](terminal.md) on and standard error is a terminal. A
 program, an agent, a pipe, a file and crumbkit-test's `check_examples`
 therefore never receive progress lines. crumbkit takes no progress library

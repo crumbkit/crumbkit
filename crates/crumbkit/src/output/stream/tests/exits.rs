@@ -1,5 +1,5 @@
-//! Tests for the exit code of a stream when the guide maps a failure's code
-//! to one of the tool's exit codes (ADR-0037, ADR-0041).
+//! Tests for the exit code of a stream when the tool record maps a failure's
+//! code to one of the tool's exit codes (ADR-0037, ADR-0041).
 
 use std::fmt;
 use std::io;
@@ -8,16 +8,18 @@ use std::process::ExitCode;
 
 use clap::{CommandFactory as _, FromArgMatches as _};
 
-use super::{SIGHTINGS, Tool, Writer, kingfisher, robin};
-use crate::help::{Exit, Guide};
-use crate::{Code, Failure, Output, Recovery, Sink, stream_to};
+use super::{Cli, SIGHTINGS, Writer, kingfisher, robin};
+use crate::help::Exit;
+use crate::tool::Failures;
+use crate::{Code, Failure, Output, Recovery, Sink, Tool, stream_to};
 
 const TIMED_OUT: Code = Code::new("birds", "watch", "timed_out");
 const UNREADABLE: Code = Code::new("birds", "sightings", "unreadable");
 
-/// A guide that maps `TIMED_OUT` to 124 and leaves `UNREADABLE` unmapped.
-const GUIDE: Guide =
-    Guide::new().exits(&[Exit::new(124, "The watch ran out of time.").failures(&[&TIMED_OUT])]);
+/// A tool record that maps `TIMED_OUT` to 124 and leaves `UNREADABLE` unmapped.
+const TOOL: Tool = Tool::new().failures(
+    Failures::new().exits(&[Exit::new(124, "The watch ran out of time.").failures(&[&TIMED_OUT])]),
+);
 
 /// A failure with the code it was given.
 #[derive(Debug)]
@@ -41,19 +43,19 @@ impl Failure for Failed {
     }
 }
 
-/// Parses `birds watch` and builds the output with `GUIDE`, as a tool that
+/// Parses `birds watch` and builds the output with `TOOL`, as a tool that
 /// parses with clap alone builds it.
 fn guided() -> Output {
-    let mut command = Tool::command();
+    let mut command = Cli::command();
     let matches = command
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
-    let view = Tool::from_arg_matches(&matches).unwrap().view;
+    let view = Cli::from_arg_matches(&matches).unwrap().view;
     Output::new(
         view,
         crate::DryRun::default(),
         command,
-        &GUIDE,
+        &TOOL,
         ["birds", "watch"],
     )
     .unwrap()

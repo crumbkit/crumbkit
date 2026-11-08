@@ -7,9 +7,8 @@ use serde::Serialize;
 
 use std::process::ExitCode;
 
-use super::{Finished, Tool, built_with};
-use crate::help::Guide;
-use crate::{Document, Error, Listing, Output, Row, Rows, Sink, Style, finish_to};
+use super::{Cli, Finished, built_with};
+use crate::{Document, Error, Listing, Output, Row, Rows, Sink, Style, Tool, finish_to};
 
 /// A service and its state, whose state cell is green when it runs, red
 /// when it failed and dim when it stopped.
@@ -83,10 +82,10 @@ fn plain_services() -> Vec<PlainService> {
         .collect()
 }
 
-/// Returns the output of `tool list` with `flags` and `guide`.
-fn built(guide: &Guide, flags: &[&str]) -> Output {
+/// Returns the output of `tool list` with `flags` and `tool`.
+fn built(tool: &Tool, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    built_with(Tool::command(), guide, &args)
+    built_with(Cli::command(), tool, &args)
 }
 
 /// Finishes `value` with `output` into a sink whose result is `styled`, as
@@ -115,7 +114,7 @@ fn finish_into<T: Rows>(
 /// is `styled`.
 fn finish_services(flags: &[&str], styled: bool) -> Finished {
     finish_into(
-        built(&Guide::new(), flags),
+        built(&Tool::new(), flags),
         SERVICES,
         services(),
         styled,
@@ -157,7 +156,7 @@ NAME          STATE
 fn a_sink_without_styles_prints_the_bytes_of_a_row_type_that_styles_no_cell() {
     let styled_type = finish_services(&[], false);
     let plain_type = finish_into(
-        built(&Guide::new(), &[]),
+        built(&Tool::new(), &[]),
         PLAIN_SERVICES,
         plain_services(),
         false,
@@ -191,14 +190,14 @@ fn json_with_a_styled_sink_prints_the_same_bytes_as_without_one() {
 #[test]
 fn a_fitted_styled_table_cuts_the_text_inside_the_escape_codes() {
     let narrow = finish_into(
-        built(&Guide::new(), &[]),
+        built(&Tool::new(), &[]),
         SERVICES,
         services(),
         true,
         Some(16),
     );
     let plain = finish_into(
-        built(&Guide::new(), &[]),
+        built(&Tool::new(), &[]),
         SERVICES,
         services(),
         false,
@@ -215,7 +214,8 @@ fn a_fitted_styled_table_cuts_the_text_inside_the_escape_codes() {
 
 #[test]
 fn the_output_budget_shows_the_same_rows_with_and_without_styles() {
-    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let tool =
+        Tool::new().output(crate::tool::Output::new().budget(1024, "the tests print little"));
     let listing = || {
         let rows: Vec<Service> = (0..60)
             .map(|number| Service {
@@ -226,8 +226,8 @@ fn the_output_budget_shows_the_same_rows_with_and_without_styles() {
         Listing::new(rows, 60).described("services")
     };
 
-    let styled = finish_into(built(&guide, &[]), SERVICE_LISTING, listing(), true, None);
-    let plain = finish_into(built(&guide, &[]), SERVICE_LISTING, listing(), false, None);
+    let styled = finish_into(built(&tool, &[]), SERVICE_LISTING, listing(), true, None);
+    let plain = finish_into(built(&tool, &[]), SERVICE_LISTING, listing(), false, None);
 
     assert_eq!(strip(&styled.out), plain.out);
     assert_eq!(styled.err, plain.err);
@@ -283,7 +283,7 @@ fn a_document_that_lists_only_problems_styles_each_shown_row_with_its_own_styles
     ];
 
     let finished = finish_into(
-        built(&Guide::new(), &[]),
+        built(&Tool::new(), &[]),
         PROBLEM_CHECKS,
         Listing::from_all(checks, None),
         true,
@@ -306,7 +306,7 @@ fn a_column_left_out_for_being_empty_takes_no_style_from_the_columns_beside_it()
     ];
 
     let finished = finish_into(
-        built(&Guide::new(), &[]),
+        built(&Tool::new(), &[]),
         CHECKS,
         Listing::from_all(checks, None),
         true,
@@ -329,7 +329,7 @@ fn the_placeholder_of_a_missing_value_takes_the_style_of_its_cell() {
     ];
 
     let finished = finish_into(
-        built(&Guide::new(), &[]),
+        built(&Tool::new(), &[]),
         CHECKS,
         Listing::from_all(checks, None),
         true,

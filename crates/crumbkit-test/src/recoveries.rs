@@ -5,8 +5,8 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::help::{Guide, Leaf};
-use crumbkit::{Code, Spelling};
+use crumbkit::help::Leaf;
+use crumbkit::{Code, Spelling, Tool};
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
@@ -259,7 +259,7 @@ impl<'a> Recoveries<'a> {
     /// environment and opt-outs and check the codes of `codes`, the `CODES`
     /// list of each of the tool's error types, with no start, no unprovoked
     /// code, no value and at most 3 steps in a chain. [`check_recoveries`]
-    /// spells the codes as the tool's guide does.
+    /// spells the codes as the tool record does.
     #[must_use]
     pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
         Self {
@@ -374,7 +374,7 @@ impl<'a> Recoveries<'a> {
 /// a plugin. The check counts such codes in the report. crumbkit owns its
 /// own codes and the codes of its add-on crates, such as crumbkit-child's
 /// `<tool>::child::not_found`, which print with the tool's component
-/// (ADR-0079), and the codes that the guide prints in place of them. Any
+/// (ADR-0079), and the codes that the tool record prints in place of them. Any
 /// other undeclared code in the tool's component is a problem.
 ///
 /// It finds:
@@ -414,7 +414,7 @@ impl<'a> Recoveries<'a> {
 ///   the tool's name, or that has a placeholder without a value;
 /// - a run that cannot start, that does not end within 10 seconds or that
 ///   fails without a failure that the check can read;
-/// - a failed run whose exit code breaks the guide's exits, as
+/// - a failed run whose exit code breaks the tool record's exits, as
 ///   [`check_twin`](crate::check_twin) finds for a refused line;
 /// - a declared code that no chain provokes and [`Recoveries::unprovoked`]
 ///   does not list, and a listed code that is not declared or that a chain
@@ -432,26 +432,30 @@ impl<'a> Recoveries<'a> {
 /// Panics when a rule above is broken. The message lists each problem on
 /// its own line under `the tool's recoveries break crumbkit's recovery
 /// rules:`.
-pub fn check_recoveries(command: &Command, guide: &Guide, recoveries: &Recoveries<'_>, dir: &str) {
+pub fn check_recoveries(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, guide, recoveries, dir, &assert);
+    check(command, tool, recoveries, dir, &assert);
 }
 
 /// Returns the spelled codes whose recoveries the check follows by name:
-/// the `declared` codes, crumbkit's codes as `guide` prints them, and each
-/// code that `guide` or one of its leaves prints in place of a code on a
+/// the `declared` codes, crumbkit's codes as `tool` prints them, and each
+/// code that `tool` or one of its leaves prints in place of a code on a
 /// built-in list, which may be an add-on crate's code that
 /// `crumbkit::codes::ALL` does not list.
-fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) -> Vec<String> {
+fn known_codes(declared: &[(String, &Code)], tool: &Tool, spelling: Spelling) -> Vec<String> {
     let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
     known.extend(
         crumbkit::codes::ALL
             .iter()
-            .map(|&code| spelling.spell(guide.printed(&[], code))),
+            .map(|&code| spelling.spell(tool.printed(&[], code))),
     );
-    let leaves = guide.get_leaves().iter().flat_map(Leaf::get_codes);
+    let leaves = tool
+        .get_help()
+        .get_leaves()
+        .iter()
+        .flat_map(Leaf::get_codes);
     known.extend(
-        guide
+        tool.get_failures()
             .get_codes()
             .iter()
             .chain(leaves)
@@ -463,24 +467,21 @@ fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) 
 
 /// Runs [`check_recoveries`] with `assert`, whose action decides whether
 /// the check compares or overwrites the golden file.
-fn check(
-    command: &Command,
-    guide: &Guide,
-    recoveries: &Recoveries<'_>,
-    dir: &str,
-    assert: &Assert,
-) {
+fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str, assert: &Assert) {
     let reader = failures::reader(&recoveries.examples);
-    // Codes print in the guide's spelling, and crumbkit's own codes print
+    // Codes print in the tool record's spelling, and crumbkit's own codes print
     // with the tool's name (ADR-0079).
-    let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
+    let spelling = tool
+        .get_failures()
+        .get_spelling()
+        .for_tool(tool.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();
     for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
             declared.push((spelling.spell(code), code));
         }
     }
-    let known = known_codes(&declared, guide, spelling);
+    let known = known_codes(&declared, tool, spelling);
     // crumbkit's add-on crates, such as crumbkit-aliases, own codes in the
     // `crumbkit` component that `crumbkit::codes::ALL` does not list. The
     // walk finds them on the built-in lists, so only the declared codes
@@ -510,15 +511,15 @@ fn check(
         known,
         components,
         // A leaf cannot rename the usage code, so every command prints the
-        // guide's.
-        usage: spelling.spell(guide.printed(&[], &crumbkit::codes::CLI_USAGE)),
+        // tool record's.
+        usage: spelling.spell(tool.printed(&[], &crumbkit::codes::CLI_USAGE)),
         allowances,
         problems: Vec::new(),
         report: String::new(),
         provoked: Vec::new(),
         skipped: 0,
         reader,
-        guide,
+        tool,
         stopped: None,
     };
     for start in recoveries.starts {

@@ -80,7 +80,7 @@ impl Output {
     ///   standard input ends first. It has no next step, because a person
     ///   chose not to proceed.
     /// - `<tool>::confirmation::needs_yes`, when the sink is not interactive,
-    ///   the caller passed `--no-input`, or the tool's guide turned terminal
+    ///   the caller passed `--no-input`, or the tool record turned terminal
     ///   detection off, so no person can answer. Its recovery runs the
     ///   words that the caller typed with `--yes` added before any `--`,
     ///   such as

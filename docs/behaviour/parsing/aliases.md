@@ -47,7 +47,7 @@ Why: ADR-0027, ADR-0029, ADR-0050.
 
 ## Personal aliases in help
 
-A tool that wants a person's aliases in help sets `Guide::personal_aliases`
+A tool that wants a person's aliases in help sets `Help::personal_aliases`
 to [`names`](../../../crates/crumbkit-aliases/src/names.rs) and opts out of
 `Rule::PersonalAliases`, which `check_names` enforces. The clap root's `-h`
 and `--help` then name each entry that expands on one line, after the
@@ -57,7 +57,7 @@ opt-out report says that help, golden files and what an agent sees then
 differ ([opt-outs](../adoption/opt-outs.md)). shelf opts in to show the line.
 
 crumbkit-test's help checks print help without a person's aliases, through
-`Guide::without_personal_aliases`. `check_examples` and
+`Help::without_personal_aliases`. `check_examples` and
 `cargo crumbkit weigh` run the binary with an empty config directory, so
 golden files and budgets are the same on every machine.
 

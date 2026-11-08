@@ -13,13 +13,13 @@ use std::rc::Rc;
 use clap::CommandFactory as _;
 
 use super::{
-    PLANET_LISTING, PLANETS, Planet, Tool, built_with, finish_output, finish_with, mercury,
+    Cli, PLANET_LISTING, PLANETS, Planet, built_with, finish_output, finish_with, mercury,
     parse_against, saturn,
 };
 use crate::answered::answered;
-use crate::help::Guide;
+use crate::tool::Output;
 use crate::{
-    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, finish_to,
+    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Tool, finish_to,
 };
 
 /// Returns a listing of Mercury and Saturn out of 8 planets, with a note and
@@ -90,7 +90,7 @@ fn a_reader_that_merges_the_two_streams_sees_the_notes_after_the_rows_because_st
     // process's standard output does on a pipe.
     let mut out = BufWriter::new(merged.clone());
     let mut err = merged.clone();
-    let output = parse_against(Tool::command(), &[]);
+    let output = parse_against(Cli::command(), &[]);
     let result: Result<_, Error> = Ok(two_of_eight());
     finish_to(
         &mut Sink::new(&mut out, &mut err),
@@ -130,7 +130,7 @@ impl Write for Calls {
 fn the_notes_reach_standard_error_in_one_write_so_no_note_is_split_between_other_lines() {
     let mut out = Vec::new();
     let mut err = Calls::default();
-    let output = parse_against(Tool::command(), &[]);
+    let output = parse_against(Cli::command(), &[]);
     let result: Result<_, Error> = Ok(two_of_eight());
     finish_to(
         &mut Sink::new(&mut out, &mut err),
@@ -169,7 +169,7 @@ impl Failure for Gone {
 
 #[test]
 fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
-    let mut output = parse_against(Tool::command(), &[]);
+    let mut output = parse_against(Cli::command(), &[]);
     output.dry_run = true;
     let finished = finish_output(output, SHOWN, answered(vec![saturn()], vec![Gone]));
 
@@ -191,7 +191,7 @@ fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
 
 #[test]
 fn a_dry_runs_line_prints_on_standard_error_after_a_list() {
-    let mut output = parse_against(Tool::command(), &[]);
+    let mut output = parse_against(Cli::command(), &[]);
     output.dry_run = true;
     let finished = finish_output(output, PLANETS, vec![saturn()]);
 
@@ -255,7 +255,7 @@ fn a_prose_results_note_prints_before_its_failures() {
 
 #[test]
 fn a_batchs_note_prints_on_standard_error_before_its_failures_and_the_dry_runs_line() {
-    let mut output = parse_against(Tool::command(), &[]);
+    let mut output = parse_against(Cli::command(), &[]);
     output.dry_run = true;
     let batch = answered(vec![saturn()], vec![Gone]).note("Pluto is not a planet.");
     let finished = finish_output(output, SHOWN, batch);
@@ -290,8 +290,8 @@ fn a_batchs_json_leaves_its_note_out() {
 #[test]
 fn a_batch_that_the_output_budget_cuts_prints_its_note_before_the_failure_that_names_the_keys_left_out()
  {
-    let guide = Guide::new().output_budget(1024, "the tests print little");
-    let output = built_with(Tool::command(), &guide, &["tool", "list"]);
+    let tool = Tool::new().output(Output::new().budget(1024, "the tests print little"));
+    let output = built_with(Cli::command(), &tool, &["tool", "list"]);
     let rows: Vec<Planet> = (0..100).map(|_| mercury()).collect();
     let batch = answered::<Planet, Gone>(rows, Vec::new()).note("Pluto is not a planet.");
     let finished = finish_output(output, SHOWN, batch);

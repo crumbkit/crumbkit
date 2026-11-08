@@ -12,8 +12,10 @@ use serde_json::{Value, json};
 use super::{
     SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow, document_schema, documents, list, show,
 };
-use crate::help::{Guide, Leaf};
-use crate::{Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, finish_to};
+use crate::help::{Help, Leaf};
+use crate::{
+    Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, Tool, finish_to,
+};
 
 mod bytes;
 mod columns;
@@ -61,9 +63,9 @@ const BOOKS_GONE: Document<Vec<Book>> = Document::new(
     "The books of a command the tool lacks.",
 );
 
-/// A guide whose leaves name a hidden command, a command the tool lacks,
+/// A tool record whose leaves name a hidden command, a command the tool lacks,
 /// and two commands that print the same document.
-const GUIDE: Guide = Guide::new().leaves(&[
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "list"]).document(BOOKS_LIST),
     Leaf::new(&["books", "show"]).document(BOOKS_SHOW),
     Leaf::new(&["books", "purge"]).document(BOOKS_PURGE),
@@ -71,11 +73,11 @@ const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["books", "find"]).document(BOOKS_LIST),
     Leaf::new(&["schemas", "list"]).document(SCHEMAS_LIST),
     Leaf::new(&["schemas", "show"]).document(SCHEMAS_SHOW),
-]);
+]));
 
-/// A tool with the leaves of [`GUIDE`] apart from `books gone`, with
+/// A tool with the leaves of [`TOOL`] apart from `books gone`, with
 /// `books purge` hidden.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("shelf")
         .disable_help_subcommand(true)
         .subcommand(
@@ -102,8 +104,8 @@ fn output_with(flags: &[&str]) -> Output {
     Output::new(
         view,
         crate::DryRun::default(),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         ["shelf"],
     )
     .unwrap()
@@ -116,7 +118,7 @@ fn output() -> Output {
 
 /// Parses `words` after `shelf schemas <name>` into the arguments `A`.
 fn args<A: clap::FromArgMatches>(name: &str, words: &[&str]) -> A {
-    let mut command = tool();
+    let mut command = tree();
     let matches = command
         .try_get_matches_from_mut(["shelf", "schemas", name].iter().chain(words))
         .unwrap();
@@ -137,7 +139,7 @@ struct Finished {
 fn finish_show(mut output: Output, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = show(&mut output, &GUIDE, &args::<SchemasShow>("show", words));
+    let result = show(&mut output, &TOOL, &args::<SchemasShow>("show", words));
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
@@ -376,8 +378,8 @@ fn the_schema_of_no_summary_never_reaches_a_document() {
 }
 
 #[test]
-fn the_failure_document_comes_first_and_then_each_leaf_document_in_guide_order() {
-    let served = documents(&tool(), &GUIDE);
+fn the_failure_document_comes_first_and_then_each_leaf_document_in_declared_order() {
+    let served = documents(&tree(), &TOOL);
 
     let ids: Vec<String> = served.iter().map(super::Served::id).collect();
     assert_eq!(
@@ -394,7 +396,7 @@ fn the_failure_document_comes_first_and_then_each_leaf_document_in_guide_order()
 
 #[test]
 fn a_leaf_whose_command_is_hidden_or_missing_is_left_out() {
-    let served = documents(&tool(), &GUIDE);
+    let served = documents(&tree(), &TOOL);
 
     assert!(
         served
@@ -405,7 +407,7 @@ fn a_leaf_whose_command_is_hidden_or_missing_is_left_out() {
 
 #[test]
 fn a_document_that_two_leaves_print_is_served_once_with_both_command_lines() {
-    let served = documents(&tool(), &GUIDE);
+    let served = documents(&tree(), &TOOL);
 
     let books_list = served
         .iter()
@@ -420,7 +422,7 @@ fn a_document_that_two_leaves_print_is_served_once_with_both_command_lines() {
 
 #[test]
 fn the_failure_document_names_no_command_and_has_the_checked_in_schema() {
-    let served = documents(&tool(), &GUIDE);
+    let served = documents(&tree(), &TOOL);
 
     assert_eq!(served[0].commands(), [] as [String; 0]);
     // The served schema names the tool where the failure document's own
@@ -434,7 +436,7 @@ fn the_failure_document_names_no_command_and_has_the_checked_in_schema() {
 
 #[test]
 fn list_prints_one_row_for_each_served_document_with_its_description() {
-    let listing = list(&mut output(), &GUIDE, &args::<SchemasList>("list", &[])).unwrap();
+    let listing = list(&mut output(), &TOOL, &args::<SchemasList>("list", &[])).unwrap();
 
     let value = serde_json::to_value(&listing).unwrap();
     assert_eq!(
@@ -454,7 +456,7 @@ fn list_prints_one_row_for_each_served_document_with_its_description() {
 fn list_prints_one_page_and_counts_every_document_in_its_total() {
     let listing = list(
         &mut output(),
-        &GUIDE,
+        &TOOL,
         &args::<SchemasList>("list", &["--limit", "2"]),
     )
     .unwrap();
@@ -467,7 +469,7 @@ fn list_prints_one_page_and_counts_every_document_in_its_total() {
 fn show_returns_the_schema_of_each_id_in_the_order_given() {
     let batch = show(
         &mut output(),
-        &GUIDE,
+        &TOOL,
         &args::<SchemasShow>("show", &["shelf/books-show/v1", "shelf/failure/v1"]),
     )
     .unwrap();

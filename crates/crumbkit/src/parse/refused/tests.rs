@@ -10,17 +10,18 @@ use clap::{Arg, ArgAction, Command};
 use super::{Refused, Unparsed};
 use crate::codes::CLI_USAGE;
 use crate::events::testing::watch;
-use crate::help::{Exit, Guide};
+use crate::help::Exit;
 use crate::parse::{parse_to, try_parse_to};
+use crate::tool::Failures;
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, ViewFlags};
+use crate::{Sink, Tool, ViewFlags};
 
 mod styled;
 mod typed;
 
 /// A tool with a global `--json` flag and a `planets` group whose `show`
 /// takes names and a `--sort` key, and a `moon_phases` command.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .subcommand_required(true)
         .arg(
@@ -41,15 +42,15 @@ fn tool() -> Command {
         .subcommand(Command::new("moon_phases"))
 }
 
-/// Runs `try_parse_to` over `command` with `guide` and `args`, checks that
+/// Runs `try_parse_to` over `command` with `tool` and `args`, checks that
 /// it printed nothing, and returns its refusal. A run that parses or stops
 /// fails the test.
 #[track_caller]
-fn refused_by(command: Command, guide: &Guide, args: &[&str]) -> Refused {
+fn refused_by(command: Command, tool: &Tool, args: &[&str]) -> Refused {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let unparsed =
-        try_parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, guide, args);
+        try_parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     assert_eq!((out, err), (Vec::new(), Vec::new()));
     match unparsed {
         Err(Unparsed::Refused(refused)) => refused,
@@ -58,10 +59,10 @@ fn refused_by(command: Command, guide: &Guide, args: &[&str]) -> Refused {
     }
 }
 
-/// Runs `try_parse_to` over `tool()` without a guide, as [`refused_by`].
+/// Runs `try_parse_to` over `tree()` without a tool record, as [`refused_by`].
 #[track_caller]
 fn refused(args: &[&str]) -> Refused {
-    refused_by(tool(), &Guide::new(), args)
+    refused_by(tree(), &Tool::new(), args)
 }
 
 /// Returns `words` as the words of a command line.
@@ -80,11 +81,11 @@ fn printed(refused: Refused) -> (String, String) {
     )
 }
 
-/// Returns what `parse_to` prints over `command` with `guide` for `args`.
-fn parse_printed(command: Command, guide: &Guide, args: &[&str]) -> (String, String) {
+/// Returns what `parse_to` prints over `command` with `tool` for `args`.
+fn parse_printed(command: Command, tool: &Tool, args: &[&str]) -> (String, String) {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let _ = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, guide, args);
+    let _ = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     (
         String::from_utf8(out).unwrap(),
         String::from_utf8(err).unwrap(),
@@ -130,9 +131,9 @@ fn a_missing_required_argument_has_no_culprit() {
 
 #[test]
 fn a_dashed_form_is_typed_as_the_caller_wrote_it_and_parsed_as_the_command_s_name() {
-    const DASHED: Guide = Guide::new().dashed_forms();
+    const DASHED: Tool = Tool::new().dashed_forms();
 
-    let refused = refused_by(tool(), &DASHED, &["tool", "moon-phases", "full"]);
+    let refused = refused_by(tree(), &DASHED, &["tool", "moon-phases", "full"]);
 
     assert_eq!(refused.typed(), words(&["moon-phases", "full"]));
     assert_eq!(refused.parsed(), words(&["moon_phases", "full"]));
@@ -150,7 +151,7 @@ fn a_refused_view_flag_names_its_flag_as_the_culprit() {
     }
 
     let command = <Viewed as clap::CommandFactory>::command();
-    let refused = refused_by(command, &Guide::new(), &["tool", "--full"]);
+    let refused = refused_by(command, &Tool::new(), &["tool", "--full"]);
 
     assert_eq!(refused.typed(), words(&["--full"]));
     assert_eq!(refused.culprit(), Some("--full"));
@@ -163,7 +164,7 @@ fn a_refused_view_flag_names_its_flag_as_the_culprit() {
 fn admits(command: Command, refused: &[&str], admitted: &[&str]) {
     assert_one_word_apart(refused, admitted);
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let parsed = try_parse_to::<(), _, _, _, _>(&mut sink, command, &Guide::new(), admitted);
+    let parsed = try_parse_to::<(), _, _, _, _>(&mut sink, command, &Tool::new(), admitted);
     assert!(
         parsed.is_ok(),
         "the admitted words {admitted:?} are refused"
@@ -184,7 +185,7 @@ fn a_repeated_argument_s_refusal_exposes_clap_s_error_naming_the_argument() {
         "tool", "planets", "show", "Mars", "--sort", "a", "--sort", "b",
     ];
     admits(
-        tool(),
+        tree(),
         &args,
         &[
             "tool", "planets", "show", "Mars", "--sort", "a", "Venus", "b",
@@ -211,7 +212,7 @@ fn a_conflicting_argument_s_refusal_exposes_clap_s_error_naming_the_argument() {
     let args = ["tool", "--all", "--only", "Mars"];
     admits(command.clone(), &args, &["tool", "--only", "Mars"]);
 
-    let refused = refused_by(command, &Guide::new(), &args);
+    let refused = refused_by(command, &Tool::new(), &args);
 
     let kind = refused.error().map(clap::Error::kind);
     assert_eq!(kind, Some(ErrorKind::ArgumentConflict));
@@ -234,7 +235,7 @@ fn a_refused_view_flag_exposes_no_clap_error() {
         &["tool", "--full", "--json"],
     );
 
-    let refused = refused_by(command, &Guide::new(), &["tool", "--full"]);
+    let refused = refused_by(command, &Tool::new(), &["tool", "--full"]);
 
     assert_eq!(refused.error().map(clap::Error::kind), None);
 }
@@ -247,15 +248,17 @@ fn printing_a_refusal_prints_what_parse_to_prints() {
 
     assert_eq!(
         printed(refused(&args)),
-        parse_printed(tool(), &Guide::new(), &args)
+        parse_printed(tree(), &Tool::new(), &args)
     );
 }
 
 #[test]
 fn printing_a_refusal_returns_a_stop_with_its_number_and_its_output() {
-    const GUIDE: Guide = Guide::new()
-        .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])]);
-    let refused = refused_by(tool(), &GUIDE, &["tool", "comets", "--json"]);
+    const TOOL: Tool = Tool::new().failures(
+        Failures::new()
+            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])]),
+    );
+    let refused = refused_by(tree(), &TOOL, &["tool", "comets", "--json"]);
     assert_one_word_apart(
         &["tool", "comets", "--json"],
         &["tool", "planets", "--json"],
@@ -303,7 +306,7 @@ fn a_refused_view_flag_reports_its_exit_when_it_prints_and_not_before() {
     let parsing = watch(|| {
         kept = Some(refused_by(
             <Viewed as clap::CommandFactory>::command(),
-            &Guide::new(),
+            &Tool::new(),
             &["tool", "--full"],
         ));
     });
@@ -328,8 +331,8 @@ fn a_stop_comes_back_after_help_printed() {
     let mut out = Vec::new();
     let unparsed = try_parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, Vec::new()),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         ["tool", "help"],
     );
 
@@ -367,7 +370,7 @@ fn walked_tool() -> Command {
 #[track_caller]
 fn walked(refused: &[&str], admitted: &[&str]) -> Refused {
     admits(walked_tool(), refused, admitted);
-    refused_by(walked_tool(), &Guide::new(), refused)
+    refused_by(walked_tool(), &Tool::new(), refused)
 }
 
 #[test]
@@ -461,7 +464,7 @@ fn a_refusal_whose_words_typed_json_prints_text_on_standard_error_after_as_json_
 
     assert_eq!(
         (out, err),
-        parse_printed(tool(), &Guide::new(), &["tool", "comets"])
+        parse_printed(tree(), &Tool::new(), &["tool", "comets"])
     );
 }
 
@@ -473,7 +476,7 @@ fn a_refusal_without_json_prints_the_failure_document_on_standard_output_after_a
 
     assert_eq!(
         (out, err),
-        parse_printed(tool(), &Guide::new(), &["tool", "comets", "--json"])
+        parse_printed(tree(), &Tool::new(), &["tool", "comets", "--json"])
     );
 }
 
@@ -510,13 +513,15 @@ fn the_stop_after_as_json_reports_the_form_that_printed() {
 
 #[test]
 fn as_json_changes_neither_the_exit_code_nor_the_observer_events() {
-    const GUIDE: Guide = Guide::new()
-        .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])]);
+    const TOOL: Tool = Tool::new().failures(
+        Failures::new()
+            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])]),
+    );
     let args = ["tool", "comets", "--json"];
     let run = |form: Option<bool>| {
         let mut number = 0;
         let events = watch(|| {
-            let refused = refused_by(tool(), &GUIDE, &args);
+            let refused = refused_by(tree(), &TOOL, &args);
             let refused = match form {
                 Some(json) => refused.as_json(json),
                 None => refused,

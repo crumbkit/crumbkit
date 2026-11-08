@@ -59,7 +59,7 @@ Why: ADR-0029, ADR-0057.
   how many arguments a [picker](../effects/pickers.md) filled, without the
   picked values.
 - `finish` and `finish_to` report the exit code as the number they return,
-  including a tool's code that the guide declares for the run's first
+  including a tool's code that the tool record declares for the run's first
   failure, the code of a failure or refusal in the tool's spelling, the bytes
   written to standard output, and whether a listing left out rows of its
   source, as one that shows fewer rows than its total or comes from a

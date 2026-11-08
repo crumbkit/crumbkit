@@ -28,7 +28,7 @@ use rustix::fs::{Mode, OFlags};
 use rustix::io::{Errno, FdFlags, fcntl_setfd};
 use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
 use rustix::termios::{OptionalActions, Winsize, tcgetattr, tcsetattr, tcsetwinsize};
-use shelf::GUIDE;
+use shelf::TOOL;
 use tempfile::TempDir;
 
 /// The longest a run may take before the test stops it. A run that asks a
@@ -210,7 +210,7 @@ fn help_at_a_terminal_has_colour_so_the_test_reaches_a_real_terminal() {
 #[test]
 fn every_example_prints_its_piped_text_at_a_terminal_and_its_piped_bytes_under_no_color() {
     let mut compared = 0;
-    for leaf in GUIDE.get_leaves() {
+    for leaf in TOOL.get_help().get_leaves() {
         let path = leaf.path();
         for example in leaf.get_examples() {
             let mut line = std::iter::once("shelf")

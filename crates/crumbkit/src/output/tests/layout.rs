@@ -1,4 +1,4 @@
-//! Tests for how `finish_to` lays out a JSON document when the guide sets
+//! Tests for how `finish_to` lays out a JSON document when the tool record sets
 //! `JsonLayout::Pretty` (ADR-0052).
 
 use std::fmt;
@@ -6,26 +6,26 @@ use std::process::ExitCode;
 
 use clap::CommandFactory as _;
 
-use super::{Finished, PLANET, PLANETS, Tool, finish_output, saturn};
+use super::{Cli, Finished, PLANET, PLANETS, finish_output, saturn};
 use crate::Envelope;
-use crate::help::Guide;
 use crate::{
-    Call, Code, Document, Error, Failure, JsonLayout, Output, Recovery, Rows, Sink, finish_to,
+    Call, Code, Document, Error, Failure, JsonLayout, Output, Recovery, Rows, Sink, Tool, finish_to,
 };
 
-/// The guide of a tool whose readers expect indented JSON.
-const PRETTY: Guide = Guide::new().json_layout(JsonLayout::Pretty {
-    reason: "the readers expect it",
-});
+/// The tool record of a tool whose readers expect indented JSON.
+const PRETTY: Tool =
+    Tool::new().output(crate::tool::Output::new().json_layout(JsonLayout::Pretty {
+        reason: "the readers expect it",
+    }));
 
 /// Returns the output flags for `tool list` followed by `flags`, with the
-/// guide [`PRETTY`], as `Output::new` builds them.
+/// tool record [`PRETTY`], as `Output::new` builds them.
 fn pretty(flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    super::built_with(Tool::command(), &PRETTY, &args)
+    super::built_with(Cli::command(), &PRETTY, &args)
 }
 
-/// Finishes `value` with `flags` and the guide [`PRETTY`].
+/// Finishes `value` with `flags` and the tool record [`PRETTY`].
 fn finish_pretty<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
     finish_output(pretty(flags), document, value)
 }

@@ -7,11 +7,11 @@ use clap::{Arg, ArgAction, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::help::{Effects, Example, Guide, Leaf, STREAM_LINE};
-use crate::{Document, Row, Sink, Stream, parse_to};
+use crate::help::{Effects, Example, Help, Leaf, STREAM_LINE};
+use crate::{Document, Row, Sink, Stream, Tool, parse_to};
 
 /// A tool with a global `--json` and one leaf, `tool links check`.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .subcommand_required(true)
         .arg(
@@ -26,13 +26,12 @@ fn tool() -> Command {
         )
 }
 
-/// Runs `parse_to` over `tool()` with `guide` for `args`, which ask for
+/// Runs `parse_to` over `tree()` with `tool` for `args`, which ask for
 /// help, and returns the page it printed.
-fn help(guide: &Guide, args: &[&str]) -> String {
+fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
+    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }
@@ -66,10 +65,10 @@ impl Row for Short {
     const LINE: Option<&'static str> = Some("<POINTER>");
 }
 
-/// Returns the guide whose one leaf, `links check`, declares `leaf`'s
+/// Returns the tool record whose one leaf, `links check`, declares `leaf`'s
 /// document.
-const fn guide(leaf: &'static [Leaf]) -> Guide {
-    Guide::new().leaves(leaf)
+const fn tool(leaf: &'static [Leaf]) -> Tool {
+    Tool::new().help(Help::new().leaves(leaf))
 }
 
 const LINKS: Document<Vec<Link>> = Document::new("tool", "links-check", 1, "The links.");
@@ -98,8 +97,8 @@ fn a_leaf_holds_the_text_line_form_of_its_row_type() {
 
 #[test]
 fn the_help_of_a_leaf_whose_rows_print_their_own_line_names_the_line_after_the_effects() {
-    let short = help(&guide(LINKS_LEAF), &["tool", "links", "check", "-h"]);
-    let long = help(&guide(LINKS_LEAF), &["tool", "links", "check", "--help"]);
+    let short = help(&tool(LINKS_LEAF), &["tool", "links", "check", "-h"]);
+    let long = help(&tool(LINKS_LEAF), &["tool", "links", "check", "--help"]);
 
     let expected = "Effects: read-only, closed-world.\nText: one line per row, <POINTER> -> <TARGET>; --fields and --long print a table.\n";
     assert!(short.contains(expected), "{short}");
@@ -109,7 +108,7 @@ fn the_help_of_a_leaf_whose_rows_print_their_own_line_names_the_line_after_the_e
 
 #[test]
 fn the_text_line_of_a_stream_follows_its_output_line() {
-    let page = help(&guide(STREAM_LEAF), &["tool", "links", "check", "-h"]);
+    let page = help(&tool(STREAM_LEAF), &["tool", "links", "check", "-h"]);
 
     let expected = format!(
         "{STREAM_LINE}\nText: one line per row, <POINTER> -> <TARGET>; --fields and --long print a table.\n"
@@ -119,7 +118,7 @@ fn the_text_line_of_a_stream_follows_its_output_line() {
 
 #[test]
 fn the_text_line_of_rows_without_long_columns_names_only_fields() {
-    let page = help(&guide(SHORT_LEAF), &["tool", "links", "check", "-h"]);
+    let page = help(&tool(SHORT_LEAF), &["tool", "links", "check", "-h"]);
 
     assert!(
         page.contains("Text: one line per row, <POINTER>; --fields prints a table.\n"),
@@ -132,7 +131,7 @@ fn the_help_of_a_leaf_whose_rows_print_a_table_has_no_text_line() {
     const PLAIN: &[Leaf] = &[Leaf::new(&["links", "check"])
         .examples(&[Example::new(&[], "Check every link")])
         .effects(Effects::read_only())];
-    let page = help(&guide(PLAIN), &["tool", "links", "check", "--help"]);
+    let page = help(&tool(PLAIN), &["tool", "links", "check", "--help"]);
 
     assert!(!page.contains("Text:"), "{page}");
 }
@@ -156,7 +155,7 @@ fn the_text_line_of_whole_rows_without_columns_names_no_table() {
         .examples(&[Example::new(&[], "Check every link")])
         .effects(Effects::read_only())
         .document(SETTINGS)];
-    let page = help(&guide(SETTINGS_LEAF), &["tool", "links", "check", "-h"]);
+    let page = help(&tool(SETTINGS_LEAF), &["tool", "links", "check", "-h"]);
 
     assert!(
         page.contains(

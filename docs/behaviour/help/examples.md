@@ -1,6 +1,6 @@
 # Leaf examples and columns
 
-This page covers the leaves of a tool's guide: the examples that a leaf's
+This page covers the leaves of a tool record: the examples that a leaf's
 help lists and the descriptions of the columns that its `--help` prints.
 The rustdoc of [`Leaf`](../../../crates/crumbkit/src/help/leaf.rs) and
 [`parse_to`](../../../crates/crumbkit/src/parse.rs) states each item's
@@ -8,7 +8,7 @@ contract.
 
 ## Leaves
 
-A tool declares its leaves in its `Guide`. Each `Leaf` names a command by the
+A tool declares its leaves in its `Tool`. Each `Leaf` names a command by the
 real names of its subcommands from the root, as `Group` does, and holds its
 examples and the `Document` it prints. A command that the tool adds at run
 time has a [`RuntimeLeaf`](README.md#runtime-leaves), which holds examples
@@ -16,7 +16,7 @@ and the document the command prints, as `Leaf` does.
 
 `Leaf::document` keeps the document's id and description, the row type's
 columns, and function pointers that build the row's JSON Schema and the
-whole document's. `Leaf` therefore has no type parameter, and one guide
+whole document's. `Leaf` therefore has no type parameter, and one tool record
 holds leaves whose rows have different types. The
 [schema commands](../schemas/commands.md) and crumbkit-test's document
 checks read the document through `Leaf::get_document` and

@@ -1,8 +1,8 @@
-//! Tests for the guide check of the form that `Row::LINE` declares
+//! Tests for the tool record check of the form that `Row::LINE` declares
 //! (ADR-0064).
 
-use crumbkit::help::Guide;
-use crumbkit::{Batch, Bytes, Document, Error, Headed, Row};
+use crumbkit::help::Help;
+use crumbkit::{Batch, Bytes, Document, Error, Headed, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -68,7 +68,7 @@ impl Headed for LinedFile {
 
 #[test]
 fn a_row_type_with_a_one_line_text_form_passes() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(Document::<Vec<LinedBook>>::new(
             "shelf",
             "books-list",
@@ -77,14 +77,14 @@ fn a_row_type_with_a_one_line_text_form_passes() {
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_guide(&shelf(), &TOOL, &[]);
 }
 
 #[test]
-fn check_guide_fails_on_a_text_line_form_that_spans_two_lines() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+fn check_tool_fails_on_a_text_line_form_that_spans_two_lines() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(Document::<Vec<TwoLineBook>>::new(
             "shelf",
             "books-list",
@@ -93,18 +93,18 @@ fn check_guide_fails_on_a_text_line_form_that_spans_two_lines() {
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
+        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the row type's LINE is not one non-empty line, so help cannot show the form of each row's line on one line; write the form as one line, such as `<ID> <TITLE>`"
     );
 }
 
 #[test]
-fn check_guide_fails_on_a_text_line_form_that_is_blank() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+fn check_tool_fails_on_a_text_line_form_that_is_blank() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(Document::<Vec<BlankLineBook>>::new(
             "shelf",
             "books-list",
@@ -113,28 +113,35 @@ fn check_guide_fails_on_a_text_line_form_that_is_blank() {
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
     assert!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[]))
+        panic_message(|| check_guide(&shelf(), &TOOL, &[]))
             .unwrap()
             .contains("the row type's LINE is not one non-empty line")
     );
 }
 
 #[test]
-fn check_guide_fails_on_a_headed_leaf_whose_row_type_declares_a_text_line() {
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"]).document(
-            Document::<Batch<LinedFile, Error>>::new("shelf", "books-list", 1, "The test rows.")
+fn check_tool_fails_on_a_headed_leaf_whose_row_type_declares_a_text_line() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"]).document(
+                Document::<Batch<LinedFile, Error>>::new(
+                    "shelf",
+                    "books-list",
+                    1,
+                    "The test rows.",
+                )
                 .headed(),
-        ),
-        leaf(&["books", "show"]),
-        leaf(&["authors", "list"]),
-    ]);
+            ),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
+        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the row type declares LINE and the document is headed, so its text prints each row's bytes and never the line; remove LINE or the headed form"
     );

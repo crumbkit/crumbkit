@@ -6,8 +6,10 @@ use clap::Parser;
 use serde_json::json;
 
 use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
-use crate::testing::{line, now, tool};
-use crumbkit::help::{Exit, Guide};
+use crate::testing::{line, now, tree};
+use crumbkit::Tool;
+use crumbkit::help::Exit;
+use crumbkit::tool::Failures;
 
 /// Returns the summary of `runs` runs by people, in `sessions` sessions,
 /// since 30 September 2026, with `skipped` skipped records.
@@ -101,8 +103,8 @@ fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
         })
         .collect();
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(60),
         now(),
@@ -138,8 +140,8 @@ fn the_summary_serializes_its_figures_as_fields() {
 /// report of `log` over the last 7 days.
 fn rows(log: &str) -> Vec<(String, u64, String, String)> {
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(7 * 86_400),
         now(),
@@ -220,8 +222,8 @@ fn a_finding_row_carries_the_figures_of_its_command() {
     ]
     .concat();
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(60),
         now(),
@@ -249,11 +251,11 @@ fn a_finding_row_carries_the_figures_of_its_command() {
 }
 
 #[test]
-fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_guide_declares_for_it() {
-    const GUIDE: Guide = Guide::new().exits(&[
+fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_tool_declares_for_it() {
+    const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
         Exit::new(3, "The catalogue was locked."),
         Exit::new(124, "The import ran out of time.").commands(&[&["books", "show"]]),
-    ]);
+    ]));
     let log = [
         line(40, "books list", &json!({"exit": 2})),
         line(30, "books list", &json!({"exit": 124})),
@@ -262,8 +264,8 @@ fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_guide_declare
     ]
     .concat();
     let listing = report_from(
-        &tool(),
-        &GUIDE,
+        &tree(),
+        &TOOL,
         Some(Cursor::new(log)),
         Duration::from_secs(60),
         now(),
@@ -282,8 +284,11 @@ fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_guide_declare
 
 #[test]
 fn a_finding_row_gives_an_exit_inside_a_declared_range_the_meaning_of_the_range() {
-    const GUIDE: Guide =
-        Guide::new().exits(&[Exit::range(64, 78, "The importer ended with its own code.")]);
+    const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[Exit::range(
+        64,
+        78,
+        "The importer ended with its own code.",
+    )]));
     let log = [
         line(30, "books list", &json!({"exit": 2})),
         line(20, "books list", &json!({"exit": 70})),
@@ -291,8 +296,8 @@ fn a_finding_row_gives_an_exit_inside_a_declared_range_the_meaning_of_the_range(
     ]
     .concat();
     let listing = report_from(
-        &tool(),
-        &GUIDE,
+        &tree(),
+        &TOOL,
         Some(Cursor::new(log)),
         Duration::from_secs(60),
         now(),
@@ -318,8 +323,8 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
     .concat();
 
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(86_400),
         now(),
@@ -333,8 +338,8 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
 #[test]
 fn without_a_log_the_report_has_no_runs_and_no_findings() {
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         None::<Cursor<&str>>,
         Duration::from_secs(60),
         now(),
@@ -352,8 +357,8 @@ fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
     let far = SystemTime::UNIX_EPOCH + Duration::from_secs(300_000_000_000);
 
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         None::<Cursor<&str>>,
         Duration::from_secs(60),
         far,
@@ -365,16 +370,16 @@ fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
 
 /// A tool whose only arguments are `self usage`'s.
 #[derive(Parser)]
-struct Tool {
+struct Cli {
     #[command(flatten)]
     args: SelfUsage,
 }
 
 #[test]
 fn since_takes_a_humantime_duration_and_defaults_to_7_days() {
-    let default = Tool::try_parse_from(["tool"]).unwrap();
-    let twelve_hours = Tool::try_parse_from(["tool", "--since", "12h"]).unwrap();
-    let refused = Tool::try_parse_from(["tool", "--since", "yesterday"]);
+    let default = Cli::try_parse_from(["tool"]).unwrap();
+    let twelve_hours = Cli::try_parse_from(["tool", "--since", "12h"]).unwrap();
+    let refused = Cli::try_parse_from(["tool", "--since", "yesterday"]);
 
     assert_eq!(default.args.since, Duration::from_secs(7 * 86_400));
     assert_eq!(twelve_hours.args.since, Duration::from_secs(12 * 3_600));
@@ -383,8 +388,8 @@ fn since_takes_a_humantime_duration_and_defaults_to_7_days() {
 
 #[test]
 fn log_names_a_file_to_read_in_place_of_the_tool_s_own_log() {
-    let default = Tool::try_parse_from(["tool"]).unwrap();
-    let named = Tool::try_parse_from(["tool", "--log", "copy.jsonl"]).unwrap();
+    let default = Cli::try_parse_from(["tool"]).unwrap();
+    let named = Cli::try_parse_from(["tool", "--log", "copy.jsonl"]).unwrap();
 
     assert_eq!(default.args.log, None);
     assert_eq!(named.args.log, Some(PathBuf::from("copy.jsonl")));
@@ -410,8 +415,8 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
     let log = line(100, "books list", &json!({}));
 
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(100 * 365 * 86_400),
         now(),
@@ -449,8 +454,8 @@ fn a_slow_command_that_mostly_waited_has_a_row_that_names_no_fact_of_the_tool() 
     });
     let log = [line(1, "books show", &facts), line(2, "books show", &facts)].concat();
     let listing = report_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         Some(Cursor::new(log.clone())),
         Duration::from_secs(60),
         now(),

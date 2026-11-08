@@ -9,10 +9,10 @@ use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{Finished, PLANETS, Planet, Tool, finish_output, finish_with, mercury, saturn};
+use super::{Cli, Finished, PLANETS, Planet, finish_output, finish_with, mercury, saturn};
 use crate::answered::answered;
-use crate::help::Guide;
-use crate::{Batch, Code, Document, Envelope, Error, Failure, Listing, Recovery, Row};
+use crate::tool::Output;
+use crate::{Batch, Code, Document, Envelope, Error, Failure, Listing, Recovery, Row, Tool};
 
 /// The note that `--long` adds nothing to the JSON.
 const LONG_NOTE: &str =
@@ -63,7 +63,7 @@ impl Row for Comet {
 
 /// Finishes `value` as `document` with `flags` on a dry run.
 fn finish_dry<T: crate::Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
-    let mut output = super::parse_against(Tool::command(), flags);
+    let mut output = super::parse_against(Cli::command(), flags);
     output.dry_run = true;
     finish_output(output, document, value)
 }
@@ -171,12 +171,12 @@ fn the_note_is_the_only_line_on_standard_error_of_an_enveloped_batch_with_failur
 fn the_note_follows_the_cut_line_of_an_unwrapped_listing_cut_at_the_budget() {
     const LISTING: Document<Listing<Planet>> =
         Document::new("solar", "planet-listing", 1, "The test rows.").envelope(Envelope::Without);
-    let guide = Guide::new().output_budget(200, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(200, "the tests print little"));
     let planets = || Listing::new((0..20).map(|_| saturn()).collect(), 20).described("planets");
     let budgeted = |flags: &[&str]| {
         let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
         finish_output(
-            super::built_with(Tool::command(), &guide, &args),
+            super::built_with(Cli::command(), &tool, &args),
             LISTING,
             planets(),
         )

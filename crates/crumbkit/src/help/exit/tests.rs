@@ -3,7 +3,9 @@
 //! `commands list`.
 
 use super::{Exit, note, text};
-use crate::help::{Guide, Leaf};
+use crate::Tool;
+use crate::help::{Help, Leaf};
+use crate::tool::Failures;
 
 /// A code that every command returns.
 const BUSY: Exit = Exit::new(3, "The catalogue was locked by another run.");
@@ -33,8 +35,11 @@ fn a_single_code_holds_only_itself() {
 
 #[test]
 fn the_topic_prints_a_range_as_its_first_and_last_code_joined_by_a_dash_beside_a_single_code() {
-    const GUIDE: Guide =
-        Guide::new().exits(&[BUSY, PASSED_ON, Exit::new(130, "Ctrl-C ended the run.")]);
+    const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
+        BUSY,
+        PASSED_ON,
+        Exit::new(130, "Ctrl-C ended the run."),
+    ]));
 
     let expected = "\
 Exit codes
@@ -47,15 +52,15 @@ Exit codes
 
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
 ";
-    assert_eq!(text("shelf", &GUIDE), expected);
+    assert_eq!(text("shelf", &TOOL), expected);
 }
 
 #[test]
 fn the_note_names_a_range_by_its_first_and_last_code() {
-    const GUIDE: Guide = Guide::new().exits(&[BUSY, PASSED_ON]);
+    const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[BUSY, PASSED_ON]));
 
     assert_eq!(
-        note("shelf", &GUIDE),
+        note("shelf", &TOOL),
         "Exit codes: 0, 1 and 2 apply to every command, and shelf adds 3 and 124-125. `shelf help exit-codes` describes them."
     );
 }
@@ -85,12 +90,12 @@ Exit codes
 
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
 ";
-    assert_eq!(text("shelf", &Guide::new()), expected);
+    assert_eq!(text("shelf", &Tool::new()), expected);
 }
 
 #[test]
 fn the_topic_lists_the_tool_s_codes_after_crumbkit_s_with_the_commands_that_return_them() {
-    const GUIDE: Guide = Guide::new().exits(&[BUSY, TIMED_OUT]);
+    const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[BUSY, TIMED_OUT]));
 
     let expected = "\
 Exit codes
@@ -102,21 +107,22 @@ Exit codes
 
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
 ";
-    assert_eq!(text("shelf", &GUIDE), expected);
+    assert_eq!(text("shelf", &TOOL), expected);
 }
 
 #[test]
 fn the_note_names_the_codes_of_every_command_and_the_topic_when_the_tool_declares_none() {
     assert_eq!(
-        note("shelf", &Guide::new()),
+        note("shelf", &Tool::new()),
         "Exit codes: 0, 1 and 2 apply to every command. `shelf help exit-codes` describes them."
     );
 }
 
 #[test]
 fn the_note_names_each_of_the_tool_s_codes() {
-    const ONE: Guide = Guide::new().exits(&[TIMED_OUT]);
-    const THREE: Guide = Guide::new().exits(&[BUSY, Exit::new(4, "Four."), TIMED_OUT]);
+    const ONE: Tool = Tool::new().failures(Failures::new().exits(&[TIMED_OUT]));
+    const THREE: Tool =
+        Tool::new().failures(Failures::new().exits(&[BUSY, Exit::new(4, "Four."), TIMED_OUT]));
 
     assert_eq!(
         note("shelf", &ONE),
@@ -128,15 +134,17 @@ fn the_note_names_each_of_the_tool_s_codes() {
     );
 }
 
-/// A guide that gives a refused command line 64 in place of 2.
-const USAGE_64: Guide = Guide::new().exits(&[Exit::new(
-    64,
-    "The command line was refused. The refusal names the help to read.",
-)
-.failures(&[&crate::codes::CLI_USAGE])]);
+/// A tool record that gives a refused command line 64 in place of 2.
+const USAGE_64: Tool = Tool::new().failures(
+    Failures::new().exits(&[Exit::new(
+        64,
+        "The command line was refused. The refusal names the help to read.",
+    )
+    .failures(&[&crate::codes::CLI_USAGE])]),
+);
 
 #[test]
-fn the_topic_leaves_out_crumbkit_s_2_when_the_guide_gives_a_refusal_another_code() {
+fn the_topic_leaves_out_crumbkit_s_2_when_the_tool_gives_a_refusal_another_code() {
     let expected = "\
 Exit codes
   0   The command did what it was asked.
@@ -149,7 +157,7 @@ A shell reports 126 and above for its own reasons, such as 127 when it cannot fi
 }
 
 #[test]
-fn the_note_names_0_and_1_as_applying_to_every_command_when_the_guide_gives_a_refusal_another_code()
+fn the_note_names_0_and_1_as_applying_to_every_command_when_the_tool_gives_a_refusal_another_code()
 {
     assert_eq!(
         note("shelf", &USAGE_64),
@@ -159,10 +167,12 @@ fn the_note_names_0_and_1_as_applying_to_every_command_when_the_guide_gives_a_re
 
 #[test]
 fn the_topic_names_each_command_that_passes_on_a_program_s_exit_code() {
-    const GUIDE: Guide = Guide::new().exits(&[BUSY]).leaves(&[
-        Leaf::new(&["books", "edit"]).passes_on_exit("the editor"),
-        Leaf::new(&["books", "list"]),
-    ]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[
+            Leaf::new(&["books", "edit"]).passes_on_exit("the editor"),
+            Leaf::new(&["books", "list"]),
+        ]))
+        .failures(Failures::new().exits(&[BUSY]));
 
     let expected = "\
 Exit codes
@@ -175,5 +185,5 @@ Exit codes
 
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
 ";
-    assert_eq!(text("shelf", &GUIDE), expected);
+    assert_eq!(text("shelf", &TOOL), expected);
 }

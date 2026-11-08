@@ -1,6 +1,6 @@
 //! Tests for a failure whose code the tool learns only at run time, such as
 //! the code that a plugin answers with. The tool reads the plugin's code
-//! back into its segments with its guide's spelling, makes the code with
+//! back into its segments with its tool record's spelling, makes the code with
 //! `Code::runtime`, and `finish` prints it as it prints a declared code.
 
 use std::fmt;
@@ -8,15 +8,14 @@ use std::fmt;
 use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet};
-use crate::help::Guide;
-use crate::{Code, Failure, Recovery, Sink, ViewFlags, finish_to, parse_to};
+use crate::{Code, Failure, Recovery, Sink, Tool, ViewFlags, finish_to, parse_to};
 
 /// The tool's own code for a plugin answer whose code the tool cannot read.
 const PLUGIN_FAILED: Code = Code::new("tool", "plugin", "failed");
 
-/// The tool's guide, which sets no spelling, so its codes print with
+/// The tool record, which sets no spelling, so its codes print with
 /// colons.
-const GUIDE: Guide = Guide::new();
+const TOOL: Tool = Tool::new();
 
 /// The failure that a plugin answered with.
 #[derive(Debug)]
@@ -34,8 +33,9 @@ impl PluginFailure {
     /// failure has the plugin's code when the spelling splits the text into
     /// three segments that [`Code::runtime`] accepts, and [`PLUGIN_FAILED`]
     /// otherwise.
-    fn from_answer(guide: &Guide, code: &str, message: &str) -> Self {
-        let code = guide
+    fn from_answer(tool: &Tool, code: &str, message: &str) -> Self {
+        let code = tool
+            .get_failures()
             .get_spelling()
             .split(code)
             .and_then(|(component, area, reason)| Code::runtime(component, area, reason).ok())
@@ -70,7 +70,7 @@ impl Failure for PluginFailure {
 /// A tool with one `list` command and the view flags.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -82,11 +82,11 @@ enum Command {
     List,
 }
 
-/// Parses `args` with [`GUIDE`] into memory, finishes `failure` with the
+/// Parses `args` with [`TOOL`] into memory, finishes `failure` with the
 /// output, and returns the exit code and the standard output.
 fn finish(args: &[&str], failure: PluginFailure) -> (u8, String) {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let Ok((_, output)) = parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, args)
+    let Ok((_, output)) = parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &TOOL, args)
     else {
         panic!("parse refused {args:?}");
     };
@@ -103,7 +103,7 @@ fn finish(args: &[&str], failure: PluginFailure) -> (u8, String) {
 
 #[test]
 fn a_code_that_a_plugin_answers_with_prints_as_the_failure_s_code_and_exits_with_1() {
-    let failure = PluginFailure::from_answer(&GUIDE, "lending::loans::overdue", "the loan is late");
+    let failure = PluginFailure::from_answer(&TOOL, "lending::loans::overdue", "the loan is late");
 
     let (code, out) = finish(&["tool", "list", "--json"], failure);
 
@@ -115,7 +115,7 @@ fn a_code_that_a_plugin_answers_with_prints_as_the_failure_s_code_and_exits_with
 fn a_plugin_code_that_the_spelling_cannot_split_or_that_breaks_the_segment_rule_gives_the_tool_s_own_code()
  {
     for answer in ["lending::overdue", "lending::Loans::overdue"] {
-        let failure = PluginFailure::from_answer(&GUIDE, answer, "the loan is late");
+        let failure = PluginFailure::from_answer(&TOOL, answer, "the loan is late");
 
         assert_eq!(failure.code(), &PLUGIN_FAILED, "{answer}");
     }

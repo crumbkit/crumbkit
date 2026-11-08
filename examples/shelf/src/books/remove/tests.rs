@@ -3,8 +3,7 @@
 use std::path::Path;
 
 use clap::{CommandFactory as _, Parser as _};
-use crumbkit::Output;
-use crumbkit::help::Guide;
+use crumbkit::{Output, Tool};
 
 use super::{read_removed, remove, removed_file_in};
 use crate::books::{BooksError, list, show};
@@ -25,13 +24,7 @@ fn parse(words: &[&str]) -> (Output, BooksRemove) {
     else {
         panic!("the words parse as books remove");
     };
-    let output = Output::new(
-        cli.view,
-        remove.dry_run,
-        Cli::command(),
-        &Guide::new(),
-        args,
-    );
+    let output = Output::new(cli.view, remove.dry_run, Cli::command(), &Tool::new(), args);
     (output.unwrap(), remove)
 }
 
@@ -80,7 +73,7 @@ fn remove_with_yes_returns_the_books_and_list_and_show_skip_them_afterwards() {
             crumbkit::ViewFlags::new(),
             crumbkit::DryRun::default(),
             Cli::command(),
-            &Guide::new(),
+            &Tool::new(),
             ["shelf"],
         )
         .unwrap()

@@ -6,6 +6,7 @@ use std::fmt;
 use crate::codes::NO_ADVICE;
 use crate::{Call, Code, Field};
 
+pub(crate) mod declared;
 #[cfg(test)]
 mod tests;
 

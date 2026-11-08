@@ -6,7 +6,7 @@ the tool declares, and how root help lists the tool's root verbs.
 ## Goal headings
 
 A tool may list a group's subcommands under goal headings that it declares
-in a `const` [`Guide`](../../../../crates/crumbkit/src/help.rs), in place of
+in a `const` [`Tool`](../../../../crates/crumbkit/src/tool.rs), in place of
 clap's single `Commands:` list. `parse` applies the headings to the groups
 that the typed words pass through. [`help::extend`](../../../../crates/crumbkit/src/help.rs)
 applies them to the whole tree, for a tool that parses with plain clap and
@@ -32,11 +32,11 @@ states the layout of the list.
   `(see more with '--help')`.
 - A guided list ends a description with the command's visible aliases, as
   clap's `Commands:` list does, such as `[alias: ls]`.
-- A command that the guide does not name keeps clap's `Commands:` list,
+- A command that the tool record does not name keeps clap's `Commands:` list,
   unless it is a root with [root verbs](#root-verbs).
-- `parse` and `extend` never fail on a guide.
-  [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a guide
-  that does not match the tree.
+- `parse` and `extend` never fail on a tool record.
+  [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a tool
+  record that does not match the tree.
 - `commands list` writes the goal headings that a group's help page prints
   in the `goals` field of the group's row
   ([commands list](../commands-list.md#rows)).
@@ -47,7 +47,7 @@ Why: ADR-0021, ADR-0027, ADR-0102, ADR-0168.
 
 A tool whose commands sit directly under the root on purpose, such as
 `start` and `stop`, declares them with
-[`Guide::root_verbs`](../../../../crates/crumbkit/src/help/root_verbs.rs)
+[`Help::root_verbs`](../../../../crates/crumbkit/src/help/root_verbs.rs)
 and one reason for the whole list. The root's `-h` and `--help` then list
 each declared verb that no goal of a root group names under the heading
 `Verbs`, in the order of the declaration, after the root group's goals and
@@ -67,7 +67,7 @@ Commands
 ```
 
 A compact root group's `-h` lists them on a `Verbs:` line after its goals.
-Only the clap root lists root verbs, and a guide that declares none keeps
+Only the clap root lists root verbs, and a tool record that declares none keeps
 the root's help as it was. The declaration's checks are on the
 [declarations](../../adoption/declarations.md#root-verbs) page.
 
