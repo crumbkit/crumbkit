@@ -1,6 +1,7 @@
 //! What a run keeps of each output stream.
 
 use std::process::Stdio;
+use std::time::Instant;
 
 use crate::LineQueue;
 
@@ -58,6 +59,7 @@ pub enum Capture {
 /// What a run does when a stream that it keeps whole or as lines passes
 /// its limit.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OverLimit {
     /// The run stops the child with its escalation and ends as
     /// [`Stopped(OverLimit)`](crate::Stop::OverLimit).
@@ -82,6 +84,15 @@ impl Capture {
     pub(super) fn stopping(&self) {
         if let Self::Lines { queue, .. } = self {
             queue.stopping();
+        }
+    }
+
+    /// Tells the queue of a stream delivered as lines that the child has
+    /// been reaped, so a full queue drops a line once `deadline` has
+    /// passed.
+    pub(super) fn drain_until(&self, deadline: Instant) {
+        if let Self::Lines { queue, .. } = self {
+            queue.drain_until(deadline);
         }
     }
 

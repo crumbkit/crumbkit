@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use super::super::{Capture, Exit, Finished, OverLimit, Run, RunError, Stop, run};
+use super::super::{Capture, DRAIN_GRACE, Exit, Finished, OverLimit, Run, RunError, Stop, run};
 use crate::testing::sh;
 use crate::{Cancel, Lines, line_queue};
 
@@ -118,6 +118,52 @@ fn a_caller_that_dropped_its_lines_lets_the_child_run_to_its_end() {
 
     assert_eq!(finished.exit(), Exit::Code(4));
     assert_eq!(finished.stderr().bytes(), b"done\n");
+}
+
+#[test]
+fn a_run_returns_when_its_child_exits_while_nobody_reads_a_full_queue() {
+    let (settings, lines) = lines(1, 1024, 1 << 20);
+    let (done, finished) = std::sync::mpsc::channel();
+    std::thread::spawn(move || done.send(run_sh("printf 'one\\ntwo\\nthree\\n'", &settings)));
+
+    let finished = finished
+        .recv_timeout(DRAIN_GRACE * 4)
+        .expect("the run waited on its full queue after the child exited");
+
+    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(rest(&lines), ["one"]);
+    assert_eq!(lines.lost(), Some(b"three".to_vec()));
+}
+
+#[test]
+fn the_last_line_a_full_queue_drops_after_the_child_exits_is_the_end_of_the_stream() {
+    let (settings, lines) = lines(1, 1024, 1 << 30);
+    let (done, finished) = std::sync::mpsc::channel();
+    std::thread::spawn(move || done.send(run_sh("seq 1 5000", &settings)));
+
+    let finished = finished
+        .recv_timeout(DRAIN_GRACE * 4)
+        .expect("the run waited on its full queue after the child exited");
+
+    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(rest(&lines), ["1"]);
+    assert_eq!(lines.lost(), Some(b"5000".to_vec()));
+}
+
+#[test]
+fn a_caller_who_keeps_reading_receives_every_line_of_a_child_that_exits_with_more_output_than_the_queue_holds()
+ {
+    let (settings, lines) = lines(4, 1024, 1 << 30);
+    let running = std::thread::spawn(move || run_sh("seq 1 2000", &settings));
+
+    let received = rest(&lines);
+
+    let finished = running.join().unwrap();
+    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(received.len(), 2000);
+    assert_eq!(received.first().map(String::as_str), Some("1"));
+    assert_eq!(received.last().map(String::as_str), Some("2000"));
+    assert_eq!(lines.lost(), None);
 }
 
 #[test]

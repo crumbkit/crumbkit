@@ -28,6 +28,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
+  on it ends with a wildcard arm ([behaviour/processes]).
 - crumbkit: breaking: `CallArg` and `CallTarget` are `#[non_exhaustive]`, so
   a match on either ends with a wildcard arm.
 - crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the
@@ -35,6 +37,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   string.
 - crumbkit: breaking: `form::Step` is now `form::RecoveryStep`, so it no
   longer shares a name with the listing's `Step`.
+
+### Fixed
+
+- crumbkit-process: a run whose child exits by itself while a line queue is
+  full returns within `DRAIN_GRACE`, and the queue drops lines only after
+  half of that time has passed ([behaviour/processes]).
 
 ## [0.1.1] - 2026-11-01
 

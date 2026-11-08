@@ -125,6 +125,13 @@ impl Run {
         self.stdout.stopping();
         self.stderr.stopping();
     }
+
+    /// Tells the queue of each stream delivered as lines that the child has
+    /// exited, so a full queue drops lines once `deadline` has passed.
+    fn drain_until(&self, deadline: Instant) {
+        self.stdout.drain_until(deadline);
+        self.stderr.drain_until(deadline);
+    }
 }
 
 /// How a run's child ended and what the run kept of its output.
@@ -226,16 +233,20 @@ impl std::error::Error for RunError {
 ///
 /// On Unix, for a child that the tool may signal, a run takes at most the
 /// time to its deadline, plus the graces of its escalation, plus
-/// [`DRAIN_GRACE`], as long as the caller reads the lines of each stream
-/// delivered as lines. Every thread that it starts is joined before it
+/// [`DRAIN_GRACE`]. Every thread that it starts is joined before it
 /// returns. On Windows a stop ends the job at once, and a reader waits for
 /// its pipe to close, which ending the job causes for every process in the
 /// job, so a process outside the job that holds a pipe holds the run.
 ///
 /// A stream delivered as lines waits for the caller while its queue is
 /// full, and the child then waits on its full pipe. Once the run begins to
-/// stop the child, a full queue drops each line instead. The run ends each
-/// line queue when it returns, on every path.
+/// stop the child, a full queue drops each line instead. After the child
+/// exits by itself, a full queue waits for the caller until the drain
+/// deadline, half of [`DRAIN_GRACE`] after the reap, and then drops each
+/// line while the reader goes on reading the pipe until [`DRAIN_GRACE`]
+/// after the reap. [`Lines::lost`](crate::Lines::lost) says which line a
+/// caller can rely on. The run ends each line queue when it returns, on
+/// every path.
 ///
 /// # Errors
 ///
@@ -364,11 +375,13 @@ fn follow<'scope>(
         control(group, notice, run)
     };
     let status = group.reap();
-    ends.set(
-        Instant::now()
-            .checked_add(DRAIN_GRACE)
-            .unwrap_or_else(Instant::now),
-    );
+    // The child is gone. The queues drop lines from the middle of the drain,
+    // so the reader still has time to read the rest of the pipe and `lost`
+    // can be the stream's last line.
+    let reaped = Instant::now();
+    let after = |grace: Duration| reaped.checked_add(grace).unwrap_or(reaped);
+    ends.set(after(DRAIN_GRACE));
+    run.drain_until(after(DRAIN_GRACE / 2));
     let exited = joined(started.waiter.join());
     let stdout = started.stdout.map(|reader| joined(reader.join()));
     let stderr = started.stderr.map(|reader| joined(reader.join()));

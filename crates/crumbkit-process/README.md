@@ -53,7 +53,10 @@ Windows, and leaves the group running on Unix.
 
 The off-by-default `forward` feature, on Unix only, stops every live child
 group when the tool receives SIGINT, SIGTERM or SIGHUP, runs the tool's
-clean-ups, and then ends the tool as the signal would have.
+clean-ups, and then ends the tool as the signal would have. A tool cannot
+safely combine this feature with crumbkit-usage's log, because the log's
+signal thread can end the tool on SIGINT or SIGTERM before the forwarder has
+stopped the child groups, and those children can then keep running.
 
 ## Where to read more
 
