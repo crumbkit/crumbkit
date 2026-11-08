@@ -267,5 +267,10 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[reading::CODES])
 #[test]
 fn every_declared_code_has_a_twin_that_the_tool_accepts() {
     let (command, guide) = fixture_tool();
-    crumbkit_test::check_twins(&command, &guide, &TWINS);
+    crumbkit_test::check_twins(
+        &command,
+        &guide,
+        &TWINS,
+        &[crumbkit::codes::ALL, crumbkit_child::codes::ALL],
+    );
 }

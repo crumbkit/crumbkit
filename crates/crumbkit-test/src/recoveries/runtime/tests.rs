@@ -271,7 +271,8 @@ fn a_test_builds_a_twin_a_recovery_start_and_an_untwinned_opt_out_from_a_directo
     let twins = Twins::new(examples, CODES).pairs(&pairs);
     let recoveries = Recoveries::new(examples, CODES).starts(&starts);
 
-    let twin_problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+    let twin_problems =
+        panic_message(|| check_twins(&tree(), &Guide::new(), &twins, &[crumbkit::codes::ALL]));
     let report = report(&recoveries, "runtime-scan-golden");
 
     assert_eq!(twin_problems, None);
@@ -360,7 +361,8 @@ fn a_variable_twin_takes_a_variable_name_that_the_test_builds_at_run_time() {
         .pairs(&pairs)
         .unprovoked(&unprovoked);
 
-    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+    let problems =
+        panic_message(|| check_twins(&tree(), &Guide::new(), &twins, &[crumbkit::codes::ALL]));
 
     assert_eq!(problems, None);
 }
