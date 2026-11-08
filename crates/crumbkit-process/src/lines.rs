@@ -204,7 +204,8 @@ impl Lines {
 
     /// Returns the stream's last line when a full queue dropped it after
     /// the run began to stop or the drain deadline passed, so
-    /// [`Lines::recv`] never returned it. It returns `None` until the run has ended, and the line only once.
+    /// [`Lines::recv`] never returned it. It returns `None` until the run
+    /// has ended, and the line only once.
     #[must_use]
     pub fn lost(&self) -> Option<Vec<u8>> {
         let mut state = self.0.lock();

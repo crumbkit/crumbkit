@@ -77,9 +77,10 @@ child then waits on its full pipe. Once the run begins to stop the child,
 a full queue drops each line at once. Once the child has exited by itself,
 a full queue waits for the caller until the drain deadline, `DRAIN_GRACE`
 after the reap, and then drops each line. `Lines::lost` gives the last
-dropped line after the run ends. A caller that drops its `Lines` lets the run read the
-rest of the stream and drop it, so the child runs to its end. Each queue
-serves one run, so a `Run` with a `Lines` capture serves one run too.
+dropped line after the run ends. A caller that drops its `Lines` lets the
+run read the rest of the stream and drop it, so the child runs to its end.
+Each queue serves one run, so a `Run` with a `Lines` capture serves one run
+too.
 
 On Unix each read waits on its pipe with `poll`, so every thread that the
 run starts is joined, even while a descendant outside the group holds a pipe
