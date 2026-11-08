@@ -1,6 +1,7 @@
 //! What a run keeps of each output stream.
 
 use std::process::Stdio;
+use std::time::Instant;
 
 use crate::LineQueue;
 
@@ -83,6 +84,14 @@ impl Capture {
     pub(super) fn stopping(&self) {
         if let Self::Lines { queue, .. } = self {
             queue.stopping();
+        }
+    }
+
+    /// Tells the queue of a stream delivered as lines that the child has
+    /// exited, so a full queue drops a line once `deadline` has passed.
+    pub(super) fn stopping_at(&self, deadline: Instant) {
+        if let Self::Lines { queue, .. } = self {
+            queue.stopping_at(deadline);
         }
     }
 

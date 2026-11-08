@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use super::super::{Capture, Exit, Finished, OverLimit, Run, RunError, Stop, run};
+use super::super::{Capture, DRAIN_GRACE, Exit, Finished, OverLimit, Run, RunError, Stop, run};
 use crate::testing::sh;
 use crate::{Cancel, Lines, line_queue};
 
@@ -127,12 +127,28 @@ fn a_run_returns_when_its_child_exits_while_nobody_reads_a_full_queue() {
     std::thread::spawn(move || done.send(run_sh("printf 'one\\ntwo\\nthree\\n'", &settings)));
 
     let finished = finished
-        .recv_timeout(WAIT)
+        .recv_timeout(DRAIN_GRACE * 4)
         .expect("the run waited on its full queue after the child exited");
 
     assert_eq!(finished.exit(), Exit::Code(0));
     assert_eq!(rest(&lines), ["one"]);
     assert_eq!(lines.lost(), Some(b"three".to_vec()));
+}
+
+#[test]
+fn a_caller_who_keeps_reading_receives_every_line_of_a_child_that_exits_with_more_output_than_the_queue_holds()
+ {
+    let (settings, lines) = lines(4, 1024, 1 << 30);
+    let running = std::thread::spawn(move || run_sh("seq 1 20000", &settings));
+
+    let received = rest(&lines);
+
+    let finished = running.join().unwrap();
+    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(received.len(), 20000);
+    assert_eq!(received.first().map(String::as_str), Some("1"));
+    assert_eq!(received.last().map(String::as_str), Some("20000"));
+    assert_eq!(lines.lost(), None);
 }
 
 #[test]

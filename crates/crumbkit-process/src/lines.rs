@@ -2,9 +2,11 @@
 //! run's reader to the caller while the run goes on.
 //!
 //! A full queue makes the reader wait, and the child then waits on its full
-//! pipe. Once the child has exited or the run begins to stop it, a line that
-//! finds the queue full is dropped and kept as the stream's last line, so a
-//! caller that stopped reading cannot hold up the run. Once the caller drops its
+//! pipe. Once the run begins to stop the child, a line that finds the queue
+//! full is dropped and kept as the stream's last line, so a caller that
+//! stopped reading cannot hold up the stop. After the child exits by itself,
+//! a full queue keeps waiting for the caller until the drain deadline, and
+//! then drops lines in the same way. Once the caller drops its
 //! [`Lines`], the reader reads the rest of the stream and drops it.
 
 use std::collections::VecDeque;
@@ -48,6 +50,9 @@ struct State {
     /// queued after it. It is the stream's real last line.
     lost: Option<Vec<u8>>,
     stopping: bool,
+    /// When the child has exited by itself, the time after which a full
+    /// queue drops lines.
+    drain_until: Option<Instant>,
     ended: bool,
     abandoned: bool,
 }
@@ -67,19 +72,30 @@ impl fmt::Debug for LineQueue {
 
 impl LineQueue {
     /// Adds `line`, and waits while the queue is full, the run is not
-    /// stopping and the caller still holds its [`Lines`]. A full queue
-    /// after the child exited or the run began to stop drops the line and
-    /// keeps it as the
+    /// stopping, the drain deadline has not passed and the caller still
+    /// holds its [`Lines`]. A full queue after the run began to stop, or
+    /// after the drain deadline, drops the line and keeps it as the
     /// stream's last line. Returns false when the caller has dropped its
     /// side, and then nobody reads the line.
     pub(crate) fn push(&self, line: Vec<u8>) -> bool {
         let shared = &*self.0;
         let mut state = shared.lock();
         while state.lines.len() >= shared.most && !state.stopping && !state.abandoned {
-            state = shared
-                .changed
-                .wait(state)
-                .unwrap_or_else(PoisonError::into_inner);
+            state = if let Some(deadline) = state.drain_until {
+                let Some(left) = deadline.checked_duration_since(Instant::now()) else {
+                    break;
+                };
+                shared
+                    .changed
+                    .wait_timeout(state, left)
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .0
+            } else {
+                shared
+                    .changed
+                    .wait(state)
+                    .unwrap_or_else(PoisonError::into_inner)
+            };
         }
         if state.abandoned {
             return false;
@@ -94,10 +110,17 @@ impl LineQueue {
         true
     }
 
-    /// Marks that the child has exited or the run began to stop it, so a
-    /// full queue drops a line instead of waiting.
+    /// Marks that the run began to stop its child, so a full queue drops
+    /// a line instead of waiting.
     pub(crate) fn stopping(&self) {
         self.0.lock().stopping = true;
+        self.0.changed.notify_all();
+    }
+
+    /// Marks that the child has exited by itself, so a full queue waits for
+    /// the caller only until `deadline` and then drops a line instead.
+    pub(crate) fn stopping_at(&self, deadline: Instant) {
+        self.0.lock().drain_until = Some(deadline);
         self.0.changed.notify_all();
     }
 
@@ -180,9 +203,8 @@ impl Lines {
     }
 
     /// Returns the stream's last line when a full queue dropped it after
-    /// the child exited or the run began to stop it, so [`Lines::recv`]
-    /// never returned it. It
-    /// returns `None` until the run has ended, and the line only once.
+    /// the run began to stop or the drain deadline passed, so
+    /// [`Lines::recv`] never returned it. It returns `None` until the run has ended, and the line only once.
     #[must_use]
     pub fn lost(&self) -> Option<Vec<u8>> {
         let mut state = self.0.lock();

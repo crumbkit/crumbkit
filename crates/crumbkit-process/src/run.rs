@@ -125,6 +125,13 @@ impl Run {
         self.stdout.stopping();
         self.stderr.stopping();
     }
+
+    /// Tells the queue of each stream delivered as lines that the child has
+    /// exited, so a full queue drops lines once `deadline` has passed.
+    fn stopping_at(&self, deadline: Instant) {
+        self.stdout.stopping_at(deadline);
+        self.stderr.stopping_at(deadline);
+    }
 }
 
 /// How a run's child ended and what the run kept of its output.
@@ -233,10 +240,11 @@ impl std::error::Error for RunError {
 /// job, so a process outside the job that holds a pipe holds the run.
 ///
 /// A stream delivered as lines waits for the caller while its queue is
-/// full, and the child then waits on its full pipe. Once the child has
-/// exited or the run begins to stop it, a full queue drops each line
-/// instead. The run ends each
-/// line queue when it returns, on every path.
+/// full, and the child then waits on its full pipe. Once the run begins to
+/// stop the child, a full queue drops each line instead. After the child
+/// exits by itself, a full queue waits for the caller until the drain
+/// deadline, [`DRAIN_GRACE`] after the reap, and then drops each line. The
+/// run ends each line queue when it returns, on every path.
 ///
 /// # Errors
 ///
@@ -365,13 +373,13 @@ fn follow<'scope>(
         control(group, notice, run)
     };
     let status = group.reap();
-    // The child is gone, so a full queue must no longer hold the reader.
-    run.stopping();
-    ends.set(
-        Instant::now()
-            .checked_add(DRAIN_GRACE)
-            .unwrap_or_else(Instant::now),
-    );
+    // The child is gone, so a full queue holds the reader only until the
+    // drain deadline, the time at which the reads end.
+    let deadline = Instant::now()
+        .checked_add(DRAIN_GRACE)
+        .unwrap_or_else(Instant::now);
+    ends.set(deadline);
+    run.stopping_at(deadline);
     let exited = joined(started.waiter.join());
     let stdout = started.stdout.map(|reader| joined(reader.join()));
     let stderr = started.stderr.map(|reader| joined(reader.join()));
