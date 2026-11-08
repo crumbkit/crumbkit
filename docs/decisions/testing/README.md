@@ -13,6 +13,7 @@ tests and fuzzing, and performance budgets.
 
 - [ADR-0004. Golden files](0004-golden-and-snapshot-tests.md)
 - [ADR-0005. End-to-end tests](0005-cli-end-to-end-tests.md)
+- [ADR-0177. The twin check trusts only the codes that crumbkit's crates list](0177-twin-check-trusts-listed-codes.md)
 - [ADR-0053. Recovery chains](0053-recovery-chains.md)
 - [ADR-0163. Example preconditions](0163-example-preconditions.md)
 - [ADR-0006. Property tests and fuzzing](0006-property-tests-and-fuzzing.md)

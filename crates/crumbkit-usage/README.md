@@ -40,11 +40,11 @@ fn main() -> ExitCode {
 `finish`, streams and child hand-overs tell the log what the run did, and
 the guard writes the line when it drops. A tool that installs its own
 observer keeps it, and both observers hear each report. The log's own
-thread writes the line when SIGINT or SIGTERM ends the run, so a tool that
-handles either signal itself runs without the log. A tool cannot safely
-combine the log with crumbkit-process's `forward` feature, because the log's
-thread can end the tool before the forwarder has stopped the child groups,
-and those children can then keep running. The line goes to
+thread writes the line when SIGINT or SIGTERM ends the run. A tool whose own
+code ends it on a signal calls [`start_under`] in place of `start`, which
+starts no thread and hands that code the function that writes the line. A
+tool with crumbkit-process's `forward` feature calls
+`start_under(forward::clean_up)`. The line goes to
 `usage.jsonl` in the tool's directory under the XDG state directory, such
 as `~/.local/state/shelf/usage.jsonl`. The guard's type is [`Log`].
 
@@ -77,6 +77,7 @@ Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`start`]: src/recorder.rs
+[`start_under`]: src/recorder.rs
 [`Log`]: src/recorder.rs
 [`Facts`]: src/facts.rs
 [`Key`]: src/facts.rs

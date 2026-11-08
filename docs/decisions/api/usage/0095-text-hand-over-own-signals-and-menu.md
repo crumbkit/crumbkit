@@ -1,7 +1,7 @@
 # ADR-0095. crumbkit-child hands over text, the usage log records its own signals, and `Menu` lives in crumbkit
 
 - Date: 2026-10-19
-- Status: amended by ADR-0144 and ADR-0162
+- Status: amended by ADR-0144, ADR-0162 and ADR-0179
 - Supersedes: ADR-0042, ADR-0029 and ADR-0043, which it amends
 
 ## Context

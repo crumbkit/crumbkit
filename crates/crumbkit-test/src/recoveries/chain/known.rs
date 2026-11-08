@@ -15,6 +15,13 @@ pub(crate) const ADD_ON_CODES: &[&Code] = &[
     &Code::new("crumbkit", "aliases", "unreadable"),
 ];
 
+/// Returns the codes of crumbkit and of its add-on crates: the one source
+/// of the codes that the recovery check and the twin check treat as
+/// raised by a crumbkit crate.
+pub(crate) fn library_codes() -> impl Iterator<Item = &'static Code> {
+    crumbkit::codes::ALL.iter().chain(ADD_ON_CODES).copied()
+}
+
 impl Walk<'_> {
     /// Returns whether the check follows the recovery of the spelled
     /// `code`: a code in `known`, or one of crumbkit's own codes or of its
@@ -24,10 +31,7 @@ impl Walk<'_> {
     /// is unknown.
     pub(super) fn is_known(&self, code: &str) -> bool {
         self.known.iter().any(|known| known == code)
-            || crumbkit::codes::ALL
-                .iter()
-                .chain(ADD_ON_CODES)
-                .any(|&owned| self.spelling.spell(owned) == code)
+            || library_codes().any(|owned| self.spelling.spell(owned) == code)
     }
 
     /// Writes `code`, which `label` failed with and which no declared code

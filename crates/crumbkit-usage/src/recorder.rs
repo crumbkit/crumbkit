@@ -6,25 +6,24 @@ use std::ffi::OsString;
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, MutexGuard, TryLockError, mpsc};
+use std::sync::{Mutex, MutexGuard, TryLockError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
-
-use clap::Command;
-use signal_hook::consts::SIGINT;
 
 use super::caller::{self, Caller};
 use super::context::{self, Context};
 use super::facts::Extensions;
 use super::file::{self, LIMITS, Limits};
 use super::key;
-use super::observer::{self, UsageLog};
-use super::platform::{self, Interrupts};
+use super::observer::UsageLog;
+use super::platform;
 use super::record::{self, Hash, Help, Name, Record, Run};
 use super::shape;
+use clap::Command;
 use crumbkit::events::TraceIds;
 use crumbkit::{Code, Spelling, ToolName};
 
+mod signals;
 #[cfg(test)]
 mod tests;
 
@@ -155,8 +154,8 @@ impl Drop for Log {
 /// beside the thread, which still ends the process. A handler that replaces
 /// the signal's action directly, as the ctrlc crate does, removes the
 /// thread's listener, and the line then records the tool's exit without
-/// `interrupted`. A tool that handles either signal itself keeps its own
-/// handler and runs without the log.
+/// `interrupted`. A tool that must end on a signal through its own code
+/// calls [`start_under`] in place of `start`.
 ///
 /// The run joins the caller's trace when TRACEPARENT is valid, and starts a
 /// new trace otherwise, as [`crumbkit::trace`] describes. The random ids come
@@ -180,15 +179,67 @@ impl Drop for Log {
 /// drops the line without a word, and recording never changes the tool's
 /// output or exit code (ADR-0029).
 pub fn start() -> Log {
+    let log = begin();
+    if log.active {
+        signals::watch_signals();
+    }
+    log
+}
+
+/// Starts the usage log as [`start`] does, but starts no signal thread and
+/// takes no signal. A tool whose own code ends it on a signal calls this
+/// in place of `start`, and writes the line from that code.
+///
+/// `start_under` calls `register` once, on the first [`start`] or
+/// `start_under` that installs the recorder, with a function that writes
+/// the line with `"interrupted": true`. That function waits at most 500 ms
+/// for the recorder's lock, does nothing once the line is written, runs on
+/// any ordinary thread, and must not run inside a signal handler. A run
+/// that installs no recorder never calls `register`.
+///
+/// On Unix a tool that uses crumbkit-process's `forward` feature passes
+/// `forward::clean_up`, so the forwarder ends the tool and writes the line
+/// as a clean-up. The line is the first clean-up only when `start_under`
+/// runs before anything else registers one, because the clean-ups run in
+/// the order that they were registered:
+///
+/// ```ignore
+/// use crumbkit_process::forward;
+///
+/// let _log = crumbkit_usage::start_under(forward::clean_up);
+/// forward::install()?;
+/// ```
+///
+/// The forwarder holds the list of live children while it runs the
+/// clean-ups, so an [`Extension`](crate::Extension)'s `write` must not start
+/// a run with `Scope::Group` under this setup.
+///
+/// A tool that calls plain `start` beside `forward::install` has two handlers
+/// that each end it on the same signal, and neither crate can see the
+/// other. The tool can then end before its child groups have stopped, or
+/// with no line (ADR-0179).
+pub fn start_under(register: impl FnOnce(fn())) -> Log {
+    let log = begin();
+    if log.active {
+        register(write_interrupted);
+    }
+    log
+}
+
+/// The function that [`start_under`] registers.
+fn write_interrupted() {
+    write(&RECORDER, true);
+}
+
+/// The body that [`start`] and [`start_under`] share: it notes the time and
+/// installs the observer and the recorder.
+fn begin() -> Log {
     let started = Instant::now();
     let first = !OBSERVING.swap(true, Ordering::SeqCst);
     let active = first
         && crumbkit::events::observe(&UsageLog)
         && context::read()
             .is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
-    if active {
-        watch_signals();
-    }
     Log { active }
 }
 
@@ -518,76 +569,4 @@ fn save(
     let key = key::key(&dir)?;
     let line = record::line(&mut recorder.finish(&key, now, interrupted, caller)?)?;
     file::append(&dir, &line, limits).ok()
-}
-
-/// Starts the thread that listens for SIGINT and SIGTERM, or for SIGINT
-/// alone on Windows, and returns once the thread listens.
-///
-/// The thread writes the line on the first signal. When the main thread is
-/// already writing the line, the signal thread waits for it, for at most
-/// [`LINE_WAIT`], as [`write`] describes. After the line, the thread ends
-/// the process as the signal would have without the log. The thread leaves
-/// the process running on a SIGINT that arrives once crumbkit reported that
-/// a child took the terminal, and on Windows before it reported that the
-/// child gave the terminal back, because Ctrl-C then belongs to the child
-/// (ADR-0042).
-//
-// RUST-10: the thread takes both signals from the start of the run. A
-// process that started with one of them ignored now ends on it, such as a
-// background job of a non-interactive shell, which starts with SIGINT
-// ignored. A tool that handles one of them itself ends on it too, so such a
-// tool runs without the log (ADR-0095). Reading each signal's disposition
-// before taking it replaces this, which needs the `sigaction` call that
-// crumbkit's ban on unsafe code rules out today.
-fn watch_signals() {
-    let (listening, listens) = mpsc::channel();
-    let spawned = thread::Builder::new()
-        .name("crumbkit-usage".to_owned())
-        .spawn(move || {
-            let interrupts = Interrupts::listen();
-            // The flag is set before the main thread goes on, so a child
-            // that `main` starts next already sees it.
-            if interrupts.is_some() {
-                LISTENS.store(true, Ordering::SeqCst);
-            }
-            let _ = listening.send(());
-            let Some(mut interrupts) = interrupts else {
-                return;
-            };
-            while let Some(signal) = interrupts.wait() {
-                if signal == SIGINT && observer::held_terminal() {
-                    continue;
-                }
-                // The guard ends the process even when writing the line
-                // panics, which would otherwise drop the listener and leave
-                // the signal ignored.
-                let _ending = Ending {
-                    signal,
-                    end: Interrupts::end_process,
-                };
-                write(&RECORDER, true);
-                return;
-            }
-        });
-    if spawned.is_ok() {
-        // The thread sends once it listens, and a thread that ended early
-        // drops the sender, which ends the wait too.
-        let _ = listens.recv();
-    }
-}
-
-/// The guard that ends the process with its signal when it drops, as the
-/// signal would have without the log.
-struct Ending {
-    /// The signal that ends the process.
-    signal: i32,
-    /// What ends the process, which is [`Interrupts::end_process`] outside
-    /// the tests.
-    end: fn(i32),
-}
-
-impl Drop for Ending {
-    fn drop(&mut self) {
-        (self.end)(self.signal);
-    }
 }

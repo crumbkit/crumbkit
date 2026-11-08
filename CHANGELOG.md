@@ -16,7 +16,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/processes]).
 - crumbkit-process: a stream can arrive line by line through a bounded
   queue from [`line_queue`] while the child runs ([behaviour/processes]).
-- crumbkit-process: `Finished::status` gives the child's own status even
+- crumbkit-process: `ChildFinished::status` gives the child's own status even
   when the run stopped it, and `Status::shell_code` gives it as a shell
   would, such as 130 for a child that SIGINT ended ([behaviour/processes]).
 - crumbkit-process: `forward::handed_over` tells the forwarder that a child
@@ -25,14 +25,24 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: the off-by-default `forward` feature stops every live
   child group when the tool receives SIGINT, SIGTERM or SIGHUP, and then
   ends the tool as the signal would have ([behaviour/processes]).
+- crumbkit-usage: [`start_under`] starts the log with no signal thread and
+  hands the tool the function that writes the interrupted line, so a tool
+  with crumbkit-process's `forward` feature has one owner of each signal
+  ([behaviour/usage-log]).
 - crumbkit: the `commands list` row of a leaf that prints no result has
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
 
 ### Changed
 
+- crumbkit: breaking: `Guide::documents` is now `Guide::file_formats`, a name
+  that says it registers file formats ([behaviour/schemas/commands]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).
+- crumbkit-process: breaking: `Run` is now `Limits`, `Exit` is now `Outcome`
+  and `Finished` is now `ChildFinished`, whose `exit` is now `outcome`, so a
+  tool that imports crumbkit needs no alias for `events::Finished` or
+  `help::Exit` ([behaviour/processes]).
 - crumbkit: breaking: `CallArg` and `CallTarget` are `#[non_exhaustive]`, so
   a match on either ends with a wildcard arm.
 - crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the
@@ -40,6 +50,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   string.
 - crumbkit: breaking: `form::Step` is now `form::RecoveryStep`, so it no
   longer shares a name with the listing's `Step`.
+- crumbkit-test: breaking: [`check_twins`] requires a twin and a declaration,
+  and [`check_recoveries`] requires a declared start code, for a code in the
+  `crumbkit` component that no crumbkit crate lists
+  ([behaviour/checks/end-to-end], [behaviour/checks/recovery-chains]).
 
 ### Fixed
 
@@ -1485,6 +1499,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`run`]: crates/crumbkit-process/src/run.rs
 [`Escalation`]: crates/crumbkit-process/src/escalation.rs
 [`line_queue`]: crates/crumbkit-process/src/lines.rs
+[`start_under`]: crates/crumbkit-usage/src/recorder.rs
 [behaviour/adoption]: docs/behaviour/adoption/README.md
 [behaviour/adoption/declarations]: docs/behaviour/adoption/declarations.md
 [behaviour/adoption/opt-outs]: docs/behaviour/adoption/opt-outs.md

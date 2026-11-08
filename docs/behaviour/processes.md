@@ -66,7 +66,7 @@ Each output stream has a `Capture`:
 
 `Captured::over_limit` tells whether the kept bytes, or the lines
 delivered, are all of the stream, and `Captured::long_line` tells whether
-one line passed its limit. `Finished::first_stdout` gives the time from the
+one line passed its limit. `ChildFinished::first_stdout` gives the time from the
 start to the first byte of standard output.
 
 The caller takes each line with `Lines::recv` or `Lines::recv_timeout`,
@@ -88,8 +88,8 @@ reader goes on, so `lost` is the last line dropped before the limit, and
 `Captured::over_limit` shows that case. A later queued line clears `lost`,
 so `None` does not show that no line was dropped. A caller that
 drops its `Lines` lets the run read the rest of the stream and drop it, so
-the child runs to its end. Each queue serves one run, so a `Run` with a
-`Lines` capture serves one run too.
+the child runs to its end. Each queue serves one run, so a `Limits` value
+with a `Lines` capture serves one run too.
 
 On Unix each read waits on its pipe with `poll`, so every thread that the
 run starts is joined, even while a descendant outside the group holds a pipe
@@ -102,12 +102,12 @@ Why: ADR-0171, ADR-0176.
 
 A run ends when the child exits, when its deadline passes, when its
 `Cancel` is cancelled, or when a `Whole` or `Lines` stream with
-`OverLimit::Stop` passes its limit. `Exit` tells these apart: `Code` and
+`OverLimit::Stop` passes its limit. `Outcome` tells these apart: `Code` and
 `Signal` for the child's own end, `TimedOut`, and `Stopped` with
 `Cancelled` or `OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
 
-`Finished::status` gives the child's own status as the run reaped it,
+`ChildFinished::status` gives the child's own status as the run reaped it,
 which a timed-out or stopped run has too: `Status::Code` with the exit
 code, or `Status::Signal` with the signal's number on Unix. It is the
 status that the stop caused, so a cancelled child that SIGINT ended gives
@@ -140,7 +140,7 @@ holds the run until it exits. On Windows a reader blocks until its pipe
 closes, so a process outside the job that holds a pipe, as a grandchild of
 a child in `Scope::Child` can, holds the run until it exits.
 
-Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176.
+Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178.
 
 ## Reaping
 
@@ -200,8 +200,12 @@ forwarder is handling the first, and the first signal decides how the tool
 ends.
 
 The forwarder must be the only handler that ends the tool on SIGINT,
-SIGTERM or SIGHUP. crumbkit-usage's signal thread ends the tool on SIGINT
-or SIGTERM, and can do so before the forwarder has stopped the groups, so
-a tool that uses both loses that guarantee until one owner ends the tool.
+SIGTERM or SIGHUP. A tool that keeps crumbkit-usage's log beside the
+forwarder starts it with `start_under(forward::clean_up)`. The log then
+starts no signal thread, its line is a clean-up that runs in registration
+order, and the line's duration includes the grace. A tool that calls plain `start`
+beside `forward::install` has two handlers that each end it. The tool can
+then end before its groups have stopped or with no line, and neither crate
+can detect that.
 
-Why: ADR-0171, ADR-0172.
+Why: ADR-0171, ADR-0172, ADR-0179.

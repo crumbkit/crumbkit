@@ -85,6 +85,13 @@ impl ToolName {
     /// exits, because the segments of a [`Code`] live that long. A tool's
     /// names come from its own command tree, so a process holds one or a
     /// few of them.
+    ///
+    /// RUST-10: this handles a tool's own names, one or a few for each
+    /// process. It misses a bound, because nothing limits the list or the
+    /// leaked strings, so a host that calls it with many distinct names, such
+    /// as one for each plugin, grows for the life of the process. A cap that
+    /// returns an error replaces this when a host needs one, as
+    /// [`Code::runtime`] does with `RuntimeCodeError::Full`.
     #[must_use]
     pub fn new(name: &str) -> Self {
         // The list holds only finished names, so it is whole even after a

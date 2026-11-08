@@ -5,9 +5,9 @@ use std::time::{Duration, Instant, SystemTime};
 use clap::Command;
 use serde_json::{Value, json};
 
+use super::signals::Ending;
 use super::{
-    Ending, Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line, write,
-    written,
+    Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line, write, written,
 };
 use crate::caller::Caller;
 use crate::context::Context;

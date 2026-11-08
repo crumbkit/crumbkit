@@ -74,9 +74,11 @@ jobs:
       - run: cargo clippy -p crumbkit --all-targets
       - run: cargo clippy -p crumbkit --all-targets --features miette
       - run: cargo clippy -p crumbkit --all-targets --features tracing
-      # crumbkit-process's off-by-default `forward` feature builds only when
-      # it is on, so clippy checks the crate with it.
-      - run: cargo clippy -p crumbkit-process --all-targets --features forward
+      # crumbkit-usage's Unix dev-dependency turns on crumbkit-process's
+      # `forward` feature in every workspace run. Selecting crumbkit-process
+      # alone builds it without `forward`, as an adopter's default build does,
+      # so clippy checks that build here.
+      - run: cargo clippy -p crumbkit-process --all-targets
       # The MSRV check builds with the oldest supported toolchain (RUST-9).
       # It builds with every feature, which compiles every line of code once,
       # because no code is left out when a feature is on.
@@ -135,9 +137,10 @@ jobs:
       - run: cargo test -p crumbkit --doc
       - run: cargo nextest run -p crumbkit --features miette --profile ci
       - run: cargo test -p crumbkit --features miette --doc
-      # The workspace runs test crumbkit-process without its off-by-default
-      # `forward` feature, so its tests run again with it.
-      - run: cargo nextest run -p crumbkit-process --features forward --profile ci
+      # The workspace runs test crumbkit-process with its `forward` feature,
+      # which crumbkit-usage's Unix dev-dependency turns on, so its tests run
+      # again alone, without `forward`, as an adopter's default build has it.
+      - run: cargo nextest run -p crumbkit-process --profile ci
 
   # The repository ruleset requires this one check, so a job that joins the
   # fast lane joins this job's `needs` and the ruleset stays the same. The job
