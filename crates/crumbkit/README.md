@@ -6,8 +6,7 @@ its own clap types and its own `main`, and adopts only the parts it wants.
 
 ## Adding it
 
-A tool adds crumbkit beside clap, serde and schemars, each with its `derive`
-feature:
+A tool adds these dependencies:
 
 ```toml
 [dependencies]
@@ -16,6 +15,8 @@ crumbkit = "0.1"
 schemars = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 ```
+
+Before 1.0, a minor release may change the API.
 
 ## Example
 
@@ -132,7 +133,7 @@ The [behaviour docs] describe each part.
   conversion of a `miette::Report` into [`Error`].
 - Run reports, usage log and tracing: [`events`], [crumbkit-usage], [`trace`].
 - Handing the terminal to another program: [crumbkit-child].
-- The `color` feature: help in clap's styles for a [`Sink`].
+- The `color` feature: help in clap's styles for a styled [`Sink`].
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change.
 - Tests that check a tool against these conventions: [crumbkit-test].

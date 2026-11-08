@@ -14,8 +14,9 @@ same name.
 crumbkit = { version = "0.1", features = ["derive"] }
 ```
 
-The derive builds syn, quote and proc-macro2, so the feature is off by
-default. A tool that writes its impls by hand builds none of them.
+The feature is off by default, so a tool that writes its impls by hand does
+not build crumbkit-derive. Such a tool builds syn either way, because
+`clap_derive` needs it.
 
 ## Example
 
