@@ -36,7 +36,7 @@ fn after(seconds: f64) -> Instant {
 fn a_child_gives_its_exit_code_and_both_streams_whole() {
     let finished = run_sh("echo out; echo err >&2; exit 3", &kept());
 
-    assert_eq!(finished.exit(), Outcome::Code(3));
+    assert_eq!(finished.outcome(), Outcome::Code(3));
     assert_eq!(finished.status(), Some(Status::Code(3)));
     assert_eq!(finished.stdout().bytes(), b"out\n");
     assert_eq!(finished.stderr().bytes(), b"err\n");
@@ -47,14 +47,14 @@ fn a_child_gives_its_exit_code_and_both_streams_whole() {
 fn a_child_that_a_signal_ended_gives_the_signals_number() {
     let finished = run_sh("kill -TERM $$", &kept());
 
-    assert_eq!(finished.exit(), Outcome::Signal(15));
+    assert_eq!(finished.outcome(), Outcome::Signal(15));
 }
 
 #[test]
 fn a_discarded_stream_keeps_nothing_and_has_no_first_byte() {
     let finished = run_sh("echo out; echo err >&2", &Limits::new());
 
-    assert_eq!(finished.exit(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert_eq!(finished.stdout().bytes(), b"");
     assert_eq!(finished.stderr().bytes(), b"");
     assert_eq!(finished.first_stdout(), None);
@@ -77,7 +77,7 @@ fn a_program_that_cannot_start_is_a_start_error() {
 fn stdin_bytes_reach_the_child_and_end_with_the_end_of_its_input() {
     let finished = run_sh("cat", &kept().stdin(Input::Bytes(b"given\n".to_vec())));
 
-    assert_eq!(finished.exit(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert_eq!(finished.stdout().bytes(), b"given\n");
 }
 
@@ -88,7 +88,7 @@ fn a_child_that_never_reads_its_large_input_still_ends_the_run() {
 
     let finished = run_sh("exit 0", &kept().stdin(input));
 
-    assert_eq!(finished.exit(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert!(started.elapsed() < Duration::from_secs(5));
 }
 
@@ -98,7 +98,7 @@ fn a_child_past_its_deadline_is_stopped_with_the_process_it_started() {
 
     let finished = run_sh("sleep 30 & echo $!; wait", &kept().deadline(after(0.3)));
 
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert!(started.elapsed() < Duration::from_secs(5));
     let sleeper = pid_in(finished.stdout().bytes());
     assert!(gone(sleeper), "the sleep {sleeper} outlived the run");
@@ -134,7 +134,7 @@ fn a_background_process_that_holds_standard_output_is_killed_when_the_child_exit
 
     let finished = run_sh("sleep 30 & echo $!", &kept());
 
-    assert_eq!(finished.exit(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert!(started.elapsed() < Duration::from_secs(5));
     let sleeper = pid_in(finished.stdout().bytes());
     assert!(gone(sleeper), "the sleep {sleeper} outlived the run");
@@ -157,7 +157,7 @@ fn a_process_that_left_the_group_holding_a_pipe_ends_the_run_after_the_drain_gra
     // stops it.
     let left = pid_in(finished.stdout().bytes());
     kill(left);
-    assert_eq!(finished.exit(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert!(text.contains("started"), "{text:?}");
     assert!(took >= DRAIN_GRACE, "the run drained for {took:?}");
     assert!(took < DRAIN_GRACE * 4, "the run drained for {took:?}");
@@ -176,7 +176,7 @@ fn a_child_that_ignores_interrupt_and_terminate_is_killed_after_both_graces() {
         &kept().deadline(after(0.1)).escalation(escalation),
     );
 
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert!(started.elapsed() >= grace * 2, "{:?}", started.elapsed());
     assert!(started.elapsed() < Duration::from_secs(5));
 }
@@ -191,7 +191,7 @@ fn a_child_that_handles_terminate_exits_at_that_step_and_is_not_killed() {
         &kept().deadline(after(0.2)).escalation(escalation),
     );
 
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert_eq!(finished.stderr().bytes(), b"bye\n");
     assert!(started.elapsed() < Duration::from_secs(5));
 }
@@ -206,7 +206,7 @@ fn a_child_stopped_by_job_control_still_handles_the_graceful_signal_at_its_step(
         &kept().deadline(after(0.3)).escalation(escalation),
     );
 
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert_eq!(finished.stderr().bytes(), b"bye\n");
     assert!(
         started.elapsed() < Duration::from_secs(5),
@@ -228,7 +228,7 @@ fn in_the_child_scope_a_child_stopped_by_job_control_still_handles_the_graceful_
             .scope(Scope::Child),
     );
 
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert_eq!(finished.stderr().bytes(), b"bye\n");
     assert!(
         started.elapsed() < Duration::from_secs(5),
@@ -247,7 +247,7 @@ fn a_grace_too_long_for_the_clock_waits_for_the_child_without_a_panic() {
         &kept().deadline(after(0.2)).escalation(escalation),
     );
 
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert!(started.elapsed() < Duration::from_secs(5));
 }
 
@@ -261,7 +261,7 @@ fn standard_output_past_its_limit_stops_the_child() {
 
     let finished = run_sh("head -c 4096 /dev/zero; sleep 30", &kept().stdout(limit));
 
-    assert_eq!(finished.exit(), Outcome::Stopped(Stop::OverLimit));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::OverLimit));
     assert_eq!(finished.status(), Some(Status::Signal(9)));
     assert!(finished.stdout().over_limit());
     assert_eq!(finished.stdout().bytes().len(), 1024);
@@ -280,7 +280,7 @@ fn standard_output_past_its_limit_into_a_sink_is_read_to_its_end() {
         &kept().stdout(limit),
     );
 
-    assert_eq!(finished.exit(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert!(finished.stdout().over_limit());
     assert_eq!(finished.stdout().bytes().len(), 1024);
     assert_eq!(finished.stderr().bytes(), b"done\n");
@@ -315,7 +315,7 @@ fn a_cancel_from_another_thread_stops_the_child() {
     let finished = run_sh("sleep 30", &kept().cancel(&cancel));
 
     canceller.join().unwrap();
-    assert_eq!(finished.exit(), Outcome::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
     assert!(started.elapsed() < Duration::from_secs(5));
 }
 
@@ -326,7 +326,7 @@ fn a_run_with_a_cancel_that_is_already_cancelled_starts_no_child() {
 
     let finished = run_sh("echo started", &kept().cancel(&cancel));
 
-    assert_eq!(finished.exit(), Outcome::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
     assert_eq!(finished.status(), None);
     assert_eq!(finished.stdout().bytes(), b"");
 }
@@ -360,7 +360,7 @@ fn a_cancelled_child_that_sigint_ended_gives_that_signal_and_the_shell_code_130(
     );
 
     canceller.join().unwrap();
-    assert_eq!(finished.exit(), Outcome::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
     assert_eq!(finished.status(), Some(Status::Signal(2)));
     assert_eq!(finished.status().map(Status::shell_code), Some(130));
 }
@@ -376,7 +376,7 @@ fn a_cancelled_child_that_handles_sigint_gives_its_own_exit_code() {
     );
 
     canceller.join().unwrap();
-    assert_eq!(finished.exit(), Outcome::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
     assert_eq!(finished.status(), Some(Status::Code(7)));
 }
 
@@ -389,7 +389,7 @@ fn a_timed_out_child_gives_the_status_that_its_stop_caused() {
         &kept().deadline(after(0.2)).escalation(escalation),
     );
 
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert_eq!(finished.status(), Some(Status::Signal(15)));
 }
 
@@ -408,7 +408,7 @@ fn in_the_child_scope_the_deadline_stops_only_the_child_and_the_drain_grace_ends
         rustix::process::test_kill_process(rustix::process::Pid::from_raw(sleeper).unwrap())
             .is_ok();
     kill(sleeper);
-    assert_eq!(finished.exit(), Outcome::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert!(survived, "the run stopped the sleep that the child started");
     assert!(took < DRAIN_GRACE * 4, "the run took {took:?}");
 }

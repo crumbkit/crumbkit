@@ -33,9 +33,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).
 - crumbkit-process: breaking: `Run` is now `Limits`, `Exit` is now `Outcome`
-  and `Finished` is now `ChildFinished`, so a tool that imports crumbkit
-  needs no alias for `events::Finished` or `help::Exit`
-  ([behaviour/processes]).
+  and `Finished` is now `ChildFinished`, whose `exit` is now `outcome`, so a
+  tool that imports crumbkit needs no alias for `events::Finished` or
+  `help::Exit` ([behaviour/processes]).
 - crumbkit: breaking: `CallArg` and `CallTarget` are `#[non_exhaustive]`, so
   a match on either ends with a wildcard arm.
 - crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the

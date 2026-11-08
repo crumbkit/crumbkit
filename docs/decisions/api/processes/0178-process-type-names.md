@@ -18,9 +18,10 @@ ADR-0171 keeps crumbkit-process free of crumbkit.
 
 - `Run` is `Limits`, because it holds what a run reads, keeps and allows.
 - `Exit` is `Outcome`.
-- `Finished` is `ChildFinished`.
+- `Finished` is `ChildFinished`, and its getter `exit` is `outcome`, because
+  it returns an `Outcome`.
 - The `run` function, `RunError` and `Outcome`'s variants, including
-  `Outcome::Stopped`, keep their names. `ChildFinished::exit` keeps its name.
+  `Outcome::Stopped`, keep their names.
 
 ## Consequences
 

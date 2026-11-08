@@ -35,7 +35,7 @@ fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
         .deadline(Instant::now() + Duration::from_secs(10))
         .escalation(Escalation::default().step(Signal::Terminate, Duration::from_secs(2)));
     let finished = crumbkit_process::run(tool, &settings)?;
-    Ok(match finished.exit() {
+    Ok(match finished.outcome() {
         Outcome::Code(0) => Some(finished.into_output().0.into_bytes()),
         _ => None,
     })

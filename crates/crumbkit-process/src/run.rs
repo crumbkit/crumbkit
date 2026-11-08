@@ -137,7 +137,7 @@ impl Limits {
 /// How a run's child ended and what the run kept of its output.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChildFinished {
-    exit: Outcome,
+    outcome: Outcome,
     status: Option<Status>,
     stdout: Captured,
     stderr: Captured,
@@ -147,8 +147,8 @@ pub struct ChildFinished {
 impl ChildFinished {
     /// Returns how the child ended.
     #[must_use]
-    pub const fn exit(&self) -> Outcome {
-        self.exit
+    pub const fn outcome(&self) -> Outcome {
+        self.outcome
     }
 
     /// Returns the child's own status as the run reaped it, or `None` when
@@ -219,7 +219,7 @@ impl std::error::Error for RunError {
     }
 }
 
-/// Runs `command` with the settings of `run` and returns how it ended and
+/// Runs `command` with the settings in `limits` and returns how it ended and
 /// what it printed.
 ///
 /// The run sets the command's standard streams, starts it in the scope of
@@ -257,7 +257,7 @@ pub fn run(mut command: Command, limits: &Limits) -> Result<ChildFinished, RunEr
     let _end = EndLines(limits);
     if limits.cancel.as_ref().is_some_and(Cancel::is_cancelled) {
         return Ok(ChildFinished {
-            exit: Outcome::Stopped(Stop::Cancelled),
+            outcome: Outcome::Stopped(Stop::Cancelled),
             status: None,
             stdout: Captured::default(),
             stderr: Captured::default(),
@@ -288,9 +288,9 @@ pub fn run(mut command: Command, limits: &Limits) -> Result<ChildFinished, RunEr
         };
         follow(threads, &mut *unwind.group, &notice, &ends, limits)
     });
-    let (exit, status, stdout, stderr) = followed.map_err(RunError::Run)?;
+    let (outcome, status, stdout, stderr) = followed.map_err(RunError::Run)?;
     Ok(ChildFinished {
-        exit,
+        outcome,
         status: Some(status),
         first_stdout: stdout.first.map(|first| first - started),
         stdout: stdout.captured,
@@ -393,7 +393,7 @@ fn follow<'scope>(
     }
     exited?;
     let status = sys::status_of(status?);
-    let exit = stopped.unwrap_or_else(|| status.exit());
+    let exit = stopped.unwrap_or_else(|| status.outcome());
     let unread = || Kept {
         captured: Captured::default(),
         first: None,

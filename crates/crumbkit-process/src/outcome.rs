@@ -63,7 +63,7 @@ impl Status {
 
     /// Returns the exit of a run whose child ended on its own with this
     /// status.
-    pub(crate) const fn exit(self) -> Outcome {
+    pub(crate) const fn outcome(self) -> Outcome {
         match self {
             Self::Code(code) => Outcome::Code(code),
             Self::Signal(signal) => Outcome::Signal(signal),
