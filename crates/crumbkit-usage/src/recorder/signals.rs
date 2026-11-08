@@ -27,7 +27,7 @@ use crate::platform::Interrupts;
 // process that started with one of them ignored now ends on it, such as a
 // background job of a non-interactive shell, which starts with SIGINT
 // ignored. A tool that handles one of them itself ends on it too, so such a
-// tool runs without the log (ADR-0095). Reading each signal's disposition
+// tool calls `start_under`, which starts no thread (ADR-0179). Reading each signal's disposition
 // before taking it replaces this, which needs the `sigaction` call that
 // crumbkit's ban on unsafe code rules out today.
 pub(super) fn watch_signals() {

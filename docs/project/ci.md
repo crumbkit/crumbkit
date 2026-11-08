@@ -49,13 +49,18 @@ Why: ADR-0011.
 shelf turns on crumbkit's `miette` and `tracing` features and uses
 crumbkit-usage, and reading uses crumbkit-child, so the workspace runs
 build, test and lint crumbkit with both features, the usage log and
-crumbkit-child.
+crumbkit-child. crumbkit-usage's Unix dev-dependency turns on
+crumbkit-process's `forward` feature, so the workspace runs on Unix build,
+test and lint crumbkit-process with it.
 
 - `test` runs crumbkit's tests and doctests again in the default build and
   with `miette`.
 - `lint` runs clippy on crumbkit in the default build, with `miette` and
   with `tracing` alone, which is the only build that compiles the spans
   without the usage log's ids.
+- `test` and `lint` each run crumbkit-process alone with `-p`. Cargo unifies
+  features only across the selected packages, so that run builds the crate
+  without `forward`, which is an adopter's default build.
 
 A separate run for crumbkit-usage or crumbkit-child would repeat what the
 workspace runs check. crumbkit-child's own tests run with no usage log, so

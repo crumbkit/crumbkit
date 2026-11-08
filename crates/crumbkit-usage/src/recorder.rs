@@ -199,7 +199,9 @@ pub fn start() -> Log {
 ///
 /// On Unix a tool that uses crumbkit-process's `forward` feature passes
 /// `forward::clean_up`, so the forwarder ends the tool and writes the line
-/// as its first clean-up:
+/// as a clean-up. The line is the first clean-up only when `start_under`
+/// runs before anything else registers one, because the clean-ups run in
+/// the order that they were registered:
 ///
 /// ```ignore
 /// use crumbkit_process::forward;

@@ -31,9 +31,15 @@ crates.
   `start_with(Signals::Tool)`, in a smaller form, and a tool with its own
   handler can use it too.
 - A tool that uses the log and the forwarder passes `forward::clean_up` to
-  `start_under`, so the line is the forwarder's first clean-up and the
-  forwarder has stopped the groups before the line is written. The line's
-  duration includes the grace.
+  `start_under` before it registers any other clean-up, so the line is the
+  forwarder's first clean-up and the forwarder has stopped the groups
+  before the line is written. The line's duration includes the grace.
+- `forward::handed_over` tells the forwarder that a child is about to take
+  the terminal. The tool calls it itself, because crumbkit-process keeps
+  zero crumbkit dependencies and cannot see a hand-over. SIGINT stays
+  dropped from that call until the tool ends, so a Ctrl-C that arrives
+  after the child has exited still leaves the tool running, as ADR-0042
+  decides.
 
 ## Consequences
 

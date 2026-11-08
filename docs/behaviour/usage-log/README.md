@@ -313,8 +313,8 @@ passes a function that writes the line with `"interrupted": true` to the
 tool's code. The function waits at most 500 ms for the recorder's lock,
 does nothing once the line is written, and must not run inside a signal
 handler. A tool with crumbkit-process's `forward` feature passes
-`forward::clean_up`, so the forwarder ends the tool, writes the line as its
-first clean-up, and takes SIGHUP as well. An extension's `write` then runs
+`forward::clean_up` before it registers any other clean-up, so the forwarder
+ends the tool, writes the line first and takes SIGHUP as well. An extension's `write` then runs
 while the forwarder holds its list's lock, so it must not start a run in
 `Scope::Group`. The rustdoc of
 [`start_under`](../../../crates/crumbkit-usage/src/recorder.rs) says so.
