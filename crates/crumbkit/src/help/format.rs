@@ -8,7 +8,7 @@ use crate::Document;
 /// A file format that users write and no command prints, such as a
 /// configuration or manifest file, with its JSON Schema.
 ///
-/// A tool registers its formats with [`Guide::documents`](super::Guide::documents),
+/// A tool registers its formats with [`Guide::file_formats`](super::Guide::file_formats),
 /// and `schemas list` and `schemas show` serve each one after the documents
 /// that the tool's commands print (ADR-0035). The document's name says what
 /// the file holds, such as `shelf/config/v1`, because no command path names
@@ -26,7 +26,7 @@ use crate::Document;
 ///     Document::new("shelf", "config", 1, "The settings file that users write.");
 ///
 /// const FORMAT: FileFormat = FileFormat::new(CONFIG);
-/// const GUIDE: Guide = Guide::new().documents(&[FORMAT]);
+/// const GUIDE: Guide = Guide::new().file_formats(&[FORMAT]);
 ///
 /// assert_eq!(FORMAT.document().to_string(), "shelf/config/v1");
 /// ```
