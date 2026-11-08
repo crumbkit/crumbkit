@@ -130,7 +130,7 @@ A scheduled run skips `bench` and `windows` when the last passing run of
 that job was at the same commit, because nothing they check has changed. A
 manual run always runs them. No scheduled job uses rust-cache, because
 rust-cache keys include the job ID, so those caches would not help the
-pull-request jobs. Fuzzing joins the scheduled lane once code for it exists.
+pull-request jobs.
 
 Why: ADR-0011, ADR-0006, ADR-0008.
 
