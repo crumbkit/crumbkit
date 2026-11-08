@@ -18,6 +18,7 @@ use crate::testing::panic_message;
 mod coverage;
 mod exits;
 mod group;
+mod trusted;
 mod variable;
 
 /// The code of a refused command line.

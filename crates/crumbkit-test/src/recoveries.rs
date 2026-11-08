@@ -22,6 +22,7 @@ mod runtime;
 mod unprovoked;
 mod words;
 
+pub(crate) use chain::known::library_codes;
 pub use runtime::{RuntimeFailing, RuntimePlace};
 pub use unprovoked::Unprovoked;
 
@@ -378,7 +379,8 @@ impl<'a> Recoveries<'a> {
 ///
 /// It finds:
 ///
-/// - a start whose code is not declared, which it does not run;
+/// - a start whose code the tool does not declare and crumbkit does not
+///   own, whatever its component, which it does not run;
 /// - a start that exits with code 0, or none of whose failures carries its
 ///   code;
 /// - a step that the parser refuses with crumbkit's usage code;
@@ -437,9 +439,9 @@ pub fn check_recoveries(command: &Command, guide: &Guide, recoveries: &Recoverie
 
 /// Returns the spelled codes whose recoveries the check follows by name:
 /// the `declared` codes, crumbkit's codes as `guide` prints them, and each
-/// code that `guide` or one of its leaves prints in place of a crumbkit
-/// code, which may be an add-on crate's code that `crumbkit::codes::ALL`
-/// does not list.
+/// code that `guide` or one of its leaves prints in place of a code on a
+/// built-in list, which may be an add-on crate's code that
+/// `crumbkit::codes::ALL` does not list.
 fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) -> Vec<String> {
     let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
     known.extend(
@@ -453,6 +455,7 @@ fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) 
             .get_codes()
             .iter()
             .chain(leaves)
+            .filter(|rename| library_codes().any(|listed| listed == rename.crumbkit()))
             .map(|rename| spelling.spell(rename.tool())),
     );
     known
@@ -480,7 +483,7 @@ fn check(
     let known = known_codes(&declared, guide, spelling);
     // crumbkit's add-on crates, such as crumbkit-aliases, own codes in the
     // `crumbkit` component that `crumbkit::codes::ALL` does not list. The
-    // walk follows them by their component, so only the declared codes
+    // walk finds them on the built-in lists, so only the declared codes
     // give components.
     let mut components: Vec<(String, String)> = Vec::new();
     for (_, code) in &declared {

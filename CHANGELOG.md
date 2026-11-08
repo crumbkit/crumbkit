@@ -43,6 +43,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   string.
 - crumbkit: breaking: `form::Step` is now `form::RecoveryStep`, so it no
   longer shares a name with the listing's `Step`.
+- crumbkit-test: breaking: [`check_twins`] requires a twin and a declaration,
+  and [`check_recoveries`] requires a declared start code, for a code in the
+  `crumbkit` component that no crumbkit crate lists
+  ([behaviour/checks/end-to-end], [behaviour/checks/recovery-chains]).
 
 ### Fixed
 
