@@ -31,7 +31,7 @@ mod step;
 mod tests;
 
 pub(crate) use self::schema::{document_schema, entry_schema};
-pub use self::step::Step;
+pub use self::step::RecoveryStep;
 
 /// The id of the JSON document that a failure prints with `--json`, which
 /// a tool's output prints with the tool's name in place of `crumbkit`.
@@ -215,9 +215,9 @@ pub(crate) struct PreparedFailure<'a> {
     related: Vec<related::Related>,
     /// The failure's recovery, with a `Run` call rendered as text, or the
     /// first alternative that offers a step when the recovery offers none.
-    step: Step,
+    step: RecoveryStep,
     /// The failure's other alternatives that offer a step, in order.
-    alternatives: Vec<Step>,
+    alternatives: Vec<RecoveryStep>,
     /// The failure's fields whose names follow the rule and come first, in
     /// order.
     fields: Vec<(String, FieldValue<'static>)>,
@@ -262,13 +262,15 @@ impl<'a> PreparedFailure<'a> {
             .map(ToString::to_string)
             .collect();
         let mut unrendered = Vec::new();
-        let preferred = Step::offered(failure.recovery(), &mut *command, &mut unrendered);
+        let preferred = RecoveryStep::offered(failure.recovery(), &mut *command, &mut unrendered);
         // A failure without alternatives returns an empty `Vec`, and
         // collecting an empty iterator does not allocate.
-        let mut alternatives: Vec<Step> = failure
+        let mut alternatives: Vec<RecoveryStep> = failure
             .alternatives()
             .into_iter()
-            .filter_map(|recovery| Step::offered(recovery, &mut *command, &mut unrendered).ok())
+            .filter_map(|recovery| {
+                RecoveryStep::offered(recovery, &mut *command, &mut unrendered).ok()
+            })
             .collect();
         let step = match preferred {
             Ok(step) => step,

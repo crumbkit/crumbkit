@@ -2,7 +2,7 @@
 //! their failure, as a batch's over-budget failure offers (ADR-0053).
 
 use crumbkit::FieldValue;
-use crumbkit::form::{ReadFailure, Step};
+use crumbkit::form::{ReadFailure, RecoveryStep};
 
 use crate::failures;
 
@@ -29,7 +29,7 @@ pub(super) fn lists(failure: &ReadFailure) -> Vec<(String, Vec<String>)> {
 /// progress even though it failed with the same code.
 pub(super) fn fewer_left(failure: &ReadFailure, ran: usize) -> bool {
     failure.steps().iter().any(|step| {
-        let Step::RunAll { field, .. } = step else {
+        let RecoveryStep::RunAll { field, .. } = step else {
             return false;
         };
         failure.fields().iter().any(|(name, value)| {

@@ -6,10 +6,10 @@ workspace builds and tests. A test in that package fails when a block of
 Rust on this page differs from the file that the link before it names, so
 every block here compiles.
 
-A tool adds crumbkit as the crate README's
-[Adding it](../crates/crumbkit/README.md#adding-it) section shows, with
-serde's and schemars' `derive` features. Step 4 also adds crumbkit-test as
-a dev-dependency, as [its README](../crates/crumbkit-test/README.md) shows.
+A tool adds the dependencies that the crate README's
+[Adding it](../crates/crumbkit/README.md#adding-it) section shows. Step 4
+also adds crumbkit-test as a dev-dependency, as
+[its README](../crates/crumbkit-test/README.md) shows.
 
 ## The starting point
 
@@ -264,7 +264,7 @@ reason, on its guide: `Guide::new().root_verbs(&["restock"], "...")`.
 heading. A tool that wants its root help unchanged declares them in its
 opt-outs with `Allow::root_verbs` instead ([root verbs docs]).
 
-## 5. Where to go next
+## Where to go next
 
 - A `show` command that takes many ids returns a [`Batch`], which holds a
   row or a failure for each id, and [`fetch_each`] runs the lookups

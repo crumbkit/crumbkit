@@ -6,15 +6,17 @@ its own clap types and its own `main`, and adopts only the parts it wants.
 
 ## Adding it
 
-A tool adds crumbkit beside clap, serde and schemars:
+A tool adds these dependencies:
 
 ```toml
 [dependencies]
+clap = { version = "4", features = ["derive"] }
 crumbkit = "0.1"
+schemars = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
 ```
 
-Before 1.0, a minor release may change the API. The [changelog] names
-each breaking change.
+Before 1.0, a minor release may change the API.
 
 ## Example
 
@@ -117,7 +119,7 @@ a fuller one.
 
 ## Where to read more
 
-The [behaviour docs] describe each part in full.
+The [behaviour docs] describe each part.
 
 - Output: [`Output`], [`finish`], [`Row`], [`Document`], [`Listing`],
   [`Page`], [`Batch`] and [`Prose`].
@@ -131,11 +133,9 @@ The [behaviour docs] describe each part in full.
   conversion of a `miette::Report` into [`Error`].
 - Run reports, usage log and tracing: [`events`], [crumbkit-usage], [`trace`].
 - Handing the terminal to another program: [crumbkit-child].
-- The `color` feature: help with clap's styles in a [`Sink`] that asks for
-  them.
+- The `color` feature: help in clap's styles for a styled [`Sink`].
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change.
-- The JSON Schemas of crumbkit's own documents: [schemas].
 - Tests that check a tool against these conventions: [crumbkit-test].
 - The `derive` feature: `#[derive(Failure)]`, which writes a [`Failure`]
   impl from attributes ([crumbkit-derive]).
@@ -170,8 +170,6 @@ Licensed under Apache-2.0 or MIT, at your option.
 [crumbkit-usage]: ../crumbkit-usage/README.md
 [crumbkit-child]: ../crumbkit-child/README.md
 [`trace`]: src/trace.rs
-[schemas]: schemas
 [crumbkit-test]: ../crumbkit-test/README.md
 [crumbkit-derive]: ../crumbkit-derive/README.md
 [behaviour docs]: ../../docs/behaviour/README.md
-[changelog]: ../../CHANGELOG.md

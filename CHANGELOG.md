@@ -30,6 +30,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).
+- crumbkit: breaking: `CallArg` and `CallTarget` are `#[non_exhaustive]`, so
+  a match on either ends with a wildcard arm.
+- crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the
+  new `Segment` enum, whose `Display` gives the same words as the old
+  string.
+- crumbkit: breaking: `form::Step` is now `form::RecoveryStep`, so it no
+  longer shares a name with the listing's `Step`.
 
 ### Fixed
 

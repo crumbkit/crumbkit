@@ -2,7 +2,7 @@
 //! a crumbkit document: through a `FailureReader`, or as a `code:` line.
 
 use crumbkit::FieldValue;
-use crumbkit::form::{ReadFailure, Step};
+use crumbkit::form::{ReadFailure, RecoveryStep};
 use crumbkit::help::Guide;
 use snapbox::Assert;
 use snapbox::assert::Action;
@@ -35,7 +35,7 @@ impl FailureReader for LineReader {
             return Vec::new();
         };
         vec![
-            ReadFailure::new(code.to_owned(), vec![Step::Run(call.to_owned())])
+            ReadFailure::new(code.to_owned(), vec![RecoveryStep::Run(call.to_owned())])
                 .with_fields(vec![("path".to_owned(), FieldValue::from(path.to_owned()))]),
         ]
     }
@@ -121,7 +121,7 @@ impl FailureReader for DocumentReader {
                 let code = entry["id"].as_str()?;
                 let steps = entry["next"]
                     .as_str()
-                    .map(|call| vec![Step::Run(call.to_owned())])
+                    .map(|call| vec![RecoveryStep::Run(call.to_owned())])
                     .unwrap_or_default();
                 Some(ReadFailure::new(code.to_owned(), steps))
             })
