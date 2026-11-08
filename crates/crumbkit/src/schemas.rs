@@ -8,7 +8,7 @@
 //! adds that document, and crumbkit adds `<tool>/failure/v1`, which every
 //! command prints when it fails with `--json`. Each
 //! [`FileFormat`](crate::help::FileFormat) that the guide declares with
-//! [`Guide::documents`] adds the schema of a file that users write and no
+//! [`Guide::file_formats`] adds the schema of a file that users write and no
 //! command prints, after the leaves' documents.
 //!
 //! The tool owns the commands. It adds a `schemas` resource with a `list`

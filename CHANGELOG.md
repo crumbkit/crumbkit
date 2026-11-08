@@ -28,6 +28,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: `Guide::documents` is now `Guide::file_formats`, a name
+  that says it registers file formats ([behaviour/schemas/commands]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).
 - crumbkit-process: breaking: `Run` is now `Limits`, `Exit` is now `Outcome`

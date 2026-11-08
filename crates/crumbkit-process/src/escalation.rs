@@ -35,6 +35,9 @@ pub struct Escalation {
 impl Escalation {
     /// Returns this escalation with one more step, which sends `signal` and
     /// waits at most `grace` for the child to exit.
+    ///
+    /// A step after a [`Signal::Kill`] step runs only when the child has not
+    /// exited within the kill's grace.
     #[must_use]
     pub fn step(mut self, signal: Signal, grace: Duration) -> Self {
         self.steps.push((signal, grace));
