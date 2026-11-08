@@ -24,7 +24,7 @@ describes.
 
 Why: ADR-0005.
 
-## Property tests and fuzzing
+## Property tests
 
 proptest checks the code segment rules, the document component rule, the
 predefined spellings, table rendering and the reduction of usage records.
@@ -35,9 +35,6 @@ The fast lane runs the property tests briefly with the fixed seed of
 RUST-11, so a CI run generates the same cases on every machine. proptest
 writes no regression files, so the unit test that RUST-11 asks a fix to add
 keeps the failing input.
-
-The usage-log reader's bolero fuzz target arrives with the change that sets
-up a nightly fuzz lane, which will fuzz each target for 10 minutes.
 
 Why: ADR-0006.
 

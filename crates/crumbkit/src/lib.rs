@@ -28,11 +28,9 @@
 //! [`trace`]: crate::trace
 //! [tutorial]: https://github.com/crumbkit/crumbkit/blob/main/docs/tutorial.md
 //! [golden files]: https://github.com/crumbkit/crumbkit/tree/main/examples/shelf/tests/golden
-//! [schemas]: https://github.com/crumbkit/crumbkit/tree/main/crates/crumbkit/schemas
 //! [crumbkit-test]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/README.md
 //! [crumbkit-derive]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-derive/README.md
 //! [crumbkit-child]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-child/README.md
-//! [changelog]: https://github.com/crumbkit/crumbkit/blob/main/CHANGELOG.md
 //! [behaviour docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/README.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's

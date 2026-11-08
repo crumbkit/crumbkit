@@ -10,13 +10,10 @@ your own `main`, and you adopt only the parts you want.
 
 ## Crates
 
-The eight crates are published on crates.io at version 0.1, and their API
-reference is on [docs.rs](https://docs.rs/crumbkit). A tool starts with
-crumbkit itself:
-
-```sh
-cargo add crumbkit
-```
+The nine crates are published on crates.io at version 0.1, and their API
+reference is on [docs.rs](https://docs.rs/crumbkit). The crumbkit crate README's
+[Adding it](crates/crumbkit/README.md#adding-it) section shows the
+dependencies that a tool needs.
 
 - [crumbkit](crates/crumbkit/README.md) holds the command grammar, the
   output, the help tree and the failures.
@@ -41,8 +38,8 @@ cargo add crumbkit
 The crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 and share one version. Before 1.0, a minor release, such as 0.2, may change
 the API, and the [changelog](CHANGELOG.md) names each breaking change. Each
-release pull request from 0.1.1 on runs cargo-semver-checks against the last
-published version. A patch release, such as 0.1.1, makes no breaking change.
+release pull request runs cargo-semver-checks against the last published
+version. A patch release, such as 0.1.1, makes no breaking change.
 
 ## Licence
 

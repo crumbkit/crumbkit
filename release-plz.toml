@@ -40,7 +40,7 @@
 #    0.1.0 chose crumbkit-derive, crumbkit, crumbkit-aliases, crumbkit-child,
 #    crumbkit-markdown, crumbkit-test, crumbkit-usage, cargo-crumbkit.
 #    Revoke the token on crates.io afterwards.
-# 5. On crates.io, open each of the eight crates' Settings, Trusted
+# 5. On crates.io, open each of the nine crates' Settings, Trusted
 #    Publishing, and add a GitHub publisher with the owner `crumbkit`, the
 #    repository `crumbkit`, the workflow `release.yml` and the environment
 #    `crates-io`.
