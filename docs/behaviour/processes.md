@@ -190,6 +190,15 @@ A clean-up must not start a run in `Scope::Group`, or wait for a thread
 that runs one, because that run waits forever for the lock that the
 forwarder holds. A run in `Scope::Child` takes no lock.
 
+`forward::handed_over` tells the forwarder that a child is about to take
+the terminal. From then until the tool ends, the forwarder drops SIGINT,
+so Ctrl-C reaches only that child, as ADR-0042 decides for a hand-over. It
+still forwards SIGTERM and SIGHUP to the listed groups. The child that holds
+the terminal is not on the forwarder's list, so `kill <tool>` during a
+hand-over ends the tool and leaves the child on the terminal. A second signal has no effect while the
+forwarder is handling the first, and the first signal decides how the tool
+ends.
+
 The forwarder must be the only handler that ends the tool on SIGINT,
 SIGTERM or SIGHUP. A tool that keeps crumbkit-usage's log beside the
 forwarder starts it with `start_under(forward::clean_up)`. The log then

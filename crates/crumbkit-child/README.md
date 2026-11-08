@@ -4,6 +4,8 @@ crumbkit-child lets a command of a crumbkit tool hand the terminal to
 another program, such as an editor, a pager or a wrapped tool, as the
 command's whole response. The child reads and writes the terminal directly,
 Ctrl-C reaches only the child, and the tool returns the child's exit code.
+A tool that also uses crumbkit-process's `forward` feature calls
+`forward::handed_over` just before the hand-over.
 
 ## Adding it
 

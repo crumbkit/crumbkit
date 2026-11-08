@@ -22,6 +22,8 @@ fn typed(command: &Command, args: &[std::ffi::OsString], spelling: Spelling) {
 #[cfg(unix)]
 mod forward;
 #[cfg(unix)]
+mod forward_hand_over;
+#[cfg(unix)]
 mod unix;
 #[cfg(windows)]
 mod windows;

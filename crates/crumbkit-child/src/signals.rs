@@ -31,7 +31,9 @@
 //! [`Observer::handles_interrupt`](crumbkit::events::Observer::handles_interrupt),
 //! and this module then installs no SIGINT handler. The usage log's thread
 //! leaves the process running on SIGINT once a child took the terminal, and
-//! on Windows until the child gave it back (ADR-0042).
+//! on Windows until the child gave it back (ADR-0042). crumbkit-process's
+//! forwarder cannot see this module, so a tool that uses it calls
+//! `forward::handed_over` before the hand-over.
 
 #[cfg(unix)]
 mod unix;
