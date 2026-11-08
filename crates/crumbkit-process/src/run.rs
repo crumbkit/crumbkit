@@ -233,8 +233,9 @@ impl std::error::Error for RunError {
 /// job, so a process outside the job that holds a pipe holds the run.
 ///
 /// A stream delivered as lines waits for the caller while its queue is
-/// full, and the child then waits on its full pipe. Once the run begins to
-/// stop the child, a full queue drops each line instead. The run ends each
+/// full, and the child then waits on its full pipe. Once the child has
+/// exited or the run begins to stop it, a full queue drops each line
+/// instead. The run ends each
 /// line queue when it returns, on every path.
 ///
 /// # Errors
@@ -364,6 +365,8 @@ fn follow<'scope>(
         control(group, notice, run)
     };
     let status = group.reap();
+    // The child is gone, so a full queue must no longer hold the reader.
+    run.stopping();
     ends.set(
         Instant::now()
             .checked_add(DRAIN_GRACE)

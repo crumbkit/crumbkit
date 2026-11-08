@@ -2,9 +2,9 @@
 //! run's reader to the caller while the run goes on.
 //!
 //! A full queue makes the reader wait, and the child then waits on its full
-//! pipe. Once the run begins to stop the child, a line that finds the queue
-//! full is dropped and kept as the stream's last line, so a caller that
-//! stopped reading cannot hold up the stop. Once the caller drops its
+//! pipe. Once the child has exited or the run begins to stop it, a line that
+//! finds the queue full is dropped and kept as the stream's last line, so a
+//! caller that stopped reading cannot hold up the run. Once the caller drops its
 //! [`Lines`], the reader reads the rest of the stream and drops it.
 
 use std::collections::VecDeque;
@@ -68,7 +68,8 @@ impl fmt::Debug for LineQueue {
 impl LineQueue {
     /// Adds `line`, and waits while the queue is full, the run is not
     /// stopping and the caller still holds its [`Lines`]. A full queue
-    /// after the run began to stop drops the line and keeps it as the
+    /// after the child exited or the run began to stop drops the line and
+    /// keeps it as the
     /// stream's last line. Returns false when the caller has dropped its
     /// side, and then nobody reads the line.
     pub(crate) fn push(&self, line: Vec<u8>) -> bool {
@@ -93,8 +94,8 @@ impl LineQueue {
         true
     }
 
-    /// Marks that the run began to stop its child, so a full queue drops
-    /// a line instead of waiting.
+    /// Marks that the child has exited or the run began to stop it, so a
+    /// full queue drops a line instead of waiting.
     pub(crate) fn stopping(&self) {
         self.0.lock().stopping = true;
         self.0.changed.notify_all();
@@ -179,7 +180,8 @@ impl Lines {
     }
 
     /// Returns the stream's last line when a full queue dropped it after
-    /// the run began to stop, so [`Lines::recv`] never returned it. It
+    /// the child exited or the run began to stop it, so [`Lines::recv`]
+    /// never returned it. It
     /// returns `None` until the run has ended, and the line only once.
     #[must_use]
     pub fn lost(&self) -> Option<Vec<u8>> {

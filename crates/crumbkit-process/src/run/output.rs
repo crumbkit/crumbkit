@@ -58,6 +58,7 @@ pub enum Capture {
 /// What a run does when a stream that it keeps whole or as lines passes
 /// its limit.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OverLimit {
     /// The run stops the child with its escalation and ends as
     /// [`Stopped(OverLimit)`](crate::Stop::OverLimit).

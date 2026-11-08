@@ -73,8 +73,8 @@ The caller takes each line with `Lines::recv` or `Lines::recv_timeout`,
 which return `None` once the run has ended and the queue is empty. The run
 ends the queue on every return path, including a start failure and a
 cancel before the start. A full queue makes the run's reader wait, and the
-child then waits on its full pipe. Once the run begins to stop the child,
-a full queue drops each line, and `Lines::lost` gives the last dropped line
+child then waits on its full pipe. Once the child has exited or the run
+begins to stop it, a full queue drops each line, and `Lines::lost` gives the last dropped line
 after the run ends. A caller that drops its `Lines` lets the run read the
 rest of the stream and drop it, so the child runs to its end. Each queue
 serves one run, so a `Run` with a `Lines` capture serves one run too.

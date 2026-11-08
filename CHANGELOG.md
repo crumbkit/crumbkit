@@ -26,6 +26,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
 
+### Changed
+
+- crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
+  on it ends with a wildcard arm ([behaviour/processes]).
+
+### Fixed
+
+- crumbkit-process: a run whose child exits by itself while a line queue is
+  full returns, and the full queue then drops each line as it does during a
+  stop ([behaviour/processes]).
+
 ## [0.1.1] - 2026-11-01
 
 ### Added

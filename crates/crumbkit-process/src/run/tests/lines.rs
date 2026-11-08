@@ -121,6 +121,21 @@ fn a_caller_that_dropped_its_lines_lets_the_child_run_to_its_end() {
 }
 
 #[test]
+fn a_run_returns_when_its_child_exits_while_nobody_reads_a_full_queue() {
+    let (settings, lines) = lines(1, 1024, 1 << 20);
+    let (done, finished) = std::sync::mpsc::channel();
+    std::thread::spawn(move || done.send(run_sh("printf 'one\\ntwo\\nthree\\n'", &settings)));
+
+    let finished = finished
+        .recv_timeout(WAIT)
+        .expect("the run waited on its full queue after the child exited");
+
+    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(rest(&lines), ["one"]);
+    assert_eq!(lines.lost(), Some(b"three".to_vec()));
+}
+
+#[test]
 fn the_lines_end_when_the_program_cannot_start() {
     let (settings, lines) = lines(16, 1024, 1 << 20);
     #[expect(

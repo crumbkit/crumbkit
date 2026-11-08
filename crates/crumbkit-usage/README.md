@@ -41,7 +41,10 @@ fn main() -> ExitCode {
 the guard writes the line when it drops. A tool that installs its own
 observer keeps it, and both observers hear each report. The log's own
 thread writes the line when SIGINT or SIGTERM ends the run, so a tool that
-handles either signal itself runs without the log. The line goes to
+handles either signal itself runs without the log. A tool cannot safely
+combine the log with crumbkit-process's `forward` feature, because the log's
+thread can end the tool before the forwarder has stopped the child groups,
+and those children can then keep running. The line goes to
 `usage.jsonl` in the tool's directory under the XDG state directory, such
 as `~/.local/state/shelf/usage.jsonl`. The guard's type is [`Log`].
 
