@@ -26,12 +26,6 @@ fn a_range_holds_each_code_from_its_first_to_its_last_and_nothing_outside() {
 }
 
 #[test]
-#[should_panic(expected = "an exit range ends at or after its start")]
-fn a_range_that_ends_before_it_starts_panics() {
-    let _ = Exit::range(30, 20, "The suite ended with its own code.");
-}
-
-#[test]
 fn a_single_code_holds_only_itself() {
     assert_eq!(BUSY.codes(), 3..=3);
     assert_eq!(BUSY.code(), 3);

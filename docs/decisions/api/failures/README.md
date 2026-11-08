@@ -21,3 +21,4 @@ in place of crumbkit's failure document.
 - [ADR-0089. Exit numbers and owned codes restored](0089-exit-numbers-and-owned-codes-restored.md)
 - [ADR-0106. Refusals name the next words](0106-refusals-name-the-next-words.md)
 - [ADR-0156. Hyphens in code segments](0156-hyphens-in-code-segments.md)
+- [ADR-0175. The form module's step is RecoveryStep](0175-the-form-modules-step-is-recoverystep.md)

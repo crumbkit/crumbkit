@@ -39,10 +39,10 @@ pub enum RecoveryStep {
 
 impl RecoveryStep {
     /// Reads `recovery` into a step, rendering a `Run` call against
-    /// `command`. It returns `Err` with a `RecoveryStep::None` when the recovery
-    /// offers no step: a `Recovery::None`, or a `Run` call that cannot be
-    /// rendered because the call does not resolve. It adds the reason that a
-    /// `Run` call does not resolve to `unrendered`.
+    /// `command`. It returns `Err` with a `RecoveryStep::None` when the
+    /// recovery offers no step: a `Recovery::None`, or a `Run` call that
+    /// cannot be rendered because the call does not resolve. It adds the
+    /// reason that a `Run` call does not resolve to `unrendered`.
     pub(super) fn offered(
         recovery: Recovery,
         command: &mut Command,

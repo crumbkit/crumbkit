@@ -30,9 +30,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - crumbkit: breaking: `CallArg` and `CallTarget` are `#[non_exhaustive]`, so
   a match on either ends with a wildcard arm.
-- crumbkit: breaking: `Exit::range` panics when `last` is below `first`,
-  which fails the build when the exit is a constant
-  ([behaviour/failures/exit-codes]).
 - crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the
   new `Segment` enum, whose `Display` gives the same words as the old
   string.

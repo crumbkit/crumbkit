@@ -96,8 +96,7 @@ fn the_error_of_a_full_table_names_the_limit() {
     );
 }
 
-/// The name of each segment of a code, in the order `Code::runtime` takes
-/// them.
+/// Each segment of a code, in the order `Code::runtime` takes them.
 const SEGMENTS: [Segment; 3] = [Segment::Component, Segment::Area, Segment::Reason];
 
 proptest! {
