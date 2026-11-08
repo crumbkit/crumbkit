@@ -12,15 +12,17 @@ code needed no twin and no declaration. A tool could write
 `Code::new("crumbkit", "books", "gone")`, and the check accepted the code
 although no crumbkit crate lists it. ADR-0058 recorded this as a consequence.
 
-The recovery check already decides which codes are crumbkit's from two
-built-in lists: `crumbkit::codes::ALL` and crumbkit-test's list of the
-add-on crates' codes, which a test compares with those crates' own
-`codes::ALL`.
+The recovery check decided whether a code that a run prints is crumbkit's
+from two built-in lists: `crumbkit::codes::ALL` and crumbkit-test's list of
+the add-on crates' codes, which a test compares with those crates' own
+`codes::ALL`. It decided the same for the code of a start from the
+component.
 
 ## Decision
 
-- `check_twins` reads the same two lists as the recovery check, through one
-  crate-private function of crumbkit-test.
+- `check_twins` and the recovery check, for a start's code as for a printed
+  code, read the two lists through one crate-private function of
+  crumbkit-test.
 - A code is crumbkit's only when one of the lists holds it, or when a
   `Rename` of the guide or of a leaf prints it in place of a code that one
   of the lists holds.
@@ -33,8 +35,10 @@ add-on crates' codes, which a test compares with those crates' own
 The signature of `check_twins` does not change. A code in the `crumbkit`
 component on neither list now needs a twin and a declaration, and an
 `Allow::untwinned` opt-out for such a declared code is no longer stale. A
-new add-on crate adds its codes to `ADD_ON_CODES`.
-`docs/behaviour/checks/end-to-end.md` describes the current behaviour.
+start of `check_recoveries` with such a code fails the check unless the
+tool declares the code. A new add-on crate adds its codes to
+`ADD_ON_CODES`. `docs/behaviour/checks/end-to-end.md` and
+`docs/behaviour/checks/recovery-chains.md` describe the current behaviour.
 
 Considered: a required `trusted` parameter of `check_twins`, which would
 make every tool repeat lists that crumbkit-test already holds; a

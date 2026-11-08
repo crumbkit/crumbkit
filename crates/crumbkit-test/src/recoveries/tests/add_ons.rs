@@ -3,9 +3,11 @@
 //! of which only crumbkit's own codes and its add-on crates' codes have
 //! their recoveries followed, and the warnings that crumbkit prints.
 
+use crumbkit::Code;
 use snapbox::assert::Action;
 
 use super::{OTHERS, SHOW_7, Setup, check_with, failure, problems, recoveries, run};
+use crate::recoveries::Failing;
 use crate::recoveries::chain::known::ADD_ON_CODES;
 
 /// Returns the setup of a chain whose step `tool books list` fails with
@@ -75,6 +77,31 @@ fn an_undeclared_code_in_the_tools_component_that_no_crumbkit_crate_raises_fails
             "{code}: {problems}"
         );
     }
+}
+
+#[test]
+fn an_undeclared_start_in_the_crumbkit_component_on_neither_built_in_list_fails_the_check() {
+    const GONE: Code = Code::new("crumbkit", "books", "gone");
+    let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
+    let gone = failure("tool::books::gone", r#"{"kind":"retry"}"#);
+    let setup = Setup::new(
+        "recoveries-unlisted-start",
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books show 9 --json", 1, gone.as_str(), ""),
+        ],
+    );
+    let starts = [SHOW_7[0], Failing::new(&GONE, &["books", "show", "9"])];
+
+    let message = problems(&setup, &recoveries(&setup, &starts, OTHERS));
+
+    assert_eq!(
+        message.as_deref(),
+        Some(
+            "the tool's recoveries break crumbkit's recovery rules:\n\
+             tool books show 9: the start's code tool::books::gone is not a declared code"
+        )
+    );
 }
 
 #[test]

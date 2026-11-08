@@ -14,7 +14,9 @@ fails with. The check follows each `run` recovery and alternative that the
 failures print, up to 3 steps after the start by default, which
 `Recoveries::steps` changes. A run that prints several failures, such as a
 batch, starts one branch for each. A start passes when any of its failures
-carries its code, because a batch reports every id that failed.
+carries its code, because a batch reports every id that failed. A start
+whose code the tool does not declare and crumbkit does not own fails the
+check without running, whatever the code's component.
 
 A step fails the check in these cases:
 
