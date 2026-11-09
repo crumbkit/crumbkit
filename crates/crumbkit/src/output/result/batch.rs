@@ -89,8 +89,6 @@ impl<T: Rows> Prepared<'_, T> {
             return Ok((Answer::Whole, bytes));
         }
         let bytes = {
-            // `code` is already the code that the run prints, so no rename
-            // applies to it.
             let prepared = in_document
                 .then(|| PreparedFailure::new(&over, left_out.spelling, left_out.command, sink));
             self.measured_write(sink, shown, None, Some(failures(prepared.as_ref())))?
@@ -130,8 +128,6 @@ impl<T: Rows> Prepared<'_, T> {
         let any_left_out = !self.value.left_out(1).is_empty();
         let in_document = self.view.is_json() && self.document.get_envelope().wraps();
         let (bytes, over) = if in_document {
-            // `code` is already the code that the run prints, so no rename
-            // applies to it.
             let command = &mut *left_out.command;
             let refused = PreparedFailure::new(&first, left_out.spelling, command, sink).keyed(key);
             let over = self.name_keys(sink, listed, Some(&refused), &mut left_out, 0, 1)?;

@@ -193,7 +193,7 @@ fn cut_schema() -> Value {
         "type": "object",
         "properties": {
             "code": {
-                "description": "The over-budget code, in the tool's spelling.",
+                "description": "The over-budget code.",
                 "type": "string",
             },
             "budget": {

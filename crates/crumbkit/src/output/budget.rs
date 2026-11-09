@@ -159,7 +159,7 @@ pub(super) fn largest(
 /// spelling and the bytes that the result had.
 #[derive(Debug)]
 pub(super) struct Cut {
-    /// The over-budget code in the tool's spelling.
+    /// The over-budget code as the run printed it.
     pub(super) code: String,
     /// The bytes that the result had to fit in.
     pub(super) budget: usize,

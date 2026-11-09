@@ -7,7 +7,7 @@ use serde::Serializer;
 
 use super::{Field, FieldValue};
 use crate::shown::TextCells;
-use crate::{Duration, Shown};
+use crate::{Elapsed, Shown};
 
 #[test]
 fn a_field_keeps_its_name_and_value() {
@@ -220,7 +220,7 @@ fn a_shown_field_holds_the_json_form_of_the_value() {
 
 #[test]
 fn a_shown_field_holds_the_text_of_a_value_with_the_default_json_form() {
-    let waited = Duration::new(std::time::Duration::from_secs(90));
+    let waited = Elapsed::new(std::time::Duration::from_secs(90));
 
     assert_eq!(
         Field::shown("waited", &waited).value(),

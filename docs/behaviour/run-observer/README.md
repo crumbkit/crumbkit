@@ -43,9 +43,9 @@ Why: ADR-0057, ADR-0075, ADR-0048.
   exit. A refusal reports `refused`, or `exited` for a refused view flag,
   when it prints. A refusal that `try_parse_to` returns and the tool never
   prints reports neither, and the tool reports its exit through `ended`.
-- `finish`, `finish_to` and a stream report the code of a failure in the
-  tool's spelling, then the exit code, the bytes written to standard output
-  and whether a listing left rows out or had none.
+- `finish`, `finish_to` and a stream report the code of a failure, then the exit
+  code, the bytes written to standard output and whether a listing left rows out
+  or had none.
 - A [child hand-over](../output/child-processes.md) in the crumbkit-child
   crate reports through the public `events::handed_over`, `taken_back` and
   `interrupted` functions that the child took the terminal, on Windows that

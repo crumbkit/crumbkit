@@ -148,7 +148,7 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_in_the_order_its_field
         .unwrap();
     let view = super::Cli::from_arg_matches(&matches).unwrap().view;
     let tool = crate::Tool::new();
-    let output = crate::Output::new(
+    let output = crate::Run::new(
         view,
         crate::DryRun::default(),
         command,

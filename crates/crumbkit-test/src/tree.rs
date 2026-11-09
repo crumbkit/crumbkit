@@ -81,9 +81,9 @@ fn walk_tree(root: &Command, hidden: bool) -> Vec<Visit<'_>> {
     visits
 }
 
-/// Adds `command` and every command below it to `visits`. A hidden command and everything below it are left out unless
-/// `hidden` is set. `visible` says whether every command above `command`
-/// is visible.
+/// Adds `command` and every command below it to `visits`. A hidden command and
+/// everything below it are left out unless `hidden` is set. `visible` says
+/// whether every command above `command` is visible.
 fn visit<'a>(
     command: &'a Command,
     path: &str,

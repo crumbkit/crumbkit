@@ -177,7 +177,7 @@ fn a_step_whose_argument_holds_a_control_character_is_left_out_whole_and_json_ha
 #[test]
 fn steps_print_before_the_dry_run_line() {
     let mut output = parse_against(Cli::command(), &[]);
-    output.dry_run = true;
+    output.dry_mode = true;
     let listing = two_of_eight().step(Step::new("Push the commit.").run(GIT, ["push"]));
 
     let finished = finish_output(output, PLANET_LISTING, listing);

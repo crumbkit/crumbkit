@@ -15,7 +15,7 @@ use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
 use super::table::{self, Table};
-use super::{Output, children, fields, lines, listing, problems, prose};
+use super::{Run, children, fields, lines, listing, problems, prose};
 use crate::help::view::{Kind, Printed};
 use crate::shown::TextCells;
 use crate::sink::role::{Deliver, Message, Role};
@@ -59,7 +59,7 @@ pub(super) enum Answer {
 }
 
 /// Delivers `value` to `sink` as the result in the format that `output`
-/// chooses, within the bytes that [`Output::budget`] has left. It returns
+/// chooses, within the bytes that [`Run::budget`] has left. It returns
 /// what it printed and the number of bytes it wrote.
 ///
 /// `failures` holds the failures of a batch or a prose result, which the
@@ -93,7 +93,7 @@ pub(super) enum Answer {
 /// itself, after a batch's failures.
 pub(super) fn write_result<T: Rows>(
     sink: &mut dyn Deliver,
-    output: &mut Output,
+    output: &mut Run,
     spelling: Spelling,
     document: Document<T>,
     value: &T,
@@ -162,15 +162,11 @@ impl<'a> Settings<'a> {
     /// Borrows the settings of `output` and, apart from them, its command
     /// tree, with the `width` that the sink gives the result and whether
     /// the sink wants the result `styled`.
-    fn split(
-        output: &'a mut Output,
-        width: Option<usize>,
-        styled: bool,
-    ) -> (Self, &'a mut Command) {
+    fn split(output: &'a mut Run, width: Option<usize>, styled: bool) -> (Self, &'a mut Command) {
         let settings = Self {
             view: &output.view,
             words: &output.words,
-            dry_run: output.dry_run,
+            dry_run: output.dry_mode,
             layout: output.json_layout,
             budget: output.budget,
             width,

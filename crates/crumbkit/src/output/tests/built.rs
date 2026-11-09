@@ -1,16 +1,16 @@
-//! Tests for an `Output` that a tool builds with `Output::new`, from view
+//! Tests for a `Run` that a tool builds with `Run::new`, from view
 //! flags that clap parsed or that the tool built itself.
 
 use clap::CommandFactory as _;
 
 use super::{Cli, PLANETS, build_output, finish_output, finish_with, mercury, saturn};
-use crate::{Output, Tool, ViewFlags};
+use crate::{Run, Tool, ViewFlags};
 
 /// Returns the output of the test tool's `tool list` with `view`, as a
 /// tool's `main` builds it after it parsed with clap alone or built the
 /// flags itself.
-fn built(view: ViewFlags) -> Output {
-    Output::new(
+fn built(view: ViewFlags) -> Run {
+    Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
@@ -81,7 +81,7 @@ fn output_new_reports_its_refusal_of_full_without_json_as_a_printed_refusal() {
 
 #[test]
 fn output_new_keeps_the_words_after_the_program_name() {
-    let output = Output::new(
+    let output = Run::new(
         ViewFlags::new(),
         crate::DryRun::default(),
         Cli::command(),

@@ -6,7 +6,7 @@ use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, miette};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::{Document, Error, Output, Row, Sink, Tool, ViewFlags, finish_to};
+use crate::{Document, Error, Row, Run, Sink, Tool, ViewFlags, finish_to};
 
 /// A row type for the result that the failing command would have printed.
 #[derive(Serialize, JsonSchema)]
@@ -30,7 +30,7 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let tool = Tool::new();
-    let output = Output::new(
+    let output = Run::new(
         ViewFlags::new(),
         crate::DryRun::default(),
         clap::Command::new("shelf"),

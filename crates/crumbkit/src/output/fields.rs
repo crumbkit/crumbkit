@@ -3,7 +3,7 @@
 
 use schemars::Schema;
 
-use super::Output;
+use super::Run;
 use crate::help::ViewFlag;
 use crate::help::view::{self, Kind, Printed};
 use crate::refusal::Refusal;
@@ -14,7 +14,7 @@ use crate::{Document, Row, Rows};
 /// Returns the refusal of the view in `output` for a result of type `T`
 /// printed as `document`, or `None` when the result accepts it, as
 /// [`refusal`] describes.
-pub(super) fn flags_refusal<T: Rows>(output: &Output, document: Document<T>) -> Option<Refusal> {
+pub(super) fn flags_refusal<T: Rows>(output: &Run, document: Document<T>) -> Option<Refusal> {
     let printed = Printed::of::<T::Row, T>(Kind::Document(T::SHAPE), &document);
     refusal::<T::Row>(&printed, output.view())
 }

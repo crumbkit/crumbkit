@@ -78,7 +78,7 @@ impl Rerun {
             .iter()
             .map(|word| word.to_str().map(str::to_owned))
             .collect::<Option<_>>()?;
-        // Parsing needs `&mut`, and the output's command stays as `finish`
+        // Parsing needs `&mut`, and the run's command stays as `finish`
         // found it.
         let mut command = command.clone();
         let typed = parse(&mut command, &words)?;

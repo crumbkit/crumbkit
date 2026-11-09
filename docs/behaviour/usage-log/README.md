@@ -59,10 +59,10 @@ Why: ADR-0029, ADR-0057.
   picked values.
 - `finish` and `finish_to` report the exit code as the number they return,
   including a tool's code that the tool record declares for the run's first
-  failure, the code of a failure or refusal in the tool's spelling, the bytes
-  written to standard output, and whether a listing left out rows of its
-  source, as one that shows fewer rows than its total or comes from a
-  capped source does. A batch reports the code of its first failure.
+  failure, the code of a failure or refusal, the bytes written to standard
+  output, and whether a listing left out rows of its source, as one that shows
+  fewer rows than its total or comes from a capped source does. A batch reports
+  the code of its first failure.
 - A [stream](../output/streams.md) reports its run as `finish` does.
 - A run that never reaches `finish` or a stream's end, such as a child
   process or the tool's own exit path, reports its exit with
@@ -73,9 +73,8 @@ Why: ADR-0029, ADR-0057.
   `std::process::exit` still has its line.
 - A run that reports a failure and carries on past it reports the code with
   [`events::tolerated`](../../../crates/crumbkit/src/events.rs). The line's
-  `tolerated` field lists the first 8 distinct codes in the tool's spelling,
-  in the order reported, and drops later codes, so the line stays within its
-  size limit.
+  `tolerated` field lists the first 8 distinct codes in the order reported, and
+  drops later codes, so the line stays within its size limit.
 - crumbkit-aliases' `expand` calls
   [`events::aliased`](../../../crates/crumbkit/src/events.rs) when it replaces
   an [alias](../parsing/aliases.md). The line then records `"alias": true`
@@ -157,14 +156,13 @@ Why: ADR-0144.
 
 ## What the record never holds
 
-The record holds no argument values, URLs, ids, paths, error text or
-messages. Inside crumbkit, its types enforce this. Every name in the record
-is built from a `clap::Command` for its name, its version or a path of its
-subcommands, from a `clap::Arg` for its long or short flag name, or from a
-crumbkit `Code` in the tool's `Spelling`, so no crumbkit code can put a word
-that the caller typed into a name. The counts are numbers, the trace ids are
-hex that crumbkit generated or validated, and the command line appears only
-as a keyed hash.
+The record holds no argument values, URLs, ids, paths, error text or messages.
+Inside crumbkit, its types enforce this. Every name in the record is built from
+a `clap::Command` for its name, its version or a path of its subcommands, from a
+`clap::Arg` for its long or short flag name, or from a crumbkit `Code` as the
+run printed it, so no crumbkit code can put a word that the caller typed into a
+name. The counts are numbers, the trace ids are hex that crumbkit generated or
+validated, and the command line appears only as a keyed hash.
 
 The types do not check the text that the tool itself gives its commands,
 arguments, version and codes. In the tool's facts, the types keep text to

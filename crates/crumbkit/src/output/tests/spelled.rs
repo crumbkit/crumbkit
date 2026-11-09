@@ -1,4 +1,4 @@
-//! Tests that `parse`, `finish`, `stream` and `Output::new` print every code
+//! Tests that `parse`, `finish`, `stream` and `Run::new` print every code
 //! in the colon spelling, with the tool's name in crumbkit's own codes.
 
 use std::fmt;
@@ -6,7 +6,7 @@ use std::fmt;
 use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet};
-use crate::{Code, Document, Failure, Output, Recovery, Sink, Stream, Tool, ViewFlags};
+use crate::{Code, Document, Failure, Recovery, Run, Sink, Stream, Tool, ViewFlags};
 use crate::{finish_to, parse_to, stream_to};
 
 /// A stream of planets, one line for each planet as it arrives.
@@ -55,7 +55,7 @@ enum Command {
 /// Parses `args` with `tool` through `parse_to` into memory, and returns
 /// the output of a run that parsed, or the error writer's text of one that
 /// stopped.
-fn parse(tool: &Tool, args: &[&str]) -> Result<Output, String> {
+fn parse(tool: &Tool, args: &[&str]) -> Result<Run, String> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let parsed = parse_to::<Cli>(&mut Sink::new(&mut out, &mut err), tool, args);
@@ -66,7 +66,7 @@ fn parse(tool: &Tool, args: &[&str]) -> Result<Output, String> {
 
 /// Finishes the handler's `Missing` failure with `output` into memory, and
 /// returns the error writer's text.
-fn fail(output: Output) -> String {
+fn fail(output: Run) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, Missing> = Err(Missing);
@@ -113,7 +113,7 @@ fn a_clap_only_tools_output_new_prints_a_refusal_with_the_tools_name() {
 
     // `--full` without `--json` is refused with crumbkit's usage code, which
     // prints with the tool's name.
-    let stop = Output::new_to(
+    let stop = Run::new_to(
         &mut Sink::new(&mut out, &mut err),
         view,
         crate::DryRun::default(),
@@ -135,7 +135,7 @@ fn a_clap_only_tools_output_new_prints_a_refusal_with_the_tools_name() {
 fn a_clap_only_tools_output_new_prints_the_handlers_code_in_colons() {
     let args = ["tool", "list"];
     let view = Cli::try_parse_from(args).unwrap().view;
-    let output = Output::new(
+    let output = Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),

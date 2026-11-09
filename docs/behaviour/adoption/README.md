@@ -11,7 +11,7 @@ its own names.
 
 A tool states what it declares to crumbkit once, as a `const`
 [`Tool`](../../../crates/crumbkit/src/tool.rs), and passes it to `parse`,
-`Output::new` and crumbkit-test's checks. `Tool` composes three records and
+`Run::new` and crumbkit-test's checks. `Tool` composes three records and
 holds two settings of its own. A record that a tool leaves out keeps
 crumbkit's behaviour.
 
@@ -21,10 +21,10 @@ crumbkit's behaviour.
 | `Failures` | `crumbkit::tool::Failures` | Exit codes, the refusal alternatives and the refusal hint. |
 | `Output` | `crumbkit::tool::Output` | The output budget, the JSON layout and terminal detection. |
 
-`Tool::picker` sits on `Tool`. `crumbkit::Output` is the handle of one run, so
-the record of what a run prints has the path `crumbkit::tool::Output`.
+`Tool::picker` sits on `Tool`. `crumbkit::Run` is the handle of one run, and
+`crumbkit::tool::Output` is the record that declares what a tool prints.
 
-Why: ADR-0180.
+Why: ADR-0180, ADR-0184.
 
 ## Parts a tool takes one at a time
 
@@ -37,17 +37,18 @@ for each ([dependencies](../../project/dependencies.md)). It enables clap's
 Each part follows an existing convention:
 
 - `Failure` extends `std::error::Error` ([failures](../failures/README.md)).
-- `Output` is added with clap's `#[command(flatten)]`, or built with
-  `Output::new()` by a tool that defines the view flags itself
+- `ViewFlags` is added with clap's `#[command(flatten)]`, or built with
+  `ViewFlags::new()` by a tool that defines the view flags itself
   ([output](../output/README.md#view-flags)).
 - Results derive `Serialize` and `JsonSchema` and implement `Row` to name
   their table columns ([output](../output/README.md)).
 - Each crumbkit-test check is a free function that a tool calls from an
-  ordinary `#[test]`, as it calls clap's `Command::debug_assert`
-  ([checks](../checks/README.md)).
+  ordinary `#[test]`, as it calls clap's `Command::debug_assert`, or a tool
+  runs them all through one
+  [`Suite`](../checks/README.md#the-convention-suite).
 
 Each argument type that crumbkit gives a tool to flatten or to take as a
-command's arguments, such as `Output`, `Page` or `CommandsList`, clears the
+command's arguments, such as `ViewFlags`, `Page` or `CommandsList`, clears the
 command's about and long about, because clap otherwise copies the type's
 rustdoc into the help of a command that has no doc comment of its own. A
 derived command sets its own doc comment after the types it flattens, so it
@@ -64,8 +65,8 @@ Why: ADR-0015, ADR-0002.
 ## Wiring `main`
 
 crumbkit has no `run` one-liner. A hand-wired `main` is a few lines of glue:
-`parse`, a `match` on its result that keeps the returned `Output`, and one
-`finish` per leaf, which takes the `Output` by value as the last call of the
+`parse`, a `match` on its result that keeps the returned `Run`, and one
+`finish` per leaf, which takes the `Run` by value as the last call of the
 run ([parsing](../parsing/README.md)). A `run` could not call
 crumbkit-aliases or start the usage log, because crumbkit-aliases and
 crumbkit-usage both depend on crumbkit.
@@ -111,7 +112,7 @@ crumbkit holds the types that compile without clap beside the parsing, help
 and output that read a `clap::Command`: `Code` and `Spelling`, `Failure`,
 `Recovery`, `Error` and `AsFailure`, `Document`, `Call` and `CallError`,
 `Row`, `Rows`, `Shape` and `NoRow`, `Listing`, `Batch`, `Prose`, `Bytes`,
-`Age`, `Duration`, `Shown` and `Stream`. Every crate that uses them builds clap through crumbkit. A crate
+`Age`, `Elapsed`, `Shown` and `Stream`. Every crate that uses them builds clap through crumbkit. A crate
 that is not a command-line tool, such as a web server that maps a `Failure`
 to an RFC 9457 problem-details response, can ask for these types in a crate
 of their own when such a crate exists, and this list says what that crate

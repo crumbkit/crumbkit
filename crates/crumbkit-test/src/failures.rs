@@ -12,11 +12,11 @@ use crate::examples::Examples;
 use crate::runs;
 
 /// The failure that one run printed, as crumbkit-test reads it back from
-/// the run's output: the code in the tool's spelling, the
-/// steps, the recovery first and then each alternative, and the fields.
+/// the run's output: the code, the steps, the recovery first and then each
+/// alternative, and the fields.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReadFailure {
-    /// The code in the tool's spelling, such as `shelf::books::not_found`.
+    /// The code as the run printed it, such as `shelf::books::not_found`.
     code: String,
     /// The recovery first, then each alternative.
     steps: Vec<RecoveryStep>,
@@ -25,8 +25,8 @@ pub struct ReadFailure {
 }
 
 impl ReadFailure {
-    /// Returns the failure with `code`, in the tool's spelling, and `steps`,
-    /// the recovery first and then each alternative.
+    /// Returns the failure with `code` and `steps`, the recovery first and
+    /// then each alternative.
     #[must_use]
     pub const fn new(code: String, steps: Vec<RecoveryStep>) -> Self {
         Self {
@@ -51,7 +51,7 @@ impl ReadFailure {
         self
     }
 
-    /// Returns the code in the tool's spelling.
+    /// Returns the code as the run printed it.
     #[must_use]
     pub fn code(&self) -> &str {
         &self.code

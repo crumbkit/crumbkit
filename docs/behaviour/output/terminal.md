@@ -23,9 +23,9 @@ Detection changes only these:
   `CLICOLOR_FORCE` is set, or when standard error is a terminal whose
   `TERM` is not `dumb` and `CLICOLOR` is not `0`. They never keep them
   under `NO_COLOR` ([parsing](../parsing/README.md#refused-command-lines)).
-- `Output::progress_allowed` is true only when `--json` is off and standard
+- `Run::progress_allowed` is true only when `--json` is off and standard
   error is a terminal ([output](README.md#following-the-callers-format)).
-- A picker and `Output::confirm` ask only when standard input and standard
+- A picker and `Run::confirm` ask only when standard input and standard
   error are terminals and no agent is detected
   ([effects](../effects/README.md), [pickers](../effects/pickers.md)).
 - A text table that `finish` prints fits the width of the terminal that
@@ -84,9 +84,9 @@ which takes the tool's reason. crumbkit-test's `check_opt_outs` lists the
 setting as `terminal-detection/off` with that reason and its costs: a person at
 a terminal is never asked and must type every argument and `--yes`, progress,
 help, refusal and cell colours never show, and a text table never fits the
-terminal's width ([opt-outs](../adoption/opt-outs.md)). The `Output` that
-`parse` returns, the `Output` inside a `Stop` and the `Output` that
-`Output::new` builds copy the setting from the tool, as they copy the tool's
+terminal's width ([opt-outs](../adoption/opt-outs.md)). The `Run` that
+`parse` returns, the `Run` inside a `Stop` and the `Run` that
+`Run::new` builds copy the setting from the tool, as they copy the tool's
 JSON layout.
 
 The setting belongs to the tool and has no environment variable. A caller

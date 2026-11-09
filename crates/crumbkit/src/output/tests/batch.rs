@@ -11,7 +11,7 @@ use serde::Serialize;
 use crate::answered::answered;
 use crate::twins::assert_one_word_apart;
 use crate::{
-    AsFailure, Batch, Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, finish_to,
+    AsFailure, Batch, Call, Code, Document, Error, Failure, Recovery, Row, Run, Sink, finish_to,
 };
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -136,10 +136,10 @@ struct Finished {
 
 /// Parses `tool show Saturn` followed by `flags` and builds the output as a
 /// tool that parses with clap alone builds it.
-fn output(flags: &[&str]) -> Output {
+fn output(flags: &[&str]) -> Run {
     let args = ["tool", "show", "Saturn"].iter().chain(flags);
     let view = Cli::try_parse_from(args.clone()).unwrap().view;
-    Output::new(
+    Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),

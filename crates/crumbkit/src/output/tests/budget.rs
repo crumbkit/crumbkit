@@ -19,8 +19,8 @@ mod room;
 use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{
-    AsFailure, Batch, Call, Code, Document, Error, Failure, JsonLayout, Listing, Output, Prose,
-    Recovery, Row, Tool,
+    AsFailure, Batch, Call, Code, Document, Error, Failure, JsonLayout, Listing, Prose, Recovery,
+    Row, Run, Tool,
 };
 
 /// A budget that a few rows pass.
@@ -81,17 +81,17 @@ fn keyed<E: AsFailure>(rows: Vec<Star>, failures: Vec<E>) -> Batch<Star, E> {
 }
 
 /// Returns the output flags for `flags` with a tool record whose budget is
-/// `budget`, as `Output::new` builds them.
-fn budgeted(budget: usize, flags: &[&str]) -> Output {
+/// `budget`, as `Run::new` builds them.
+fn budgeted(budget: usize, flags: &[&str]) -> Run {
     output_of(
         &Tool::new().output(crate::tool::Output::new().budget(budget, "the tests print little")),
         flags,
     )
 }
 
-/// Returns the output flags for `flags` with `tool`, as `Output::new`
+/// Returns the output flags for `flags` with `tool`, as `Run::new`
 /// builds them.
-fn output_of(tool: &Tool, flags: &[&str]) -> Output {
+fn output_of(tool: &Tool, flags: &[&str]) -> Run {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     super::built_with(Cli::command(), tool, &args)
 }
@@ -329,7 +329,7 @@ fn budget_reports_the_tool_s_budget_that_finish_prints_within() {
 
 #[test]
 fn an_output_from_a_tool_without_a_budget_has_crumbkit_s_default_of_one_mebibyte() {
-    let output = Output::new(
+    let output = Run::new(
         crate::ViewFlags::new(),
         crate::DryRun::default(),
         Cli::command(),
@@ -338,8 +338,8 @@ fn an_output_from_a_tool_without_a_budget_has_crumbkit_s_default_of_one_mebibyte
     )
     .unwrap();
 
-    assert_eq!(output.budget(), Output::DEFAULT_BUDGET);
-    assert_eq!(Output::DEFAULT_BUDGET, 1_048_576);
+    assert_eq!(output.budget(), Run::DEFAULT_BUDGET);
+    assert_eq!(Run::DEFAULT_BUDGET, 1_048_576);
 }
 
 #[test]

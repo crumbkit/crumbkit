@@ -7,7 +7,7 @@ use crumbkit::{JsonLayout, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
-use super::check;
+use super::{Departures, check};
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 use crate::{Allow, Budget, Budgets, Failing, PathBudgets, Rule};
@@ -48,9 +48,12 @@ fn run_with_tool(tool: &Tool, dir: &TempDir, action: Action) {
     check(
         &shelf(),
         tool,
-        &[],
-        &Budgets::new(),
-        None,
+        &Departures {
+            allow: &[],
+            budgets: &Budgets::new(),
+            paths: None,
+            skips: &[],
+        },
         dir.path(),
         &Assert::new().action(action),
     );
@@ -68,9 +71,12 @@ fn run_with(
     check(
         &shelf(),
         &Tool::new(),
-        allow,
-        budgets,
-        paths,
+        &Departures {
+            allow,
+            budgets,
+            paths,
+            skips: &[],
+        },
         dir.path(),
         &Assert::new().action(action),
     );
@@ -79,6 +85,34 @@ fn run_with(
 /// Returns the text of the file `name` in `dir`.
 fn read(dir: &TempDir, name: &str) -> String {
     fs::read_to_string(dir.path().join(name)).unwrap()
+}
+
+#[test]
+fn a_skipped_check_is_listed_with_its_reason_in_both_reports() {
+    let dir = TempDir::new("opt-outs-skip").unwrap();
+
+    check(
+        &shelf(),
+        &Tool::new(),
+        &Departures {
+            allow: &[],
+            budgets: &Budgets::new(),
+            paths: None,
+            skips: &[(crate::Check::Twins, "No command line provokes a code.")],
+        },
+        dir.path(),
+        &Assert::new().action(Action::Overwrite),
+    );
+
+    let text = read(&dir, "opt-outs.txt");
+    assert!(text.contains("suite/skip: Check::Twins\n"), "{text}");
+    assert!(
+        text.contains("Reason: No command line provokes a code."),
+        "{text}"
+    );
+    let json = read(&dir, "opt-outs.json");
+    assert!(json.contains("\"suite/skip\""), "{json}");
+    assert!(json.contains("\"Check::Twins\""), "{json}");
 }
 
 #[test]
@@ -220,9 +254,12 @@ fn the_first_line_counts_the_opt_outs_and_the_budgets_of_a_tool_with_both_separa
     check(
         &shelf(),
         &TOOL,
-        ALLOW,
-        &BUDGETS,
-        None,
+        &Departures {
+            allow: ALLOW,
+            budgets: &BUDGETS,
+            paths: None,
+            skips: &[],
+        },
         dir.path(),
         &Assert::new().action(Action::Overwrite),
     );
@@ -366,7 +403,7 @@ fn the_report_lists_a_tool_without_terminal_detection_with_its_reason_and_costs(
          \n\
          terminal-detection/off: every run of shelf\n\
          \x20 Reason: Our CI runs in a pseudo-terminal.\n\
-         \x20 Cost: A picker never asks for a missing argument and `Output::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.\n\
+         \x20 Cost: A picker never asks for a missing argument and `Run::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.\n\
          \x20 Cost: Progress never prints, help prints without clap's colours at a terminal, and a table's cells print without their styles.\n\
          \x20 Cost: A text table never fits the terminal's width, so the terminal wraps each line of a table that is wider than the terminal.\n"
     );

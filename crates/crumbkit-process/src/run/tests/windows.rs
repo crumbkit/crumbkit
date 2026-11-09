@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use super::super::{Cancel, Capture, Limits, Outcome, OverLimit, StopReason, run};
+use super::super::{Cancel, Capture, Outcome, OverLimit, RunOptions, StopReason, run};
 use crate::testing::{cmd, gone, pid_file, pid_in, remove, started_grandchild};
 use crate::{Scope, Status};
 
@@ -17,7 +17,7 @@ fn text(bytes: &[u8]) -> String {
 
 #[test]
 fn a_child_gives_its_exit_code_and_its_standard_output() {
-    let finished = run(cmd("echo out& exit 3"), &Limits::new().stdout(WHOLE)).unwrap();
+    let finished = run(cmd("echo out& exit 3"), &RunOptions::new().stdout(WHOLE)).unwrap();
 
     assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(3)));
     assert_eq!(finished.status(), Some(Status::Code(3)));
@@ -37,7 +37,7 @@ fn a_cancelled_child_whose_job_was_ended_gives_exit_code_1() {
 
     let finished = run(
         cmd("ping -n 120 127.0.0.1 >NUL"),
-        &Limits::new().stdout(WHOLE).cancel(&cancel),
+        &RunOptions::new().stdout(WHOLE).cancel(&cancel),
     )
     .unwrap();
 
@@ -56,7 +56,7 @@ fn ending_the_job_when_the_child_exits_ends_a_grandchild_that_holds_standard_out
 
     let finished = run(
         cmd(&started_grandchild(&file, 120)),
-        &Limits::new().stdout(WHOLE),
+        &RunOptions::new().stdout(WHOLE),
     )
     .unwrap();
 
@@ -83,7 +83,7 @@ fn in_the_child_scope_the_run_waits_for_a_grandchild_that_holds_standard_output(
 
     let finished = run(
         cmd(&started_grandchild(&file, 3)),
-        &Limits::new().stdout(WHOLE).scope(Scope::Child),
+        &RunOptions::new().stdout(WHOLE).scope(Scope::Child),
     )
     .unwrap();
 
@@ -115,7 +115,7 @@ fn a_deadline_ends_the_job_with_the_grandchild_in_it() {
 
     let finished = run(
         cmd(&script),
-        &Limits::new()
+        &RunOptions::new()
             .stdout(WHOLE)
             .deadline(Instant::now() + Duration::from_secs(20)),
     )

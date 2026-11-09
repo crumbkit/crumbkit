@@ -46,7 +46,7 @@ without `data` ([usage log](../usage-log/README.md)).
 - A row field of type `Age` holds a time in RFC 3339 in UTC with
   milliseconds, and its schema is a string in the `date-time` format,
   inline in the row's properties.
-- A row field of type `Duration` holds an ISO 8601 duration with hours as
+- A row field of type `Elapsed` holds an ISO 8601 duration with hours as
   its largest unit, such as `PT4M10S` or `PT0.3S`, and its schema is a
   string with a `pattern` of that form and no `format`, inline in the
   row's properties. A tool's own value type has the schema of its JSON

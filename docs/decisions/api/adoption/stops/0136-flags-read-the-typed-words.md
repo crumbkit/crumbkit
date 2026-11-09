@@ -1,7 +1,7 @@
 # ADR-0136. Refused and Stop read their flags from the words the caller typed
 
 - Date: 2026-10-21
-- Status: accepted
+- Status: amended by ADR-0186
 - Supersedes: ADR-0109 and ADR-0111, which it amends
 - Missed: ADR-0109 read the words that crumbkit gave clap and missed that the word `help` becomes `--help`, so a tool that records the flags the caller typed recorded a flag the caller never typed.
 

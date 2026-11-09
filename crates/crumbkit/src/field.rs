@@ -57,7 +57,7 @@ impl<'a> Field<'a> {
     }
 
     /// Returns the field named `name` that holds the JSON form of a
-    /// [`Shown`] value, such as a [`Duration`](crate::Duration).
+    /// [`Shown`] value, such as an [`Elapsed`](crate::Elapsed).
     ///
     /// The failure's message holds the value's text form, which the tool
     /// writes with the value's `Display`, and the JSON failure document holds
@@ -68,9 +68,9 @@ impl<'a> Field<'a> {
     /// ```
     /// use std::time::Duration as Std;
     ///
-    /// use crumbkit::{Duration, Field, FieldValue};
+    /// use crumbkit::{Elapsed, Field, FieldValue};
     ///
-    /// let waited = Duration::new(Std::from_secs(90));
+    /// let waited = Elapsed::new(Std::from_secs(90));
     /// let message = format!("the shelf stayed locked for {waited}");
     /// let field = Field::shown("waited", &waited);
     ///

@@ -22,7 +22,6 @@ use clap::Command;
 use clap_complete::env::Shells;
 
 #[cfg(feature = "complete")]
-#[cfg(feature = "complete")]
 use crate::Sink;
 
 #[cfg(test)]
@@ -87,14 +86,11 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
-/// use crumbkit::Tool;
 ///
 /// /// List the books in a small catalogue.
 /// #[derive(Parser)]
 /// #[command(name = "shelf")]
 /// struct Cli {}
-///
-/// const TOOL: Tool = Tool::new();
 ///
 /// fn main() -> ExitCode {
 ///     if let Some(code) = crumbkit::complete(Cli::command) {

@@ -9,7 +9,7 @@ use clap::CommandFactory as _;
 use super::{Cli, Finished, PLANET, PLANETS, finish_output, saturn};
 use crate::Envelope;
 use crate::{
-    Call, Code, Document, Error, Failure, JsonLayout, Output, Recovery, Rows, Sink, Tool, finish_to,
+    Call, Code, Document, Error, Failure, JsonLayout, Recovery, Rows, Run, Sink, Tool, finish_to,
 };
 
 /// The tool record of a tool whose readers expect indented JSON.
@@ -19,8 +19,8 @@ const PRETTY: Tool =
     }));
 
 /// Returns the output flags for `tool list` followed by `flags`, with the
-/// tool record [`PRETTY`], as `Output::new` builds them.
-fn pretty(flags: &[&str]) -> Output {
+/// tool record [`PRETTY`], as `Run::new` builds them.
+fn pretty(flags: &[&str]) -> Run {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     super::built_with(Cli::command(), &PRETTY, &args)
 }

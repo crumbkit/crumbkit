@@ -55,15 +55,12 @@ fn print_decides_error_styles_from_the_commands_colour_choice_and_the_tools_term
     let off = refused_by(tree(), &OFF, &args);
 
     assert_eq!(
-        detecting.output().refusal_colour(),
+        detecting.run().refusal_colour(),
         (clap::ColorChoice::Auto, true)
     );
     assert_eq!(
-        never.output().refusal_colour(),
+        never.run().refusal_colour(),
         (clap::ColorChoice::Never, true)
     );
-    assert_eq!(
-        off.output().refusal_colour(),
-        (clap::ColorChoice::Auto, false)
-    );
+    assert_eq!(off.run().refusal_colour(), (clap::ColorChoice::Auto, false));
 }

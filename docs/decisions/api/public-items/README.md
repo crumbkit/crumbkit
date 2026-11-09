@@ -12,6 +12,7 @@
 - [ADR-0181. Parse functions read the command from the type](0181-parse-functions-read-the-command-from-the-type.md)
 - [ADR-0182. A leaf's document and a row's child lines are records](0182-leaf-document-and-children-records.md)
 - [ADR-0183. Small corrections to the public API before 0.2.0](0183-small-public-api-corrections.md)
+- [ADR-0184. A run's handle, a run's settings and a printed length of time get their own names](0184-run-runoptions-and-elapsed.md)
 - [ADR-0186. Three seams without a user removed](0186-three-seams-without-a-user-removed.md)
 
 ## Context

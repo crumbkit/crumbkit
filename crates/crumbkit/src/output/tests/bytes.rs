@@ -12,7 +12,7 @@ use super::Cli;
 use crate::Envelope;
 use crate::answered::answered;
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, DryRun, Error, Output, Row, Sink, Tool, finish_to};
+use crate::{Batch, Bytes, Document, DryRun, Error, Row, Run, Sink, Tool, finish_to};
 
 const FILE: Document<Bytes> = Document::new("files", "file", 1, "The bytes of one file.");
 
@@ -28,8 +28,8 @@ struct Finished {
 }
 
 /// Parses `tool list` followed by `flags` with a tool record whose budget is
-/// `budget`, as `Output::new` builds the output.
-fn output_with(budget: usize, flags: &[&str]) -> Output {
+/// `budget`, as `Run::new` builds the output.
+fn output_with(budget: usize, flags: &[&str]) -> Run {
     let tool =
         Tool::new().output(crate::tool::Output::new().budget(budget, "the tests print little"));
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
@@ -37,7 +37,7 @@ fn output_with(budget: usize, flags: &[&str]) -> Output {
 }
 
 /// Finishes `bytes` as `document` with the flags and budget in `output`.
-fn finish_output(output: Output, document: Document<Bytes>, bytes: Bytes) -> Finished {
+fn finish_output(output: Run, document: Document<Bytes>, bytes: Bytes) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Bytes, Error> = Ok(bytes);
@@ -51,7 +51,7 @@ fn finish_output(output: Output, document: Document<Bytes>, bytes: Bytes) -> Fin
 
 /// Finishes `bytes` as [`FILE`] with `flags` and crumbkit's default budget.
 fn finish_with(flags: &[&str], bytes: Bytes) -> Finished {
-    finish_output(output_with(Output::DEFAULT_BUDGET, flags), FILE, bytes)
+    finish_output(output_with(Run::DEFAULT_BUDGET, flags), FILE, bytes)
 }
 
 /// Returns bytes that hold a tab, an escape sequence and a byte that is not
@@ -99,7 +99,7 @@ fn json_holds_bytes_that_are_not_utf8_as_base64_under_data() {
 
 #[test]
 fn json_of_a_document_without_the_envelope_is_the_object_alone() {
-    let output = output_with(Output::DEFAULT_BUDGET, &["--json"]);
+    let output = output_with(Run::DEFAULT_BUDGET, &["--json"]);
     let finished = finish_output(output, FILE.envelope(Envelope::Without), raw());
 
     assert_eq!(
@@ -265,7 +265,7 @@ struct Write {
 fn the_dry_run_line_of_bytes_goes_to_standard_error_so_the_bytes_stay_unchanged() {
     let words = ["tool", "--dry-run"];
     let write = Write::parse_from(words);
-    let output = Output::new(
+    let output = Run::new(
         write.view,
         write.dry_run,
         Write::command(),
@@ -298,7 +298,7 @@ impl Row for File {
 fn a_batch_prints_a_bytes_field_in_its_json_form_with_full() {
     let files: Document<Batch<File, Error>> =
         Document::new("files", "files", 1, "The bytes of each file.");
-    let output = output_with(Output::DEFAULT_BUDGET, &["--json", "--full"]);
+    let output = output_with(Run::DEFAULT_BUDGET, &["--json", "--full"]);
     let batch = answered(
         vec![File {
             name: "cover.png",

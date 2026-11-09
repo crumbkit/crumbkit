@@ -8,9 +8,9 @@
 //!
 //! ```ignore
 //! Resource::SelfCommand { command: SelfCommand::Usage(args) } => {
-//!     let result = crumbkit_usage::findings(&mut output, &TOOL, &args);
+//!     let result = crumbkit_usage::findings(&mut run, &TOOL, &args);
 //!     let result = Ok::<_, crumbkit::Error>(result);
-//!     crumbkit::finish(output, crumbkit_usage::SELF_USAGE, result)
+//!     crumbkit::finish(run, crumbkit_usage::SELF_USAGE, result)
 //! }
 //! ```
 //!
@@ -39,7 +39,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::report::{Figures, Finding, Kind, Report, Tally, read};
-use crumbkit::{Call, Document, Listing, Output, Tool};
+use crumbkit::{Call, Document, Listing, Run, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -166,7 +166,7 @@ pub struct UsageSummary {
 /// The runs that tolerated one code.
 #[derive(Debug, Serialize, JsonSchema)]
 struct CodeRuns {
-    /// The code, in the tool's spelling.
+    /// The code that the failed runs printed.
     code: String,
     /// The runs that tolerated the code. A run counts each code once.
     runs: u64,
@@ -181,8 +181,8 @@ struct CallerRuns {
     runs: u64,
 }
 
-/// Returns the findings in the usage log of the tool whose command `output`
-/// holds, which it builds in full through [`Output::command`], for the runs that ended in the `--since`
+/// Returns the findings in the usage log of the tool whose command `run`
+/// holds, which it builds in full through [`Run::command`], for the runs that ended in the `--since`
 /// duration before now, for the tool to pass to [`finish`](crumbkit::finish)
 /// with [`SELF_USAGE`]. `tool` is the tool record, whose exit codes give
 /// the meaning of each exit from 3 in a command's figures.
@@ -201,12 +201,8 @@ struct CallerRuns {
 /// root command has an empty name has no name to find its log by, so its
 /// report has no runs.
 #[must_use]
-pub fn findings(
-    output: &mut Output,
-    tool: &Tool,
-    args: &SelfUsage,
-) -> Listing<FindingRow, UsageSummary> {
-    let tool_name = output.command();
+pub fn findings(run: &mut Run, tool: &Tool, args: &SelfUsage) -> Listing<FindingRow, UsageSummary> {
+    let tool_name = run.command();
     report_from(
         tool_name,
         tool,

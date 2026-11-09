@@ -1,5 +1,5 @@
 //! `ViewFlags`, the view flags that a tool flattens into its clap parser or
-//! builds itself, and `Output::new`, which builds the output of a run from
+//! builds itself, and `Run::new`, which builds the handle of a run from
 //! them.
 
 use std::ffi::OsString;
@@ -8,7 +8,7 @@ use std::io::Write;
 use clap::{ArgMatches, Args, Command};
 
 use super::failure::Printing;
-use super::{DryRun, Output, budget};
+use super::{DryRun, Run, budget};
 use crate::parse::{Printed, Stop};
 use crate::view::View;
 use crate::{Sink, Spelling, Tool};
@@ -31,14 +31,14 @@ use crate::{Sink, Spelling, Tool};
 ///
 /// [`parse`](crate::parse()) reads the four flags from clap's matches by
 /// their ids, `json`, `fields`, `long` and `full`, before the tool's type
-/// takes the values, and puts them in the [`Output`] that it returns. The
+/// takes the values, and puts them in the [`Run`] that it returns. The
 /// tool's own copy of `ViewFlags` is then unused. A tool that defines the
 /// flags in its own parser gives its arguments those ids and marks them
 /// global, and `parse` reads them the same way. A tool without the flags
 /// parses with every view flag off.
 ///
 /// A tool that parses with clap alone passes the `ViewFlags` that clap
-/// parsed to [`Output::new`], which refuses `--full` without `--json` and
+/// parsed to [`Run::new`], which refuses `--full` without `--json` and
 /// `--fields` with `--long` or `--full` (ADR-0093). A tool that parses the
 /// flags its own way builds them with [`ViewFlags::new`] and the builders:
 ///
@@ -169,21 +169,21 @@ impl ViewFlags {
     }
 }
 
-impl Output {
-    /// Returns the output of a run that parsed `args`, the command line
+impl Run {
+    /// Returns the handle of a run that parsed `args`, the command line
     /// with the program name first, against `command` with clap alone,
     /// with the view flags `view`, the dry-run flag `dry_run` and the
     /// tool's `tool`, or the [`Stop`] of a run whose view flags cannot
     /// work together.
     ///
-    /// [`parse`](crate::parse()) returns the `Output` of a tool that parses
+    /// [`parse`](crate::parse()) returns the `Run` of a tool that parses
     /// with crumbkit. A tool that parses with clap alone, or that parses
     /// the view flags its own way, builds it here:
     ///
     /// ```
     /// use clap::{CommandFactory, Parser};
     /// use crumbkit::Tool;
-    /// use crumbkit::{DryRun, Output, ViewFlags};
+    /// use crumbkit::{DryRun, Run, ViewFlags};
     ///
     /// /// List the books in a small catalogue.
     /// #[derive(Parser)]
@@ -194,25 +194,25 @@ impl Output {
     ///
     /// let args = ["shelf", "--json"];
     /// let cli = Cli::try_parse_from(args).unwrap();
-    /// let output = Output::new(cli.view, DryRun::default(), Cli::command(), &Tool::new(), args);
-    /// assert!(output.unwrap().is_json());
+    /// let run = Run::new(cli.view, DryRun::default(), Cli::command(), &Tool::new(), args);
+    /// assert!(run.unwrap().is_json());
     /// ```
     ///
     /// `dry_run` is the [`DryRun`] that the command parsed, which
-    /// [`Output::is_dry_run`] reports and `finish` marks the result with.
+    /// [`Run::is_dry_run`] reports and `finish` marks the result with.
     /// A tool without the flag passes `DryRun::default()`, and the run is
     /// no dry run.
     ///
-    /// The `Output` keeps `command`, which `finish` renders a listing's next
+    /// The `Run` keeps `command`, which `finish` renders a listing's next
     /// step and a failure's [`Recovery::Run`](crate::Recovery::Run) call
     /// against, and the words of `args` after the program name, which
-    /// [`Output::confirm`] repeats with `--yes`. It reads the terminal
+    /// [`Run::confirm`] repeats with `--yes`. It reads the terminal
     /// detection, output budget, JSON layout and exit codes of `tool`, so
     /// `finish` and `stream` print every code with the tool's name in
     /// crumbkit's own codes (ADR-0079).
     ///
-    /// The `Output` reads no `--no-input` from the words, so
-    /// [`Output::confirm`] fails without asking only when no person can
+    /// The `Run` reads no `--no-input` from the words, so
+    /// [`Run::confirm`] fails without asking only when no person can
     /// answer at a terminal.
     ///
     /// A call into a branch below the root resolves the root's global
@@ -232,7 +232,7 @@ impl Output {
     /// `--long` or `--full` (ADR-0093). The refusal prints on standard
     /// error, as text or with `--json` as one JSON document, before the
     /// tool's handler runs, and `main` returns the stop's code. A tool that
-    /// prints the refusal elsewhere calls [`Output::new_to`].
+    /// prints the refusal elsewhere calls [`Run::new_to`].
     pub fn new<I, T>(
         view: ViewFlags,
         dry_run: DryRun,
@@ -247,13 +247,13 @@ impl Output {
         Self::new_to(&mut Sink::standard(), view, dry_run, command, tool, args)
     }
 
-    /// Returns the output of a run as [`Output::new`] does, and prints the
+    /// Returns the handle of a run as [`Run::new`] does, and prints the
     /// refusal of view flags that cannot work together to `sink` in place
     /// of standard error.
     ///
     /// # Errors
     ///
-    /// It returns the `Stop` that [`Output::new`] returns, after it printed
+    /// It returns the `Stop` that [`Run::new`] returns, after it printed
     /// the refusal to `sink`.
     pub fn new_to<I, T, O, E, R>(
         sink: &mut Sink<O, E, R>,
@@ -296,7 +296,7 @@ impl Output {
         }
     }
 
-    /// Returns the output of a run that parsed `words`, the words after the
+    /// Returns the handle of a run that parsed `words`, the words after the
     /// program name, against `command`, with the view flags `view`, whether the
     /// caller passed `--dry-run` and `--no-input`, and the terminal detection,
     /// output budget, JSON layout and exit codes of `tool`.
@@ -310,7 +310,7 @@ impl Output {
     ) -> Self {
         Self {
             words,
-            dry_run,
+            dry_mode: dry_run,
             no_input,
             ..Self::stopped(view, command, tool)
         }
@@ -322,7 +322,7 @@ impl Output {
         self.view = view;
     }
 
-    /// Returns the output of a run with the view `view` that parsed against
+    /// Returns the handle of a run with the view `view` that parsed against
     /// `command` with `tool`, without words. `parse` uses it after it
     /// printed help, the version or a refusal.
     pub(crate) fn stopped(view: View, command: Command, tool: &Tool) -> Self {
@@ -335,7 +335,7 @@ impl Output {
             view,
             command,
             words: Vec::new(),
-            dry_run: false,
+            dry_mode: false,
             no_input: false,
             no_terminal: !tool.get_output().terminal_detection(),
             json_layout: tool.get_output().get_json_layout(),
@@ -345,7 +345,7 @@ impl Output {
         }
     }
 
-    /// Returns the output of a run of `command` without view flags, words
+    /// Returns the handle of a run of `command` without view flags, words
     /// or a tool record, for a test that needs any output.
     #[cfg(test)]
     pub(crate) fn of(command: Command) -> Self {

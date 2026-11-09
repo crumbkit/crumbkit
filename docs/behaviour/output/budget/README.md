@@ -32,8 +32,8 @@ variable never raises the budget, so no one can read more than the tool's
 budget in one run. A reader who needs more asks for less with `--limit`,
 `--fields` or a filter and runs the command more than once.
 
-`Output::budget` returns the budget, so a handler can fetch no more rows than
-fit before it passes the `Output` to `finish`.
+`Run::budget` returns the budget, so a handler can fetch no more rows than
+fit before it passes the `Run` to `finish`.
 
 Why: ADR-0046, ADR-0081, ADR-0084.
 
@@ -109,7 +109,7 @@ and every later answer goes into the one failure above. A one-key command that s
 than the budget, as a single bytes result does.
 
 A batch's handler can stop fetching once its rows fill the budget.
-`Output::room(document)` returns a `Room` before the first fetch, and
+`Run::room(document)` returns a `Room` before the first fetch, and
 `Room::has_room(&batch)` measures each row pushed since the last call once, in
 the format that the run prints: the JSON document in the tool record's layout,
 the text table with each column as wide as its widest cell, or the headers and
@@ -140,7 +140,7 @@ each run answers at least one key, so the next failure lists fewer keys.
 
 crumbkit finds the keys among the caller's words from clap's parse of those
 words. The recovery falls back to the batch's command with only the keys,
-such as `shelf books show <ID>...`, when `Output` holds no words, when the
+such as `shelf books show <ID>...`, when `Run` holds no words, when the
 words run another command than the batch, when the keys are not among the
 words (such as ids read from a file), or when the words with the keys
 replaced parse with any other argument changed. The fallback also applies to

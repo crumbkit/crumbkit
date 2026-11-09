@@ -156,8 +156,8 @@ mod tests;
 /// `CODES` has the visibility of the type. It lists each code once, in the
 /// order of the variants, and two codes count as the same when their paths
 /// are written the same. It leaves out the codes of forwarding variants,
-/// because the wrapped type has its own `CODES` list that the codes check
-/// reads.
+/// because the wrapped type has its own `CODES` list that the twin and
+/// recovery checks read.
 #[proc_macro_derive(Failure, attributes(failure))]
 pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);

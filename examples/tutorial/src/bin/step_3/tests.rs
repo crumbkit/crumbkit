@@ -1,11 +1,10 @@
 //! Step 4 of the tutorial: pantry's convention tests, which check its
-//! command tree, tool record and codes with crumbkit-test.
+//! command tree and tool record with crumbkit-test.
 
 use clap::CommandFactory;
-use crumbkit::Code;
 use crumbkit_test::{Allow, Pages, Rule};
 
-use super::{Cli, SHELF_NOT_FOUND, TOOL};
+use super::{Cli, TOOL};
 
 /// pantry's opt-outs from crumbkit's conventions, which each check that
 /// takes opt-outs reads.
@@ -14,9 +13,6 @@ const ALLOW: &[Allow] = &[Allow::new(
     "jars list",
     "Help has shown `ls` since the first release, and people type it.",
 )];
-
-/// The codes that pantry's failures return.
-const CODES: &[&Code] = &[&SHELF_NOT_FOUND];
 
 #[test]
 fn every_command_and_argument_has_one_name() {
@@ -41,9 +37,4 @@ fn every_list_command_pages() {
 #[test]
 fn every_command_and_leaf_meets_the_help_rules() {
     crumbkit_test::check_help(&Cli::command(), &TOOL, ALLOW);
-}
-
-#[test]
-fn every_failure_code_is_distinct_and_printable() {
-    crumbkit_test::check_codes(&[CODES]);
 }

@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::{COMMANDS_LIST, CommandRow, CommandsList, list};
 use crate::help::{Example, Goal, Group, Help, Leaf};
-use crate::{Document, Error, Listing, Output, Row, Sink, Tool, finish_to};
+use crate::{Document, Error, Listing, Row, Run, Sink, Tool, finish_to};
 
 mod arguments;
 mod exits;
@@ -124,9 +124,9 @@ fn tree() -> Command {
         )
 }
 
-/// Returns the output of a run of the tool with every view flag off.
-fn output() -> Output {
-    Output::of(tree())
+/// Returns the handle of a run of the tool with every view flag off.
+fn output() -> Run {
+    Run::of(tree())
 }
 
 /// Parses `words` after `shelf commands list` into the command's arguments.
@@ -182,7 +182,7 @@ struct Finished {
 
 /// Lists the branch that `words` name with `output`, and finishes the
 /// result into memory as a tool's handler does.
-fn finish(mut output: Output, words: &[&str]) -> Finished {
+fn finish(mut output: Run, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Listing<CommandRow>, Error> = list(&mut output, &TOOL, &args(words));
@@ -228,7 +228,7 @@ fn no_path_lists_the_whole_tree_and_leaves_out_a_hidden_command_and_everything_b
 
 #[test]
 fn a_path_resolves_an_alias_to_the_command_s_real_name() {
-    let mut output = Output::of(tree().mut_subcommand("books", |books| books.alias("book")));
+    let mut output = Run::of(tree().mut_subcommand("books", |books| books.alias("book")));
     let listing = list(&mut output, &TOOL, &args(&["book", "show"])).unwrap();
     let rows = serde_json::to_value(listing).unwrap();
 
@@ -495,7 +495,7 @@ fn a_path_whose_first_word_names_no_command_recovers_with_the_whole_tree() {
 
 #[test]
 fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
-    let output = Output::of(tree().mut_subcommand("commands", |commands| commands.hide(true)));
+    let output = Run::of(tree().mut_subcommand("commands", |commands| commands.hide(true)));
 
     let finished = finish(output, &["comets"]);
 

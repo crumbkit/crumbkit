@@ -289,7 +289,7 @@ impl<R: Row, S> Listing<R, S> {
     /// "shelf books show <ID>..."}]}` (ADR-0167).
     ///
     /// `crumbkit::finish` renders `call` against the command that the run's
-    /// `crumbkit::Output` holds, and leaves the step out of the text and the
+    /// `crumbkit::Run` holds, and leaves the step out of the text and the
     /// JSON when `call` does not resolve. The phrase prints unchanged, so it
     /// carries its own full stop.
     #[must_use]

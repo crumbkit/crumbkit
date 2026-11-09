@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::{JsonLayout, Output, Tool};
+use crumbkit::{JsonLayout, Run, Tool};
 use serde::Serialize;
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -13,6 +13,7 @@ use snapbox::assert::DEFAULT_ACTION_ENV;
 use crate::allow::Allow;
 use crate::budget::Departure;
 use crate::goldens::compare;
+use crate::suite::Check;
 use crate::{Budgets, PathBudgets, tree};
 
 mod declarations;
@@ -39,7 +40,9 @@ const SCHEMA: &str = "crumbkit/opt-outs/v2";
 /// [`check_path_weights`](crate::check_path_weights), or is `None` for a tool
 /// that does not run that check. The report lists each opt-out in the order of
 /// `allow`, with the rule's id, the command line it applies to, the tool's
-/// reason and what skipping the rule costs an agent. Then it lists each budget
+/// reason and what skipping the rule costs an agent. A
+/// [`Suite`](crate::Suite) that skips a whole check adds an entry under the
+/// rule `suite/skip`, which names the check. Then it lists each budget
 /// that the tool set, with the budget, crumbkit's default and, for a budget
 /// above the default, the extra bytes and tokens at 4 bytes a token that each
 /// read can cost. When the tool record sets an output budget, the report ends
@@ -125,22 +128,51 @@ pub fn check_opt_outs(
     paths: Option<&PathBudgets<'_>>,
     dir: impl AsRef<Path>,
 ) {
+    let departures = Departures {
+        allow,
+        budgets,
+        paths,
+        skips: &[],
+    };
+    check_departures(command, tool, &departures, dir.as_ref());
+}
+
+/// What a tool departs from, which the report lists.
+#[derive(Clone, Copy)]
+pub(crate) struct Departures<'a> {
+    /// Every opt-out that the tool passes to the checks.
+    pub(crate) allow: &'a [Allow],
+    /// The budgets of the tool's help pages.
+    pub(crate) budgets: &'a Budgets,
+    /// The budgets of the paths through the tool's help, or `None` for a
+    /// tool that does not run that check.
+    pub(crate) paths: Option<&'a PathBudgets<'a>>,
+    /// Each check that a [`Suite`](crate::Suite) skips, with its reason.
+    pub(crate) skips: &'a [(Check, &'static str)],
+}
+
+/// Runs the check on `departures`, comparing or overwriting as
+/// `SNAPSHOTS` says.
+pub(crate) fn check_departures(
+    command: &Command,
+    tool: &Tool,
+    departures: &Departures<'_>,
+    dir: &Path,
+) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, tool, allow, budgets, paths, dir.as_ref(), &assert);
+    check(command, tool, departures, dir, &assert);
 }
 
 /// Runs [`check_opt_outs`] with `assert`, whose action decides whether the
 /// check compares or overwrites, so a test chooses the action without
 /// setting `SNAPSHOTS`.
-fn check(
-    command: &Command,
-    tool: &Tool,
-    allow: &[Allow],
-    budgets: &Budgets,
-    paths: Option<&PathBudgets<'_>>,
-    dir: &Path,
-    assert: &Assert,
-) {
+fn check(command: &Command, tool: &Tool, departures: &Departures<'_>, dir: &Path, assert: &Assert) {
+    let Departures {
+        allow,
+        budgets,
+        paths,
+        skips,
+    } = *departures;
     let mut problems = Vec::new();
     let mut entries: Vec<Entry> = allow
         .iter()
@@ -153,6 +185,13 @@ fn check(
             budget: None,
         })
         .collect();
+    entries.extend(skips.iter().map(|&(check, reason)| Entry {
+        rule: "suite/skip",
+        applies_to: format!("Check::{check:?}"),
+        reason,
+        costs: vec![SKIP_COST.to_owned()],
+        budget: None,
+    }));
     let help = budgets.departures(command, &mut problems);
     entries.extend(help.into_iter().map(|departure| {
         let cost = format!(
@@ -225,6 +264,10 @@ fn check(
     tree::report("opt-out report rules", &problems);
 }
 
+/// What leaving a whole check out costs, which the report lists under the
+/// rule `suite/skip`.
+const SKIP_COST: &str = "No test checks this check's rules anywhere in the tool, so a change that breaks one of them passes unnoticed and an agent meets the broken convention.";
+
 /// What an indented JSON layout costs an agent, which the report lists
 /// under the rule `json-layout/pretty`.
 const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is indented by two spaces, which made the documents of the example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.";
@@ -232,7 +275,7 @@ const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is
 /// What turning terminal detection off costs, which the report lists
 /// under the rule `terminal-detection/off`.
 const TERMINAL_DETECTION_COSTS: &[&str] = &[
-    "A picker never asks for a missing argument and `Output::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.",
+    "A picker never asks for a missing argument and `Run::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.",
     "Progress never prints, help prints without clap's colours at a terminal, and a table's cells print without their styles.",
     "A text table never fits the terminal's width, so the terminal wraps each line of a table that is wider than the terminal.",
 ];
@@ -246,7 +289,7 @@ fn output_budget(command: &Command, tool: &Tool) -> Option<Departure> {
         applies_to: format!("every run of {}", command.get_name()),
         reason,
         bytes: u64::try_from(bytes).unwrap_or(u64::MAX),
-        default: u64::try_from(Output::DEFAULT_BUDGET).unwrap_or(u64::MAX),
+        default: u64::try_from(Run::DEFAULT_BUDGET).unwrap_or(u64::MAX),
     })
 }
 

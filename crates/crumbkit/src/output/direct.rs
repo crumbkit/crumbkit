@@ -5,20 +5,21 @@
 use std::io::Write;
 use std::process::ExitCode;
 
-use super::{Output, failure, fields};
+use super::{Run, failure, fields};
 use crate::refusal::Refusal;
 use crate::{Code, Document, Failure, Rows, Sink};
 
-impl Output {
+impl Run {
     /// Prints `failure` to `sink` as `finish` prints a failure, in the format
-    /// that the flags choose, with a `Run` recovery rendered against the command that the output holds.
+    /// that the flags choose, with a `Recovery::Run` rendered against the
+    /// command that the run holds.
     ///
     /// It returns no exit code, for a command that passes on another code
     /// or counts the bytes it printed. That caller reports its code and
     /// count with [`events::ended`](crate::events::ended), and
-    /// [`Output::failure_exit`] gives the failure's own exit code. A command
+    /// [`Run::failure_exit`] gives the failure's own exit code. A command
     /// that ends with this failure's own exit code and has no count calls
-    /// [`Output::fail`].
+    /// [`Run::fail`].
     pub fn print_failure<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
@@ -113,13 +114,13 @@ impl Output {
         crate::events::ended(exit, None)
     }
 
-    /// Prints `failure` as [`Output::print_failure`] does, reports the
+    /// Prints `failure` as [`Run::print_failure`] does, reports the
     /// failure's exit code to each observer with
     /// [`events::ended`](crate::events::ended), and returns it. A command
     /// that ends without [`finish`](crate::finish) returns this from `main`,
     /// so the run's end is reported however it ended. It reports the bytes
     /// of the result as `None`, unknown. A command that counted them calls
-    /// [`Output::print_failure`] and [`events::ended`](crate::events::ended).
+    /// [`Run::print_failure`] and [`events::ended`](crate::events::ended).
     #[must_use]
     pub fn fail<O: Write, W: Write>(
         &mut self,
@@ -132,7 +133,7 @@ impl Output {
 
     /// Returns the exit code of a run whose first failure has `code`, as
     /// [`Tool::failure_exit`](crate::Tool::failure_exit) decides
-    /// for the tool record that the output copied: the exit that
+    /// for the tool record that the run copied: the exit that
     /// lists the code, or crumbkit's default of 2 for a refused command
     /// line and 1 for every other failure.
     #[must_use]

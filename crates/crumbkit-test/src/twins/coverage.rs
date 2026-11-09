@@ -192,11 +192,11 @@ impl<'a> Twins<'a> {
 /// A twin may refuse with a code of crumbkit or of one of its add-on crates,
 /// such as `crumbkit::cli::usage` or crumbkit-child's
 /// `crumbkit::child::not_found`. The check requires no twin and no declaration
-/// for such a code, because a crumbkit crate raises that failure. The check reads
-/// these codes from `crumbkit::codes::ALL` and from crumbkit-test's list of the
-/// add-on crates' codes, as the recovery check does. Every other code is the
-/// tool's code, whatever its component. A code in the `crumbkit` component that
-/// neither list holds must be declared and needs a twin, an entry in
+/// for such a code, because a crumbkit crate raises that failure. The check
+/// reads these codes from `crumbkit::codes::ALL` and from crumbkit-test's list
+/// of the add-on crates' codes, as the recovery check does. Every other code is
+/// the tool's code, whatever its component. A code in the `crumbkit` component
+/// that neither list holds must be declared and needs a twin, an entry in
 /// [`Twins::unprovoked`] or an untwinned opt-out.
 ///
 /// The check reads the untwinned opt-outs from the
@@ -303,8 +303,9 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
 }
 
 /// Pushes a problem for each failure code that an exit of `tool` lists and
-/// `declared`, the codes of the tool's `CODES` lists, does not hold. A code
-/// of crumbkit or of one of its add-on crates needs no `CODES` list, because a crumbkit crate raises the failure.
+/// `declared`, the codes of the tool's `CODES` lists, does not hold. A code of
+/// crumbkit or of one of its add-on crates needs no `CODES` list, because a
+/// crumbkit crate raises the failure.
 fn unheld(tool: &Tool, spelling: Spelling, declared: &[&Code], problems: &mut Vec<String>) {
     for exit in tool.get_failures().get_exits() {
         for &code in exit.get_failures() {

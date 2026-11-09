@@ -38,8 +38,8 @@
 //!   a refusal, `error.type`.
 //! - `crumbkit.finish` records `process.exit.code`, and `error.type` when the
 //!   result is a failure or a batch with a failure. `error.type` is the
-//!   failure's code in the tool's spelling, such as
-//!   `shelf::books::not_found`, and a batch gives its first failure's code.
+//!   failure's printed code, such as `shelf::books::not_found`, and a batch
+//!   gives its first failure's code.
 //! - When the observer gives the run's trace ids, as a started usage log
 //!   does, both spans also record `trace_id`, the run's trace id, and
 //!   `crumbkit.run`, the run's own id.

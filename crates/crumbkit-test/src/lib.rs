@@ -1,7 +1,9 @@
 // The crate docs are the README, so its example runs as a doctest. The README
 // links to files in the repository, which work on GitHub. The definitions below
 // come first, so rustdoc uses them for the same labels (ADR-0013).
-//! [`check_codes`]: crate::check_codes
+//! [`Suite`]: crate::Suite
+//! [`Check`]: crate::Check
+//! [`conventions!`]: crate::conventions
 //! [`Allow`]: crate::Allow
 //! [`Rule`]: crate::Rule
 //! [`Failing`]: crate::Failing
@@ -72,6 +74,8 @@ mod reference;
 mod runs;
 mod schemas;
 mod sizes;
+#[macro_use]
+mod suite;
 mod temp;
 #[cfg(test)]
 mod testing;
@@ -81,7 +85,6 @@ mod weights;
 
 pub use crate::allow::{Allow, Rule};
 pub use crate::budget::Budget;
-pub use crate::codes::check_codes;
 pub use crate::documents::{check_document_ids, check_mounts};
 pub use crate::effects::check_effects;
 pub use crate::examples::{Examples, check_examples, example_golden_name};
@@ -102,6 +105,7 @@ pub use crate::recoveries::{
 pub use crate::reference::check_command_reference;
 pub use crate::schemas::check_schema_goldens;
 pub use crate::sizes::{Budgets, check_help_sizes};
+pub use crate::suite::{Check, Suite};
 pub use crate::twins::{Twin, Twins, check_twin, check_twins};
 pub use crate::weights::{PathBudgets, check_path_weights};
 // These items exist for cargo-crumbkit's `weigh`, which sums path totals and

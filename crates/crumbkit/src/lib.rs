@@ -1,7 +1,7 @@
 // The crate docs are the README, so its example runs as a doctest. The README
 // links to files in the repository, which work on GitHub. The definitions below
 // come first, so rustdoc uses them for the same labels (ADR-0013).
-//! [`Output`]: crate::Output
+//! [`Run`]: crate::Run
 //! [`finish`]: crate::finish
 //! [`Row`]: crate::Row
 //! [`Document`]: crate::Document
@@ -10,7 +10,7 @@
 //! [`Batch`]: crate::Batch
 //! [`Prose`]: crate::Prose
 //! [`Shown`]: crate::Shown
-//! [`Duration`]: crate::Duration
+//! [`Elapsed`]: crate::Elapsed
 //! [`Sink`]: crate::Sink
 //! [`Failure`]: crate::Failure
 //! [`Recovery`]: crate::Recovery
@@ -51,7 +51,7 @@ mod complete;
 #[cfg(test)]
 mod conforms;
 mod document;
-mod duration;
+mod elapsed;
 pub mod events;
 mod exit;
 mod expect;
@@ -92,15 +92,14 @@ pub use crate::code::{Code, RuntimeCodeError, Segment, Spelling};
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
 pub use crate::document::{Document, Envelope};
-pub use crate::duration::Duration;
+pub use crate::elapsed::Elapsed;
 pub use crate::expect::Expect;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::fetch::fetch_each;
 pub use crate::field::{Field, FieldValue};
 pub use crate::listing::{Listing, NoSummary};
 pub use crate::output::{
-    DryRun, JsonLayout, Output, Room, Streaming, ViewFlags, Yes, finish, finish_to, stream,
-    stream_to,
+    DryRun, JsonLayout, Room, Run, Streaming, ViewFlags, Yes, finish, finish_to, stream, stream_to,
 };
 pub use crate::page::Page;
 pub use crate::parse::walk::command_path;

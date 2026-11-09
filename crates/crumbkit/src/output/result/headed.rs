@@ -8,12 +8,12 @@ use super::Answer;
 use super::rerun::{self, Rerun};
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
-use crate::output::{Output, layout, problems};
+use crate::output::{Run, layout, problems};
 use crate::sink::role::{Deliver, Message, Role};
 use crate::{Code, Rows, codes};
 
 /// Delivers the rows of `value` to `sink` as the result in the text of a
-/// headed document, within the bytes that [`Output::budget`] has left.
+/// headed document, within the bytes that [`Run::budget`] has left.
 /// `bytes_of` returns the bytes of the row at a position, or `None` for a
 /// row that holds none. It returns what it printed and the number of bytes
 /// it wrote.
@@ -39,7 +39,7 @@ use crate::{Code, Rows, codes};
 /// tool's note are delivered as a note, as they are for a table.
 pub(super) fn write<T: Rows>(
     sink: &mut dyn Deliver,
-    output: &Output,
+    output: &Run,
     value: &T,
     bytes_of: fn(&T, usize) -> Option<&[u8]>,
     problems: usize,

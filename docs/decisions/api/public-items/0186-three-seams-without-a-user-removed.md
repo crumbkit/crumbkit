@@ -2,8 +2,8 @@
 
 - Date: 2026-11-09
 - Status: accepted
-- Supersedes: ADR-0060, and ADR-0001, ADR-0015, ADR-0056, ADR-0079, ADR-0081, ADR-0085, ADR-0086, ADR-0088, ADR-0177 and ADR-0180, which it amends
-- Missed: ADR-0177 exempted a declared code that a `Rename` prints from the twin check, and it did not ask whether any tool declared a `Rename`. ADR-0180 gave renames, the spelling of codes and dashed forms a place on the new records, and it did not ask whether any tool used them.
+- Supersedes: ADR-0060, and ADR-0001, ADR-0015, ADR-0046, ADR-0056, ADR-0076, ADR-0079, ADR-0081, ADR-0085, ADR-0086, ADR-0088, ADR-0100, ADR-0136, ADR-0177, ADR-0180 and ADR-0185, which it amends
+- Missed: ADR-0177 exempted a declared code that a `Rename` prints from the twin check, and it did not ask whether any tool declared a `Rename`. ADR-0180 gave renames, the spelling of codes and dashed forms a place on the new records, and it did not ask whether any tool used them. ADR-0185 justified whole-check skips by saying that the report lists each skip, and it did not consider that the report's own check could be skipped. It also gave `check_codes` a setter without asking whether that check could still fail.
 
 ## Context
 
@@ -15,7 +15,8 @@ crumbkit let a tool replace three of its conventions.
 - `Failures::spelling` and `Spelling::custom` printed every code in a form that
   the tool chose.
 - `Tool::dashed_forms` let a command named in another style also answer to its
-  dashed form, and `dashed_form` and `is_dashed` were public helpers for it.
+  dashed form, and `dashed_form`, `dashed_name` and `is_dashed` were public
+  helpers for it.
 
 No tool uses any of these features. Each one still adds parameters, fields and
 branches to how a code prints, how a command line parses and how a check reads
@@ -36,13 +37,20 @@ no deprecated alias stays.
   code prints in `Spelling::COLONS`. The `Spelling` type, `Spelling::COLONS`,
   `Spelling::for_tool`, `Spelling::spell` and `Spelling::split` stay, because
   tools call them.
-- `Tool::dashed_forms`, `dashed_form` and `is_dashed` are removed from crumbkit.
-  A command answers only to its own names and aliases. crumbkit-test keeps a
+- `Tool::dashed_forms`, `Tool::get_dashed_forms`, `dashed_form`, `dashed_name`
+  and `is_dashed` are removed from crumbkit. A command answers only to its own names and aliases. crumbkit-test keeps a
   private rule for the lowercase dashed names that `check_grammar` and the topic
   check require.
 - `complete`, `complete_with`, `complete_with_words`, `complete_to` and
-  `command_path` no longer take the tool record, and `check_codes` no longer
-  takes it, because they read only the removed settings from it.
+  `command_path` no longer take the tool record, because they read only the
+  removed settings from it.
+- `check_codes`, `Check::Codes` and `Suite::codes` are removed. `Code::new` and
+  `Code::runtime` accept only lowercase ASCII letters, digits, `_` and `-` in a
+  segment, so with `::` as the one separator every code passes the check's
+  rules. The `CODES` lists stay, because `check_twins` and `check_recoveries`
+  read them.
+- `Suite::skip` panics on `Check::OptOuts`, because that check is what lists
+  every skip and departure.
 - `check_opt_outs` no longer lists the `code-spelling`, `code-rename`,
   `dashed-forms`, `resource-name` and `verb-name` declarations. The report keeps
   the id `opt-outs/v2`, because no published release has printed that id.
@@ -66,6 +74,6 @@ needs one again brings it back through a new record.
 
 Considered: deprecating the items for one release, which no user needs; hiding
 them with `#[doc(hidden)]`, which keeps their cost in the code and the tests;
-removing `check_codes`, whose rules every code printed with `::` now meets, but
-tools call it and this decision does not cover it; keeping a public `is_dashed`
-for `examples/reading`, which defines its own.
+keeping `check_codes` for tools that already call it, which keeps a check that
+cannot fail; keeping a public `is_dashed` for `examples/reading`, which defines
+its own.

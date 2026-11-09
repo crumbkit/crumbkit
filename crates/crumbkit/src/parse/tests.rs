@@ -10,7 +10,7 @@ use clap::{Arg, ArgAction, Command};
 use super::message::message;
 use super::{Stop, Unparsed, try_parse_to};
 use crate::twins::assert_one_word_apart;
-use crate::{Output, Sink, Tool};
+use crate::{Run, Sink, Tool};
 
 mod aliases;
 mod alternatives;
@@ -41,7 +41,7 @@ pub(crate) fn parse_tree_to<C: clap::FromArgMatches>(
     command: Command,
     tool: &Tool,
     args: impl IntoIterator<Item = impl Into<OsString>>,
-) -> Result<(C, Output), Stop> {
+) -> Result<(C, Run), Stop> {
     try_parse_to(sink, command, tool, args).map_err(|unparsed| unparsed.print_to(sink))
 }
 
@@ -137,7 +137,7 @@ fn parse_tree(command: Command, args: &[&str]) -> Parsed {
     });
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),
-        json: stop.as_ref().map(|stop| stop.output().is_json()),
+        json: stop.as_ref().map(|stop| stop.run().is_json()),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }

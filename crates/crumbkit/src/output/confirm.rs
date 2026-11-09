@@ -1,4 +1,4 @@
-//! `--yes`, and `Output::confirm`, which asks before a command destroys
+//! `--yes`, and `Run::confirm`, which asks before a command destroys
 //! data.
 
 use std::borrow::Cow;
@@ -11,7 +11,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
-use super::Output;
+use super::Run;
 use crate::sink::role::{Message, Role};
 use crate::{Call, Code, Error, Failure, Recovery, Sink, codes};
 
@@ -25,7 +25,7 @@ const YES_HELP: &str = "Proceed without asking for confirmation";
 /// without asking.
 ///
 /// A command that destroys data adds it to its own arguments struct with
-/// `#[command(flatten)]` and passes it to [`Output::confirm`].
+/// `#[command(flatten)]` and passes it to [`Run::confirm`].
 /// crumbkit-test's `check_effects` requires `--yes` on every command whose
 /// [`Effects`](crate::help::Effects) are destructive.
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -40,14 +40,14 @@ pub struct Yes {
     yes: bool,
 }
 
-impl Output {
+impl Run {
     /// Asks the person at the terminal `question` before the command
-    /// changes anything, as [`Output::confirm_to`] does with the process's
+    /// changes anything, as [`Run::confirm_to`] does with the process's
     /// standard error and standard input.
     ///
     /// # Errors
     ///
-    /// Returns the failures that [`Output::confirm_to`] describes.
+    /// Returns the failures that [`Run::confirm_to`] describes.
     pub fn confirm(&mut self, yes: Yes, question: &str) -> Result<(), Error> {
         // With terminal detection off, `confirm_to` never asks, so the run
         // neither locks standard input nor detects a terminal or an agent.
@@ -61,13 +61,13 @@ impl Output {
     /// and returns `Ok` when the command may proceed.
     ///
     /// It returns `Ok` without asking when the caller passed `--yes`, or
-    /// when the run is a dry run ([`Output::is_dry_run`]), which changes nothing.
+    /// when the run is a dry run ([`Run::is_dry_run`]), which changes nothing.
     /// Otherwise, when the sink is interactive, it writes the question and
     /// ` [y/N] ` to the sink's error writer and reads one line. The answer
     /// `y` or `yes`, in any case and with any surrounding spaces, proceeds.
     ///
     /// A sink from [`Sink::new`] is never interactive, and the sink of
-    /// [`Output::confirm`] is interactive when standard input and standard
+    /// [`Run::confirm`] is interactive when standard input and standard
     /// error are both terminals and no coding agent runs the tool. A run
     /// whose caller passed [`NoInput`](crate::NoInput)'s `--no-input` never
     /// asks.
@@ -92,7 +92,7 @@ impl Output {
         yes: Yes,
         question: &str,
     ) -> Result<(), Error> {
-        if yes.yes || self.dry_run {
+        if yes.yes || self.dry_mode {
             return Ok(());
         }
         if self.no_input || self.no_terminal || !sink.is_interactive() {
@@ -114,7 +114,7 @@ impl Output {
     }
 }
 
-/// A failure of [`Output::confirm`].
+/// A failure of [`Run::confirm`].
 #[derive(Debug)]
 enum ConfirmError {
     /// The person at the terminal did not answer yes.

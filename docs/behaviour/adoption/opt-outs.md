@@ -23,6 +23,11 @@ names no command, names no option of its command or excuses no problem, so
 the opt-out of a removed or fixed command or option cannot stay in a tool's
 list.
 
+An opt-out departs from one rule for one command. A tool that leaves out a
+whole check gives its reason with `Suite::skip`
+([the convention suite](../checks/README.md#the-convention-suite)), and the
+report lists it under the rule `suite/skip`.
+
 An example that runs only where something is present, such as a container
 daemon, needs no opt-out. It names that precondition with `Example::needs`,
 a run that lacks it skips the example
@@ -89,7 +94,6 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
 - The help checks take budgets in place of opt-outs
   ([help checks](../help/checks.md)).
 - `check_mounts` exists to keep crumbkit's commands at fixed paths.
-- `check_codes` keeps failure codes unique.
 - The name rule of a failure's fields has no opt-out, because the failure
   document's schema promises it to every reader.
 

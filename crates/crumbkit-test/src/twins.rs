@@ -80,7 +80,7 @@ mod tests;
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::{Spelling, Tool};
+/// use crumbkit::Tool;
 /// use crumbkit_test::{Examples, Failing};
 ///
 /// const TOOL: Tool = Tool::new();

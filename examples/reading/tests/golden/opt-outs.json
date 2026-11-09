@@ -58,6 +58,15 @@
       "budget": null
     },
     {
+      "rule": "suite/skip",
+      "applies_to": "Check::CommandReference",
+      "reason": "reading's commands come from the lists in the caller's directory, so no checked-in reference holds for every caller.",
+      "costs": [
+        "No test checks this check's rules anywhere in the tool, so a change that breaks one of them passes unnoticed and an agent meets the broken convention."
+      ],
+      "budget": null
+    },
+    {
       "rule": "path-budget/path",
       "applies_to": "every path through reading",
       "reason": "reading's longest path, commands list, reads about 4,050 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.",

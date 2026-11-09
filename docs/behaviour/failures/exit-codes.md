@@ -44,7 +44,7 @@ crumbkit-test can predict each run's exit. A range names no single code to exit
 with, so the failures that a range lists never decide a run's exit, and such a
 failure exits with 1.
 
-The `Output` that `parse` returns, and the one that `Output::new` builds,
+The `Run` that `parse` returns, and the one that `Run::new` builds,
 copy the exits from the tool record. A code from
 `Code::runtime` cannot be listed, so its failure exits with 1.
 

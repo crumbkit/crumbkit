@@ -8,12 +8,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- crumbkit: `Output::fail` prints a failure, reports its exit code and returns
+- crumbkit-test: [`Suite`] holds the inputs of every convention check, and
+  `crumbkit_test::conventions!` expands it to one named test for each check. A
+  check whose input is missing fails and names the input, unless `Suite::skip`
+  gives a reason ([behaviour/checks]).
+- crumbkit: `Run::fail` prints a failure, reports its exit code and returns
   it, for a command that ends without `finish` ([behaviour/output/shapes]).
 - crumbkit: `Recovery::none` and `Recovery::hint` build a recovery from text,
   and `#[failure(no_next_step = "...")]` declares a failure with no next step
   ([behaviour/failures]).
-- crumbkit: `Output::no_input` reports whether the caller passed `--no-input`.
+- crumbkit: `Run::no_input` reports whether the caller passed `--no-input`.
 - crumbkit-process: [`run`] runs a child in a process group or job object
   of its own, reads its output within byte limits and a deadline, stops it
   with an [`Escalation`], and reaps it ([behaviour/processes]).
@@ -46,17 +50,21 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Tool::failure_exit` takes only the code ([behaviour/failures]).
 - crumbkit: breaking: `Spelling::custom` and `Failures::spelling` are removed,
   so every code prints in `Spelling::COLONS` ([behaviour/failures]).
-- crumbkit: breaking: `Tool::dashed_forms`, `dashed_form` and `is_dashed` are
-  removed, so a command answers only to its own names ([behaviour/parsing]).
+- crumbkit: breaking: `Tool::dashed_forms`, `Tool::get_dashed_forms`,
+  `dashed_form`, `dashed_name` and `is_dashed` are removed, so a command answers
+  only to its own names ([behaviour/parsing]).
 - crumbkit: breaking: `complete`, `complete_with`, `complete_with_words`,
   `complete_to` and `command_path` no longer take the tool record
   ([behaviour/parsing]).
-- crumbkit-test: breaking: `check_codes` no longer takes the tool record, and
-  the opt-outs report no longer lists code renames, a code spelling or dashed
-  forms ([behaviour/adoption/declarations]).
+- crumbkit-test: breaking: `check_codes`, `Check::Codes` and `Suite::codes` are
+  removed, because every code that `Code::new` accepts passes their rules
+  ([behaviour/checks]).
+- crumbkit-test: breaking: the opt-outs report no longer lists code renames, a
+  code spelling or dashed forms ([behaviour/adoption/declarations]).
+- crumbkit-test: `Suite::skip` panics on `Check::OptOuts`, because that check
+  lists every skip ([behaviour/checks]).
 - crumbkit-usage: the usage report refuses a code that holds `.` or `/`,
   because every code now prints with `::` ([behaviour/usage-log]).
-
 - crumbkit-process: breaking: `Outcome::Code` and `Outcome::Signal` are
   `Outcome::Ended(Status)`, and `Stop` is `StopReason`
   ([behaviour/processes]).
@@ -99,9 +107,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit::tool` ([behaviour/adoption]).
 - crumbkit: breaking: `Guide::documents` is now `Help::file_formats`, a name
   that says it registers file formats ([behaviour/schemas/commands]).
+- crumbkit: breaking: `Output`, the handle of one run that `parse` returns, is
+  now `Run`. `tool::Output`, the section of the `Tool` record, keeps its name
+  ([behaviour/parsing]).
+- crumbkit: breaking: `Stop::output` and `Refused::output`, which return that
+  handle, are now `Stop::run` and `Refused::run` ([behaviour/parsing]).
+- crumbkit: breaking: `Duration` is now `Elapsed`, so a handler that also
+  uses `std::time::Duration` needs no alias ([behaviour/output/values]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).
-- crumbkit-process: breaking: `Run` is now `Limits`, `Exit` is now `Outcome`
+- crumbkit-process: breaking: `Run` is now `RunOptions`, `Exit` is now `Outcome`
   and `Finished` is now `ChildFinished`, whose `exit` is now `outcome`, so a
   tool that imports crumbkit needs no alias for `events::Finished` or
   `help::Exit` ([behaviour/processes]).
@@ -1471,7 +1486,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Bytes`]: crates/crumbkit/src/bytes.rs
 [`Age`]: crates/crumbkit/src/age.rs
 [`Shown`]: crates/crumbkit/src/shown.rs
-[`Duration`]: crates/crumbkit/src/duration.rs
+[`Duration`]: crates/crumbkit/src/elapsed.rs
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
@@ -1566,6 +1581,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/adoption/declarations]: docs/behaviour/adoption/declarations.md
 [behaviour/adoption/opt-outs]: docs/behaviour/adoption/opt-outs.md
 [behaviour/checks]: docs/behaviour/checks/README.md
+[`Suite`]: crates/crumbkit-test/src/suite.rs
 [behaviour/checks/end-to-end]: docs/behaviour/checks/end-to-end.md
 [behaviour/checks/recovery-chains]: docs/behaviour/checks/recovery-chains.md
 [behaviour/effects]: docs/behaviour/effects/README.md

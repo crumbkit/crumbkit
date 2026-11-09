@@ -17,6 +17,33 @@ the rules and their ids.
 
 Why: ADR-0025, ADR-0036.
 
+## The convention suite
+
+A tool built with crumbkit can run every check through one
+[`Suite`](../../../crates/crumbkit-test/src/suite.rs) constant and one call of
+`crumbkit_test::conventions!`, in a file of its own in an integration test of
+its binary's package:
+
+```rust
+const SUITE: Suite<'_> = Suite::new(|| (Cli::command(), TOOL))
+    .allow(ALLOW)
+    .examples(EXAMPLES)
+    .skip(Check::CommandReference, "The commands come from the caller's files.");
+
+crumbkit_test::conventions!(SUITE);
+```
+
+The macro expands to one named `#[test]` for each check, so `cargo test` can
+select a check, and a check added to crumbkit-test reaches the tool with no
+edit. A check whose input is missing fails and names the setter. `.skip` takes a
+one-line reason, and the [opt-out report](../adoption/opt-outs.md) lists it
+under `suite/skip`. `.skip` refuses `Check::OptOuts`, because that check is what
+lists every skip. Nothing detects a stale skip. With `.examples` set, the help
+checks read what the binary prints. The rustdoc of `Suite` lists each input and
+its default. A tool may still call the checks by hand.
+
+Why: ADR-0185.
+
 ## Checks that read the command tree
 
 These checks read a `clap::Command` without running the tool, so a tool that
@@ -32,7 +59,6 @@ no arguments on a command that the tool gives to `Command::defer`.
 | [`check_filters`](../../../crates/crumbkit-test/src/filters.rs) | An option that takes many values accepts them both repeated and separated by commas, with one value per use. |
 | [`check_help`](../../../crates/crumbkit-test/src/help.rs) | The tool record's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
 | [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The tool record's declared exit codes avoid 0, 1 and 2, keep single codes to 3 to 125 or 129 to 159, never overlap, and declare each code once. |
-| [`check_codes`](../../../crates/crumbkit-test/src/codes.rs) | No two failure codes spell the same text, and each code is printable ASCII without spaces. |
 | [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has crumbkit's envelope. |
 | [`check_mounts`](../../../crates/crumbkit-test/src/documents.rs) | Each of crumbkit's own commands that a tool mounts sits at its fixed path. |
 | [`check_schema_goldens`](../../../crates/crumbkit-test/src/schemas.rs) | The JSON Schema of each document the tool prints matches its golden file. |

@@ -73,7 +73,7 @@ pub(crate) fn command(path: &[String]) {
     }
 }
 
-/// Records `code`, a failure's code in the tool's spelling, as `error.type`
+/// Records `code`, a failure's printed code, as `error.type`
 /// on crumbkit's span while `parse` or `finish` runs. Each run prints at
 /// most one failure outside a batch, and a batch records only its first, so
 /// the field is recorded once.

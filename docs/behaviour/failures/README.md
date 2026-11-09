@@ -32,13 +32,13 @@ Why: ADR-0001.
 ## Recoveries and alternatives
 
 Every failure states a [`Recovery`](../../../crates/crumbkit/src/failure.rs).
-A `Run` call that the tool's command tree cannot render prints as `None` with
-crumbkit's reason, so crumbkit never advertises a command the tool hid. A
-`Run` call can carry concrete values with `Call::value`, so a failure can
-suggest the exact command that repairs it. Rendering refuses a value that the
-tool would refuse before it runs: a value for a flag, a value outside the
-argument's possible values, and a positional value that clap would read as a
-flag.
+A `Recovery::Run` call that the tool's command tree cannot render prints as
+`None` with crumbkit's reason, so crumbkit never advertises a command the tool
+hid. A `Recovery::Run` call can carry concrete values with `Call::value`, so a
+failure can suggest the exact command that repairs it. Rendering refuses a
+value that the tool would refuse before it runs: a value for a flag, a value
+outside the argument's possible values, and a positional value that clap would
+read as a flag.
 
 `Recovery::None` with a reason is the exception for a failure that no step
 can repair. A tool declares each such failure with one of its declared codes
@@ -70,32 +70,33 @@ Why: ADR-0001, ADR-0007, ADR-0081.
 ## Debug-build warnings
 
 A build with debug assertions writes one `warning:` line on standard error
-before a failure for each field that `finish` leaves out, and for each `Run`
-call of its recovery or alternatives that does not render, with the reason.
-A tool's own tests then see the mistake, and `check_recoveries` fails on the
-line. A release build writes no such line. These lines are every output that
-differs between a debug build and a release build.
+before a failure for each field that `finish` leaves out, and for each
+`Recovery::Run` call of its recovery or alternatives that does not render,
+with the reason. A tool's own tests then see the mistake, and
+`check_recoveries` fails on the line. A release build writes no such line.
+These lines are every output that differs between a debug build and a release
+build.
 
 Why: ADR-0001.
 
 ## Codes and their spelling
 
-A `Code` has three segments: the owning component, the area and the reason.
-Each segment is one or more words joined by single hyphens, where each word
-is lowercase ASCII letters, digits and underscores, such as `not_found` or
-`book-club`. A hyphen never leads, trails or follows another hyphen, so a
-code never starts like a flag. `Code::new` checks the segments at compile
-time, and `Code::runtime` applies the same rule to a code learnt at run
-time, such as a plugin's. The area is a noun from the tool's domain, such as
-`books`, so moving code does not change a code (OUTPUT-2). Each error type
-lists its codes in a `CODES` list for crumbkit-test's `check_codes`.
+A `Code` has three segments: the owning component, the area and the reason. Each
+segment is one or more words joined by single hyphens, where each word is
+lowercase ASCII letters, digits and underscores, such as `not_found` or
+`book-club`. A hyphen never leads, trails or follows another hyphen, so a code
+never starts like a flag. `Code::new` checks the segments at compile time, and
+`Code::runtime` applies the same rule to a code learnt at run time, such as a
+plugin's. The area is a noun from the tool's domain, such as `books`, so moving
+code does not change a code (OUTPUT-2). Each error type lists its codes in a
+`CODES` list, which crumbkit-test's `check_twins` and `check_recoveries` read.
 
 Every code prints in [`Spelling::COLONS`](../../../crates/crumbkit/src/code.rs),
-which joins the segments with `::`. `parse` and `Output::new` carry the spelling
-in the `Output`, so `finish`, `stream` and `hand_over` print in it. `Code` has
-no `Display`, so every printed code goes through the spelling. `check_codes`
-refuses characters that let two different codes look the same, because callers
-match a code exactly.
+which joins the segments with `::`. `parse` and `Run::new` carry the spelling in
+the `Run`, so `finish`, `stream` and `hand_over` print in it. `Code` has no
+`Display`, so every printed code goes through the spelling. `Code::new` refuses
+characters that let two different codes look the same, because callers match a
+code exactly.
 
 crumbkit's own codes are public constants in `crumbkit::codes`, which
 `codes::ALL` lists, so a tool's tests can name them. A tool's failures print
@@ -141,8 +142,8 @@ document of its failure form print as the tool declared them. The Rust
 constants, such as `crumbkit::codes::CLI_USAGE`, and the checked-in schema files
 keep the `crumbkit` component, and the tool's output spells them with the tool's
 name. A tool's own code that equals one of crumbkit's codes spelled with the
-tool's name, such as a declared `shelf::cli::usage`, is not detected by
-`check_codes`.
+tool's name, such as a declared `shelf::cli::usage`, is not detected by any
+check.
 
 Why: ADR-0079.
 
@@ -157,7 +158,7 @@ plugin that puts an id in its reason cannot grow memory without bound.
 `Spelling::COLONS.split(text)` reads a printed code back into its segments, so a
 tool passes the segments to `Code::runtime`.
 
-`check_codes` cannot list a run-time code, so such a failure supplies its own
+A `CODES` list cannot name a run-time code, so such a failure supplies its own
 recovery. `check_recoveries` does not follow the recovery of a code from a
 component that no declared code has, such as a plugin's, and counts such codes
 in its report. It reports a code from a declared component that is not declared.
@@ -269,13 +270,12 @@ With the feature, a `miette::Report` converts into `Error` with the code
 classified, so a tool that wants its own failure back calls
 `report.downcast` before converting.
 
-A diagnostic's own `code()` does not become the failure code. miette's
-code is text that the diagnostic decides at run time, and a code that
-`Failure::code` returns is a declared `&'static Code` that `check_codes`
-can see. The failure's message ends with the diagnostic's code in
-parentheses. A tool that wants its own code on a miette failure downcasts
-the report to its own diagnostic type and returns a typed failure that
-declares the code.
+A diagnostic's own `code()` does not become the failure code. miette's code is
+text that the diagnostic decides at run time, and a code that `Failure::code`
+returns is a declared `&'static Code` that a `CODES` list can name. The
+failure's message ends with the diagnostic's code in parentheses. A tool that
+wants its own code on a miette failure downcasts the report to its own
+diagnostic type and returns a typed failure that declares the code.
 
 Why: ADR-0001, ADR-0016.
 

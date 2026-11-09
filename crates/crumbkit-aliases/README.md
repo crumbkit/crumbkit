@@ -70,16 +70,16 @@ fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
     let args = crumbkit_aliases::expand(&command, args, file);
     // `expand` needed the tree, so the parse takes it and the run builds it once.
     let parsed = crumbkit::try_parse_to::<Cli>(&mut crumbkit::Sink::standard(), command, &TOOL, args);
-    let (cli, mut output) = match parsed.map_err(crumbkit::Unparsed::print) {
+    let (cli, mut run) = match parsed.map_err(crumbkit::Unparsed::print) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
     match cli.resource {
         Resource::Aliases { command: AliasesCommand::List(args) } => {
-            // `list` builds the command tree in `output`, so it runs
+            // `list` builds the command tree in `run`, so it runs
             // before `finish`.
-            let result = crumbkit_aliases::list(&mut output, file, &args);
-            crumbkit::finish(output, crumbkit_aliases::ALIASES_LIST, result)
+            let result = crumbkit_aliases::list(&mut run, file, &args);
+            crumbkit::finish(run, crumbkit_aliases::ALIASES_LIST, result)
         }
     }
 }

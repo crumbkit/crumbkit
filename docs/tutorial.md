@@ -98,13 +98,13 @@ fn list(args: &JarsList) -> Listing<Jar> {
 `main` calls `crumbkit::parse` in place of `Cli::parse`. `parse` prints help
 and refusals itself and returns a `Stop` with the exit code, so `main`
 returns that code. On success `parse` returns the parsed `Cli` and an
-`Output` that holds the command tree that `parse` built, and `finish` prints
-the result through that `Output` and returns the exit code:
+`Run` that holds the command tree that `parse` built, and `finish` prints
+the result through that `Run` and returns the exit code:
 
 ```rust
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(&Tool::new());
-    let (cli, output) = match parsed {
+    let (cli, run) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
@@ -113,7 +113,7 @@ fn main() -> ExitCode {
             command: JarsCommand::List(args),
         } => {
             let result: Result<_, crumbkit::Error> = Ok(list(&args));
-            crumbkit::finish(output, JARS_LIST, result)
+            crumbkit::finish(run, JARS_LIST, result)
         }
     }
 }
@@ -236,11 +236,11 @@ fn every_command_is_a_resource_followed_by_a_verb() {
 }
 ```
 
-The file also runs `check_effects`, `check_listings`, `check_help` and
-`check_codes`. With no opt-outs, `check_names` fails, because help shows the
-visible alias `ls` as a second name for `jars list`. pantry could make the
-alias hidden, which passes the check and keeps `ls` working. pantry keeps it
-visible, and opts out of the rule for that command with a reason:
+The file also runs `check_effects`, `check_listings` and `check_help`. With no
+opt-outs, `check_names` fails, because help shows the visible alias `ls` as a
+second name for `jars list`. pantry could make the alias hidden, which passes
+the check and keeps `ls` working. pantry keeps it visible, and opts out of the
+rule for that command with a reason:
 
 ```rust
 const ALLOW: &[Allow] = &[Allow::new(
@@ -264,6 +264,15 @@ root on purpose declares them once, with one reason, on its tool record:
 then passes them, and root help lists them under a `Verbs` heading. A tool that
 wants its root help unchanged declares them in its opt-outs with
 `Allow::root_verbs` instead ([root verbs docs]).
+
+pantry calls each check by hand here, so that each one is visible. A tool that
+runs the whole set declares one `Suite` constant with the inputs of the checks
+and calls `crumbkit_test::conventions!(SUITE)`, which writes one test for each
+check. A check that crumbkit-test adds later then reaches the tool with no edit.
+A check whose input the suite does not set fails and names the input, so the
+tool sets it or skips the check with `.skip(Check::CommandReference, "the reason")`.
+[shelf's convention tests](../examples/shelf/tests/conventions.rs) show a whole
+suite, and the [checks docs] describe its inputs.
 
 ## Where to go next
 
@@ -295,6 +304,7 @@ wants its root help unchanged declares them in its opt-outs with
 [effects docs]: behaviour/effects/README.md
 [help docs]: behaviour/help/README.md
 [opt-outs docs]: behaviour/adoption/opt-outs.md
+[checks docs]: behaviour/checks/README.md
 [root verbs docs]: behaviour/adoption/declarations.md#root-verbs
 [output budget docs]: behaviour/output/budget/README.md
 [completion docs]: behaviour/parsing/completion.md

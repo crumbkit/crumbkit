@@ -53,7 +53,7 @@ const WRITE_FAILED: Code = Code::new("crumbkit", "docs", "write_failed");
 /// which `weigh` and `docs` share. Each failure's next step is advice,
 /// because each one needs a change outside cargo crumbkit: to cargo, to
 /// the workspace or to the tool. `#[derive(Failure)]` also writes
-/// `ToolError::CODES`, which the tests pass to crumbkit-test's codes check.
+/// `ToolError::CODES`.
 #[derive(Debug, Failure)]
 pub(crate) enum ToolError {
     /// cargo cannot start.
