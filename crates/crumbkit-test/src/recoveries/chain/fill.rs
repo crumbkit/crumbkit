@@ -56,8 +56,10 @@ pub(super) fn value<'v>(
 // RUST-10: `split` returns plain words, so the check cannot
 // tell a quoted value from a placeholder. A call whose real value holds
 // such text, such as `'<ID>'` or `"a<path>b"`, reads as holding a
-// placeholder. A call that kept its placeholders apart from its values
-// replaces this if a tool needs one.
+// placeholder. This holds for a `run` step only, because a `terminal` step
+// has no placeholders to fill and `first_placeholder` reads its quotes. A
+// call that kept its placeholders apart from its values replaces this if a
+// tool needs one.
 pub(in crate::recoveries) fn fill_word<'v>(
     word: &str,
     mut lookup: impl FnMut(&str) -> Option<&'v str>,
@@ -105,10 +107,42 @@ pub(super) fn path_below<S: AsRef<str>>(root: &Command, words: &[S]) -> String {
     names.join(" ")
 }
 
-/// Returns the first placeholder of the command line `call`, such as
-/// `<ID>`, or `None` when it has none or is not a line that `split` reads.
+/// Returns the first placeholder outside the quotes of the command line
+/// `call`, such as `<ID>`, or `None` when it has none or is not a line that
+/// `split` reads. A quoted `'<draft>'` is a literal value.
 pub(in crate::recoveries) fn first_placeholder(call: &str) -> Option<String> {
-    split(call)?
-        .iter()
-        .find_map(|word| fill_word(word, |_| None).err())
+    split(call)?;
+    fill_word(&outside_quotes(call), |_| None).err()
+}
+
+/// Returns `call`, a line that `split` reads, with a space in place of each
+/// quoted part and each `\'` removed.
+fn outside_quotes(call: &str) -> String {
+    let mut outside = String::with_capacity(call.len());
+    let mut chars = call.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '\'' => {
+                chars.by_ref().find(|&inside| inside == '\'');
+                outside.push(' ');
+            }
+            '"' => {
+                while let Some(inside) = chars.next() {
+                    match inside {
+                        '"' => break,
+                        '\\' => {
+                            chars.next();
+                        }
+                        _ => {}
+                    }
+                }
+                outside.push(' ');
+            }
+            '\\' => {
+                chars.next();
+            }
+            other => outside.push(other),
+        }
+    }
+    outside
 }

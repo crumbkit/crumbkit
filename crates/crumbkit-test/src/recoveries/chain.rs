@@ -258,7 +258,8 @@ impl Walk<'_> {
                     continue;
                 }
             };
-            let Some((words, used)) = self.fill(chain, call, parent.fields, values) else {
+            let literal = matches!(step, RecoveryStep::Terminal(_));
+            let Some((words, used)) = self.fill(chain, call, parent.fields, values, literal) else {
                 continue;
             };
             let refs: Vec<&str> = words.iter().map(String::as_str).collect();
@@ -458,6 +459,7 @@ impl Walk<'_> {
         call: &str,
         fields: &[(String, String)],
         values: Option<&[String]>,
+        literal: bool,
     ) -> Option<Filled> {
         let tool = self.command.get_name();
         let problem = match split(call) {
@@ -482,6 +484,7 @@ impl Walk<'_> {
                 let mut missing = None;
                 for word in words.iter().skip(1) {
                     match values {
+                        _ if literal => filled.push(word.clone()),
                         Some(all) if all::is_placeholder(word) => {
                             filled.extend(all.iter().cloned());
                             values = None;

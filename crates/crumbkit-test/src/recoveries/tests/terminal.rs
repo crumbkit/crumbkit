@@ -140,3 +140,56 @@ fn the_warning_for_a_terminal_call_with_a_placeholder_fails_the_check() {
 
     assert!(message.contains("warning"), "{message}");
 }
+
+/// Returns the tool whose `books show 7` fails and offers `call` in a
+/// terminal, and whose `books list <draft>` exits 0. `call` is JSON text, so
+/// `\u0027` stands for the single quote that the test's script cannot hold.
+fn tool_offering(label: &str, call: &str) -> Setup {
+    let show = failure("tool::books::not_found", &terminal(call));
+    Setup::new(
+        label,
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books list <draft> --json", 0, "{}\n", ""),
+        ],
+    )
+}
+
+#[test]
+fn a_terminal_step_with_a_single_quoted_literal_passes_the_check_and_runs_the_literal() {
+    let setup = tool_offering(
+        "recoveries-terminal-single-quoted",
+        r"tool books list \u0027<draft>\u0027",
+    );
+
+    assert_eq!(problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)), None);
+    assert!(
+        setup
+            .report()
+            .contains("  run tool books list '<draft>'\n    exits 0\n"),
+        "{}",
+        setup.report()
+    );
+}
+
+#[test]
+fn a_terminal_step_with_a_double_quoted_literal_passes_the_check() {
+    let setup = tool_offering(
+        "recoveries-terminal-double-quoted",
+        r#"tool books list \"<draft>\""#,
+    );
+
+    assert_eq!(problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)), None);
+}
+
+#[test]
+fn a_placeholder_outside_the_quotes_of_a_terminal_step_fails_the_check() {
+    let setup = tool_offering(
+        "recoveries-terminal-outside-quotes",
+        r"tool books list \u0027<draft>\u0027<id>",
+    );
+
+    let message = problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap();
+
+    assert!(message.contains("has the placeholder <id>"), "{message}");
+}
