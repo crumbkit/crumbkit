@@ -63,7 +63,8 @@ Why: ADR-0187.
 ## Input and output
 
 The child's standard input is the null device, bytes that a thread writes
-and then closes, or the tool's own input. The writer stops early, with no
+and then closes, the tool's own input, or a duplicate of a file or a pipe's
+read end that the tool holds. The writer stops early, with no
 failure, when the child closes its input.
 
 Each output stream has a `Capture`:
@@ -115,7 +116,7 @@ run starts is joined, even while a descendant outside the group holds a pipe
 open. On Windows a reader blocks until its pipe closes, and ending the job
 closes every pipe that the job's processes held.
 
-Why: ADR-0171, ADR-0176.
+Why: ADR-0171, ADR-0176, ADR-0188.
 
 ## Ending a run
 
