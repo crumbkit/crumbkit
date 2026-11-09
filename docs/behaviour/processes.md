@@ -74,16 +74,18 @@ Each output stream has a `Capture`:
   child, and `Sink` reads the rest of the stream and drops it, so the child
   runs to its end.
 - `Tail` reads the whole stream and keeps its last `limit` bytes.
-- `Lines` splits the stream on each newline and pushes each line, without
-  its newline, to a queue from `line_queue` while the child runs. A last
-  line with no newline is pushed when the stream ends. The first time one
-  line passes `line` bytes or the stream passes `total` bytes, the stream
-  is over its limit, and `OverLimit` decides what happens as for `Whole`.
-  No line is pushed after that.
+- `Lines` splits the stream on each `end` byte, such as a newline or a NUL,
+  and pushes each line, without that byte, to a queue from `line_queue` while
+  the child runs. A last line with no end is pushed when the stream ends. The
+  first time the stream passes `total` bytes, it is over its limit, and
+  `OverLimit` decides what happens as for `Whole`. No line is pushed after
+  that. A line that passes `line` bytes does the same with `LongLine::Over`.
+  With `LongLine::Skip` the run drops that line up to its end and delivers
+  the next one, and `Captured::long_line` says that it dropped one.
 
 `Captured::over_limit` tells whether the kept bytes, or the lines
-delivered, are all of the stream, and `Captured::long_line` tells whether
-one line passed its limit. `ChildFinished::first_stdout` gives the time from the
+delivered, passed a limit, and `Captured::long_line`
+tells whether one line passed its limit. `ChildFinished::first_stdout` gives the time from the
 start to the first byte of standard output.
 
 The caller takes each line with `Lines::recv` or `Lines::recv_timeout`,

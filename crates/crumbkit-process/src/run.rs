@@ -19,7 +19,7 @@ mod spawn;
 mod tests;
 
 use self::output::Keeper;
-pub use self::output::{Capture, Captured, OverLimit};
+pub use self::output::{Capture, Captured, LongLine, OverLimit};
 use self::pipes::{Ends, Kept};
 use self::spawn::AroundSpawn;
 pub use self::spawn::{Spawn, Spawned};

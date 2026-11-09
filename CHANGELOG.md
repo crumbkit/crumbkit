@@ -15,6 +15,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   how the run reports it, and how a tool bridges a polled flag to it
   ([behaviour/processes]).
 
+### Changed
+
+- crumbkit-process: breaking: `Capture::Lines` has the fields `long` and
+  `end`, so a run can skip a line over its limit with `LongLine::Skip` and
+  split on a byte other than a newline ([behaviour/processes]).
+
 ## [0.2.0] - 2026-11-09
 
 ### Added

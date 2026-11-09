@@ -33,27 +33,48 @@ pub enum Capture {
         /// The most bytes that the run keeps.
         limit: usize,
     },
-    /// The run splits the stream into lines on each newline and pushes
-    /// each line, without its newline, to `queue` while the child runs. A
-    /// last line with no newline is pushed when the stream ends. The run
+    /// The run splits the stream into lines on each `end` byte and pushes
+    /// each line, without that byte, to `queue` while the child runs. A
+    /// last line with no end is pushed when the stream ends. The run
     /// keeps no bytes in its [`Captured`].
     ///
-    /// The first time one line passes `line` bytes or the stream passes
-    /// `total` bytes, the stream is over its limit, and `over` says what
-    /// the run does then. No line is pushed after that.
+    /// The first time the stream passes `total` bytes, the stream is over
+    /// its limit, and `over` says what the run does then. No line is pushed
+    /// after that. A line that passes `line` bytes does the same with
+    /// [`LongLine::Over`], and with [`LongLine::Skip`] the run drops that
+    /// line alone and goes on.
     ///
     /// Each queue serves one run, which ends it when it returns.
     Lines {
         /// The queue that the run pushes each line to, from
         /// [`line_queue`](crate::line_queue).
         queue: LineQueue,
-        /// The most bytes of one line, without its newline.
+        /// The most bytes of one line, without its end.
         line: usize,
-        /// The most bytes of the whole stream, newlines included.
+        /// The most bytes of the whole stream, line ends and skipped lines
+        /// included.
         total: usize,
         /// What the run does when the stream passes a limit.
         over: OverLimit,
+        /// What a line longer than `line` bytes does.
+        long: LongLine,
+        /// The byte that ends a line, such as `b'\n'` or `0`.
+        end: u8,
     },
+}
+
+/// What a line longer than the limit of one line does to a stream
+/// delivered as lines.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LongLine {
+    /// The stream is over its limit, and its `over` policy applies.
+    #[default]
+    Over,
+    /// The run drops that line up to its end and delivers the next line.
+    /// [`Captured::long_line`] tells that it dropped at least one line, and
+    /// [`Captured::over_limit`] stays false unless the total limit passes.
+    Skip,
 }
 
 /// What a run does when a stream that it keeps whole or as lines passes
@@ -134,8 +155,12 @@ impl Captured {
         self.over_limit
     }
 
-    /// Returns true when a stream delivered as lines went over its limit
-    /// because one line passed the limit of one line.
+    /// Returns true when the run acted on a line of a stream delivered as
+    /// lines that passed the limit of one line: that line took the stream
+    /// over its limit with [`LongLine::Over`], or the run dropped it with
+    /// [`LongLine::Skip`]. A line does not count when the bytes that first
+    /// take it over its own limit also take the stream over the total limit,
+    /// and only [`Captured::over_limit`] tells.
     #[must_use]
     pub const fn long_line(&self) -> bool {
         self.long_line
@@ -154,6 +179,8 @@ pub(super) struct Keeper {
     read: usize,
     /// False once the caller has dropped its side of the line queue.
     listening: bool,
+    /// True while a stream delivered as lines drops the rest of a long line.
+    skipping: bool,
 }
 
 impl Keeper {
@@ -165,6 +192,7 @@ impl Keeper {
             line: Vec::new(),
             read: 0,
             listening: true,
+            skipping: false,
         }
     }
 
@@ -176,8 +204,13 @@ impl Keeper {
         match self.capture {
             Capture::Discard => false,
             Capture::Lines {
-                line, total, over, ..
-            } => self.add_lines(bytes, line, total) && over == OverLimit::Stop,
+                line,
+                total,
+                over,
+                long,
+                end,
+                ..
+            } => self.add_lines(bytes, line, total, long, end) && over == OverLimit::Stop,
             Capture::Whole { limit, over } => {
                 let room = limit.saturating_sub(kept.bytes.len());
                 kept.bytes
@@ -200,31 +233,49 @@ impl Keeper {
     }
 
     /// Splits `bytes` into lines and pushes each complete line, and
-    /// returns true when these bytes take the stream over the limit of
-    /// `line` bytes for one line or `total` bytes in all for the first time.
-    fn add_lines(&mut self, bytes: &[u8], line: usize, total: usize) -> bool {
+    /// returns true when these bytes take the stream over `line` bytes for
+    /// one line or `total` bytes in all for the first time.
+    fn add_lines(
+        &mut self,
+        bytes: &[u8],
+        line: usize,
+        total: usize,
+        long: LongLine,
+        end: u8,
+    ) -> bool {
         if self.kept.over_limit {
             return false;
         }
         let mut rest = bytes;
         loop {
-            let (piece, ended) = match rest.iter().position(|byte| *byte == b'\n') {
+            let (piece, ended) = match rest.iter().position(|byte| *byte == end) {
                 Some(at) => (&rest[..at], true),
                 None => (rest, false),
             };
             self.read = self.read.saturating_add(piece.len() + usize::from(ended));
-            self.line.extend_from_slice(piece);
-            let long = self.line.len() > line;
-            if self.read > total || long {
+            if !self.skipping {
+                self.line.extend_from_slice(piece);
+            }
+            let over_line = self.line.len() > line;
+            if self.read > total || (over_line && long == LongLine::Over) {
                 self.kept.over_limit = true;
-                self.kept.long_line = long && self.read <= total;
+                self.kept.long_line |= over_line && self.read <= total;
                 self.line = Vec::new();
                 return true;
+            }
+            if over_line {
+                self.skipping = true;
+                self.kept.long_line = true;
+                self.line = Vec::new();
             }
             if !ended {
                 return false;
             }
-            self.push_line();
+            if self.skipping {
+                self.skipping = false;
+            } else {
+                self.push_line();
+            }
             rest = &rest[piece.len() + 1..];
             if rest.is_empty() {
                 return false;
@@ -244,7 +295,7 @@ impl Keeper {
     }
 
     /// Returns what was kept once the stream has ended. A stream delivered
-    /// as lines pushes its last line when that line has no newline.
+    /// as lines pushes its last line when that line has no end byte.
     pub(super) fn finish(mut self) -> Captured {
         if matches!(self.capture, Capture::Lines { .. })
             && !self.kept.over_limit
