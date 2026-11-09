@@ -9,7 +9,7 @@ use syn::{Attribute, Data, DeriveInput, Expr, Fields, Ident, LitStr, Path, Visib
 
 /// The keys that `#[failure(...)]` accepts, as the message about an unknown
 /// key lists them.
-const KEYS: &str = "`code`, `recovery`, `hint`, `alternative`, `field`, `url`, `diagnostic` and `forward`, and `crate` on the type";
+const KEYS: &str = "`code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `diagnostic` and `forward`, and `crate` on the type";
 
 /// A type that derives `Failure`, as its attributes describe it.
 pub(crate) struct FailureType {
@@ -83,6 +83,8 @@ pub(crate) enum RecoveryKey {
     Expr(Expr),
     /// `hint = "text"`, the text of a `Recovery::Hint`.
     Hint(LitStr),
+    /// `no_next_step = "reason"`, the reason of a `Recovery::None`.
+    NoNextStep(LitStr),
 }
 
 /// Reads `input` into a [`FailureType`], or returns the compile error that
@@ -198,6 +200,8 @@ struct Keys {
     recovery: Option<Expr>,
     /// `hint = "text"`.
     hint: Option<LitStr>,
+    /// `no_next_step = "reason"`.
+    no_next_step: Option<LitStr>,
     /// Each `alternative = EXPR`.
     alternatives: Vec<Expr>,
     /// Each `field(NAME = EXPR)`.
@@ -239,6 +243,7 @@ impl Keys {
             "code" => set(&mut self.code, meta.value()?.parse()?, twice)?,
             "recovery" => set(&mut self.recovery, meta.value()?.parse()?, twice)?,
             "hint" => set(&mut self.hint, meta.value()?.parse()?, twice)?,
+            "no_next_step" => set(&mut self.no_next_step, meta.value()?.parse()?, twice)?,
             "url" => set(&mut self.url, meta.value()?.parse()?, twice)?,
             "alternative" => self.alternatives.push(meta.value()?.parse()?),
             "field" => meta.parse_nested_meta(|field| self.read_field(&field, owner))?,
@@ -322,22 +327,23 @@ impl Keys {
                 format!("{owner} needs `code = ...` or `forward` in #[failure(...)]"),
             ));
         };
-        let recovery = match (self.recovery, self.hint) {
-            (Some(expr), None) => RecoveryKey::Expr(expr),
-            (None, Some(hint)) => RecoveryKey::Hint(hint),
-            (Some(_), Some(_)) => {
+        let recovery = match (self.recovery, self.hint, self.no_next_step) {
+            (Some(expr), None, None) => RecoveryKey::Expr(expr),
+            (None, Some(hint), None) => RecoveryKey::Hint(hint),
+            (None, None, Some(reason)) => RecoveryKey::NoNextStep(reason),
+            (None, None, None) => {
                 return Err(syn::Error::new(
                     span,
                     format!(
-                        "{owner} gives both `recovery` and `hint`, and it may give only one of them"
+                        "{owner} needs `recovery = ...`, `hint = \"...\"` or `no_next_step = \"...\"` in #[failure(...)]"
                     ),
                 ));
             }
-            (None, None) => {
+            _ => {
                 return Err(syn::Error::new(
                     span,
                     format!(
-                        "{owner} needs `recovery = ...` or `hint = \"...\"` in #[failure(...)]"
+                        "{owner} gives more than one of `recovery`, `hint` and `no_next_step`, and it may give only one of them"
                     ),
                 ));
             }

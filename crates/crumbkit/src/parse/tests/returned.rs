@@ -217,3 +217,26 @@ fn a_refused_view_flag_reports_that_a_refusal_printed() {
 
     assert_eq!(printed_by(command, &["tool", "--full"]), Printed::Refusal);
 }
+
+#[test]
+fn the_handle_reports_whether_the_caller_passed_no_input() {
+    use clap::{CommandFactory as _, Parser};
+
+    #[derive(Parser)]
+    #[command(name = "tool")]
+    struct Cli {
+        #[command(flatten)]
+        no_input: crate::NoInput,
+    }
+    let no_input = |args: &[&str]| {
+        let mut sink = Sink::new(Vec::new(), Vec::new());
+        parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &Tool::new(), args)
+            .ok()
+            .unwrap()
+            .1
+            .no_input()
+    };
+
+    assert!(no_input(&["tool", "--no-input"]));
+    assert!(!no_input(&["tool"]));
+}

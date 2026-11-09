@@ -1,4 +1,4 @@
-use crumbkit::form::{ReadFailure, RecoveryStep};
+use crate::{ReadFailure, RecoveryStep};
 use crumbkit::{FieldValue, ToolName};
 
 use super::{FailureReader, Reader, read_failures};
@@ -153,4 +153,22 @@ fn a_failure_document_with_another_tools_schema_id_is_no_failure() {
     let stdout = br#"{"schema":"crumbkit/failure/v1","code":"shelf::cli::usage","recovery":{"kind":"retry"}}"#;
 
     assert_eq!(read_failures(ToolName::new("shelf"), None, stdout, b""), []);
+}
+
+#[test]
+fn a_read_failure_keeps_the_fields_it_is_given_with_their_values_and_has_none_without_them() {
+    let fields = vec![
+        ("id".to_owned(), FieldValue::Unsigned(7)),
+        ("found".to_owned(), FieldValue::Null),
+        ("tags".to_owned(), FieldValue::list(["red".to_owned()])),
+    ];
+
+    let read = ReadFailure::new("solar.planets.not_found".to_owned(), Vec::new())
+        .with_fields(fields.clone());
+
+    assert_eq!(read.fields(), fields);
+    assert_eq!(
+        ReadFailure::new("solar.planets.not_found".to_owned(), Vec::new()).fields(),
+        []
+    );
 }

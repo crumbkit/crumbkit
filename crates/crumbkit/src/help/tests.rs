@@ -71,7 +71,7 @@ fn section(page: &str) -> &str {
 }
 
 #[test]
-fn a_headed_group_lists_its_children_under_each_goal_heading_in_guide_order() {
+fn a_headed_group_lists_its_children_under_each_goal_heading_in_declared_order() {
     const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &[],
         &[

@@ -9,7 +9,7 @@ use std::thread::{Builder, Scope as Threads, ScopedJoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::notice::Notice;
-use crate::{Cancel, Escalation, Group, Outcome, Scope, Signal, Status, Stop, sys};
+use crate::{Cancel, Escalation, Group, Outcome, Scope, Signal, Status, StopReason, sys};
 
 mod output;
 mod pipes;
@@ -156,7 +156,7 @@ impl ChildFinished {
     ///
     /// The status tells how the child ended even when the run stopped it.
     /// A run whose cancel stopped a child that SIGINT ended gives
-    /// `Outcome::Stopped(Stop::Cancelled)` and the status `Status::Signal(2)`,
+    /// `Outcome::Stopped(StopReason::Cancelled)` and the status `Status::Signal(2)`,
     /// whose [`Status::shell_code`] is 130. A child that handles the signal
     /// and exits with a code of its own gives that code.
     #[must_use]
@@ -257,7 +257,7 @@ pub fn run(mut command: Command, limits: &Limits) -> Result<ChildFinished, RunEr
     let _end = EndLines(limits);
     if limits.cancel.as_ref().is_some_and(Cancel::is_cancelled) {
         return Ok(ChildFinished {
-            outcome: Outcome::Stopped(Stop::Cancelled),
+            outcome: Outcome::Stopped(StopReason::Cancelled),
             status: None,
             stdout: Captured::default(),
             stderr: Captured::default(),
@@ -393,7 +393,7 @@ fn follow<'scope>(
     }
     exited?;
     let status = sys::status_of(status?);
-    let exit = stopped.unwrap_or_else(|| status.outcome());
+    let exit = stopped.unwrap_or(Outcome::Ended(status));
     let unread = || Kept {
         captured: Captured::default(),
         first: None,
@@ -452,9 +452,9 @@ fn control(group: &Group, notice: &Notice, limits: &Limits) -> Option<Outcome> {
     let exit = if flags.exited {
         return None;
     } else if flags.cancelled {
-        Outcome::Stopped(Stop::Cancelled)
+        Outcome::Stopped(StopReason::Cancelled)
     } else if flags.over_limit {
-        Outcome::Stopped(Stop::OverLimit)
+        Outcome::Stopped(StopReason::OverLimit)
     } else if group.has_exited().unwrap_or(false) {
         // The deadline passed after the child exited and before the waiter
         // said so, so the child's own exit stands.

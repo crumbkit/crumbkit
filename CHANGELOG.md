@@ -8,6 +8,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit: `Output::fail` prints a failure, reports its exit code and returns
+  it, for a command that ends without `finish` ([behaviour/output/shapes]).
+- crumbkit: `Recovery::none` and `Recovery::hint` build a recovery from text,
+  and `#[failure(no_next_step = "...")]` declares a failure with no next step
+  ([behaviour/failures]).
+- crumbkit: `Output::no_input` reports whether the caller passed `--no-input`.
 - crumbkit-process: [`run`] runs a child in a process group or job object
   of its own, reads its output within byte limits and a deadline, stops it
   with an [`Escalation`], and reaps it ([behaviour/processes]).
@@ -35,6 +41,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-process: breaking: `Outcome::Code` and `Outcome::Signal` are
+  `Outcome::Ended(Status)`, and `Stop` is `StopReason`
+  ([behaviour/processes]).
+- crumbkit: breaking: `form::ReadFailure` moved to `crumbkit_test`, and
+  `RecoveryStep` is read from `crumbkit_test` too. The `form` module is gone.
+- crumbkit: breaking: `pick::NoInput` is only `crumbkit::NoInput`.
+- crumbkit-test: breaking: `crumbkit_test::Tool` is removed; use
+  `crumbkit::Tool`.
 - crumbkit: breaking: `help::Guide` is now `crumbkit::Tool`, composed of the
   `help::Help`, `tool::Failures` and `tool::Output` records, with the picker
   and dashed forms on `Tool`. `Guide::output_budget` is `tool::Output::budget`,

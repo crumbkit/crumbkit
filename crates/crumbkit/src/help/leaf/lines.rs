@@ -4,6 +4,28 @@
 use super::Leaf;
 use crate::help::ViewFlag;
 
+/// The line that the `-h` and `--help` of a leaf set with
+/// [`Leaf::stream`] print after the effects line, in help's wording
+/// (ADR-0041). Another rendering of help, such as a Markdown reference,
+/// prints this line so that it describes a stream as help does.
+// crumbkit-markdown prints this line in a reference.
+#[doc(hidden)]
+pub const STREAM_LINE: &str =
+    "Output: one row per line as each arrives, and --json prints one JSON document per line.";
+
+/// The line that the `-h` and `--help` of a leaf whose document holds
+/// [`Bytes`](crate::Bytes) print after the effects line, in help's wording.
+// crumbkit-markdown prints this line in a reference.
+#[doc(hidden)]
+pub const BYTES_LINE: &str =
+    "Output: the bytes unchanged, and --json prints them as text or base64.";
+
+/// The line that the `-h` and `--help` of a leaf whose document is headed
+/// print after the effects line, in help's wording (ADR-0062).
+// crumbkit-markdown prints this line in a reference.
+#[doc(hidden)]
+pub const HEADED_LINE: &str = "Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.";
+
 impl Leaf {
     /// Returns the `Problems:` line that the leaf's `-h` and `--help` print
     /// after the `Output:` line when its row type names a problem field,

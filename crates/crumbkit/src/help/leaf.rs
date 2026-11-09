@@ -26,24 +26,9 @@ pub use children::children_line;
 pub use column::Column;
 pub use example::Example;
 pub(crate) use example::examples;
+pub use lines::{BYTES_LINE, HEADED_LINE, STREAM_LINE};
 pub use refusal::RefusalContext;
 pub use text::text_line;
-
-/// The line that the `-h` and `--help` of a leaf set with
-/// [`Leaf::stream`] print after the effects line, in help's wording
-/// (ADR-0041). Another rendering of help, such as a Markdown reference,
-/// prints this line so that it describes a stream as help does.
-pub const STREAM_LINE: &str =
-    "Output: one row per line as each arrives, and --json prints one JSON document per line.";
-
-/// The line that the `-h` and `--help` of a leaf whose document holds
-/// [`Bytes`](crate::Bytes) print after the effects line, in help's wording.
-pub const BYTES_LINE: &str =
-    "Output: the bytes unchanged, and --json prints them as text or base64.";
-
-/// The line that the `-h` and `--help` of a leaf whose document is headed
-/// print after the effects line, in help's wording (ADR-0062).
-pub const HEADED_LINE: &str = "Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.";
 
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
@@ -339,8 +324,7 @@ impl Leaf {
     /// does not offer it, print what `--json` alone prints and write a note
     /// that the flag adds nothing. `--fields` never adds nothing.
     ///
-    /// crumbkit-test's `check_help` reads it, so it is public and hidden
-    /// from the documentation.
+    // crumbkit-test's `check_help` reads this.
     #[doc(hidden)]
     #[must_use]
     pub const fn adds_nothing(&self, flag: ViewFlag, json: bool) -> bool {

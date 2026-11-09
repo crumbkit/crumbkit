@@ -188,8 +188,8 @@ impl Output {
     }
 
     /// Reports whether the caller passed `--no-input`.
-    #[cfg(test)]
-    pub(crate) const fn no_input(&self) -> bool {
+    #[must_use]
+    pub const fn no_input(&self) -> bool {
         self.no_input
     }
 

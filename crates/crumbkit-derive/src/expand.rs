@@ -88,6 +88,12 @@ fn recovery(krate: &Path, arms: &[Arm]) -> TokenStream {
                 RecoveryKey::Hint(hint) => {
                     quote!(#krate::Recovery::Hint(::std::string::String::from(#hint)))
                 }
+                RecoveryKey::NoNextStep(reason) if reason.value().contains('{') => {
+                    quote!(#krate::Recovery::none(::std::format!(#reason)))
+                }
+                RecoveryKey::NoNextStep(reason) => {
+                    quote!(#krate::Recovery::none(#reason))
+                }
             };
             quote!(#pattern => #recovery,)
         }

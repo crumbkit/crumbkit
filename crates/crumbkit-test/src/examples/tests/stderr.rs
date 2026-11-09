@@ -3,8 +3,8 @@
 
 use std::fs;
 
+use crate::ReadFailure;
 use crumbkit::Tool;
-use crumbkit::form::ReadFailure;
 use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 

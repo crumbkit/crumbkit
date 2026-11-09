@@ -1,7 +1,7 @@
 //! Tests for the recovery check on a tool that prints its failures without
 //! a crumbkit document: through a `FailureReader`, or as a `code:` line.
 
-use crumbkit::form::{ReadFailure, RecoveryStep};
+use crate::{ReadFailure, RecoveryStep};
 use crumbkit::{FieldValue, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;

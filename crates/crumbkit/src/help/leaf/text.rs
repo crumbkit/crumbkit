@@ -14,6 +14,8 @@ mod tests;
 /// only the flags that it offers. A command that offers neither, such as
 /// one whose rows print whole and name no columns, gets a line that names
 /// no table. crumbkit-markdown prints the same line in a reference.
+// crumbkit-markdown prints this line in a reference.
+#[doc(hidden)]
 #[must_use]
 pub fn text_line(form: &str, fields: bool, long: bool) -> String {
     let flags = match (fields, long) {

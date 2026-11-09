@@ -31,7 +31,7 @@ pub use self::escalation::Escalation;
 pub(crate) use self::group::Group;
 pub use self::group::{Scope, Signal};
 pub use self::lines::{LineQueue, Lines, Silent, line_queue};
-pub use self::outcome::{Outcome, Status, Stop};
+pub use self::outcome::{Outcome, Status, StopReason};
 pub use self::run::{
     Capture, Captured, ChildFinished, DRAIN_GRACE, Input, Limits, OverLimit, RunError, run,
 };

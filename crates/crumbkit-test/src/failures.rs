@@ -4,12 +4,70 @@
 
 use std::fmt;
 
-use crumbkit::form::{ReadFailure, RecoveryStep};
+pub use crumbkit::RecoveryStep;
 use crumbkit::{FieldValue, ToolName};
 use serde_json::Value;
 
 use crate::examples::Examples;
 use crate::runs;
+/// The failure that one run printed, as crumbkit-test reads it back from
+/// the run's output: the code in the tool's spelling, the
+/// steps, the recovery first and then each alternative, and the fields.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReadFailure {
+    /// The code in the tool's spelling, such as `shelf::books::not_found`.
+    code: String,
+    /// The recovery first, then each alternative.
+    steps: Vec<RecoveryStep>,
+    /// Each field of the failure as a name and its value.
+    fields: Vec<(String, FieldValue<'static>)>,
+}
+
+impl ReadFailure {
+    /// Returns the failure with `code`, in the tool's spelling, and `steps`,
+    /// the recovery first and then each alternative.
+    #[must_use]
+    pub const fn new(code: String, steps: Vec<RecoveryStep>) -> Self {
+        Self {
+            code,
+            steps,
+            fields: Vec::new(),
+        }
+    }
+
+    /// Returns the failure with `fields`, each a field's name and its value,
+    /// such as `("id", FieldValue::Unsigned(7))`. A value can be any
+    /// [`FieldValue`], so a reader gives back a null, list or object field as
+    /// the failure held it. `check_recoveries` fills a recovery's
+    /// placeholders from the text, integer and boolean fields. A failure has
+    /// no fields until this method gives it some.
+    ///
+    /// This builder is not a `const fn`, because a `const fn` cannot drop the
+    /// fields it replaces.
+    #[must_use]
+    pub fn with_fields(mut self, fields: Vec<(String, FieldValue<'static>)>) -> Self {
+        self.fields = fields;
+        self
+    }
+
+    /// Returns the code in the tool's spelling.
+    #[must_use]
+    pub fn code(&self) -> &str {
+        &self.code
+    }
+
+    /// Returns the steps, the recovery first and then each alternative.
+    #[must_use]
+    pub fn steps(&self) -> &[RecoveryStep] {
+        &self.steps
+    }
+
+    /// Returns each field as a name and its value.
+    #[must_use]
+    pub fn fields(&self) -> &[(String, FieldValue<'static>)] {
+        &self.fields
+    }
+}
 
 /// Reads the failures that one failed run of a tool printed, for a tool
 /// that prints its failures in a shape of its own. A tool sets its reader with
@@ -36,7 +94,7 @@ use crate::runs;
 /// every command that a chain runs.
 ///
 /// ```
-/// use crumbkit::form::{ReadFailure, RecoveryStep};
+/// use crumbkit_test::{ReadFailure, RecoveryStep};
 /// use crumbkit_test::{Examples, FailureReader};
 ///
 /// /// Reads a last line such as `ERR shelf::books::not_found`.

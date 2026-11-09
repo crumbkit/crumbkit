@@ -30,6 +30,8 @@ A hand-written impl repeats one `match` per method, and a hand-written
   segments at compile time. The derive checks each field name by the same
   rule.
 - `hint` text with braces goes through `format!`.
+- `no_next_step` gives the reason of a `Recovery::None`, and its text with
+  braces goes through `format!` too.
 - `forward` returns every answer of a wrapped failure, so the wrapper's
   `CODES` leaves the wrapped codes to the wrapped type's own list.
 - The derive writes no `Display`, so the message stays with the tool or

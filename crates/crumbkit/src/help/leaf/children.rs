@@ -12,6 +12,8 @@ mod tests;
 /// indented line under each row for each of its components.`. Help prints
 /// this line, and crumbkit-markdown prints it with the `children_help` text
 /// of `commands list`, so both print the same label.
+// crumbkit-markdown prints this line in a reference.
+#[doc(hidden)]
 #[must_use]
 pub fn children_line(text: &str) -> String {
     format!("Children: {text}")

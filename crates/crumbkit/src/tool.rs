@@ -1,7 +1,9 @@
 //! The record of what a tool declares to crumbkit. [`Tool`] composes the
 //! [`Help`], [`Failures`] and [`Output`] records, and this module also holds
-//! the paths of the last two. `crumbkit::Output` names the handle of one
-//! run, so the record of what a run prints has its path here.
+//! the paths of the last two, with [`Exit`], [`Rename`] and
+//! [`RefusalContext`], which the failure declarations name.
+//! `crumbkit::Output` names the handle of one run, so the record of what a
+//! run prints has its path here.
 
 use clap::Command;
 

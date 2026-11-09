@@ -25,7 +25,7 @@ long the child may run, and reads how the child ended:
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use crumbkit_process::{Capture, Escalation, Limits, Outcome, OverLimit, RunError, Signal};
+use crumbkit_process::{Capture, Escalation, Limits, Outcome, OverLimit, RunError, Signal, Status};
 
 fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
     tool.arg("--version");
@@ -36,7 +36,7 @@ fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
         .escalation(Escalation::default().step(Signal::Terminate, Duration::from_secs(2)));
     let finished = crumbkit_process::run(tool, &settings)?;
     Ok(match finished.outcome() {
-        Outcome::Code(0) => Some(finished.into_output().0.into_bytes()),
+        Outcome::Ended(Status::Code(0)) => Some(finished.into_output().0.into_bytes()),
         _ => None,
     })
 }

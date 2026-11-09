@@ -305,6 +305,21 @@ pub enum Recovery {
 }
 
 impl Recovery {
+    /// Returns [`Recovery::Hint`] with `advice`.
+    #[must_use]
+    pub fn hint(advice: impl Into<String>) -> Self {
+        Self::Hint(advice.into())
+    }
+
+    /// Returns [`Recovery::None`] with `reason`, why the caller has no next
+    /// step.
+    #[must_use]
+    pub fn none(reason: impl Into<String>) -> Self {
+        Self::None {
+            reason: reason.into(),
+        }
+    }
+
     /// Returns the `None` recovery of a failure that the tool did not
     /// classify and that gives no advice of its own, with the reason
     /// `the error gives no advice`.
