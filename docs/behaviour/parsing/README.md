@@ -54,8 +54,8 @@ from the tool record, as `parse` does. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before it parses, and passes the `Command` that
-`expand` read to `try_parse_to`, as the [aliases page](aliases.md) describes. A tool that reads a refused command
-line before it prints calls `try_parse_to`
+`expand` read to `try_parse_to`, as the [aliases page](aliases.md) describes.
+A tool that reads a refused command line before it prints calls `try_parse_to`
 ([a refusal that the tool prints](#a-refusal-that-the-tool-prints)).
 
 Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002, ADR-0102.

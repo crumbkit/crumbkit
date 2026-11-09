@@ -15,8 +15,9 @@ wrote a placeholder for each one, as in `parse_to::<Cli, _, _, _, _>`.
 ADR-0100 gave each of the three functions a `try_` form. One caller of
 `try_parse_to` parses against a tree that it builds at run time, which differs
 from what the parsed type derives. One adopter calls `try_parse_from` and moves
-to `try_parse_to`, which does the same work with `Sink::standard`. `try_parse` and `try_parse_from` differed from `try_parse_to` by a private
-flag that says the sink is over the standard streams.
+to `try_parse_to`, which does the same work with `Sink::standard`. `try_parse`
+and `try_parse_from` differed from `try_parse_to` by a private flag that says
+the sink is over the standard streams.
 
 ## Decision
 
@@ -53,5 +54,5 @@ Considered: a `Command` argument on every function, which keeps the bug that
 `A` and `B` can differ; a second type parameter for a separate command type,
 which adds a placeholder that callers would again write; keeping `try_parse`
 and `try_parse_from`, which add nothing to `try_parse_to` with a standard sink
-and differ only by the private flag; a public `standard` setter on `Sink`, which would let a sink over a
-buffer claim to be the process's streams.
+and differ only by the private flag; a public `standard` setter on `Sink`,
+which would let a sink over a buffer claim to be the process's streams.
