@@ -11,6 +11,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: `RunOptions::around_spawn` runs a hook around the start
   of a run's child, which can fail after the start and have the child stopped
   ([behaviour/processes]).
+- crumbkit-process: [`Cancel`] states that any thread may cancel at any time,
+  how the run reports it, and how a tool bridges a polled flag to it
+  ([behaviour/processes]).
 
 ## [0.2.0] - 2026-11-09
 
@@ -1582,6 +1585,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Expect`]: crates/crumbkit/src/expect.rs
 [`run`]: crates/crumbkit-process/src/run.rs
 [`Escalation`]: crates/crumbkit-process/src/escalation.rs
+[`Cancel`]: crates/crumbkit-process/src/cancel.rs
 [`line_queue`]: crates/crumbkit-process/src/lines.rs
 [`start_under`]: crates/crumbkit-usage/src/recorder.rs
 [behaviour/adoption]: docs/behaviour/adoption/README.md

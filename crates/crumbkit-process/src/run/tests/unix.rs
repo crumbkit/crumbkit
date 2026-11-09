@@ -333,6 +333,35 @@ fn a_run_with_a_cancel_that_is_already_cancelled_starts_no_child() {
     assert_eq!(finished.stdout().bytes(), b"");
 }
 
+#[test]
+fn a_cancel_from_a_thread_that_polls_a_flag_stops_the_child_and_says_so() {
+    let flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let cancel = Cancel::new();
+    let poller = std::thread::spawn({
+        let (flag, cancel) = (Arc::clone(&flag), cancel.clone());
+        move || {
+            while !flag.load(std::sync::atomic::Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            cancel.cancel();
+            cancel.cancel();
+        }
+    });
+    let setter = std::thread::spawn({
+        let flag = Arc::clone(&flag);
+        move || {
+            std::thread::sleep(Duration::from_millis(200));
+            flag.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+    });
+
+    let finished = run_sh("sleep 30", &kept().cancel(&cancel));
+
+    setter.join().unwrap();
+    poller.join().unwrap();
+    assert_eq!(finished.outcome(), Outcome::Stopped(StopReason::Cancelled));
+}
+
 /// Returns a cancel that is cancelled 200 ms from now, and the thread that
 /// cancels it.
 ///

@@ -124,6 +124,15 @@ A run ends when the child exits, when its deadline passes, when its
 `Stopped` with `StopReason::Cancelled` or `StopReason::OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
 
+Any thread may call `Cancel::cancel` at any time. A cancel that arrives once the
+run has seen the child's exit changes nothing, so the run gives the child's own
+end, as does a cancel that the run sees together with the exit. A cancel just
+after the exit, before the run has seen it, gives
+`Stopped(Cancelled)` with the child's own status. The run does not poll a flag
+of the tool's, so a tool whose stop request is a flag polls it on a thread of
+its own and calls `Cancel::cancel` from there. A signal handler must not call
+it, because it takes a lock.
+
 `ChildFinished::status` gives the child's own status as the run reaped it,
 which a timed-out or stopped run has too: `Status::Code` with the exit
 code, or `Status::Signal` with the signal's number on Unix. It is the
