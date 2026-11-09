@@ -3,7 +3,7 @@
 //! (ADR-0008, PERF-1).
 //!
 //! Each benchmark calls `shelf::run_from`, which takes the path that every run
-//! of the `shelf` binary takes: the alias lookup, `crumbkit::parse_from` and
+//! of the `shelf` binary takes: the alias lookup, `crumbkit::try_parse_to` and
 //! `crumbkit::finish`. Its output goes to the
 //! benchmark process's standard output, which gungraun reads through a pipe,
 //! so help prints without colour. gungraun clears the environment of each

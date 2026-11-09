@@ -4,7 +4,7 @@
 
 use std::io::{self, Write};
 
-use clap::{CommandFactory as _, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use crumbkit::tool::{Exit, Failures};
 use crumbkit::{Sink, Tool, ViewFlags};
 
@@ -47,12 +47,7 @@ impl Write for Full {
 /// `None` when the arguments parsed.
 fn number_to(out: impl Write, args: &[&str]) -> Option<u8> {
     let mut err = Vec::new();
-    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
-        &mut Sink::new(out, &mut err),
-        Cli::command(),
-        &TOOL,
-        args,
-    );
+    let parsed = crumbkit::parse_to::<Cli>(&mut Sink::new(out, &mut err), &TOOL, args);
     parsed.err().map(|stop| stop.exit())
 }
 

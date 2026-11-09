@@ -6,7 +6,7 @@
 use std::fmt;
 use std::time::Duration as Std;
 
-use clap::{CommandFactory as _, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use crumbkit::schemars::{JsonSchema, Schema, SchemaGenerator};
 use crumbkit::{
     Call, Children, Code, Document, Duration, Failure, Field, Output, Recovery, Row, Shown, Sink,
@@ -133,12 +133,7 @@ fn parse(flags: &[&str]) -> Option<Output> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["loans", "list"].iter().chain(flags);
-    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        Cli::command(),
-        &Tool::new(),
-        words,
-    );
+    let parsed = crumbkit::parse_to::<Cli>(&mut Sink::new(&mut out, &mut err), &Tool::new(), words);
     parsed.ok().map(|(_tool, output)| output)
 }
 

@@ -138,7 +138,7 @@ start with `-` and is no option's value, also in the separate form
   command's words, so `<tool> help --json` prints the root's help, as
   `<tool> --help --json` does, also on a tool whose root takes no
   `--json`. An unknown word gets clap's usual refusal with its suggestions.
-  A tool that calls `try_parse` gets the refusal unprinted, with the words
+  A tool that calls `try_parse_to` gets the refusal unprinted, with the words
   as typed, the words with `--help`, and the unknown word
   ([parsing](../parsing/README.md#refused-command-lines)).
 

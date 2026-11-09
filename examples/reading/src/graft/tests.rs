@@ -37,7 +37,7 @@ fn the_output_of_a_command_added_for_a_list_reads_the_view_flags_after_it() {
         "Books to read next".to_owned(),
     )];
     let (out, err) = (&mut Vec::new(), &mut Vec::new());
-    let parsed = crumbkit::parse_to::<Parsed, _, _, _, _>(
+    let parsed = crumbkit::try_parse_to::<Parsed>(
         &mut crumbkit::Sink::new(out, err),
         crate::command(&lists),
         &crate::tool(&lists),

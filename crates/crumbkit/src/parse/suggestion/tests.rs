@@ -1,14 +1,15 @@
 //! Tests for the names that a refusal suggests, through `parse_to`.
 
+use crate::parse::tests::parse_tree_to;
 use clap::{Arg, ArgAction, Command};
 
-use crate::{Sink, Tool, parse_to};
+use crate::{Sink, Tool};
 
 /// Returns what `parse_to` prints on standard error for `args`, which
 /// `command` refuses.
 fn refusal(command: Command, args: &[&str]) -> String {
     let mut err = Vec::new();
-    let _ = parse_to::<(), _, _, _, _>(
+    let _ = parse_tree_to::<()>(
         &mut Sink::new(Vec::new(), &mut err),
         command,
         &Tool::new(),

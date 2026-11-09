@@ -87,8 +87,8 @@ crumbkit-usage both depend on crumbkit.
   `Leaf::choices` line for each argument whose values come from a source, and
   `NoInput` flattened at its root ([pickers](../effects/pickers.md)).
 - A tool with personal aliases passes its arguments through
-  `crumbkit_aliases::expand` before `parse_from`
-  ([aliases](../parsing/aliases.md)).
+  `crumbkit_aliases::expand` and passes the `Command` that `expand` read to
+  `try_parse_to` ([aliases](../parsing/aliases.md)).
 
 Every function that takes a `clap::Command` works on any node of the tree,
 so a crate or a team can apply crumbkit and crumbkit-test to its own subtree.

@@ -1,6 +1,7 @@
 //! Tests for the `Children:` line of a leaf whose rows print their children
 //! as lines under them (ADR-0120, ADR-0137).
 
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
@@ -8,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::{Effects, Example, Help, Leaf, STREAM_LINE, children_line};
-use crate::{Batch, Bytes, Children, Document, Error, Headed, Row, Sink, Stream, Tool, parse_to};
+use crate::{Batch, Bytes, Children, Document, Error, Headed, Row, Sink, Stream, Tool};
 
 /// A tool with a global `--json` and one leaf, `tool services list`.
 fn tree() -> Command {
@@ -32,8 +33,7 @@ fn help(leaves: &'static [Leaf], args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let tool = Tool::new().help(Help::new().leaves(leaves));
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), &tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }

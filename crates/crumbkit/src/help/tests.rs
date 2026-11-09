@@ -1,13 +1,14 @@
 //! Tests for goal headings: the help pages that `parse_to` prints with a
 //! tool record, and the tree that `extend` returns.
 
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::{Goal, Group, extend};
 use crate::help::Help;
-use crate::{Sink, Tool, parse_to};
+use crate::{Sink, Tool};
 
 mod compact;
 mod root_verbs;
@@ -55,7 +56,7 @@ fn tree() -> Command {
 fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
@@ -166,7 +167,7 @@ fn a_headed_group_off_the_typed_path_keeps_its_default_help() {
         &[Goal::new("Read", &["list", "show", "rename"])],
     )]));
 
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Vec::new(), Vec::new()),
         tree(),
         &TOOL,
@@ -415,7 +416,7 @@ fn a_headed_list_prints_each_visible_alias_after_the_description_as_clap_s_list_
     });
     let page = |tool: &Tool| {
         let mut out = Vec::new();
-        let _ = parse_to::<(), _, _, _, _>(
+        let _ = parse_tree_to::<()>(
             &mut Sink::new(&mut out, Vec::new()),
             command.clone(),
             tool,

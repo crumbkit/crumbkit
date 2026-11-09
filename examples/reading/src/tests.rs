@@ -64,7 +64,7 @@ fn entries_list_without_list_asks_the_menu_and_runs_with_the_picked_list() {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = crumbkit::Sink::with_input(&mut out, &mut err, &b"2\n"[..], true);
-    let parsed = crumbkit::parse_to::<crate::graft::Parsed, _, _, _, _>(
+    let parsed = crumbkit::try_parse_to::<crate::graft::Parsed>(
         &mut sink,
         fixture_command(),
         &TOOL,

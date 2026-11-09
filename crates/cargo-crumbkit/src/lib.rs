@@ -19,8 +19,6 @@ mod weigh;
 
 use std::process::ExitCode;
 
-use clap::CommandFactory as _;
-
 // These items exist for the binary in `main.rs` and for the crate's own
 // tests, so they stay out of the documentation.
 #[doc(hidden)]
@@ -40,7 +38,7 @@ mod tests;
 /// `Next:` lines and recoveries print starts with `cargo crumbkit`.
 #[must_use]
 pub fn run() -> ExitCode {
-    let (cli, mut output) = match crumbkit::parse::<Cli>(Cli::command(), &TOOL) {
+    let (cli, mut output) = match crumbkit::parse::<Cli>(&TOOL) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };

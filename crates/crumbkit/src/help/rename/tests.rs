@@ -80,7 +80,7 @@ fn a_refused_command_line_prints_the_tool_s_usage_code_and_exits_with_the_code_i
     let (mut out, mut err) = (Vec::new(), Vec::new());
     let command = clap::Command::new("ledger").arg(clap::Arg::new("id"));
 
-    let stop = crate::parse_to::<(), _, _, _, _>(
+    let stop = crate::parse::tests::parse_tree_to::<()>(
         &mut crate::Sink::new(&mut out, &mut err),
         command,
         &TOOL,

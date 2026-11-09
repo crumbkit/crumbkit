@@ -89,15 +89,13 @@ fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
     ]));
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let refused = crate::parse_to::<Cli, _, _, _, _>(
+    let refused = crate::parse_to::<Cli>(
         &mut Sink::new(&mut out, &mut err),
-        Cli::command(),
         &REFUSALS,
         ["tool", "lst"],
     );
-    let admitted = crate::parse_to::<Cli, _, _, _, _>(
+    let admitted = crate::parse_to::<Cli>(
         &mut Sink::new(&mut out, &mut err),
-        Cli::command(),
         &REFUSALS,
         ["tool", "list"],
     );
@@ -207,13 +205,8 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let (_tool, output) = crate::parse_to::<Cli, _, _, _, _>(
-        &mut sink,
-        Cli::command(),
-        &RENAMED,
-        ["tool", "list", "--json"],
-    )
-    .unwrap();
+    let (_tool, output) =
+        crate::parse_to::<Cli>(&mut sink, &RENAMED, ["tool", "list", "--json"]).unwrap();
     let code = finish_to(
         &mut sink,
         output,

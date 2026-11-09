@@ -1,5 +1,6 @@
 //! Tests for runtime leaves and their join with a const tool record.
 
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::Command;
@@ -9,7 +10,7 @@ use serde::Serialize;
 use super::RuntimeLeaf;
 use crate::help::{Column, Example, Goal, Group, Help, Leaf, Topic};
 use crate::tool::{Exit, Failures, RefusalContext, Rename};
-use crate::{Call, Code, Document, Row, Sink, Tool, parse_to};
+use crate::{Call, Code, Document, Row, Sink, Tool};
 
 const TOOL: Tool = Tool::new()
     .help(
@@ -91,7 +92,7 @@ fn a_command_added_at_run_time_lists_the_examples_of_its_runtime_leaf_in_its_hel
     ]);
 
     let mut out = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(&mut out, Vec::new()),
         tool_name,
         &tool,
@@ -148,7 +149,7 @@ fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call_and_pri
         ]);
     let mut err = Vec::new();
 
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Vec::new(), &mut err),
         tool_name,
         &tool,
@@ -219,7 +220,7 @@ fn the_long_help_of_a_runtime_leafs_command_lists_the_columns_of_its_document() 
     ]);
 
     let mut out = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(&mut out, Vec::new()),
         tool_name,
         &tool,

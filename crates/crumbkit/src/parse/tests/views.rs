@@ -2,13 +2,13 @@
 //! whose declared document cannot use them: its help leaves them out, and
 //! `parse` refuses them before the handler runs.
 
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Args as _, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::parse_to;
 use crate::Envelope;
 use crate::help::{Help, Leaf};
 use crate::tool::{Exit, Failures, Rename};
@@ -151,8 +151,7 @@ struct Parsed {
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     Parsed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),
@@ -393,7 +392,7 @@ fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_i
     let mut out = Vec::new();
     let mut err = Vec::new();
 
-    let stop = parse_to::<(), _, _, _, _>(
+    let stop = parse_tree_to::<()>(
         &mut Sink::new(&mut out, &mut err),
         tree(),
         &RENAMED,
@@ -432,7 +431,7 @@ error: --full prints every field of every row in JSON, so it needs --json
 fn fields_with_long_is_refused_in_crumbkit_s_words_on_a_command_that_the_tool_does_not_name() {
     let run = |args: &[&str]| {
         let mut err = Vec::new();
-        let result = parse_to::<(), _, _, _, _>(
+        let result = parse_tree_to::<()>(
             &mut Sink::new(Vec::new(), &mut err),
             tree(),
             &Tool::new(),
