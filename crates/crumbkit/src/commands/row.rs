@@ -8,8 +8,8 @@ use serde::ser::{SerializeStruct, Serializer};
 use crate::expect::takes_expect;
 use crate::help::effects::Guards;
 use crate::help::words::quote;
-use crate::help::{Effects, Leaf, effects, goal_sections};
-use crate::{Row, Shape, Tool};
+use crate::help::{Effects, Leaf, LeafDocument, effects, goal_sections};
+use crate::{Children, Row, Shape, Tool};
 
 mod schema;
 #[cfg(test)]
@@ -139,6 +139,7 @@ impl CommandRow {
             .get_leaves()
             .iter()
             .find(|leaf| leaf.path() == path);
+        let document = leaf.and_then(Leaf::get_document);
         let examples = leaf.map_or_else(Vec::new, |leaf| {
             leaf.get_examples()
                 .iter()
@@ -152,8 +153,9 @@ impl CommandRow {
                 })
                 .collect()
         });
-        let columns = leaf.map_or_else(Vec::new, |leaf| {
-            leaf.column_descriptions()
+        let columns = document.map_or_else(Vec::new, |document| {
+            document
+                .column_descriptions()
                 .into_iter()
                 .map(|column| CommandColumn {
                     name: column.name(),
@@ -208,9 +210,11 @@ impl CommandRow {
             examples,
             columns,
             form: leaf.and_then(form),
-            line: leaf.and_then(Leaf::line),
-            children: leaf.and_then(Leaf::children),
-            children_help: leaf.and_then(Leaf::children_text),
+            line: document.and_then(LeafDocument::line),
+            children: document
+                .and_then(LeafDocument::children)
+                .map(Children::get_field),
+            children_help: document.and_then(LeafDocument::children_text),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
             writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),
@@ -225,11 +229,11 @@ impl CommandRow {
 /// or `None` when the leaf declares no document.
 fn form(leaf: &Leaf) -> Option<&'static str> {
     let document = leaf.get_document()?;
-    Some(if leaf.is_stream() {
+    Some(if document.is_stream() {
         "stream"
-    } else if leaf.shape() == Some(Shape::Bytes) {
+    } else if document.shape() == Some(Shape::Bytes) {
         "bytes"
-    } else if document.is_headed() {
+    } else if document.document().is_headed() {
         "headed"
     } else {
         "document"

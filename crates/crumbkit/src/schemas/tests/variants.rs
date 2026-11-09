@@ -7,7 +7,7 @@ use serde_json::{Map, Value, json};
 
 use crate::conforms::conforms;
 use crate::schemas::document_schema;
-use crate::{Document, Envelope, Listing, Row};
+use crate::{Children, Document, Envelope, Listing, Row};
 
 /// A tenant that is listed in full with its plan and applications, or in
 /// short with its name alone.
@@ -33,7 +33,7 @@ enum Tenant {
 
 impl Row for Tenant {
     const COLUMNS: &'static [&'static str] = &["kind", "name", "plan"];
-    const CHILDREN: Option<&'static str> = Some("applications");
+    const CHILDREN: Option<Children> = Some(Children::field("applications"));
 }
 
 const TENANTS: Document<Listing<Tenant>> =
@@ -54,7 +54,7 @@ fn compact(tenant: &Tenant) -> Value {
     let whole = serde_json::to_value(tenant).unwrap();
     let row: Map<String, Value> = Tenant::COLUMNS
         .iter()
-        .chain(Tenant::CHILDREN.iter())
+        .chain(Tenant::CHILDREN.map(Children::get_field).iter())
         .map(|&name| {
             (
                 name.to_owned(),

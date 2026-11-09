@@ -7,6 +7,7 @@
 
 ## Children
 
+- [ADR-0182. A leaf's document and a row's child lines are records](0182-leaf-document-and-children-records.md)
 - [ADR-0160. Names and visibility before the first release](0160-names-and-visibility-before-the-first-release.md)
 - [ADR-0180. Tool and its records replace Guide](0180-tool-record-replaces-guide.md)
 

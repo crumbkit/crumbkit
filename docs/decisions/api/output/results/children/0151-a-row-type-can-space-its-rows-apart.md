@@ -1,7 +1,7 @@
 # ADR-0151. A row type can space its rows apart
 
 - Date: 2026-10-25
-- Status: accepted
+- Status: amended by ADR-0182
 - Supersedes: ADR-0120, which it amends
 - Missed: ADR-0120 printed each row's child lines directly above the next row, so a long listing of rows with many child lines gave a reader no mark of where one row's block ends and the next begins.
 

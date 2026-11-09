@@ -250,7 +250,10 @@ fn leaf_sections(
         short: short.into_iter().collect(),
         long,
         columns: leaf.has_columns().then(|| {
-            if leaf.get_document().is_some_and(|doc| doc.is_headed()) {
+            if leaf
+                .get_document()
+                .is_some_and(|doc| doc.document().is_headed())
+            {
                 "JSON field"
             } else {
                 "column"

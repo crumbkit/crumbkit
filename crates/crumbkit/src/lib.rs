@@ -113,7 +113,7 @@ pub use crate::parse::{
 };
 pub use crate::pick::NoInput;
 pub use crate::prose::Prose;
-pub use crate::row::{Headed, NoRow, Row, Rows, Shape};
+pub use crate::row::{Children, Headed, NoRow, Row, Rows, Shape};
 pub use crate::shown::Shown;
 pub use crate::sink::Sink;
 pub use crate::step::{Program, Step};

@@ -91,8 +91,10 @@ const SHORT_LEAF: &[Leaf] = &[Leaf::new(&["links", "check"])
 
 #[test]
 fn a_leaf_holds_the_text_line_form_of_its_row_type() {
-    assert_eq!(LINKS_LEAF[0].line(), Some("<POINTER> -> <TARGET>"));
-    assert_eq!(Leaf::new(&["links", "check"]).line(), None);
+    assert_eq!(
+        LINKS_LEAF[0].get_document().unwrap().line(),
+        Some("<POINTER> -> <TARGET>")
+    );
 }
 
 #[test]

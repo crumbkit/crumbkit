@@ -247,8 +247,10 @@ fn check_items(
     };
     match effects.items() {
         Some(Items::PerItem) => {
-            let reports =
-                leaf.is_stream() || matches!(leaf.shape(), Some(Shape::Batch | Shape::Prose));
+            let reports = leaf.get_document().is_some_and(|document| {
+                document.is_stream()
+                    || matches!(document.shape(), Some(Shape::Batch | Shape::Prose))
+            });
             if !reports {
                 problems.push(format!(
                     "{path}: the command declares `per_item` and its document is not a `Batch`, a `Prose` or a stream, so it cannot report a failure for each item"

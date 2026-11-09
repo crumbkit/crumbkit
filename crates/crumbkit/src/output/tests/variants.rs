@@ -10,7 +10,7 @@ use serde_json::Value;
 use super::finish_with;
 use crate::conforms::conforms;
 use crate::schemas::document_schema;
-use crate::{Document, Listing, Row};
+use crate::{Children, Document, Listing, Row};
 
 /// An account that is listed in full with its owner and applications, or
 /// in short with its id alone. Each variant refuses a field it does not
@@ -37,7 +37,7 @@ enum Account {
 
 impl Row for Account {
     const COLUMNS: &'static [&'static str] = &["kind", "id", "owner"];
-    const CHILDREN: Option<&'static str> = Some("applications");
+    const CHILDREN: Option<Children> = Some(Children::field("applications"));
 
     fn child_lines(&self) -> Vec<String> {
         match self {

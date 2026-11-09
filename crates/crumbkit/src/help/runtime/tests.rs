@@ -189,10 +189,13 @@ fn a_runtime_leaf_with_a_document_passes_the_document_to_its_leaf_in_the_joined_
 
     let leaf = &tool.get_help().get_leaves()[0];
     assert_eq!(
-        leaf.get_document().map(|document| document.to_string()),
+        leaf.get_document()
+            .map(|document| document.document().to_string()),
         Some(MOONS.to_string())
     );
     let names: Vec<&str> = leaf
+        .get_document()
+        .unwrap()
         .column_descriptions()
         .iter()
         .map(Column::name)
@@ -242,5 +245,4 @@ fn a_runtime_leaf_without_a_document_has_no_document_in_the_joined_tool() {
 
     let leaf = &tool.get_help().get_leaves()[0];
     assert!(leaf.get_document().is_none());
-    assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
 }

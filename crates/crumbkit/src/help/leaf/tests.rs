@@ -9,7 +9,7 @@ use clap::{Arg, ArgAction, Command};
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 
-use super::{Column, Example, Leaf};
+use super::{Example, Leaf};
 use crate::help::{Help, extend};
 use crate::{Document, Prose, Row, Sink, Tool, parse_to};
 
@@ -436,6 +436,8 @@ fn extend_applies_only_the_first_of_two_leaves_with_one_path() {
 fn column_descriptions_lists_the_columns_and_then_the_long_columns_in_declared_order() {
     let columns = Leaf::new(&["planets", "list"])
         .document(PLANETS)
+        .get_document()
+        .unwrap()
         .column_descriptions();
 
     let read: Vec<(&str, bool, bool, Option<&str>)> = columns
@@ -489,6 +491,8 @@ fn column_descriptions_reports_a_column_that_is_not_a_property_and_one_without_a
             1,
             "The test rows.",
         ))
+        .get_document()
+        .unwrap()
         .column_descriptions();
     let moons = Leaf::new(&["planets", "show"])
         .document(Document::<Vec<Moon>>::new(
@@ -497,6 +501,8 @@ fn column_descriptions_reports_a_column_that_is_not_a_property_and_one_without_a
             1,
             "The test rows.",
         ))
+        .get_document()
+        .unwrap()
         .column_descriptions();
 
     assert_eq!(comets[1].name(), "period");
@@ -543,6 +549,8 @@ fn column_descriptions_read_the_fields_of_each_variant_of_a_row_type() {
             1,
             "The test rows.",
         ))
+        .get_document()
+        .unwrap()
         .column_descriptions();
 
     let read: Vec<(&str, bool, Option<&str>)> = columns
@@ -561,11 +569,4 @@ fn column_descriptions_read_the_fields_of_each_variant_of_a_row_type() {
             ),
         ]
     );
-}
-
-#[test]
-fn column_descriptions_of_a_leaf_without_a_document_is_empty() {
-    let leaf = Leaf::new(&["planets", "list"]).examples(EXAMPLES);
-
-    assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
 }

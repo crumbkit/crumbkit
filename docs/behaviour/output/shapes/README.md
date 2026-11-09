@@ -183,13 +183,14 @@ Why: ADR-0064, ADR-0114.
 ## Rows with children
 
 A row type may print the items of one field as indented lines under each
-row. `Row::CHILDREN` names the field, such as `Some("components")`, and
+row. `Row::CHILDREN` holds a `Children`, and `Children::field` names the
+field, such as `Some(Children::field("components"))`, and
 `Row::child_lines` builds one line for each item, such as `+ database`.
 Its default prints each item's text when the field holds strings or
 [value types](../values/README.md), and prints nothing otherwise.
 Without `--json` and `--fields`, the text prints each child line under the
 row's table line, or under its own text line, with control characters and
-format characters escaped. `Row::CHILD_INDENT` sets the number of spaces
+format characters escaped. `Children::indent` sets the number of spaces
 before each child line, 2 by default and at most 255, the largest `u8`. A
 type that sets 0 prints child lines at column 1, as table lines start, so a
 reader tells them apart only by their content, which the doc comment of the
@@ -201,7 +202,7 @@ unless the type overrides it, and a stream prints them after each item's
 line. The
 [output budget](../budget/README.md) counts them with their indent.
 
-A row type that sets `Row::SPACED` prints a blank line after a row that
+A row type whose `Children` sets `Children::spaced` prints a blank line after a row that
 printed child lines, when another row follows. The blank line prints under
 the table, with `--long` and under rows with their own text line. A row
 without child lines and the last row that prints are followed by none, so
@@ -213,15 +214,14 @@ Compact JSON, with or without `--long`, holds the field after the columns,
 and the compact schema requires it. `--fields` holds the field only when it
 names it, and the text then prints it as a cell of compact JSON and prints
 no child lines. Help prints a `Children:` line ([help](../../help/README.md))
-with `Row::CHILDREN_HELP`, the row type's own description of its child
+with `Children::help`, the row type's own description of its child
 lines, or with crumbkit's sentence, which calls the lines indented only
 when the indent is above 0. crumbkit-test's `check_help` fails a field
 that is not a documented field of the row type, a field that is also one of
 the columns, a [headed](#headed-bytes) leaf whose row type sets `CHILDREN`,
-and a `CHILDREN_HELP` that is not one line ending with a full stop or that
-comes without `CHILDREN`.
+and a `Children::help` that is not one line ending with a full stop.
 
-Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138, ADR-0151.
+Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138, ADR-0151, ADR-0182.
 
 ## Documents without the envelope
 

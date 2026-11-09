@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Batch, Document, Error, Listing, Row, Tool};
+use crate::{Batch, Children, Document, Error, Listing, Row, Tool};
 
 /// A service and its components, each of which prints under the service.
 #[derive(Serialize, JsonSchema)]
@@ -35,7 +35,7 @@ struct Component {
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name", "state"];
     const LONG_COLUMNS: &'static [&'static str] = &["region"];
-    const CHILDREN: Option<&'static str> = Some("components");
+    const CHILDREN: Option<Children> = Some(Children::field("components"));
 
     fn child_lines(&self) -> Vec<String> {
         self.components
@@ -200,7 +200,7 @@ struct Lined {
 impl Row for Lined {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LINE: Option<&'static str> = Some("service <NAME>");
-    const CHILDREN: Option<&'static str> = Some("components");
+    const CHILDREN: Option<Children> = Some(Children::field("components"));
 
     fn text_line(&self) -> Option<String> {
         Some(format!("service {}", self.name))
@@ -340,8 +340,7 @@ struct Record {
 impl Row for Record {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LONG_COLUMNS: &'static [&'static str] = &["kind"];
-    const CHILDREN: Option<&'static str> = Some("reference");
-    const CHILD_INDENT: u8 = 0;
+    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
 
     fn child_lines(&self) -> Vec<String> {
         vec![self.reference.to_owned()]
@@ -356,8 +355,7 @@ struct Deep(Record);
 impl Row for Deep {
     const COLUMNS: &'static [&'static str] = Record::COLUMNS;
     const LONG_COLUMNS: &'static [&'static str] = Record::LONG_COLUMNS;
-    const CHILDREN: Option<&'static str> = Record::CHILDREN;
-    const CHILD_INDENT: u8 = 4;
+    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(4));
 
     fn child_lines(&self) -> Vec<String> {
         self.0.child_lines()
@@ -373,8 +371,7 @@ struct FlushLined(Record);
 impl Row for FlushLined {
     const COLUMNS: &'static [&'static str] = Record::COLUMNS;
     const LINE: Option<&'static str> = Some("record <NAME>");
-    const CHILDREN: Option<&'static str> = Record::CHILDREN;
-    const CHILD_INDENT: u8 = 0;
+    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
 
     fn text_line(&self) -> Option<String> {
         Some(format!("record {}", self.0.name))
@@ -450,8 +447,7 @@ fn a_row_type_with_a_child_indent_of_four_prints_four_spaces_before_each_child_l
 
 #[test]
 fn a_row_type_that_sets_no_child_indent_indents_its_child_lines_by_two_spaces() {
-    assert_eq!(<Service as Row>::CHILD_INDENT, 2);
-    assert_eq!(<super::Planet as Row>::CHILD_INDENT, 2);
+    assert_eq!(Children::field("components").get_indent(), 2);
 }
 
 #[test]
@@ -497,7 +493,7 @@ struct Job {
 
 impl Row for Job {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("steps");
+    const CHILDREN: Option<Children> = Some(Children::field("steps"));
 }
 
 #[test]

@@ -5,7 +5,7 @@ use std::fmt;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::{Duration, Row, Shown};
+use crate::{Children, Duration, Row, Shown};
 
 /// One step of a job, which prints as `fetch: 3s`.
 struct Step {
@@ -36,7 +36,7 @@ struct Job {
 
 impl Row for Job {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("steps");
+    const CHILDREN: Option<Children> = Some(Children::field("steps"));
 }
 
 fn job() -> Job {
@@ -86,7 +86,7 @@ struct Tagged {
 
 impl Row for Tagged {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("tags");
+    const CHILDREN: Option<Children> = Some(Children::field("tags"));
 }
 
 #[test]
@@ -118,7 +118,7 @@ struct Machine {
 
 impl Row for Machine {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("parts");
+    const CHILDREN: Option<Children> = Some(Children::field("parts"));
 }
 
 #[test]
@@ -142,7 +142,7 @@ struct Mixed {
 
 impl Row for Mixed {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("items");
+    const CHILDREN: Option<Children> = Some(Children::field("items"));
 }
 
 #[test]
@@ -182,7 +182,7 @@ struct Misnamed {
 
 impl Row for Misnamed {
     const COLUMNS: &'static [&'static str] = &["tags"];
-    const CHILDREN: Option<&'static str> = Some("labels");
+    const CHILDREN: Option<Children> = Some(Children::field("labels"));
 }
 
 #[test]
@@ -201,7 +201,7 @@ struct Counted {
 
 impl Row for Counted {
     const COLUMNS: &'static [&'static str] = &["tags"];
-    const CHILDREN: Option<&'static str> = Some("tags");
+    const CHILDREN: Option<Children> = Some(Children::field("tags"));
 
     fn child_lines(&self) -> Vec<String> {
         vec![format!("{} tags", self.tags.len())]
@@ -215,4 +215,41 @@ fn a_row_that_overrides_its_child_lines_keeps_its_own() {
     };
 
     assert_eq!(row.child_lines(), ["2 tags"]);
+}
+
+#[test]
+fn children_keep_the_defaults_until_a_builder_changes_them() {
+    const PLAIN: Children = Children::field("notes");
+    const SET: Children = Children::field("notes")
+        .indent(0)
+        .spaced()
+        .help("one line for each note.");
+
+    assert_eq!(
+        (PLAIN.get_indent(), PLAIN.is_spaced(), PLAIN.get_help()),
+        (2, false, None)
+    );
+    assert_eq!(
+        (SET.get_indent(), SET.is_spaced(), SET.get_help()),
+        (0, true, Some("one line for each note."))
+    );
+    assert_eq!(SET.get_field(), "notes");
+}
+
+#[test]
+fn children_describe_their_lines_with_crumbkits_sentence_or_the_tools_help() {
+    assert_eq!(
+        Children::field("notes").text(),
+        "one indented line under each row for each of its notes."
+    );
+    assert_eq!(
+        Children::field("notes").indent(0).text(),
+        "one line under each row for each of its notes."
+    );
+    assert_eq!(
+        Children::field("notes")
+            .help("one line for each note.")
+            .text(),
+        "one line for each note."
+    );
 }

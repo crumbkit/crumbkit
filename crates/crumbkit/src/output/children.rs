@@ -2,8 +2,8 @@
 //! ADR-0135).
 
 use super::table::escape_controls;
-use crate::Row;
 use crate::view::{Table, View};
+use crate::{Children, Row};
 
 /// Reports whether the text of rows of type `R` prints each row's child
 /// lines: the row type sets [`Row::CHILDREN`], and `view` is the text
@@ -15,23 +15,23 @@ pub(super) fn chosen<R: Row>(view: &View) -> bool {
 
 /// Reports whether the text of rows of type `R` prints a blank line after a
 /// row that printed child lines, when another row follows: the row type
-/// sets [`Row::SPACED`], and the text prints child lines, as [`chosen`]
+/// sets [`Children::spaced`], and the text prints child lines, as [`chosen`]
 /// decides (ADR-0151).
 pub(super) fn spaced<R: Row>(view: &View) -> bool {
-    R::SPACED && chosen::<R>(view)
+    R::CHILDREN.is_some_and(Children::is_spaced) && chosen::<R>(view)
 }
 
 /// Returns the child lines of `row` as the text prints them under the row:
 /// [`Row::long_child_lines`] when `long` is set, which `--long` sets, and
-/// [`Row::child_lines`] otherwise, each line after [`Row::CHILD_INDENT`]
+/// [`Row::child_lines`] otherwise, each line after [`Children::indent`]
 /// spaces, with each control character and each Unicode format character
 /// escaped as a table cell escapes them, and followed by a line feed. It
 /// returns an empty string, which does not allocate, when the row type sets
 /// no [`Row::CHILDREN`] or the row has no child lines.
 pub(super) fn block<R: Row>(row: &R, long: bool) -> String {
-    if R::CHILDREN.is_none() {
+    let Some(children) = R::CHILDREN else {
         return String::new();
-    }
+    };
     let lines = if long {
         row.long_child_lines()
     } else {
@@ -39,7 +39,7 @@ pub(super) fn block<R: Row>(row: &R, long: bool) -> String {
     };
     let mut block = String::new();
     for line in lines {
-        block.extend(std::iter::repeat_n(' ', usize::from(R::CHILD_INDENT)));
+        block.extend(std::iter::repeat_n(' ', usize::from(children.get_indent())));
         block.push_str(&escape_controls(&line));
         block.push('\n');
     }
@@ -65,5 +65,7 @@ pub(super) fn blocks<'a, R: Row + 'a>(
 /// [`Row::CHILDREN`] names, so `--json` carries the children with each row,
 /// or nothing when the type names none or `columns` already holds it.
 pub(super) fn json_field<R: Row>(columns: &[&str]) -> Option<&'static str> {
-    R::CHILDREN.filter(|field| !columns.contains(field))
+    R::CHILDREN
+        .map(Children::get_field)
+        .filter(|field| !columns.contains(field))
 }

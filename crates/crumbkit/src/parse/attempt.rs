@@ -128,7 +128,7 @@ pub(super) fn refusal(
     }
     let headed = leaf
         .and_then(Leaf::get_document)
-        .is_some_and(|document| document.is_headed());
+        .is_some_and(|document| document.document().is_headed());
     if headed && let Some(refusal) = view::headed(typed(ViewFlag::Fields.id()), json) {
         return Err(Box::new(refusal));
     }

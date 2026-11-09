@@ -5,6 +5,7 @@
 use clap::Command;
 use crumbkit::codes::CLI_USAGE;
 use crumbkit::help::Leaf;
+use crumbkit::help::LeafDocument;
 use crumbkit::tool::Rename;
 use crumbkit::{Code, Spelling, Tool};
 use serde::Serialize;
@@ -142,7 +143,8 @@ pub(super) fn declarations(command: &Command, tool: &Tool, allow: &[Allow]) -> V
 fn leaf_declarations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<Declaration> {
     let spell = |code: &Code| spelling.spell(code);
     let mut list = Vec::new();
-    let document = leaf.get_document();
+    let printed = leaf.get_document();
+    let document = printed.map(LeafDocument::document);
     if let Some((document, name)) = document
         .and_then(|document| Some((document, declared_name(command, leaf.path(), document)?)))
     {
@@ -186,7 +188,7 @@ fn leaf_declarations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<
             reason: None,
         });
     }
-    if let Some(line) = leaf.line() {
+    if let Some(line) = printed.and_then(LeafDocument::line) {
         list.push(Declaration {
             kind: "text-line",
             applies_to: command_line(command, &leaf.path().join(" ")),
@@ -196,10 +198,13 @@ fn leaf_declarations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<
             reason: None,
         });
     }
-    if let (Some(field), Some(children)) = (leaf.children(), leaf.children_text()) {
+    if let Some((field_of, children)) =
+        printed.and_then(|document| Some((document.children()?, document.children_text()?)))
+    {
+        let field = field_of.get_field();
         // crumbkit's own sentence reads as what the text prints, and a row
         // type's own text is quoted after the field it describes.
-        let declares = match leaf.children_help() {
+        let declares = match field_of.get_help() {
             Some(_) => format!(
                 "The text prints lines under each row for its {field}, and help describes them \
                  as: {children}"

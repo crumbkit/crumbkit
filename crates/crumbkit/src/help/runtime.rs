@@ -2,6 +2,7 @@
 //! its command tree at run time, such as one command for each file that a
 //! person writes.
 
+use super::leaf::LeafDocument;
 use super::{Effects, Example, Leaf};
 use crate::tool::RefusalContext;
 use crate::{Call, Document, Rows, Tool};
@@ -54,10 +55,9 @@ pub struct RuntimeLeaf {
     /// The examples, each the words after the path and a description, in
     /// the order the help page lists them.
     examples: Vec<(Vec<String>, String)>,
-    /// A leaf without a path that holds the document the command prints,
-    /// as [`Leaf::document`] set it, or `None` when the leaf has no
-    /// document.
-    document: Option<Leaf>,
+    /// The document the command prints, as [`Leaf::document`] records it, or
+    /// `None` when the leaf has no document.
+    document: Option<LeafDocument>,
     /// The command's effects, or `None` when the tool declares none.
     effects: Option<Effects>,
     /// The program whose exit code the command passes on, or `None`.
@@ -107,7 +107,7 @@ impl RuntimeLeaf {
     /// tool's declarations, as it lists a `const` leaf's.
     #[must_use]
     pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
-        self.document = Some(Leaf::new(&[]).document(document));
+        self.document = Some(LeafDocument::of(document));
         self
     }
 
@@ -173,8 +173,8 @@ impl Tool {
                 .map(|(words, about)| Example::new(leak_words(words), about.leak()))
                 .collect();
             let mut joined_leaf = Leaf::new(leak_words(leaf.path)).examples(examples.leak());
-            if let Some(documented) = leaf.document {
-                joined_leaf = joined_leaf.with_document_of(&documented);
+            if let Some(document) = leaf.document {
+                joined_leaf = joined_leaf.with_document(Some(document));
             }
             if let Some(effects) = leaf.effects {
                 joined_leaf = joined_leaf.effects(effects);

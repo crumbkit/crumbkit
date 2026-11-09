@@ -9,6 +9,7 @@ mod no_row;
 pub(crate) mod problems;
 mod rows;
 
+pub use children::Children;
 pub use no_row::NoRow;
 pub(crate) use rows::Sealed;
 pub use rows::{Rows, Shape};
@@ -194,7 +195,7 @@ pub trait Row: Serialize + JsonSchema {
     /// views list every row.
     ///
     /// ```
-    /// use crumbkit::Row;
+    /// use crumbkit::{Children, Row};
     /// use schemars::JsonSchema;
     /// use serde::Serialize;
     ///
@@ -247,71 +248,31 @@ pub trait Row: Serialize + JsonSchema {
         None
     }
 
-    /// The field that holds the row's children, as the type serializes it,
-    /// after any `#[serde(rename)]`, or `None` when the row has none
-    /// (ADR-0120).
+    /// The row's child lines, or `None` when the row has none (ADR-0120,
+    /// ADR-0182).
     ///
-    /// When it is set, the text prints each row's [`Row::child_lines`]
-    /// under the row's table line, or under its own text line when the type
-    /// sets [`Row::LINE`], each indented by [`Row::CHILD_INDENT`] spaces
+    /// [`Children::field`] names the field that holds the children. When
+    /// this is set, the text prints each row's [`Row::child_lines`] under
+    /// the row's table line, or under its own text line when the type sets
+    /// [`Row::LINE`], each indented by [`Children::indent`] spaces
     /// (ADR-0135). `--long` prints [`Row::long_child_lines`] in their
     /// place, and `--fields` prints none: a `--fields` that names the
     /// field prints it as a cell of compact JSON like any other field. The
     /// JSON without `--full` holds the field after the columns, so `--json`
     /// carries the children with each row. The leaf's help describes the
-    /// child lines on a `Children:` line, with [`Row::CHILDREN_HELP`] or a
+    /// child lines on a `Children:` line, with [`Children::help`] or a
     /// sentence that names the field. crumbkit-test's `check_help` fails a
     /// field that is not a field of the row type or has no doc comment, a
     /// field that is also a column, and a headed leaf whose row type sets
     /// it, because a headed batch's text prints each row's bytes.
-    const CHILDREN: Option<&'static str> = None;
-
-    /// The number of spaces before each of the row's
-    /// [`Row::child_lines`] in text, 2 by default (ADR-0135).
-    ///
-    /// A type that sets 0 prints each child line at column 1, as a table
-    /// line starts, so a reader tells the two apart only by the line's
-    /// content, which the doc comment of the [`Row::CHILDREN`] field should
-    /// describe. The type is `u8`, so the compiler rejects an indent above
-    /// 255. The output budget counts the spaces. Help's own `Children:`
-    /// sentence calls the lines indented only when the indent is above 0
-    /// (ADR-0137).
-    const CHILD_INDENT: u8 = 2;
-
-    /// Whether the text prints a blank line after a row that printed child
-    /// lines, when another row follows, so that each row reads as one block
-    /// with its children. The default is `false` (ADR-0151).
-    ///
-    /// The blank line prints wherever the text prints child lines: under a
-    /// table row, with `--long`, and under a row's own text line when the
-    /// type sets [`Row::LINE`]. A row without child lines, and the last row
-    /// that prints, are followed by no blank line. `--fields`, `--json` and
-    /// a stream do not change, and a type without [`Row::CHILDREN`] prints
-    /// no blank line. The output budget counts each blank line.
-    const SPACED: bool = false;
-
-    /// The description of the child lines that help prints after
-    /// `Children: `, ending with a full stop, or `None` for crumbkit's
-    /// sentence (ADR-0137).
-    ///
-    /// crumbkit's sentence is `one indented line under each row for each of
-    /// its <FIELD>.`, without `indented` when [`Row::CHILD_INDENT`] is 0. A
-    /// type whose [`Row::child_lines`] are not one line per item sets its
-    /// own text, such as `one line for each application, or one folded
-    /// line when every application is stopped.`. `-h`, `--help`, the
-    /// `children_help` field of `commands list` and crumbkit-markdown's
-    /// reference print the same text. crumbkit-test's `check_help` fails
-    /// a text that is empty, holds a control character or does not end
-    /// with a full stop, and a text on a row type without
-    /// [`Row::CHILDREN`], whose help prints no `Children:` line.
-    const CHILDREN_HELP: Option<&'static str> = None;
+    const CHILDREN: Option<Children> = None;
 
     /// Returns one text line for each of the row's children, without
     /// indentation or a line feed. crumbkit reads it only when
     /// [`Row::CHILDREN`] is set.
     ///
     /// crumbkit prints each line under the row, after
-    /// [`Row::CHILD_INDENT`] spaces and followed by a line feed. It escapes each control character and each
+    /// [`Children::indent`] spaces and followed by a line feed. It escapes each control character and each
     /// Unicode format character of the line as a table cell escapes them,
     /// so each child stays on one line. A row that returns no lines prints
     /// nothing under it. The child lines do not change the widths of the
@@ -326,7 +287,7 @@ pub trait Row: Serialize + JsonSchema {
     /// ```
     /// use std::fmt;
     ///
-    /// use crumbkit::{Row, Shown};
+    /// use crumbkit::{Children, Row, Shown};
     /// use schemars::JsonSchema;
     /// use serde::Serialize;
     ///
@@ -357,7 +318,7 @@ pub trait Row: Serialize + JsonSchema {
     ///
     /// impl Row for Service {
     ///     const COLUMNS: &'static [&'static str] = &["name"];
-    ///     const CHILDREN: Option<&'static str> = Some("parts");
+    ///     const CHILDREN: Option<Children> = Some(Children::field("parts"));
     /// }
     ///
     /// let service = Service {
@@ -370,7 +331,7 @@ pub trait Row: Serialize + JsonSchema {
     /// A type whose children print otherwise overrides it:
     ///
     /// ```
-    /// use crumbkit::Row;
+    /// use crumbkit::{Children, Row};
     /// use schemars::JsonSchema;
     /// use serde::Serialize;
     ///
@@ -394,7 +355,7 @@ pub trait Row: Serialize + JsonSchema {
     ///
     /// impl Row for Service {
     ///     const COLUMNS: &'static [&'static str] = &["name"];
-    ///     const CHILDREN: Option<&'static str> = Some("components");
+    ///     const CHILDREN: Option<Children> = Some(Children::field("components"));
     ///
     ///     fn child_lines(&self) -> Vec<String> {
     ///         let mark = |up: bool| if up { '+' } else { '-' };
@@ -406,7 +367,7 @@ pub trait Row: Serialize + JsonSchema {
     /// }
     /// ```
     fn child_lines(&self) -> Vec<String> {
-        children::shown_lines(self, Self::CHILDREN)
+        children::shown_lines(self, Self::CHILDREN.map(Children::get_field))
     }
 
     /// Returns the child lines that the text prints under the row with

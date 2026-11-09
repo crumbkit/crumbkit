@@ -1,8 +1,8 @@
 //! Tests for the tool record check of the field that `Row::CHILDREN` names
-//! and the text that `Row::CHILDREN_HELP` sets (ADR-0120, ADR-0137).
+//! and the text that `Children::help` sets (ADR-0120, ADR-0137).
 
 use crumbkit::help::Help;
-use crumbkit::{Batch, Bytes, Document, Error, Headed, Row, Tool};
+use crumbkit::{Batch, Bytes, Children, Document, Error, Headed, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -22,7 +22,7 @@ struct Book {
 impl Row for Book {
     const COLUMNS: &'static [&'static str] = &["id"];
     const LONG_COLUMNS: &'static [&'static str] = &["title"];
-    const CHILDREN: Option<&'static str> = Some("chapters");
+    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
 }
 
 /// A book whose children field is not one of its fields.
@@ -36,7 +36,7 @@ struct MisspeltBook {
 
 impl Row for MisspeltBook {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("chapter");
+    const CHILDREN: Option<Children> = Some(Children::field("chapter"));
 }
 
 /// A book whose children field has no doc comment.
@@ -49,7 +49,7 @@ struct UndocumentedBook {
 
 impl Row for UndocumentedBook {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("chapters");
+    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
 }
 
 /// A book whose children field is also one of its columns.
@@ -63,7 +63,7 @@ struct ColumnBook {
 
 impl Row for ColumnBook {
     const COLUMNS: &'static [&'static str] = &["id", "chapters"];
-    const CHILDREN: Option<&'static str> = Some("chapters");
+    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
 }
 
 /// A book whose children field is also one of its long columns.
@@ -78,7 +78,7 @@ struct LongColumnBook {
 impl Row for LongColumnBook {
     const COLUMNS: &'static [&'static str] = &["id"];
     const LONG_COLUMNS: &'static [&'static str] = &["chapters"];
-    const CHILDREN: Option<&'static str> = Some("chapters");
+    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
 }
 
 /// A book's file, which a headed batch prints under a header, and which
@@ -96,7 +96,7 @@ struct ChapteredFile {
 
 impl Row for ChapteredFile {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("chapters");
+    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
 }
 
 impl Headed for ChapteredFile {
@@ -126,21 +126,7 @@ const TEXTS: [&str; 5] = [
 
 impl<const HELP: u8> Row for DescribedBook<HELP> {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("chapters");
-    const CHILDREN_HELP: Option<&'static str> = Some(TEXTS[HELP as usize]);
-}
-
-/// A book that describes child lines it does not print, because it names
-/// no children field.
-#[derive(Serialize, JsonSchema)]
-struct ChildlessBook {
-    /// The book's id.
-    id: u32,
-}
-
-impl Row for ChildlessBook {
-    const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN_HELP: Option<&'static str> = Some("one line for each chapter.");
+    const CHILDREN: Option<Children> = Some(Children::field("chapters").help(TEXTS[HELP as usize]));
 }
 
 /// Returns the problem that `check_help` reports for a tool record whose
@@ -245,7 +231,7 @@ fn a_row_type_whose_children_help_is_one_sentence_on_one_line_passes() {
 
 /// The problem that `check_help` reports for a children text that help
 /// cannot print as one line.
-const NOT_ONE_LINE: &str = "shelf books list: the row type's CHILDREN_HELP is empty or holds a control character, such as a line feed, so help cannot print it on the one Children: line; write the text as one line";
+const NOT_ONE_LINE: &str = "shelf books list: the row type's `Children::help` is empty or holds a control character, such as a line feed, so help cannot print it on the one Children: line; write the text as one line";
 
 #[test]
 fn check_tool_fails_on_an_empty_children_help() {
@@ -255,7 +241,7 @@ fn check_tool_fails_on_an_empty_children_help() {
     assert_eq!(
         problem(document),
         format!(
-            "{NOT_ONE_LINE}\nshelf books list: the row type's CHILDREN_HELP does not end with a full stop, as every other line of help does; end the text with `.`"
+            "{NOT_ONE_LINE}\nshelf books list: the row type's `Children::help` does not end with a full stop, as every other line of help does; end the text with `.`"
         )
     );
 }
@@ -283,16 +269,6 @@ fn check_tool_fails_on_a_children_help_without_a_full_stop() {
 
     assert_eq!(
         problem(document),
-        "shelf books list: the row type's CHILDREN_HELP does not end with a full stop, as every other line of help does; end the text with `.`"
-    );
-}
-
-#[test]
-fn check_tool_fails_on_a_children_help_without_a_children_field() {
-    let document = Document::<Vec<ChildlessBook>>::new("shelf", "books-list", 1, "The test rows.");
-
-    assert_eq!(
-        problem(document),
-        "shelf books list: the row type sets CHILDREN_HELP and no CHILDREN, so its rows print no child lines and help never prints the text; name the children field in `Row::CHILDREN` or remove CHILDREN_HELP"
+        "shelf books list: the row type's `Children::help` does not end with a full stop, as every other line of help does; end the text with `.`"
     );
 }

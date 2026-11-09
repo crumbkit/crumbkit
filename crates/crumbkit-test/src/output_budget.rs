@@ -3,6 +3,7 @@
 //! printed, and checks that the tool keeps crumbkit's contract for a result
 //! that does not fit (ADR-0046, ADR-0062).
 
+use crumbkit::help::LeafDocument;
 use std::path::Path;
 use std::time::Duration;
 
@@ -128,7 +129,7 @@ fn check(
         {
             continue;
         }
-        let document = leaf.get_document();
+        let document = leaf.get_document().map(LeafDocument::document);
         let headed = document.is_some_and(|document| document.is_headed());
         let first_always = document.is_some_and(|document| document.get_always_print_first());
         for example in leaf.get_examples() {
