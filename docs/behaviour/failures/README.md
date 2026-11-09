@@ -40,6 +40,14 @@ value that the tool would refuse before it runs: a value for a flag, a value
 outside the argument's possible values, and a positional value that clap would
 read as a flag.
 
+`Recovery::Terminal` names a command that a person must run in a terminal,
+such as one that opens an editor or asks questions. Text prints it as
+``run `shelf login` in a terminal``, and JSON holds
+`{"kind":"terminal","call":"shelf login"}`, so a program that reads the
+failure can hand the step to a person and not run it itself. A call that the
+tool's command tree cannot render behaves as a `Recovery::Run` call that
+cannot render.
+
 `Recovery::None` with a reason is the exception for a failure that no step
 can repair. A tool declares each such failure with one of its declared codes
 through an opt-out from `check_recoveries`'s `Rule::NextStep`
@@ -71,7 +79,8 @@ Why: ADR-0001, ADR-0007, ADR-0081.
 
 A build with debug assertions writes one `warning:` line on standard error
 before a failure for each field that `finish` leaves out, and for each
-`Recovery::Run` call of its recovery or alternatives that does not render,
+`Recovery::Run` or `Recovery::Terminal` call of its recovery or alternatives
+that does not render,
 with the reason. A tool's own tests then see the mistake, and
 `check_recoveries` fails on the line. A release build writes no such line.
 These lines are every output that differs between a debug build and a release

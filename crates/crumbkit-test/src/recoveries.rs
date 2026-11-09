@@ -1,5 +1,6 @@
 //! The recovery check, which runs command lines that fail against a tool's
-//! built binary and follows each `run` recovery that they print.
+//! built binary and follows each `run` or `terminal` recovery that they
+//! print.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -322,7 +323,8 @@ impl<'a> Recoveries<'a> {
 }
 
 /// Runs each command line that `recoveries` starts with against the tool's
-/// binary, follows every `run` recovery that the failures print, writes the
+/// binary, follows every `run` or `terminal` recovery that the failures
+/// print, writes the
 /// chains in the golden file `recoveries.txt` in `dir`, and panics, as a
 /// failed test assertion does, naming every problem it finds.
 ///

@@ -341,3 +341,28 @@ fn no_next_step_without_braces_is_the_reason_as_written() {
         Recovery::none("the daemon owns the shelf")
     );
 }
+
+/// A failure whose next step a person takes in a terminal.
+#[derive(Debug, crumbkit_derive::Failure)]
+#[failure(
+    crate = ::crumbkit,
+    code = TIMED_OUT,
+    recovery = Recovery::Terminal(Call::new(&["books", "list"])),
+)]
+struct NeedsTerminal;
+
+impl fmt::Display for NeedsTerminal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("needs a terminal")
+    }
+}
+
+impl std::error::Error for NeedsTerminal {}
+
+#[test]
+fn a_recovery_attribute_takes_a_terminal_call() {
+    assert_eq!(
+        NeedsTerminal.recovery(),
+        Recovery::Terminal(Call::new(&["books", "list"]))
+    );
+}

@@ -68,7 +68,7 @@ rule's page gives its reason.
 | `Recoveries` | `recoveries/follow` | the check cannot read a failure that a run printed ([failure readers](../failures/excerpts-and-readers.md#reading-failures-back)) |
 | `SameCode` | `recoveries/same-code` | a command that a recovery runs fails on purpose with a code its chain already had |
 | `FieldValue` | `recoveries/field-value` | a recovery takes a placeholder's value from a field of its failure |
-| `NextStep` | `recoveries/next-step` | a failure with a declared code offers no `run`, `retry` or `hint` step |
+| `NextStep` | `recoveries/next-step` | a failure with a declared code offers no `run`, `terminal`, `retry` or `hint` step |
 | `NoTwin` | `twins/no-twin` | no single word of a command line causes a declared code |
 
 An opt-out made with `Allow::untwinned` from `Rule::NoTwin` names the failing

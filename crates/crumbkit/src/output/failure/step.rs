@@ -1,5 +1,5 @@
-//! A failure's recovery ready to print, with a `Recovery::Run` call rendered
-//! as text.
+//! A failure's recovery ready to print, with a `Recovery::Run` or
+//! `Recovery::Terminal` call rendered as text.
 
 use std::borrow::Cow;
 
@@ -11,8 +11,8 @@ use super::UNAVAILABLE;
 use crate::help::quote;
 use crate::{CallArg, CallTarget, FieldValue, Recovery};
 
-/// A [`Recovery`] ready to print: a `Recovery::Run` call is rendered against
-/// the tool's command, and a call that cannot be rendered becomes `None` with
+/// A [`Recovery`] ready to print: a `Recovery::Run` or `Recovery::Terminal`
+/// call is rendered against the tool's command, and a call that cannot be rendered becomes `None` with
 /// crumbkit's reason.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -30,6 +30,8 @@ pub enum RecoveryStep {
         /// The name of the failure's field whose values the call takes.
         field: String,
     },
+    /// A person must run this command line in a terminal.
+    Terminal(String),
     /// Run the same command again later.
     Retry,
     /// Follow this advice.
@@ -39,11 +41,12 @@ pub enum RecoveryStep {
 }
 
 impl RecoveryStep {
-    /// Reads `recovery` into a step, rendering a `Recovery::Run` call against
-    /// `command`. It returns `Err` with a `RecoveryStep::None` when the
-    /// recovery offers no step: a `Recovery::None`, or a `Recovery::Run` call
-    /// that cannot be rendered because the call does not resolve. It adds the
-    /// reason that a `Recovery::Run` call does not resolve to `unrendered`.
+    /// Reads `recovery` into a step, rendering a `Recovery::Run` or
+    /// `Recovery::Terminal` call against `command`. It returns `Err` with a
+    /// `RecoveryStep::None` when the recovery offers no step: a
+    /// `Recovery::None`, or a call that cannot be rendered because it does
+    /// not resolve. It adds the reason that a call does not resolve to
+    /// `unrendered`.
     pub(super) fn offered(
         recovery: Recovery,
         command: &mut Command,
@@ -51,25 +54,36 @@ impl RecoveryStep {
     ) -> Result<Self, Self> {
         match recovery {
             Recovery::Run(call) => {
-                let rendered = crate::call::render(&call, command).map_err(|e| e.to_string());
                 let all = all_field(&call);
-                rendered
-                    .map(|call| match all {
-                        Some(field) => Self::RunAll {
-                            call,
-                            field: field.to_owned(),
-                        },
-                        None => Self::Run(call),
-                    })
-                    .map_err(|reason| {
-                        unrendered.push(reason);
-                        Self::None(UNAVAILABLE.to_owned())
-                    })
+                Self::rendered(&call, command, unrendered).map(|call| match all {
+                    Some(field) => Self::RunAll {
+                        call,
+                        field: field.to_owned(),
+                    },
+                    None => Self::Run(call),
+                })
+            }
+            Recovery::Terminal(call) => {
+                Self::rendered(&call, command, unrendered).map(Self::Terminal)
             }
             Recovery::Retry => Ok(Self::Retry),
             Recovery::Hint(text) => Ok(Self::Hint(text)),
             Recovery::None { reason } => Err(Self::None(reason)),
         }
+    }
+
+    /// Returns `call` rendered against `command`. A call that does not
+    /// resolve adds its reason to `unrendered` and returns `Err` with the
+    /// `RecoveryStep::None` that prints in its place.
+    fn rendered(
+        call: &crate::Call,
+        command: &mut Command,
+        unrendered: &mut Vec<String>,
+    ) -> Result<String, Self> {
+        crate::call::render(call, command).map_err(|error| {
+            unrendered.push(error.to_string());
+            Self::None(UNAVAILABLE.to_owned())
+        })
     }
 
     /// Returns the text of the step's `help:` line. A `RunAll` step prints
@@ -96,6 +110,7 @@ impl RecoveryStep {
                     _ => Cow::Owned(format!("run `{call}` with every value of {field}")),
                 }
             }
+            Self::Terminal(call) => Cow::Owned(format!("run `{call}` in a terminal")),
             Self::Retry => Cow::Borrowed("run the same command again later"),
             Self::Hint(text) => Cow::Borrowed(text),
             Self::None(reason) => Cow::Owned(format!("no next step: {reason}")),
@@ -191,12 +206,14 @@ fn item_text(value: &FieldValue<'_>) -> String {
 /// Serializes the step as an object tagged by `kind`, such as
 /// `{"kind":"run","call":"shelf books list"}` or `{"kind":"retry"}`. A
 /// `RunAll` step is a `run` step with `all`, the name of its field, such as
-/// `{"kind":"run","call":"shelf books show <ID>...","all":"left_out"}`.
+/// `{"kind":"run","call":"shelf books show <ID>...","all":"left_out"}`. A
+/// `Terminal` step is `{"kind":"terminal","call":"shelf login"}`.
 impl Serialize for RecoveryStep {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let (kind, field, all) = match self {
             Self::Run(call) => ("run", Some(("call", call)), None),
             Self::RunAll { call, field } => ("run", Some(("call", call)), Some(field)),
+            Self::Terminal(call) => ("terminal", Some(("call", call)), None),
             Self::Retry => ("retry", None, None),
             Self::Hint(text) => ("hint", Some(("text", text)), None),
             Self::None(reason) => ("none", Some(("reason", reason)), None),

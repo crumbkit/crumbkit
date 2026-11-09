@@ -27,6 +27,7 @@ mod exits;
 mod fresh;
 mod next_step;
 mod reading;
+mod terminal;
 mod values;
 mod words;
 mod xdg;

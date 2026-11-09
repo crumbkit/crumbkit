@@ -136,6 +136,15 @@ fn step_schema(description: &str) -> Schema {
                 "required": ["kind", "call"],
             },
             {
+                "description": "A person must run this command in a terminal, so a program should hand the step to a person.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "terminal" },
+                    "call": { "type": "string" },
+                },
+                "required": ["kind", "call"],
+            },
+            {
                 "description": "Run the same command again later.",
                 "type": "object",
                 "properties": {

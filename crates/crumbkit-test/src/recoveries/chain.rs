@@ -223,7 +223,7 @@ impl Walk<'_> {
                 return;
             }
             let (call, values) = match step {
-                RecoveryStep::Run(call) => (call, None),
+                RecoveryStep::Run(call) | RecoveryStep::Terminal(call) => (call, None),
                 RecoveryStep::RunAll { call, field } => {
                     let list = parent.lists.iter().find(|(name, _)| name == field);
                     let Some((_, values)) = list.filter(|(_, values)| !values.is_empty()) else {
@@ -370,7 +370,7 @@ impl Walk<'_> {
 
     /// Adds a problem when `failure`, which the run `label` of the command
     /// at `path` printed, has one of the tool's declared codes and offers no
-    /// `run`, `retry` or `hint` step, unless an opt-out from
+    /// `run`, `terminal`, `retry` or `hint` step, unless an opt-out from
     /// `recoveries/next-step` covers the command. A `none` step with a
     /// reason is still no next step, because the opt-out is where a tool
     /// declares that exception.
@@ -381,6 +381,7 @@ impl Walk<'_> {
                 step,
                 RecoveryStep::Run(_)
                     | RecoveryStep::RunAll { .. }
+                    | RecoveryStep::Terminal(_)
                     | RecoveryStep::Retry
                     | RecoveryStep::Hint(_)
             )
@@ -392,7 +393,7 @@ impl Walk<'_> {
             return;
         }
         self.problems.push(format!(
-            "{}: {label} fails with {code}, whose failure offers no run, retry or hint step, so an agent has no next step. The failure can offer a recovery, or an opt-out from `{}` names `{}` with a reason",
+            "{}: {label} fails with {code}, whose failure offers no run, terminal, retry or hint step, so an agent has no next step. The failure can offer a recovery, or an opt-out from `{}` names `{}` with a reason",
             chain.start,
             Rule::NextStep.id(),
             allow::command_line(self.command, path)

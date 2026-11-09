@@ -172,3 +172,33 @@ fn a_read_failure_keeps_the_fields_it_is_given_with_their_values_and_has_none_wi
         []
     );
 }
+
+#[test]
+fn a_terminal_step_of_a_failure_document_reads_as_its_rendered_call() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"terminal","call":"tool login"}}"#;
+
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "a".to_owned(),
+            vec![RecoveryStep::Terminal("tool login".to_owned())],
+        )]
+    );
+}
+
+#[test]
+fn a_terminal_step_without_a_call_reads_as_no_next_step() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"terminal"}}"#;
+
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "a".to_owned(),
+            vec![RecoveryStep::None(String::new())],
+        )]
+    );
+}

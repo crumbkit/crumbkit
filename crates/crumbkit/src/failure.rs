@@ -294,6 +294,13 @@ pub enum Recovery {
     /// failure prints as
     /// `None` with the reason `the suggested command is not available`.
     Run(Call),
+    /// A person must run this command in a terminal, such as a command that
+    /// opens an editor or asks questions, so a program that reads the
+    /// failure should hand the step to a person. `crumbkit::finish` renders
+    /// the call as it renders a [`Recovery::Run`] call, and a call that does
+    /// not resolve prints the same way. A placeholder from `Call::arg` or
+    /// `Call::all` stays in the printed call for the person to fill in.
+    Terminal(Call),
     /// Run the same command again later, because the failure may pass.
     Retry,
     /// Follow this advice, such as `check the network connection`.

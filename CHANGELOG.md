@@ -8,6 +8,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit: `Recovery::Terminal` says a person must run a command in a
+  terminal. Text prints a `help:` line naming the command and the terminal,
+  and JSON prints `{"kind":"terminal","call":"..."}` ([behaviour/failures]).
 - crumbkit-process: `RunOptions::around_spawn` runs a hook around the start
   of a run's child, which can fail after the start and have the child stopped
   ([behaviour/processes]).
