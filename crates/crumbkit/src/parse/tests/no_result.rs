@@ -2,12 +2,12 @@
 //! as a server that runs until it is interrupted: `parse` refuses the view
 //! flags, accepts `--json`, and its help prints an `Output:` line.
 
+use crate::parse::parse_tree_to;
 use std::fmt;
 use std::process::ExitCode;
 
 use clap::{Args as _, Command};
 
-use super::parse_to;
 use crate::help::{Help, Leaf};
 use crate::twins::assert_one_word_apart;
 use crate::{Code, Failure, Output, Recovery, Sink, Tool};
@@ -39,8 +39,7 @@ struct Parsed {
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     let (code, output) = match result {
         Ok(((), output)) => (None, Some(output)),
         Err(stop) => (Some(ExitCode::from(stop)), None),

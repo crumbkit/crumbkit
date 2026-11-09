@@ -3,9 +3,10 @@
 //! carries clap's styles to a sink whose error writer wants them
 //! (ADR-0131).
 
+use crate::parse::parse_tree_to;
 use std::process::ExitCode;
 
-use super::{Stop, Unparsed, parse_to, tree, try_parse_to};
+use super::{Stop, Unparsed, tree, try_parse_to};
 use crate::{Sink, Tool};
 
 /// Runs `parse_to` over `tree()` with `args`, which ask for help or the
@@ -14,7 +15,7 @@ use crate::{Sink, Tool};
 fn page(args: &[&str], styled: bool) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(&mut out, &mut err).styled(styled),
         tree(),
         &Tool::new(),
@@ -136,7 +137,7 @@ fn refusal(args: &[&str], styled: bool) -> String {
 fn refusal_streams(args: &[&str], styled: bool) -> (String, String) {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(&mut out, &mut err).styled_errors(styled),
         tree(),
         &Tool::new(),
@@ -207,7 +208,7 @@ fn a_refusal_is_plain_on_a_sink_from_sink_new_even_when_its_result_is_styled() {
     for args in REFUSED {
         let mut out = Vec::new();
         let mut err = Vec::new();
-        let _stop = parse_to::<(), _, _, _, _>(
+        let _stop = parse_tree_to::<()>(
             &mut Sink::new(&mut out, &mut err).styled(true),
             tree(),
             &Tool::new(),
@@ -243,7 +244,7 @@ fn a_refusal_in_json_form_carries_no_styles_on_a_sink_whose_error_writer_wants_s
 fn a_refusal_that_try_parse_returns_prints_nothing_and_holds_no_escape_codes() {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let unparsed = try_parse_to::<(), _, _, _, _>(
+    let unparsed = try_parse_to::<()>(
         &mut Sink::new(&mut out, &mut err).styled_errors(true),
         tree(),
         &Tool::new(),

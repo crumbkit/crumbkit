@@ -1,12 +1,12 @@
 //! Tests for the line that names a person's aliases on the root's help.
 
+use crate::parse::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::Command;
 
 use super::tree;
 use crate::help::Help;
-use crate::parse::parse_to;
 use crate::{Sink, Tool};
 
 /// Returns two alias names, the second built from the name of `tool`, so a
@@ -33,8 +33,7 @@ const LINE: &str =
 /// exit code and what it printed to the output writer.
 fn run(tool: &Tool, args: &[&str]) -> (Option<ExitCode>, String) {
     let mut out = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, Vec::new()), tree(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, Vec::new()), tree(), tool, args);
     (
         result.err().map(ExitCode::from),
         String::from_utf8(out).unwrap(),

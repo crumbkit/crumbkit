@@ -2,6 +2,7 @@
 //! a leaf that sets none, returns for a refusal of a command line that names
 //! the leaf.
 
+use crate::parse::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::error::ErrorKind;
@@ -11,7 +12,7 @@ use serde_json::{Value, json};
 use super::{Parsed, Stop, Unparsed, admits, tree, try_parse_to};
 use crate::help::{Help, Leaf};
 use crate::tool::{Failures, RefusalContext};
-use crate::{Call, Page, Recovery, Sink, Tool, parse_to};
+use crate::{Call, Page, Recovery, Sink, Tool};
 
 /// The hint of a refused unknown flag at a command that passes its trailing
 /// words to a program.
@@ -79,8 +80,7 @@ const TOOL_WIDE: Tool = Tool::new()
 fn parse(tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), forwarding(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), forwarding(), tool, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),
@@ -205,7 +205,7 @@ fn a_refused_line_returned_unprinted_gives_the_hint_as_its_recovery() {
     let mut out = Vec::new();
     let mut err = Vec::new();
 
-    let result = try_parse_to::<(), _, _, _, _>(
+    let result = try_parse_to::<()>(
         &mut Sink::new(&mut out, &mut err),
         forwarding(),
         &TOOL,

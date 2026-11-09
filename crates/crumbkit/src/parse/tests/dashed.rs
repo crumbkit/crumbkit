@@ -1,12 +1,12 @@
 //! Tests for a command named in another style, which also answers to its
 //! dashed form when the tool record declares dashed forms.
 
+use crate::parse::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgMatches, Command, FromArgMatches};
 
-use crate::parse::parse_to;
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, Tool};
 
@@ -52,8 +52,7 @@ struct Run {
 fn run(tool: &Tool, args: &[&str]) -> Run {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<Matched, _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
+    let result = parse_tree_to::<Matched>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     Run {
         code: result.err().map(|stop| stop.exit_code()),
         out: String::from_utf8(out).unwrap(),
@@ -64,7 +63,7 @@ fn run(tool: &Tool, args: &[&str]) -> Run {
 #[test]
 fn a_dashed_form_reaches_the_command_and_the_parsed_words_hold_the_tool_s_own_name() {
     let words = ["--fields", "reading-lists", "reading-lists", "list"];
-    let result = parse_to::<Matched, _, _, _, _>(
+    let result = parse_tree_to::<Matched>(
         &mut Sink::new(Vec::new(), Vec::new()),
         tree(),
         &DASHED,

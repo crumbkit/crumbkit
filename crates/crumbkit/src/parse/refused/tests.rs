@@ -2,6 +2,7 @@
 //! with the words that the caller typed and parsed, and prints what
 //! `parse_to` prints when the tool prints it.
 
+use crate::parse::parse_tree_to;
 use std::ffi::{OsStr, OsString};
 
 use clap::error::{ContextKind, ContextValue, ErrorKind};
@@ -10,7 +11,7 @@ use clap::{Arg, ArgAction, Command};
 use super::{Refused, Unparsed};
 use crate::codes::CLI_USAGE;
 use crate::events::testing::watch;
-use crate::parse::{parse_to, try_parse_to};
+use crate::parse::try_parse_to;
 use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, Tool, ViewFlags};
@@ -48,8 +49,7 @@ fn tree() -> Command {
 fn refused_by(command: Command, tool: &Tool, args: &[&str]) -> Refused {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let unparsed =
-        try_parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
+    let unparsed = try_parse_to::<()>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     assert_eq!((out, err), (Vec::new(), Vec::new()));
     match unparsed {
         Err(Unparsed::Refused(refused)) => refused,
@@ -84,7 +84,7 @@ fn printed(refused: Refused) -> (String, String) {
 fn parse_printed(command: Command, tool: &Tool, args: &[&str]) -> (String, String) {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let _ = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
+    let _ = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     (
         String::from_utf8(out).unwrap(),
         String::from_utf8(err).unwrap(),
@@ -163,7 +163,7 @@ fn a_refused_view_flag_names_its_flag_as_the_culprit() {
 fn admits(command: Command, refused: &[&str], admitted: &[&str]) {
     assert_one_word_apart(refused, admitted);
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let parsed = try_parse_to::<(), _, _, _, _>(&mut sink, command, &Tool::new(), admitted);
+    let parsed = try_parse_to::<()>(&mut sink, command, &Tool::new(), admitted);
     assert!(
         parsed.is_ok(),
         "the admitted words {admitted:?} are refused"
@@ -328,7 +328,7 @@ fn a_refused_view_flag_reports_its_exit_when_it_prints_and_not_before() {
 #[test]
 fn a_stop_comes_back_after_help_printed() {
     let mut out = Vec::new();
-    let unparsed = try_parse_to::<(), _, _, _, _>(
+    let unparsed = try_parse_to::<()>(
         &mut Sink::new(&mut out, Vec::new()),
         tree(),
         &Tool::new(),

@@ -1,6 +1,7 @@
 //! Tests for leaves: the examples and columns that `parse_to` adds to the
 //! help of a leaf, and the examples that `extend` adds.
 
+use crate::parse::parse_tree_to;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::process::ExitCode;
@@ -11,7 +12,7 @@ use serde::Serialize;
 
 use super::{Column, Example, Leaf};
 use crate::help::{Help, extend};
-use crate::{Document, Prose, Row, Sink, Tool, parse_to};
+use crate::{Document, Prose, Row, Sink, Tool};
 
 mod document;
 
@@ -82,7 +83,7 @@ const EXAMPLES: &[Example] = &[
 fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
@@ -327,8 +328,7 @@ fn the_schema_is_built_only_when_the_words_ask_for_long_help() {
             )),
         ]);
     let run = |args: &[&str]| {
-        let _ =
-            parse_to::<(), _, _, _, _>(&mut Sink::new(Vec::new(), Vec::new()), tree(), &TOOL, args);
+        let _ = parse_tree_to::<()>(&mut Sink::new(Vec::new(), Vec::new()), tree(), &TOOL, args);
         SCHEMAS.get()
     };
 
@@ -346,7 +346,7 @@ fn a_leaf_off_the_typed_path_keeps_its_help() {
         .examples(EXAMPLES)
         .document(PLANETS)]);
 
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Vec::new(), Vec::new()),
         tree(),
         &TOOL,
@@ -398,7 +398,7 @@ fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse()
     for flag in ["-h", "--help"] {
         let mut out = Vec::new();
         let mut err = Vec::new();
-        let result = parse_to::<(), _, _, _, _>(
+        let result = parse_tree_to::<()>(
             &mut Sink::new(&mut out, &mut err),
             extend(tree(), &TOOL),
             &TOOL,

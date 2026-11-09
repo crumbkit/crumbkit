@@ -3,13 +3,13 @@
 //! `--json` on a leaf whose row type sets `Row::WHOLE` (ADR-0138,
 //! ADR-0140, ADR-0149).
 
+use crate::parse::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Args as _, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::parse_to;
 use crate::help::{Help, Leaf};
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Listing, Row, Sink, Tool};
@@ -111,8 +111,7 @@ struct Parsed {
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     Parsed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),

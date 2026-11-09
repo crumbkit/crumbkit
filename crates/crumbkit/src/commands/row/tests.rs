@@ -332,7 +332,7 @@ fn help_prints_the_children_text_of_the_row_on_its_children_line() {
     let mut err = Vec::new();
     let mut sink = crate::Sink::new(&mut out, &mut err);
     let args = ["shelf", "books", "remove", "-h"];
-    let _ = crate::parse_to::<(), _, _, _, _>(&mut sink, tool, &TOOL, args);
+    let _ = crate::parse::parse_tree_to::<()>(&mut sink, tool, &TOOL, args);
 
     let page = String::from_utf8(out).unwrap();
     let row = row(&TOOL);

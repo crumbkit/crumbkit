@@ -402,3 +402,21 @@ impl io::Write for Short {
         Ok(())
     }
 }
+
+#[test]
+fn a_sink_over_the_standard_streams_asks_for_styles_when_the_tool_detects_a_terminal() {
+    let mut sink = Sink::standard();
+
+    sink.follow_terminal(|| true);
+
+    assert!(sink.is_styled());
+}
+
+#[test]
+fn a_sink_over_other_writers_keeps_the_styles_that_its_caller_set() {
+    let mut sink = Sink::new(Vec::new(), Vec::new());
+
+    sink.follow_terminal(|| true);
+
+    assert!(!sink.is_styled());
+}

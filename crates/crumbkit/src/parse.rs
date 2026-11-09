@@ -5,7 +5,7 @@ use std::ffi::OsString;
 use std::io::{BufRead, Write};
 
 use clap::error::ErrorKind;
-use clap::{Command, FromArgMatches};
+use clap::{Command, CommandFactory, FromArgMatches};
 
 pub use self::refused::{Refused, Unparsed};
 pub use self::stop::{Printed, Stop};
@@ -34,7 +34,7 @@ mod tests;
 pub(crate) mod walk;
 mod walked;
 
-/// Parses the process's command line against `command` with the tool's
+/// Parses the process's command line against `C`'s command with the tool's
 /// `tool`, and returns the tool's parsed type and an [`Output`], which
 /// holds the view flags, the command that it parsed against, the words
 /// that the caller typed and what `tool` decides about printing.
@@ -51,7 +51,7 @@ mod walked;
 /// ```no_run
 /// use std::process::ExitCode;
 ///
-/// use clap::{CommandFactory, Parser};
+/// use clap::Parser;
 /// use crumbkit::Tool;
 /// use crumbkit::ViewFlags;
 ///
@@ -64,7 +64,7 @@ mod walked;
 /// }
 ///
 /// fn main() -> ExitCode {
-///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Tool::new());
+///     let parsed = crumbkit::parse::<Cli>(&Tool::new());
 ///     let (_cli, _output) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.exit_code(),
@@ -82,125 +82,40 @@ mod walked;
 /// (ADR-0131, ADR-0133). Both need crumbkit's `color` feature, which turns on
 /// clap's.
 ///
-/// `parse` is [`try_parse`] followed by printing the refusal. A tool that
-/// reads a refused command line before anything prints, such as a tool
-/// that resolves its own aliases or prints its own failure document, calls
-/// `try_parse`.
+/// A tool that reads a refused command line before anything prints, such as
+/// a tool that resolves its own aliases or prints its own failure document,
+/// or a tool that builds its command at run time, calls [`try_parse_to`]
+/// with a sink from [`Sink::standard`].
 ///
 /// # Errors
 ///
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
 /// refusal. It holds the exit code for `main` to return, and whether the
 /// caller asked for JSON.
-pub fn parse<C: FromArgMatches>(command: Command, tool: &Tool) -> Result<(C, Output), Stop> {
-    parse_from(command, tool, std::env::args_os())
+pub fn parse<C: CommandFactory + FromArgMatches>(tool: &Tool) -> Result<(C, Output), Stop> {
+    parse_from(tool, std::env::args_os())
 }
 
-/// Parses the process's command line as [`parse`] does, and returns a
-/// refused command line unprinted, as a [`Refused`] inside
-/// [`Unparsed::Refused`].
-///
-/// A tool calls it when it needs the refusal before anything prints:
-///
-/// ```no_run
-/// use std::process::ExitCode;
-///
-/// use clap::{CommandFactory, Parser};
-/// use crumbkit::Tool;
-/// use crumbkit::{Unparsed, ViewFlags};
-///
-/// /// List the books in a small catalogue.
-/// #[derive(Parser)]
-/// #[command(name = "shelf")]
-/// struct Cli {
-///     #[command(flatten)]
-///     view: ViewFlags,
-/// }
-///
-/// fn main() -> ExitCode {
-///     let parsed = crumbkit::try_parse::<Cli>(Cli::command(), &Tool::new());
-///     let (_cli, _output) = match parsed {
-///         Ok(parsed) => parsed,
-///         Err(Unparsed::Refused(refused)) => {
-///             // The tool reads `refused.typed()` and `refused.culprit()`
-///             // here, and prints the refusal when it has no other answer.
-///             return refused.print().exit_code();
-///         }
-///         Err(unparsed) => return unparsed.print().exit_code(),
-///     };
-///     // Run the command, then return `crumbkit::finish(output, ...)`.
-///     ExitCode::SUCCESS
-/// }
-/// ```
-///
-/// Each parse function hands clap's matches to `C::from_arg_matches_mut`,
-/// and a derived type takes each value out of them, so the matches no
-/// longer report each value's source. A tool that reads the sources wraps
-/// its type in one that clones the matches first, as the [parsing
-/// docs][keep-matches] show.
-///
-/// # Errors
-///
-/// Returns [`Unparsed::Stopped`] after crumbkit has printed help, the
-/// version or a topic, and [`Unparsed::Refused`] for a refused command line,
-/// which nothing has printed.
-///
-/// [keep-matches]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/parsing/README.md#reading-claps-matches-after-parsing
-pub fn try_parse<C: FromArgMatches>(
-    command: Command,
-    tool: &Tool,
-) -> Result<(C, Output), Unparsed> {
-    try_parse_from(command, tool, std::env::args_os())
-}
-
-/// Parses `args` against `command` as [`parse`] parses the process's command
-/// line. The first argument is the program name, as in clap's `parse_from`.
+/// Parses `args` against `C`'s command as [`parse`] parses the process's
+/// command line. The first argument is the program name, as in clap's
+/// `parse_from`.
 ///
 /// # Errors
 ///
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
 /// refusal. It holds the exit code for `main` to return, and whether the
 /// caller asked for JSON.
-pub fn parse_from<C, I, T>(command: Command, tool: &Tool, args: I) -> Result<(C, Output), Stop>
-where
-    C: FromArgMatches,
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-{
-    try_parse_from(command, tool, args).map_err(Unparsed::print)
-}
-
-/// Parses `args` against `command` as [`try_parse`] parses the process's
-/// command line. The first argument is the program name.
-///
-/// # Errors
-///
-/// Returns [`Unparsed::Stopped`] after crumbkit has printed help, the
-/// version or a topic, and [`Unparsed::Refused`] for a refused command line,
-/// which nothing has printed.
-pub fn try_parse_from<C, I, T>(
-    command: Command,
+pub fn parse_from<C: CommandFactory + FromArgMatches>(
     tool: &Tool,
-    args: I,
-) -> Result<(C, Output), Unparsed>
-where
-    C: FromArgMatches,
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-{
-    let styled = tool.get_output().detects(crate::sink::stdout_is_terminal);
-    run(
-        &mut Sink::standard().styled(styled),
-        command,
-        tool,
-        args,
-        true,
-    )
+    args: impl IntoIterator<Item = impl Into<OsString>>,
+) -> Result<(C, Output), Stop> {
+    try_parse_to(&mut Sink::standard(), C::command(), tool, args).map_err(Unparsed::print)
 }
 
-/// Parses `args` against `command` and prints help, the version or a
+/// Parses `args` against `C`'s command and prints help, the version or a
 /// refusal to `sink`, and returns what [`parse_from`] would return. It is
-/// [`try_parse_to`] followed by [`Unparsed::print_to`] on `sink`.
+/// [`try_parse_to`] with `C::command()` followed by [`Unparsed::print_to`] on
+/// `sink`.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, as
 /// they call [`finish_to`](crate::finish_to). Help and the version print as
@@ -359,26 +274,67 @@ where
 /// caller asked for JSON.
 ///
 /// [books-show-2-comma-5]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-2-comma-5.stderr
-pub fn parse_to<C, I, T, O, E>(
-    sink: &mut Sink<O, E, impl BufRead>,
-    command: Command,
+pub fn parse_to<C: CommandFactory + FromArgMatches>(
+    sink: &mut Sink<impl Write, impl Write, impl BufRead>,
     tool: &Tool,
-    args: I,
-) -> Result<(C, Output), Stop>
-where
-    C: FromArgMatches,
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-    O: Write,
-    E: Write,
-{
-    try_parse_to(sink, command, tool, args).map_err(|unparsed| unparsed.print_to(sink))
+    args: impl IntoIterator<Item = impl Into<OsString>>,
+) -> Result<(C, Output), Stop> {
+    try_parse_to(sink, C::command(), tool, args).map_err(|unparsed| unparsed.print_to(sink))
 }
 
 /// Parses `args` against `command` as [`parse_to`] does, and prints help,
 /// the version or a topic to `sink`. It returns a refused command line
 /// unprinted, as a [`Refused`] inside [`Unparsed::Refused`], which
 /// [`Refused::print_to`] prints as `parse_to` prints it.
+///
+/// A tool calls it when it needs the refusal before anything prints, or when
+/// it builds its command at run time, so `command` differs from what `C`
+/// derives. With a sink from [`Sink::standard`], it reads terminals as
+/// [`parse`] does: help carries clap's colours when standard output is a
+/// terminal and the tool record detects terminals, and the picker reads the
+/// process's standard input and writes to its standard error.
+/// [`Unparsed::print`] then prints what it returned:
+///
+/// ```no_run
+/// use std::process::ExitCode;
+///
+/// use clap::{CommandFactory, Parser};
+/// use crumbkit::{Sink, Tool, Unparsed, ViewFlags};
+///
+/// /// List the books in a small catalogue.
+/// #[derive(Parser)]
+/// #[command(name = "shelf")]
+/// struct Cli {
+///     #[command(flatten)]
+///     view: ViewFlags,
+/// }
+///
+/// fn main() -> ExitCode {
+///     let parsed = crumbkit::try_parse_to::<Cli>(
+///         &mut Sink::standard(),
+///         Cli::command(),
+///         &Tool::new(),
+///         std::env::args_os(),
+///     );
+///     let (_cli, _output) = match parsed {
+///         Ok(parsed) => parsed,
+///         Err(Unparsed::Refused(refused)) => {
+///             // The tool reads `refused.typed()` and `refused.culprit()`
+///             // here, and prints the refusal when it has no other answer.
+///             return refused.print().exit_code();
+///         }
+///         Err(unparsed) => return unparsed.print().exit_code(),
+///     };
+///     // Run the command, then return `crumbkit::finish(output, ...)`.
+///     ExitCode::SUCCESS
+/// }
+/// ```
+///
+/// Each parse function hands clap's matches to `C::from_arg_matches_mut`,
+/// and a derived type takes each value out of them, so the matches no
+/// longer report each value's source. A tool that reads the sources wraps
+/// its type in one that clones the matches first, as the [parsing
+/// docs][keep-matches] show.
 ///
 /// A refused `help` command line keeps both of its forms. `shelf help
 /// comets` is refused as `shelf comets --help`, so [`Refused::typed`]
@@ -390,20 +346,29 @@ where
 /// Returns [`Unparsed::Stopped`] after crumbkit has printed help, the
 /// version or a topic, and [`Unparsed::Refused`] for a refused command line,
 /// which nothing has printed.
-pub fn try_parse_to<C, I, T, O, E>(
-    sink: &mut Sink<O, E, impl BufRead>,
+///
+/// [keep-matches]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/parsing/README.md#reading-claps-matches-after-parsing
+pub fn try_parse_to<C: FromArgMatches>(
+    sink: &mut Sink<impl Write, impl Write, impl BufRead>,
     command: Command,
     tool: &Tool,
-    args: I,
-) -> Result<(C, Output), Unparsed>
-where
-    C: FromArgMatches,
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-    O: Write,
-    E: Write,
-{
-    run(sink, command, tool, args, false)
+    args: impl IntoIterator<Item = impl Into<OsString>>,
+) -> Result<(C, Output), Unparsed> {
+    sink.follow_terminal(|| tool.get_output().detects(crate::sink::stdout_is_terminal));
+    run(sink, command, tool, args)
+}
+
+/// Parses `args` against `command` as [`parse_to`] does with `C`'s command.
+/// Most of the crate's tests build their tree by hand, so `command` differs
+/// from what `C` derives.
+#[cfg(test)]
+pub(crate) fn parse_tree_to<C: FromArgMatches>(
+    sink: &mut Sink<impl Write, impl Write, impl BufRead>,
+    command: Command,
+    tool: &Tool,
+    args: impl IntoIterator<Item = impl Into<OsString>>,
+) -> Result<(C, Output), Stop> {
+    try_parse_to(sink, command, tool, args).map_err(|unparsed| unparsed.print_to(sink))
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes, without
@@ -416,7 +381,6 @@ fn run<C, I, T, O, E, R>(
     command: Command,
     tool: &Tool,
     args: I,
-    standard: bool,
 ) -> Result<(C, Output), Unparsed>
 where
     C: FromArgMatches,
@@ -436,6 +400,7 @@ where
         .get_failures()
         .get_spelling()
         .for_tool(tool.tool_name(&command));
+    let standard = sink.is_standard();
     let parsed = read(sink, command, tool, spelling, args, standard);
     #[cfg(feature = "tracing")]
     if let Err(Unparsed::Stopped(stop)) = &parsed {
@@ -446,11 +411,11 @@ where
 
 /// Parses `args` against `command` as [`parse_to`] describes, and returns a
 /// refusal unprinted. `standard` says that `sink` is over the process's
-/// standard streams, as in [`parse_from`]: help for a styled sink then
-/// prints through clap's `Error::print`, and the tool record's picker reads the
-/// process's standard input and writes to its standard error. Otherwise
-/// help goes to the sink's output writer, and the picker uses the sink's
-/// input and error writer.
+/// standard streams, as [`Sink::standard`] makes it: help for a styled sink
+/// then prints through clap's `Error::print`, and the tool record's picker
+/// reads the process's standard input and writes to its standard error.
+/// Otherwise help goes to the sink's output writer, and the picker uses the
+/// sink's input and error writer.
 fn read<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
     mut command: Command,

@@ -93,7 +93,7 @@ fn show_stops_looking_up_ids_once_its_books_fill_the_budget() {
     };
     let tool = Tool::new().output(crumbkit::tool::Output::new().budget(1024, "the test fills it"));
     let words = ["shelf", "books", "show", "1"];
-    let (_, output) = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &tool, words).unwrap();
+    let (_, output) = crumbkit::parse_from::<Cli>(&tool, words).unwrap();
 
     let batch = show(&args, None, output.room(BOOKS_SHOW)).unwrap();
 

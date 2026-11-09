@@ -1,6 +1,7 @@
 //! Tests for the `Text:` line of a leaf whose rows print their own text
 //! line (ADR-0064).
 
+use crate::parse::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
@@ -8,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::{Effects, Example, Help, Leaf, STREAM_LINE};
-use crate::{Document, Row, Sink, Stream, Tool, parse_to};
+use crate::{Document, Row, Sink, Stream, Tool};
 
 /// A tool with a global `--json` and one leaf, `tool links check`.
 fn tree() -> Command {
@@ -31,7 +32,7 @@ fn tree() -> Command {
 fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }

@@ -31,7 +31,7 @@ type Printed = (String, String);
 fn refuse(args: &[&str]) -> (Vec<OsString>, Option<String>, Printed, Printed) {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let parsed = crumbkit::try_parse_to::<Cli, _, _, _, _>(
+    let parsed = crumbkit::try_parse_to::<Cli>(
         &mut Sink::new(&mut out, &mut err),
         Cli::command(),
         &Tool::new(),

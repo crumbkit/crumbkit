@@ -1,13 +1,14 @@
 //! Tests for a leaf's effects: the words help prints and the object that
 //! `commands list` writes.
 
+use crate::parse::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::{Effects, Items};
 use crate::help::{Example, Help, Leaf};
-use crate::{Sink, Tool, parse_to};
+use crate::{Sink, Tool};
 
 /// A tool with a global flag and one leaf, `tool planets remove`.
 fn tree() -> Command {
@@ -34,7 +35,7 @@ fn tree() -> Command {
 fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }

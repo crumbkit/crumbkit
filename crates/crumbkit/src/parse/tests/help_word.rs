@@ -1,12 +1,13 @@
 //! Tests for the word `help`, which `parse_to` answers in place of clap.
 
+use crate::parse::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::{Parsed, admits, parse, parse_tree, tree};
-use crate::parse::{Unparsed, parse_to, try_parse_to};
+use crate::parse::{Unparsed, try_parse_to};
 use crate::{Sink, Tool};
 
 #[test]
@@ -91,7 +92,7 @@ struct Word {
 fn a_root_without_subcommands_reads_help_as_an_ordinary_word() {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<Word, _, _, _, _>(
+    let result = parse_tree_to::<Word>(
         &mut Sink::new(&mut out, &mut err),
         Command::new("tool").arg(Arg::new("word").required(true)),
         &Tool::new(),
@@ -181,7 +182,7 @@ fn help_with_an_unknown_word_and_a_flag_is_refused_with_the_unknown_word_as_the_
     admits(leaf_flags(), &typed, &["tool", "help", "planets", "--json"]);
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = try_parse_to::<(), _, _, _, _>(
+    let result = try_parse_to::<()>(
         &mut Sink::new(&mut out, &mut err),
         leaf_flags(),
         &Tool::new(),

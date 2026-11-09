@@ -2,6 +2,7 @@
 //! that turned its help flag off: the call names the deepest command on the
 //! path that keeps a help flag, or the refusal offers no step.
 
+use crate::parse::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
@@ -11,7 +12,7 @@ use serde_json::{Value, json};
 use super::{Parsed, Stop, admits, parse_tree};
 use crate::help::{Help, Leaf};
 use crate::tool::RefusalContext;
-use crate::{Call, Sink, Tool, parse_to};
+use crate::{Call, Sink, Tool};
 
 /// The reason of the recovery of a refusal whose path offers no help page.
 const NO_HELP: &str = "no command that the command line names has a -h help page";
@@ -76,8 +77,7 @@ fn bash(_: &RefusalContext<'_>) -> Vec<Call> {
 fn parse_with_tool(command: Command, tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),

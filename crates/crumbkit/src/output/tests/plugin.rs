@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-use clap::{CommandFactory as _, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 use super::{PLANETS, Planet};
 use crate::{Code, Failure, Recovery, Sink, Tool, ViewFlags, finish_to, parse_to};
@@ -86,8 +86,7 @@ enum Command {
 /// output, and returns the exit code and the standard output.
 fn finish(args: &[&str], failure: PluginFailure) -> (u8, String) {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let Ok((_, output)) = parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &TOOL, args)
-    else {
+    let Ok((_, output)) = parse_to::<Cli>(&mut sink, &TOOL, args) else {
         panic!("parse refused {args:?}");
     };
     let mut out = Vec::new();

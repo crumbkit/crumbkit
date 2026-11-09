@@ -16,6 +16,8 @@ use std::process::ExitCode;
 use std::time::SystemTime;
 
 pub use crate::cli::{Cli, TOOL};
+use crumbkit::{Sink, Unparsed};
+
 use crate::cli::{CommandsCommand, EntriesCommand, ListsCommand, Resource, SchemasCommand};
 use crate::graft::{ListCommand, Parsed};
 pub use crate::graft::{command, tool};
@@ -53,11 +55,14 @@ where
     let dir = lists::dir();
     let lists = dir.as_deref().map(lists_in).unwrap_or_default();
     let tool = tool(&lists);
-    let (parsed, mut output) =
-        match crumbkit::parse_from::<Parsed, _, _>(command(&lists), &tool, args) {
-            Ok(parsed) => parsed,
-            Err(stop) => return stop.exit_code(),
-        };
+    // reading builds its tree at run time, so it names that tree here, which
+    // `parse_from` would take from `Parsed`.
+    let parsed =
+        crumbkit::try_parse_to::<Parsed>(&mut Sink::standard(), command(&lists), &tool, args);
+    let (parsed, mut output) = match parsed.map_err(Unparsed::print) {
+        Ok(parsed) => parsed,
+        Err(stop) => return stop.exit_code(),
+    };
     match parsed {
         Parsed::Grafted {
             name,

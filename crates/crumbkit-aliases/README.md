@@ -68,7 +68,7 @@ const TOOL: Tool = Tool::new();
 fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
     let command = Cli::command();
     let args = crumbkit_aliases::expand(&command, args, file);
-    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &TOOL, args) {
+    let (cli, mut output) = match crumbkit::parse_from::<Cli>(&TOOL, args) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };

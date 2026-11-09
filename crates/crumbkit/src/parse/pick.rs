@@ -36,9 +36,8 @@ pub(super) enum Step {
 pub(super) struct Picking {
     /// The tool record's picker.
     picker: &'static dyn Picker,
-    /// Whether the run reads the process's standard input, as `parse` and
-    /// `parse_from` do, instead of the input of the sink that `parse_to`
-    /// receives.
+    /// Whether the run reads the process's standard input, as a sink from
+    /// `Sink::standard` asks, instead of the input of the sink it receives.
     standard: bool,
     /// The clap ids of the arguments that the picker was asked about.
     asked: Vec<String>,

@@ -1,11 +1,12 @@
 //! Tests for a tool record whose root is a subcommand, as for a tool that
 //! another program runs with a fixed first word, such as a cargo subcommand.
 
+use crate::parse::parse_tree_to;
 use std::process::ExitCode;
 
 use super::{Parsed, tree};
 use crate::help::Help;
-use crate::parse::{Stop, parse_to};
+use crate::parse::Stop;
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, Tool};
 
@@ -18,8 +19,7 @@ const TOOL: Tool = Tool::new().help(Help::new().root(&["planets"]));
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),

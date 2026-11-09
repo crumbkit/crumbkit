@@ -27,7 +27,7 @@ failure with a stable code and a next step:
 use std::fmt;
 use std::process::ExitCode;
 
-use clap::{CommandFactory, Parser};
+use clap::Parser;
 use crumbkit::Tool;
 use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, ViewFlags};
 use schemars::JsonSchema;
@@ -104,7 +104,7 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
 }
 
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Tool::new());
+    let parsed = crumbkit::parse::<Cli>(&Tool::new());
     let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),

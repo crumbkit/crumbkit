@@ -69,7 +69,7 @@ where
     let command = Cli::command();
     let file = crumbkit_aliases::file(command.get_name());
     let args = crumbkit_aliases::expand(&command, args, file.as_deref());
-    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &TOOL, args) {
+    let (cli, mut output) = match crumbkit::parse_from::<Cli>(&TOOL, args) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };

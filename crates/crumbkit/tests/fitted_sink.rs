@@ -5,7 +5,7 @@
 use std::ops::ControlFlow;
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use crumbkit::{Document, Error, Listing, Output, Row, Sink, Stream, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -71,12 +71,7 @@ fn parse(tool: &Tool, args: &[&str]) -> Option<Output> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["library"].iter().chain(args);
-    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        Cli::command(),
-        tool,
-        words,
-    );
+    let parsed = crumbkit::parse_to::<Cli>(&mut Sink::new(&mut out, &mut err), tool, words);
     parsed.ok().map(|(_tool, output)| output)
 }
 

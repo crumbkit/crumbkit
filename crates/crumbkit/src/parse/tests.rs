@@ -1,13 +1,14 @@
 //! Tests for `parse_to`: what it returns, and what it prints for help, the
 //! version and a refused command line.
 
+use crate::parse::parse_tree_to;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::message::message;
-use super::{Stop, Unparsed, parse_to, try_parse_to};
+use super::{Stop, Unparsed, try_parse_to};
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, Tool};
 
@@ -110,7 +111,7 @@ fn parse(args: &[&str]) -> Parsed {
 fn parse_tree(command: Command, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = try_parse_to::<(), _, _, _, _>(
+    let result = try_parse_to::<()>(
         &mut Sink::new(&mut out, &mut err),
         command,
         &Tool::new(),
@@ -455,7 +456,7 @@ impl Write for Failing {
 #[test]
 fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Failing(io::ErrorKind::BrokenPipe), &mut err),
         tree(),
         &Tool::new(),
@@ -469,7 +470,7 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
 #[test]
 fn a_page_that_cannot_be_written_stops_with_exit_1() {
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Failing(io::ErrorKind::Other), &mut err),
         tree(),
         &Tool::new(),

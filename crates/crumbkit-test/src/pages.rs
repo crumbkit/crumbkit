@@ -156,12 +156,10 @@ pub(crate) fn pages<'a>(
         let line = format!("{} {flag}", visit.path());
         let mut out = Vec::new();
         // `()` takes no values from the matches, and help never reaches it.
-        let result = crumbkit::parse_to::<(), _, _, _, _>(
-            &mut Sink::new(&mut out, Vec::new()),
-            command.clone(),
-            &tool,
-            line.split(' '),
-        );
+        let mut sink = Sink::new(&mut out, Vec::new());
+        let result =
+            crumbkit::try_parse_to::<()>(&mut sink, command.clone(), &tool, line.split(' '))
+                .map_err(|unparsed| unparsed.print_to(&mut sink));
         if result.err().map(ExitCode::from) == Some(ExitCode::SUCCESS) {
             pages.push((visit, String::from_utf8_lossy(&out).into_owned()));
         } else {
