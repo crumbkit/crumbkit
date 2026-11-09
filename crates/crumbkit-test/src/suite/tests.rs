@@ -5,27 +5,18 @@ use crumbkit::{Code, Tool};
 
 use super::{Check, Suite};
 use crate::testing::panic_message;
-use crate::{Allow, Examples, Rule};
+use crate::{Allow, Budgets, Examples, Rule};
 
-const TOOL: Tool = Tool::new();
-
-/// Returns a tree whose one problem is that help shows a second name for
+/// Returns a tool whose one problem is that help shows a second name for
 /// `books`.
-fn second_name() -> Command {
-    Command::new("shelf").subcommand(
-        Command::new("books")
-            .visible_alias("b")
-            .subcommand(Command::new("list")),
-    )
+fn second_name() -> (Command, Tool) {
+    let books = Command::new("books")
+        .visible_alias("b")
+        .subcommand(Command::new("list"));
+    (Command::new("shelf").subcommand(books), Tool::new())
 }
 
-/// Returns the tree of [`second_name`] with the tool record that a tool builds
-/// at run time.
-fn built() -> (Command, Tool) {
-    (second_name(), TOOL)
-}
-
-const SUITE: Suite<'_> = Suite::new(second_name, &TOOL);
+const SUITE: Suite<'_> = Suite::new(second_name);
 
 #[test]
 fn a_check_whose_input_is_missing_fails_and_names_the_input() {
@@ -69,12 +60,6 @@ fn a_check_runs_on_the_tools_command_tree_and_reports_its_problems() {
 }
 
 #[test]
-fn a_tool_built_at_run_time_is_checked_as_a_declared_tool_is() {
-    let message = panic_message(|| Suite::built(built).run(Check::Names)).unwrap_or_default();
-    assert!(message.contains("books"), "{message}");
-}
-
-#[test]
 fn the_opt_outs_reach_the_checks() {
     const ALLOWS: Suite<'_> = SUITE.allow(&[Allow::new(
         Rule::OneName,
@@ -103,21 +88,21 @@ fn the_golden_directory_holds_the_help_golden_files() {
 }
 
 #[test]
-fn binary_help_pages_need_the_examples_input() {
-    const BINARY: Suite<'_> = SUITE.help_from_binary();
+fn a_budget_set_on_the_suite_reaches_the_size_check() {
+    const TIGHT: Suite<'_> =
+        SUITE.budgets(Budgets::new().root(1, "The budget of this test is one byte."));
 
-    let message = panic_message(|| BINARY.run(Check::HelpSizes)).unwrap_or_default();
-    assert!(message.contains(".examples("), "{message}");
+    assert_eq!(panic_message(|| SUITE.run(Check::HelpSizes)), None);
+    let message = panic_message(|| TIGHT.run(Check::HelpSizes)).unwrap_or_default();
+    assert!(message.contains("budget"), "{message}");
 }
 
 #[cfg(unix)]
 #[test]
-fn binary_help_pages_are_what_the_binary_prints() {
+fn with_examples_the_help_checks_read_what_the_binary_prints() {
     let dir = crate::temp::TempDir::new("suite-binary").unwrap();
     let binary = crate::testing::help_binary(&dir, &[("-h", "shelf\n")]);
-    let suite = SUITE
-        .examples(Examples::new(&binary, "tests/golden/examples"))
-        .help_from_binary();
+    let suite = SUITE.examples(Examples::new(&binary, "tests/golden/examples"));
 
     let message = panic_message(|| suite.run(Check::HelpSizes)).unwrap_or_default();
     assert!(message.contains("books -h"), "{message}");

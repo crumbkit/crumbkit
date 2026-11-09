@@ -7,6 +7,7 @@ use clap::Command;
 use crumbkit::{Code, Tool};
 
 use crate::allow::{Allow, is_reason};
+use crate::opt_outs::{Departures, check_departures};
 use crate::{Budgets, Examples, Pages, PathBudgets, Recoveries, Twins};
 
 #[macro_use]
@@ -15,6 +16,10 @@ mod check;
 mod tests;
 
 pub use self::check::Check;
+
+/// The file of a tool's checked-in command reference, where
+/// `cargo crumbkit docs` writes it.
+const REFERENCE: &str = "docs/commands.md";
 
 /// The inputs of every convention check, which
 /// [`conventions!`](crate::conventions) expands into one test for each
@@ -29,20 +34,15 @@ pub use self::check::Check;
 /// use crumbkit::Tool;
 /// use crumbkit_test::{Allow, Check, Examples, Rule, Suite};
 ///
-/// const TOOL: Tool = Tool::new();
 /// const ALLOW: &[Allow] =
 ///     &[Allow::new(Rule::RootLeaf, "version", "People type `shelf version` from habit.")];
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
-/// fn command() -> Command {
-///     Command::new("shelf")
-/// }
-///
-/// const SUITE: Suite<'_> = Suite::new(command, &TOOL)
+/// const SUITE: Suite<'_> = Suite::new(|| (Command::new("shelf"), Tool::new()))
 ///     .allow(ALLOW)
 ///     .examples(EXAMPLES)
-///     .skip(Check::Listings, "shelf has no list commands.");
+///     .skip(Check::CommandReference, "The commands come from files in the caller's directory.");
 ///
 /// crumbkit_test::conventions!(SUITE);
 /// # fn main() {}
@@ -54,11 +54,12 @@ pub use self::check::Check;
 /// it, unless [`Suite::skip`] gives a written reason. Every other input has a
 /// default that the setter's documentation gives.
 ///
-/// The `check_*` functions stay public for a tool that needs one check alone.
+/// A tool may still call the `check_*` functions by hand, and needs to when it
+/// runs one check alone.
 #[derive(Clone, Copy, Debug)]
 pub struct Suite<'a> {
-    /// The tool under test.
-    subject: Subject<'a>,
+    /// Returns the tool's command tree and tool record.
+    build: fn() -> (Command, Tool),
     /// The tool's opt-outs.
     allow: &'a [Allow],
     /// The verbs that the tool adds to crumbkit's own.
@@ -69,12 +70,8 @@ pub struct Suite<'a> {
     path_budgets: Option<PathBudgets<'a>>,
     /// The directory that holds the tool's golden files.
     goldens: &'a str,
-    /// The tool's checked-in command reference.
-    reference: &'a str,
     /// The tool's binary and the golden files of its examples.
     examples: Option<Examples<'a>>,
-    /// Whether the help checks read the pages that the binary prints.
-    help_from_binary: bool,
     /// The tool's failure codes.
     codes: Option<&'a [&'a [&'a Code]]>,
     /// The settings of the recovery check.
@@ -82,46 +79,22 @@ pub struct Suite<'a> {
     /// The settings of the twin check.
     twins: Option<Twins<'a>>,
     /// The reason for each check that the tool skips, indexed by [`Check`].
-    skips: [Option<&'a str>; Check::ALL.len()],
-}
-
-/// Where a [`Suite`] gets the tool's command tree and tool record.
-#[derive(Clone, Copy, Debug)]
-enum Subject<'a> {
-    /// The tree comes from a function and the record is declared.
-    Declared(fn() -> Command, &'a Tool),
-    /// A function builds both at run time.
-    Built(fn() -> (Command, Tool)),
+    skips: [Option<&'static str>; Check::ALL.len()],
 }
 
 impl<'a> Suite<'a> {
-    /// Returns the suite of the tool whose tree `command` returns and whose
-    /// tool record is `tool`, with no other input set.
+    /// Returns the suite of the tool whose command tree and tool record
+    /// `build` returns, with no other input set.
     #[must_use]
-    pub const fn new(command: fn() -> Command, tool: &'a Tool) -> Self {
-        Self::of(Subject::Declared(command, tool))
-    }
-
-    /// Returns the suite of a tool that builds its command tree and tool
-    /// record at run time, such as from files it reads at start, with no
-    /// other input set.
-    #[must_use]
-    pub const fn built(build: fn() -> (Command, Tool)) -> Self {
-        Self::of(Subject::Built(build))
-    }
-
-    /// Returns the suite of `subject` with no other input set.
-    const fn of(subject: Subject<'a>) -> Self {
+    pub const fn new(build: fn() -> (Command, Tool)) -> Self {
         Self {
-            subject,
+            build,
             allow: &[],
             verbs: &[],
             budgets: Budgets::new(),
             path_budgets: None,
             goldens: "tests/golden",
-            reference: "docs/commands.md",
             examples: None,
-            help_from_binary: false,
             codes: None,
             recoveries: None,
             twins: None,
@@ -172,32 +145,17 @@ impl<'a> Suite<'a> {
         self
     }
 
-    /// Sets the file of the tool's checked-in command reference. The default
-    /// is `docs/commands.md`, where `cargo crumbkit docs` writes it.
-    #[must_use]
-    pub const fn reference(mut self, file: &'a str) -> Self {
-        self.reference = file;
-        self
-    }
-
     /// Sets the tool's binary and the settings of its example runs, which
     /// [`check_examples`](crate::check_examples),
-    /// [`check_output_budget`](crate::check_output_budget),
-    /// [`check_command_reference`](crate::check_command_reference) and
-    /// [`Suite::help_from_binary`] need.
+    /// [`check_output_budget`](crate::check_output_budget) and
+    /// [`check_command_reference`](crate::check_command_reference) need.
+    ///
+    /// With examples set, the help checks read the pages that the binary
+    /// prints, as [`Pages::binary`] does. Without them, they read the pages
+    /// that [`Pages::rendered`] renders.
     #[must_use]
     pub const fn examples(mut self, examples: Examples<'a>) -> Self {
         self.examples = Some(examples);
-        self
-    }
-
-    /// Makes the help checks read the pages that the binary of
-    /// [`Suite::examples`] prints, as [`Pages::binary`] does. A tool needs it
-    /// when it builds part of its help at run time. The default is
-    /// [`Pages::rendered`].
-    #[must_use]
-    pub const fn help_from_binary(mut self) -> Self {
-        self.help_from_binary = true;
         self
     }
 
@@ -224,7 +182,10 @@ impl<'a> Suite<'a> {
     }
 
     /// Leaves `check` out of the suite, for `reason`. The test of a skipped
-    /// check passes without running it.
+    /// check passes without running it, and
+    /// [`check_opt_outs`](crate::check_opt_outs) lists the skip with its
+    /// reason. Nothing fails when the skip goes stale, because finding that
+    /// out means running the check that the tool has chosen not to run.
     ///
     /// # Panics
     ///
@@ -236,16 +197,11 @@ impl<'a> Suite<'a> {
     /// use crumbkit::Tool;
     /// use crumbkit_test::{Check, Suite};
     ///
-    /// const TOOL: Tool = Tool::new();
-    ///
-    /// fn command() -> Command {
-    ///     Command::new("shelf")
-    /// }
-    ///
-    /// const BAD: Suite<'_> = Suite::new(command, &TOOL).skip(Check::Listings, "");
+    /// const BAD: Suite<'_> =
+    ///     Suite::new(|| (Command::new("shelf"), Tool::new())).skip(Check::Listings, "");
     /// ```
     #[must_use]
-    pub const fn skip(mut self, check: Check, reason: &'a str) -> Self {
+    pub const fn skip(mut self, check: Check, reason: &'static str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
         self.skips[check as usize] = Some(reason);
         self
@@ -262,18 +218,9 @@ impl<'a> Suite<'a> {
         if self.skips[check as usize].is_some() {
             return;
         }
-        match self.subject {
-            Subject::Declared(command, tool) => self.run_on(check, &command(), tool),
-            Subject::Built(build) => {
-                let (command, tool) = build();
-                self.run_on(check, &command, &tool);
-            }
-        }
-    }
-
-    /// Runs `check` on the tool's tree and tool record.
-    fn run_on(&self, check: Check, command: &Command, tool: &Tool) {
-        let pages = || self.pages(check, tool);
+        let (command, tool) = (self.build)();
+        let (command, tool) = (&command, &tool);
+        let pages = || self.pages(tool);
         let examples = || required(self.examples.as_ref(), check, "examples");
         let goldens = Path::new(self.goldens);
         match check {
@@ -304,16 +251,18 @@ impl<'a> Suite<'a> {
             Check::Examples => crate::check_examples(command, tool, examples()),
             Check::OutputBudget => crate::check_output_budget(command, tool, examples()),
             Check::CommandReference => {
-                crate::check_command_reference(examples().binary(), self.reference);
+                crate::check_command_reference(examples().binary(), REFERENCE);
             }
-            Check::OptOuts => crate::check_opt_outs(
-                command,
-                tool,
-                self.allow,
-                &self.budgets,
-                self.path_budgets.as_ref(),
-                goldens,
-            ),
+            Check::OptOuts => {
+                let skips = self.skipped();
+                let departures = Departures {
+                    allow: self.allow,
+                    budgets: &self.budgets,
+                    paths: self.path_budgets.as_ref(),
+                    skips: &skips,
+                };
+                check_departures(command, tool, &departures, goldens);
+            }
             Check::Recoveries => crate::check_recoveries(
                 command,
                 tool,
@@ -326,13 +275,21 @@ impl<'a> Suite<'a> {
         }
     }
 
-    /// Returns the help pages that `check` reads.
-    fn pages<'s>(&'s self, check: Check, tool: &'s Tool) -> Pages<'s> {
-        if self.help_from_binary {
-            Pages::binary(tool, required(self.examples.as_ref(), check, "examples"))
-        } else {
-            Pages::rendered(tool)
+    /// Returns the help pages that the help checks read: what the binary
+    /// prints when the suite has examples, and rendered pages otherwise.
+    fn pages<'s>(&'s self, tool: &'s Tool) -> Pages<'s> {
+        match &self.examples {
+            Some(examples) => Pages::binary(tool, examples),
+            None => Pages::rendered(tool),
         }
+    }
+
+    /// Returns each skipped check with its reason, in the order of [`Check`].
+    fn skipped(&self) -> Vec<(Check, &'static str)> {
+        Check::ALL
+            .iter()
+            .filter_map(|&check| self.skips[check as usize].map(|reason| (check, reason)))
+            .collect()
     }
 }
 

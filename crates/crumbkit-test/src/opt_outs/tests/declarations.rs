@@ -403,9 +403,12 @@ fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_declaration_of_one_
     super::super::check(
         &super::shelf(),
         &TOOL,
-        ALLOW,
-        &crate::Budgets::new(),
-        None,
+        &super::super::Departures {
+            allow: ALLOW,
+            budgets: &crate::Budgets::new(),
+            paths: None,
+            skips: &[],
+        },
         dir.path(),
         &snapbox::Assert::new().action(Action::Overwrite),
     );

@@ -25,8 +25,8 @@ list.
 
 An opt-out departs from one rule for one command. A tool that leaves out a
 whole check gives its reason with `Suite::skip`
-([the convention suite](../checks/README.md#the-convention-suite)), which
-the report below does not list.
+([the convention suite](../checks/README.md#the-convention-suite)), and the
+report lists it under the rule `suite/skip`.
 
 An example that runs only where something is present, such as a container
 daemon, needs no opt-out. It names that precondition with `Example::needs`,

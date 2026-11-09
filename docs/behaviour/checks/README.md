@@ -19,19 +19,20 @@ Why: ADR-0025, ADR-0036.
 
 ## The convention suite
 
-A tool built with crumbkit runs every check through one
+A tool built with crumbkit can run every check through one
 [`Suite`](../../../crates/crumbkit-test/src/suite.rs) constant and one call of
-`crumbkit_test::conventions!`, in an integration test of its binary's package:
+`crumbkit_test::conventions!`, in a file of its own in an integration test of
+its binary's package:
 
 ```rust
-const SUITE: Suite<'_> = Suite::new(Cli::command, &TOOL)
+const SUITE: Suite<'_> = Suite::new(|| (Cli::command(), TOOL))
     .allow(ALLOW)
     .examples(Examples::new(env!("CARGO_BIN_EXE_shelf"), "tests/golden/examples"))
     .codes(&[CODES])
     .path_budgets(PATH_BUDGETS)
     .recoveries(RECOVERIES)
     .twins(TWINS)
-    .skip(Check::Listings, "shelf has no list commands.");
+    .skip(Check::CommandReference, "The commands come from the caller's files.");
 
 crumbkit_test::conventions!(SUITE);
 ```
@@ -41,19 +42,23 @@ The macro expands to one `#[test]` for each check, named as a sentence such as
 in test output and `cargo test` can select it. A check added to crumbkit-test
 reaches every tool that uses the macro with no edit to the tool.
 
-`Suite::built` takes the place of `Suite::new` for a tool that builds its
-command tree and tool record at run time. `Suite::help_from_binary` makes the
-help checks read what the binary prints.
+`Suite::new` takes one function that returns the command tree and the tool
+record, so a tool that builds them at run time passes that function. With
+`.examples` set, the help checks read what the binary prints. Without it, they
+read pages rendered in the test.
 
 Five inputs have no default: `.path_budgets`, `.examples`, `.codes`,
 `.recoveries` and `.twins`. A check that needs one of them and does not have it
-fails, and the failure names the setter. `.skip(Check::Listings, "reason")`
-leaves a check out, and its reason must be one non-empty line. Every other
-input has a default: no opt-outs, no extra verbs, crumbkit's default budgets,
-golden files under `tests/golden`, and the command reference at
-`docs/commands.md`.
+fails, and the failure names the setter. `.skip(Check::CommandReference,
+"reason")` leaves a check out, its reason must be one non-empty line, and the
+[opt-out report](../adoption/opt-outs.md) lists it under `suite/skip`. Nothing
+fails when a skip goes stale, because finding that out means running the check.
+Every other input has a default: no opt-outs, no extra verbs, crumbkit's default
+budgets, and golden files under `tests/golden`, which `.goldens` changes. The
+command reference is always `docs/commands.md`.
 
-A tool that needs one check alone calls its `check_*` function.
+A tool may still call the checks by hand, and a tool that needs one check alone
+calls its `check_*` function.
 
 Why: ADR-0185.
 

@@ -133,7 +133,7 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[shelf::CODES])
 
 /// Everything the checks read, which `conventions!` expands to one test for
 /// each check.
-const SUITE: Suite<'_> = Suite::new(Cli::command, &TOOL)
+const SUITE: Suite<'_> = Suite::new(|| (Cli::command(), TOOL))
     .allow(ALLOW)
     .verbs(&["summarize", "usage", "remove"])
     .path_budgets(PATH_BUDGETS)

@@ -145,14 +145,14 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[reading::CODES])
     .unprovoked(UNPROVOKED);
 
 /// Everything the checks read, which `conventions!` expands to one test for
-/// each check. The help checks read what the binary prints, because reading
-/// builds part of its help from the lists it finds at start.
-const SUITE: Suite<'_> = Suite::built(fixture_tool)
+/// each check. With examples set, the help checks read what the binary prints,
+/// which reading needs because it builds part of its help from the lists it
+/// finds at start.
+const SUITE: Suite<'_> = Suite::new(fixture_tool)
     .allow(ALLOW)
     .verbs(&["stream", "edit", "set", "export"])
     .path_budgets(PATH_BUDGETS)
     .examples(EXAMPLES)
-    .help_from_binary()
     .codes(&[reading::CODES])
     .recoveries(RECOVERIES)
     .twins(TWINS)

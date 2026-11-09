@@ -270,7 +270,7 @@ runs the whole set declares one `Suite` constant with the inputs of the checks
 and calls `crumbkit_test::conventions!(SUITE)`, which writes one test for each
 check. A check that crumbkit-test adds later then reaches the tool with no edit.
 A check whose input the suite does not set fails and names the input, so the
-tool sets it or skips the check with `.skip(Check::Listings, "the reason")`.
+tool sets it or skips the check with `.skip(Check::CommandReference, "the reason")`.
 [shelf's convention tests](../examples/shelf/tests/conventions.rs) show a whole
 suite, and the [checks docs] describe its inputs.
 

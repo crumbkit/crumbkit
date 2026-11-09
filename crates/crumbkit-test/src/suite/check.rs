@@ -26,23 +26,21 @@ macro_rules! checks {
         /// [`Check`], named as a sentence, so each check keeps its name in
         /// test output and in `cargo test` filters.
         ///
-        /// A tool calls it once, in an integration test of its binary's
-        /// package. When crumbkit-test adds a check, the macro runs it with
-        /// no edit to the tool. A check that needs a new input fails and
-        /// names that input until the tool sets it or skips the check.
+        /// A tool calls it once, in a file of its own in an integration test
+        /// of its binary's package. The tests land in the calling module, so
+        /// a tool's own test in that module could take the name of a check
+        /// that crumbkit-test adds later.
+        ///
+        /// When crumbkit-test adds a check, the macro runs it with no edit to
+        /// the tool. A check that needs a new input fails and names that
+        /// input until the tool sets it or skips the check.
         ///
         /// ```no_run
         /// use clap::Command;
         /// use crumbkit::Tool;
         /// use crumbkit_test::Suite;
         ///
-        /// const TOOL: Tool = Tool::new();
-        ///
-        /// fn command() -> Command {
-        ///     Command::new("shelf")
-        /// }
-        ///
-        /// const SUITE: Suite<'_> = Suite::new(command, &TOOL);
+        /// const SUITE: Suite<'_> = Suite::new(|| (Command::new("shelf"), Tool::new()));
         ///
         /// crumbkit_test::conventions!(SUITE);
         /// # fn main() {}
@@ -51,7 +49,7 @@ macro_rules! checks {
         macro_rules! conventions {
             ($d suite:expr $d(,)?) => {
                 $(
-                    #[test]
+                    #[::core::prelude::v1::test]
                     fn $test() {
                         $crate::Suite::run(&$d suite, $crate::Check::$check);
                     }

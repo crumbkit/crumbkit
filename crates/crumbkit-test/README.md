@@ -25,22 +25,17 @@ use clap::Command;
 use crumbkit::Tool;
 use crumbkit_test::{Check, Examples, Suite};
 
-const TOOL: Tool = Tool::new();
-
-fn command() -> Command {
-    Command::new("shelf")
-}
-
 // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
-const SUITE: Suite<'_> = Suite::new(command, &TOOL)
+const SUITE: Suite<'_> = Suite::new(|| (Command::new("shelf"), Tool::new()))
     .examples(Examples::new("/path/to/shelf", "tests/golden/examples"))
-    .skip(Check::Listings, "shelf has no list commands.");
+    .skip(Check::CommandReference, "The commands come from the caller's files.");
 
 crumbkit_test::conventions!(SUITE);
 ```
 
 A check whose input is missing fails and names the input, unless `.skip`
-gives a reason. Each `check_*` function below also runs alone.
+gives a reason, and the opt-out report lists the reason. A tool may still call
+each `check_*` function below by hand.
 
 ## Checks for any clap tool
 
