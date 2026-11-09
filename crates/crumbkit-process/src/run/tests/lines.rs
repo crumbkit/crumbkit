@@ -3,8 +3,8 @@
 use std::time::{Duration, Instant};
 
 use super::super::{
-    Capture, ChildFinished, DRAIN_GRACE, Outcome, OverLimit, RunError, RunOptions, Status,
-    StopReason, run,
+    Capture, ChildFinished, DRAIN_GRACE, LongLine, Outcome, OverLimit, RunError, RunOptions,
+    Status, StopReason, run,
 };
 use crate::testing::sh;
 use crate::{Cancel, Lines, line_queue};
@@ -21,6 +21,8 @@ fn lines(most: usize, line: usize, total: usize) -> (RunOptions, Lines) {
         line,
         total,
         over: OverLimit::Stop,
+        long: LongLine::Over,
+        end: b'\n',
     };
     (RunOptions::new().stdout(capture), lines)
 }
@@ -194,4 +196,44 @@ fn the_lines_end_when_the_cancel_was_cancelled_before_the_start() {
 
     assert_eq!(finished.outcome(), Outcome::Stopped(StopReason::Cancelled));
     assert_eq!(lines.recv_timeout(WAIT), Ok(None));
+}
+
+#[test]
+fn a_run_that_skips_a_long_line_delivers_the_later_lines_and_the_child_runs_to_its_end() {
+    let (queue, lines) = line_queue(16);
+    let capture = Capture::Lines {
+        queue,
+        line: 4,
+        total: 1 << 20,
+        over: OverLimit::Stop,
+        long: LongLine::Skip,
+        end: b'\n',
+    };
+    let settings = RunOptions::new().stdout(capture);
+
+    let finished = run_sh("echo one; echo far-too-long; echo two; exit 5", &settings);
+
+    assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(5)));
+    assert_eq!(rest(&lines), ["one", "two"]);
+    assert!(finished.stdout().long_line());
+    assert!(!finished.stdout().over_limit());
+}
+
+#[test]
+fn a_run_can_split_its_lines_on_a_nul_byte() {
+    let (queue, lines) = line_queue(16);
+    let capture = Capture::Lines {
+        queue,
+        line: 16,
+        total: 1 << 20,
+        over: OverLimit::Stop,
+        long: LongLine::Over,
+        end: 0,
+    };
+    let settings = RunOptions::new().stdout(capture);
+
+    let finished = run_sh(r"printf 'a b\000c\000'", &settings);
+
+    assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(0)));
+    assert_eq!(rest(&lines), ["a b", "c"]);
 }

@@ -33,6 +33,6 @@ pub use self::group::{Scope, Signal};
 pub use self::lines::{LineQueue, Lines, Silent, line_queue};
 pub use self::outcome::{Outcome, Status, StopReason};
 pub use self::run::{
-    Capture, Captured, ChildFinished, DRAIN_GRACE, Input, OverLimit, RunError, RunOptions, Spawn,
-    Spawned, run,
+    Capture, Captured, ChildFinished, DRAIN_GRACE, Input, LongLine, OverLimit, RunError,
+    RunOptions, Spawn, Spawned, run,
 };
