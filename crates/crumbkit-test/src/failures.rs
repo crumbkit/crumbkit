@@ -79,12 +79,11 @@ impl ReadFailure {
 ///
 /// `read` receives the run's standard output `out` and standard error
 /// `err`, and returns each failure it finds, the first failure first, or
-/// no failure when it finds none. Each failure holds its code in the tool's
-/// spelling, its steps, the recovery first and then each alternative, and
-/// its fields, which fill the placeholders of a recovery's call. A reader
-/// maps a code that the tool writes in place of one of crumbkit's, such as
-/// its own usage code in place of `crumbkit::cli::usage`, back to
-/// crumbkit's code, so the checks match it.
+/// no failure when it finds none. Each failure holds its code, its steps, the
+/// recovery first and then each alternative, and its fields, which fill the
+/// placeholders of a recovery's call. A reader maps a code that the tool writes
+/// in place of one of crumbkit's, such as its own usage code in place of
+/// `crumbkit::cli::usage`, back to crumbkit's code, so the checks match it.
 ///
 /// When the reader returns no failure, the checks read crumbkit's failure
 /// document on standard output and then the last `code:` line on standard

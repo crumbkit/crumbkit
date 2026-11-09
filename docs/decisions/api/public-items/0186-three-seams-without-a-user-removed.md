@@ -38,9 +38,9 @@ no deprecated alias stays.
   `Spelling::for_tool`, `Spelling::spell` and `Spelling::split` stay, because
   tools call them.
 - `Tool::dashed_forms`, `Tool::get_dashed_forms`, `dashed_form`, `dashed_name`
-  and `is_dashed` are removed from crumbkit. A command answers only to its own names and aliases. crumbkit-test keeps a
-  private rule for the lowercase dashed names that `check_grammar` and the topic
-  check require.
+  and `is_dashed` are removed from crumbkit. A command answers only to its own
+  names and aliases. crumbkit-test keeps a private rule for the lowercase dashed
+  names that `check_grammar` and the topic check require.
 - `complete`, `complete_with`, `complete_with_words`, `complete_to` and
   `command_path` no longer take the tool record, because they read only the
   removed settings from it.

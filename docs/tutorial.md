@@ -97,7 +97,7 @@ fn list(args: &JarsList) -> Listing<Jar> {
 
 `main` calls `crumbkit::parse` in place of `Cli::parse`. `parse` prints help
 and refusals itself and returns a `Stop` with the exit code, so `main`
-returns that code. On success `parse` returns the parsed `Cli` and an
+returns that code. On success `parse` returns the parsed `Cli` and a
 `Run` that holds the command tree that `parse` built, and `finish` prints
 the result through that `Run` and returns the exit code:
 

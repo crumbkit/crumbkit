@@ -155,8 +155,8 @@ pub(super) fn largest(
 }
 
 /// The mark of a listing or a list that the budget cut short, which its
-/// JSON document holds under `cut`: the over-budget code in the tool's
-/// spelling and the bytes that the result had.
+/// JSON document holds under `cut`: the over-budget code and the bytes that
+/// the result had.
 #[derive(Debug)]
 pub(super) struct Cut {
     /// The over-budget code as the run printed it.

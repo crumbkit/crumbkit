@@ -25,7 +25,7 @@ terminal through its own writer ([help](../help/README.md)). `parse_to` and
 on. That decision lasts for the one parse, and `Sink::standard().styled(false)`
 keeps help plain.
 
-On success, `parse` returns the tool's parsed type and an
+On success, `parse` returns the tool's parsed type and a
 [`Run`](../../../crates/crumbkit/src/output.rs). The `Run` holds the view flags,
 the command tree, the tool record's settings, the words the caller typed with
 any values that a [picker](../effects/pickers.md) added, and whether the caller
