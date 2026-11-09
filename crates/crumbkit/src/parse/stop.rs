@@ -7,7 +7,7 @@ use clap::Command;
 
 use super::walked;
 use crate::view::{Selection, Table, View};
-use crate::{Output, Tool};
+use crate::{Run, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -22,7 +22,7 @@ mod tests;
 ///
 /// A tool's `main` returns its exit code, as in `Err(stop) => return
 /// stop.exit_code()`. A tool that does more before it exits reads
-/// [`Stop::output`], whose [`Output::is_json`] says whether the caller asked
+/// [`Stop::output`], whose [`Run::is_json`] says whether the caller asked
 /// for JSON, so the tool knows the format of what it prints next. It reads
 /// [`Stop::path`], [`Stop::flags`] and [`Stop::value`] as it reads them on a
 /// [`Refused`](crate::Refused), such as a global option that chooses the
@@ -45,7 +45,7 @@ pub struct Stop {
 struct Inner {
     /// The output flags as far as the walk of the typed words found them,
     /// with the command tree that `parse` built.
-    output: Output,
+    output: Run,
     /// The names of the subcommands from the root to the deepest command
     /// that the walk of the words reached.
     path: Vec<String>,
@@ -108,7 +108,7 @@ impl Stop {
     pub(crate) fn with_output(
         printed: Printed,
         code: u8,
-        output: Output,
+        output: Run,
         path: Vec<String>,
         words: Vec<OsString>,
     ) -> Self {
@@ -192,14 +192,14 @@ impl Stop {
     }
 
     /// Returns the output flags of the run that `parse` ended. Its
-    /// [`Output::is_json`] and [`Output::progress_allowed`] answer as they
+    /// [`Run::is_json`] and [`Run::progress_allowed`] answer as they
     /// do after parsing. Its `--long`, `--full` and `--fields` are always
     /// off, because they shape a result that a stopped run does not have.
     /// After a refusal whose form the tool chose with
     /// [`Refused::as_json`](crate::Refused::as_json), its `is_json` reports
     /// the form that printed.
     #[must_use]
-    pub fn output(&self) -> &Output {
+    pub fn output(&self) -> &Run {
         &self.inner.output
     }
 
@@ -227,7 +227,7 @@ impl Stop {
     /// picker added before its source failed gives no flag either. The
     /// words are read as [`command_path`](crate::command_path) reads them,
     /// so the value of an option is never read as a flag. After
-    /// [`Output::new`] refused its view flags, the words are the ones
+    /// [`Run::new`] refused its view flags, the words are the ones
     /// passed to it (ADR-0136).
     #[must_use]
     pub fn flags(&self) -> Vec<String> {
@@ -252,11 +252,11 @@ impl Stop {
     }
 }
 
-/// Returns the output of a run that `parse` ended after parsing against
+/// Returns the handle of a run that `parse` ended after parsing against
 /// `command` with `tool`, in which the walk found `--json` when `json` is
 /// true. Its `--long`, `--full` and `--fields` are off.
-pub(crate) fn stopped(json: bool, command: Command, tool: &Tool) -> Output {
-    Output::stopped(view(json), command, tool)
+pub(crate) fn stopped(json: bool, command: Command, tool: &Tool) -> Run {
+    Run::stopped(view(json), command, tool)
 }
 
 /// Returns the view of a run that `parse` ended: JSON when `json` is true

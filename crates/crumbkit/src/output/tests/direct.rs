@@ -1,4 +1,4 @@
-//! Tests for the `Output` methods that a crate which prints a response
+//! Tests for the `Run` methods that a crate which prints a response
 //! without `finish` uses to print failures and refuse view flags as
 //! `finish` does.
 
@@ -10,7 +10,7 @@ use clap::{CommandFactory as _, Parser};
 use super::PLANETS;
 use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
-use crate::{Code, Failure, Output, Recovery, Sink, Tool};
+use crate::{Code, Failure, Recovery, Run, Sink, Tool};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -53,11 +53,11 @@ struct Cli {
 
 /// Parses `tool` followed by `flags`, and builds the output with `TOOL`,
 /// as a tool that parses with clap alone builds it.
-fn output_of(flags: &[&str]) -> Output {
+fn output_of(flags: &[&str]) -> Run {
     let view = Cli::try_parse_from(["tool"].iter().chain(flags))
         .unwrap()
         .view;
-    Output::new(
+    Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),

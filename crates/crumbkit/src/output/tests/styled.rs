@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::process::ExitCode;
 
 use super::{Cli, Finished, built_with};
-use crate::{Document, Error, Listing, Output, Row, Rows, Sink, Style, Tool, finish_to};
+use crate::{Document, Error, Listing, Row, Rows, Run, Sink, Style, Tool, finish_to};
 
 /// A service and its state, whose state cell is green when it runs, red
 /// when it failed and dim when it stopped.
@@ -83,7 +83,7 @@ fn plain_services() -> Vec<PlainService> {
 }
 
 /// Returns the output of `tool list` with `flags` and `tool`.
-fn built(tool: &Tool, flags: &[&str]) -> Output {
+fn built(tool: &Tool, flags: &[&str]) -> Run {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     built_with(Cli::command(), tool, &args)
 }
@@ -92,7 +92,7 @@ fn built(tool: &Tool, flags: &[&str]) -> Output {
 /// `finish` styles it at a terminal that allows colour, and that gives the
 /// result `width` columns.
 fn finish_into<T: Rows>(
-    output: Output,
+    output: Run,
     document: Document<T>,
     value: T,
     styled: bool,

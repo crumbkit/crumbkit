@@ -12,7 +12,7 @@ categories = ["command-line-interface"]
 include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
-# The hand-over prints its failures and refusals through crumbkit's `Output`
+# The hand-over prints its failures and refusals through crumbkit's `Run`
 # and `Sink`, and tells crumbkit's run observer that a child took the
 # terminal (ADR-0042, ADR-0057). `derive` writes the `Failure` impl of the
 # child's error from its `#[failure(...)]` attributes.
@@ -23,7 +23,7 @@ crumbkit = { workspace = true, features = ["derive"] }
 signal-hook = { workspace = true }
 
 [dev-dependencies]
-# The tests parse the output flags into an `Output` with `clap::Parser`.
+# The tests parse the output flags into a `Run` with `clap::Parser`.
 clap = { workspace = true, features = ["derive"] }
 # The tests read the failure document that a refused `--json` prints.
 serde_json = { workspace = true, features = ["std"] }

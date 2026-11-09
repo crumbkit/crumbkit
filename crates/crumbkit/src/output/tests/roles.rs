@@ -6,13 +6,13 @@ use clap::CommandFactory as _;
 use super::{Cli, PLANET_LISTING, PLANETS, mercury, parse_against, saturn};
 use crate::output::respond::respond;
 use crate::sink::role::{Message, Recorded, Role};
-use crate::{Document, Error, Listing, Output, Rows};
+use crate::{Document, Error, Listing, Rows, Run};
 
 /// Responds with `value` into `recorded` as `finish_to` does, and returns
 /// the exit code.
 fn responded<T: Rows>(
     recorded: &mut Recorded,
-    mut output: Output,
+    mut output: Run,
     document: Document<T>,
     value: T,
 ) -> u8 {
@@ -44,7 +44,7 @@ fn a_table_delivers_as_the_result_and_its_footer_as_a_note_after_it() {
 fn the_dry_run_line_delivers_as_a_dry_run_message_after_the_result() {
     let mut recorded = Recorded::default();
     let mut output = parse_against(Cli::command(), &[]);
-    output.dry_run = true;
+    output.dry = true;
 
     responded(&mut recorded, output, PLANETS, vec![mercury()]);
 

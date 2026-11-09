@@ -88,8 +88,8 @@ reader goes on, so `lost` is the last line dropped before the limit, and
 `Captured::over_limit` shows that case. A later queued line clears `lost`,
 so `None` does not show that no line was dropped. A caller that
 drops its `Lines` lets the run read the rest of the stream and drop it, so
-the child runs to its end. Each queue serves one run, so a `Limits` value
-with a `Lines` capture serves one run too.
+the child runs to its end. Each queue serves one run, so a `RunOptions`
+value with a `Lines` capture serves one run too.
 
 On Unix each read waits on its pipe with `poll`, so every thread that the
 run starts is joined, even while a descendant outside the group holds a pipe
@@ -140,7 +140,7 @@ holds the run until it exits. On Windows a reader blocks until its pipe
 closes, so a process outside the job that holds a pipe, as a grandchild of
 a child in `Scope::Child` can, holds the run until it exits.
 
-Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183.
+Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183, ADR-0184.
 
 ## Reaping
 

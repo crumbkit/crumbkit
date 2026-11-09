@@ -5,7 +5,7 @@ use std::fmt;
 
 use crumbkit::schemars::{JsonSchema, Schema, SchemaGenerator};
 use crumbkit::serde::Serializer;
-use crumbkit::{Duration, Shown};
+use crumbkit::{Elapsed, Shown};
 
 use super::{Book, Form};
 
@@ -40,8 +40,8 @@ impl Shown for Pages {
 crumbkit::shown!(Pages);
 
 /// Returns the time it takes to read `pages` at two minutes a page.
-pub(super) const fn reading(pages: u32) -> Duration {
-    Duration::new(std::time::Duration::from_secs(pages as u64 * 120))
+pub(super) const fn reading(pages: u32) -> Elapsed {
+    Elapsed::new(std::time::Duration::from_secs(pages as u64 * 120))
 }
 
 /// The catalogue that shelf serves. Every book in it is in the public domain.

@@ -11,7 +11,7 @@ mod tests;
 /// layout of JSON documents and whether crumbkit detects terminals.
 ///
 /// [`Tool::output`](crate::Tool::output) takes it. Its path is
-/// `crumbkit::tool::Output`, because [`crumbkit::Output`](crate::Output)
+/// `crumbkit::tool::Output`, because [`crumbkit::Run`](crate::Run)
 /// is the handle of one run.
 ///
 /// ```
@@ -122,22 +122,22 @@ impl Output {
     /// - [`parse`](crate::parse) prints help and the version as plain text,
     ///   also when another crate in the build turns on clap's `color`
     ///   feature.
-    /// - [`Output::progress_allowed`](crate::Output::progress_allowed) is
+    /// - [`Output::progress_allowed`](crate::Run::progress_allowed) is
     ///   false.
     /// - The tool record's [picker](crate::Tool::picker) never runs, and `parse`
     ///   refuses a command line that leaves out a required argument as it
     ///   does without a picker.
-    /// - [`Output::confirm`](crate::Output::confirm) and
-    ///   [`Output::confirm_to`](crate::Output::confirm_to) never ask, and
+    /// - [`Output::confirm`](crate::Run::confirm) and
+    ///   [`Output::confirm_to`](crate::Run::confirm_to) never ask, and
     ///   fail with `<tool>::confirmation::needs_yes` as they do with
     ///   `--no-input`.
     /// - [`finish`](crate::finish) never fits a text table to the
     ///   terminal's width, so a table prints the bytes that it prints
     ///   through a pipe.
     ///
-    /// The [`Output`](crate::Output) that `parse` returns copies the setting
+    /// The [`Output`](crate::Run) that `parse` returns copies the setting
     /// from the tool record, and so does the one that
-    /// [`Output::new`](crate::Output::new) builds for a tool that parses
+    /// [`Output::new`](crate::Run::new) builds for a tool that parses
     /// with clap alone.
     ///
     /// ```

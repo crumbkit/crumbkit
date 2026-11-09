@@ -63,7 +63,7 @@ fn a_root_with_a_doc_comment_keeps_it_beside_the_flags_it_flattens() {
     let described = Described::try_parse_from(["tool", "--json"]);
 
     let described = described.unwrap();
-    let output = crate::Output::new(
+    let output = crate::Run::new(
         described.view,
         DryRun::default(),
         <Described as clap::CommandFactory>::command(),

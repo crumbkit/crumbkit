@@ -93,8 +93,8 @@ lists its codes in a `CODES` list for crumbkit-test's `check_codes`.
 Each tool chooses how its codes are spelled with one
 [`Spelling`](../../../crates/crumbkit/src/code.rs), which it sets with
 `Failures::spelling`. A tool record that sets none spells codes with
-`Spelling::COLONS`. `parse` and `Output::new` carry the tool record's spelling
-in the `Output`, so `finish`, `stream` and `hand_over` print in it, and
+`Spelling::COLONS`. `parse` and `Run::new` carry the tool record's spelling
+in the `Run`, so `finish`, `stream` and `hand_over` print in it, and
 `check_codes` reads it from the same tool record. `Code` has no `Display`, so
 every printed code goes through the tool's spelling. `check_codes` refuses
 characters that let two different codes look the same, because callers match a

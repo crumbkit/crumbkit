@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use crumbkit::{Error, Listing, Output, Sink, finish_to};
+use crumbkit::{Error, Listing, Run, Sink, finish_to};
 use serde_json::{Value, json};
 
 use super::{ALIASES_LIST, AliasRow, AliasesList, list, listing};
@@ -13,8 +13,8 @@ use crate::testing::tree;
 const FILE: &str = "/home/ada/.config/shelf/aliases.toml";
 
 /// Returns the output of a run of the test tool with every view flag off.
-fn output() -> Output {
-    Output::new(
+fn output() -> Run {
+    Run::new(
         crumbkit::ViewFlags::new(),
         crumbkit::DryRun::default(),
         tree(),
@@ -59,7 +59,7 @@ struct Finished {
 }
 
 /// Finishes `result` into memory as a tool's handler does.
-fn finish(output: Output, result: Result<Listing<AliasRow>, Error>) -> Finished {
+fn finish(output: Run, result: Result<Listing<AliasRow>, Error>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let code = finish_to(

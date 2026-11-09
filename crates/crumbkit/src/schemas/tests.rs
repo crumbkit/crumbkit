@@ -13,9 +13,7 @@ use super::{
     SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow, document_schema, documents, list, show,
 };
 use crate::help::{Help, Leaf};
-use crate::{
-    Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, Tool, finish_to,
-};
+use crate::{Batch, Document, Error, Listing, NoSummary, Prose, Row, Run, Sink, Tool, finish_to};
 
 mod bytes;
 mod columns;
@@ -94,14 +92,14 @@ fn tree() -> Command {
         )
 }
 
-/// Returns the output of a run of the tool with `flags`, as `Output::new`
+/// Returns the output of a run of the tool with `flags`, as `Run::new`
 /// builds it.
-fn output_with(flags: &[&str]) -> Output {
+fn output_with(flags: &[&str]) -> Run {
     let matches = crate::ViewFlags::augment_args(Command::new("shelf"))
         .try_get_matches_from(std::iter::once(&"shelf").chain(flags))
         .unwrap();
     let view = <crate::ViewFlags as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();
-    Output::new(
+    Run::new(
         view,
         crate::DryRun::default(),
         tree(),
@@ -112,7 +110,7 @@ fn output_with(flags: &[&str]) -> Output {
 }
 
 /// Returns the output of a run of the tool with every view flag off.
-fn output() -> Output {
+fn output() -> Run {
     output_with(&[])
 }
 
@@ -136,7 +134,7 @@ struct Finished {
 
 /// Runs `shelf schemas show` with `words` and the output flags `output`,
 /// and finishes the result into memory as a tool's handler does.
-fn finish_show(mut output: Output, words: &[&str]) -> Finished {
+fn finish_show(mut output: Run, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result = show(&mut output, &TOOL, &args::<SchemasShow>("show", words));

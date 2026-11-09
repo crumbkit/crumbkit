@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use super::{clean_up, handed_over, install};
 use crate::testing::{gone, sh};
-use crate::{Limits, run};
+use crate::{RunOptions, run};
 
 /// The variable that tells the test's process to act as the tool.
 const TOOL: &str = "CRUMBKIT_PROCESS_FORWARD_TOOL";
@@ -76,7 +76,7 @@ fn act_as_tool() {
         forwarded.display(),
         pids.display()
     );
-    let _runner = std::thread::spawn(move || run(sh(&script), &Limits::new()));
+    let _runner = std::thread::spawn(move || run(sh(&script), &RunOptions::new()));
     assert!(pids_in(&pids).is_some(), "the child wrote no process ids");
 
     signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();

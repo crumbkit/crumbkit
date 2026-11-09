@@ -6,7 +6,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crumbkit::{Document, Error, Output};
+use crumbkit::{Document, Error, Run};
 use etcetera::BaseStrategy as _;
 
 use super::{Book, BooksError, CATALOGUE};
@@ -109,8 +109,8 @@ fn write_removed(path: &Path, ids: &[u32]) -> Result<(), BooksError> {
 ///
 /// Removing a book that is already removed changes nothing and succeeds,
 /// so a repeat of the command is safe. On a dry run, which
-/// [`Output::is_dry_run`] reports, it returns the same books and writes
-/// nothing. It asks for confirmation with [`Output::confirm`] after it
+/// [`Run::is_dry_run`] reports, it returns the same books and writes
+/// nothing. It asks for confirmation with [`Run::confirm`] after it
 /// checks the ids, so a failure for an unknown id comes before the
 /// question.
 ///
@@ -119,13 +119,13 @@ fn write_removed(path: &Path, ids: &[u32]) -> Result<(), BooksError> {
 /// Returns `BooksError::NoStateDirectory` when `removed` is `None`,
 /// `BooksError::NotFound` naming each id that the catalogue lacks,
 /// `BooksError::RemovedFile` when the file cannot be read or written, and
-/// the failures of [`Output::confirm`].
+/// the failures of [`Run::confirm`].
 pub(crate) fn remove(
-    output: &mut Output,
+    run: &mut Run,
     args: &BooksRemove,
     removed: Option<&Path>,
 ) -> Result<Vec<Book>, Error> {
-    let dry_run = output.is_dry_run();
+    let dry_run = run.is_dry_run();
     let Some(path) = removed else {
         return Err(BooksError::NoStateDirectory.into());
     };
@@ -143,7 +143,7 @@ pub(crate) fn remove(
     }
     let mut ids = read_removed(Some(path))?;
     let noun = if books.len() == 1 { "book" } else { "books" };
-    output.confirm(
+    run.confirm(
         args.yes,
         &format!("Remove {} {noun} from the shelf?", books.len()),
     )?;

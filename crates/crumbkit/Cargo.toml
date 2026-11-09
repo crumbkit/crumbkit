@@ -12,7 +12,7 @@ categories = ["command-line-interface"]
 include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
-# `Output` and `Page` derive `clap::Args`. `Page` gives `--limit` a default
+# `Run` and `Page` derive `clap::Args`. `Page` gives `--limit` a default
 # that it formats at runtime from its const parameter, and clap accepts a
 # default held in an owned `String` only with its `string` feature.
 # `help::extend` sets a help template, which clap offers only with its `help`
@@ -43,7 +43,7 @@ crumbkit-derive = { workspace = true, optional = true }
 # (ADR-0016). miette already depends on it.
 unicode-width = { workspace = true, optional = true }
 # is-ai-agent tells whether a coding agent runs the tool, so neither a
-# picker nor `Output::confirm` asks it a question (ADR-0043). It has no
+# picker nor `Run::confirm` asks it a question (ADR-0043). It has no
 # dependencies.
 is-ai-agent = { workspace = true }
 # humantime writes an `Age` field's time in JSON as RFC 3339 with
@@ -113,7 +113,7 @@ proptest = { workspace = true, features = ["std"] }
 # `tracing::subscriber::set_global_default`, which needs no tracing feature.
 tracing = { workspace = true }
 # The duration tests check that the pattern of a duration's schema accepts
-# every form that `Duration` writes.
+# every form that `Elapsed` writes.
 regex-lite = { workspace = true }
 # The test subscriber names the entered span with `tracing_core::span::Current`.
 tracing-core = { workspace = true }

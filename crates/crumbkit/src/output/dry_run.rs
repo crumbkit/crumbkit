@@ -8,7 +8,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
-use super::Output;
+use super::Run;
 
 #[cfg(test)]
 mod tests;
@@ -31,15 +31,15 @@ pub(crate) const ID: &str = "crumbkit_dry_run";
 /// A command that changes something adds it to its own arguments struct
 /// with `#[command(flatten)]`. [`parse`](crate::parse()) reads the flag by
 /// its id from the matches of the deepest command, before the tool's type
-/// takes its values, and records it in the [`Output`] it returns, so the
-/// handler reads [`Output::is_dry_run`] and the tool's own copy of the flag
+/// takes its values, and records it in the [`Run`] it returns, so the
+/// handler reads [`Run::is_dry_run`] and the tool's own copy of the flag
 /// is unused. A tool that parses with clap alone passes the parsed flag to
-/// [`Output::new`]:
+/// [`Run::new`]:
 ///
 /// ```
 /// use clap::{CommandFactory as _, Parser};
 /// use crumbkit::Tool;
-/// use crumbkit::{DryRun, Output, ViewFlags};
+/// use crumbkit::{DryRun, Run, ViewFlags};
 ///
 /// /// Remove books from the catalogue.
 /// #[derive(Parser)]
@@ -52,13 +52,13 @@ pub(crate) const ID: &str = "crumbkit_dry_run";
 ///
 /// let words = ["books-remove", "--dry-run"];
 /// let args = BooksRemove::parse_from(words);
-/// let output = Output::new(args.view, args.dry_run, BooksRemove::command(), &Tool::new(), words);
-/// assert!(output.unwrap().is_dry_run());
+/// let run = Run::new(args.view, args.dry_run, BooksRemove::command(), &Tool::new(), words);
+/// assert!(run.unwrap().is_dry_run());
 /// ```
 ///
 /// The flag's clap id is `crumbkit_dry_run`, so crumbkit-test's
 /// `check_effects` tells it apart from a tool's own `--dry-run`. It has no
-/// getter, so a tool reads it only through `Output::is_dry_run`, and
+/// getter, so a tool reads it only through `Run::is_dry_run`, and
 /// `finish` always knows when a run is a dry run.
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
 // The doc comment is rustdoc, and clap would copy it into the help of a
@@ -88,9 +88,9 @@ pub(crate) fn typed(matches: &ArgMatches) -> bool {
     matches.try_get_one::<bool>(ID).ok().flatten() == Some(&true)
 }
 
-impl Output {
+impl Run {
     /// Reports whether the run is a dry run: the caller passed `--dry-run`,
-    /// which `parse` read, or the tool passed it to [`Output::new`].
+    /// which `parse` read, or the tool passed it to [`Run::new`].
     ///
     /// A handler that reads `true` reports what it would change in the
     /// result it would return, and changes nothing. [`finish`](crate::finish)
@@ -100,10 +100,10 @@ impl Output {
     /// standard output holds the result alone. A document without
     /// crumbkit's envelope has no place for the field, so with `--json` that
     /// line also goes to standard error. A failure prints as it does in any
-    /// run. [`Output::confirm`] asks nothing in a dry run.
+    /// run. [`Run::confirm`] asks nothing in a dry run.
     #[must_use]
     pub const fn is_dry_run(&self) -> bool {
-        self.dry_run
+        self.dry
     }
 }
 

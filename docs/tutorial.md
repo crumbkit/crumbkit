@@ -98,13 +98,13 @@ fn list(args: &JarsList) -> Listing<Jar> {
 `main` calls `crumbkit::parse` in place of `Cli::parse`. `parse` prints help
 and refusals itself and returns a `Stop` with the exit code, so `main`
 returns that code. On success `parse` returns the parsed `Cli` and an
-`Output` that holds the command tree that `parse` built, and `finish` prints
-the result through that `Output` and returns the exit code:
+`Run` that holds the command tree that `parse` built, and `finish` prints
+the result through that `Run` and returns the exit code:
 
 ```rust
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(&Tool::new());
-    let (cli, output) = match parsed {
+    let (cli, run) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
@@ -113,7 +113,7 @@ fn main() -> ExitCode {
             command: JarsCommand::List(args),
         } => {
             let result: Result<_, crumbkit::Error> = Ok(list(&args));
-            crumbkit::finish(output, JARS_LIST, result)
+            crumbkit::finish(run, JARS_LIST, result)
         }
     }
 }

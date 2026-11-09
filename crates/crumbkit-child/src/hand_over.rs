@@ -12,12 +12,12 @@
 //! ```no_run
 //! use std::process::{Command, ExitCode};
 //!
-//! use crumbkit::Output;
+//! use crumbkit::Run;
 //!
-//! fn edit(output: Output, path: &str) -> ExitCode {
+//! fn edit(run: Run, path: &str) -> ExitCode {
 //!     let mut editor = Command::new("vi");
 //!     editor.arg(path);
-//!     crumbkit_child::hand_over(output, editor)
+//!     crumbkit_child::hand_over(run, editor)
 //! }
 //! ```
 //!
@@ -40,7 +40,7 @@ use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::process::{Command, ExitCode, ExitStatus, Stdio};
 
-use crumbkit::{Output, Sink};
+use crumbkit::{Run, Sink};
 
 use crate::error::ChildError;
 use crate::signals;
@@ -76,11 +76,11 @@ mod tests;
 /// line, which is 2 unless the tool record lists another. The module
 /// documentation lists the failures of a child that cannot start.
 ///
-/// It takes `output` by value, as [`finish`](crumbkit::finish) does,
+/// It takes `run` by value, as [`finish`](crumbkit::finish) does,
 /// because the child's run is the last thing the tool prints (ADR-0094).
 #[must_use]
-pub fn hand_over(output: Output, child: Command) -> ExitCode {
-    hand_over_to(&mut Sink::standard(), output, child)
+pub fn hand_over(run: Run, child: Command) -> ExitCode {
+    hand_over_to(&mut Sink::standard(), run, child)
 }
 
 /// Why `--json` and `--fields` are refused, which ends each refusal's
@@ -91,7 +91,7 @@ const TEXT_ONLY: &str = "this command hands the terminal to another program";
 /// printed to `sink`.
 fn hand_over_to<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    mut output: Output,
+    mut output: Run,
     mut child: Command,
 ) -> ExitCode {
     if output.is_json() {
@@ -117,7 +117,7 @@ fn hand_over_to<O: Write, W: Write>(
 /// `status`, and prints the failure of a child that could not run.
 fn respond_text<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &mut Output,
+    output: &mut Run,
     program: String,
     status: io::Result<ExitStatus>,
 ) -> ExitCode {

@@ -91,7 +91,7 @@ fn finish_with(flags: &[&str], prose: Prose<Count, Missing>) -> Finished {
         Document::new("solar", "count", 1, "The number of planets.");
     let args = ["tool", "count"].iter().chain(flags);
     let view = Cli::try_parse_from(args.clone()).unwrap().view;
-    let output = crate::Output::new(
+    let output = crate::Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),

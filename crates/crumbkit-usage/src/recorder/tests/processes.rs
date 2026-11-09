@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::recorder::{listens, start, start_under};
 use crate::testing::TempDir;
 use crumbkit::tool::{Exit, Failures};
-use crumbkit::{Code, Document, Output, Sink, Spelling, Stream, Tool, ViewFlags, stream_to};
+use crumbkit::{Code, Document, Run, Sink, Spelling, Stream, Tool, ViewFlags, stream_to};
 
 /// Tells the usage log that the tool `command` received `args`, as
 /// crumbkit's `parse` does, so the line has a tool name.
@@ -30,8 +30,8 @@ mod windows;
 
 /// Returns the output of a run of a tool named `tool` with every view flag
 /// off, for a test that hands the terminal to a child.
-fn bare_output() -> Output {
-    Output::new(
+fn bare_output() -> Run {
+    Run::new(
         ViewFlags::new(),
         crumbkit::DryRun::default(),
         Command::new("tool"),
@@ -151,7 +151,7 @@ fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
     let log = start();
     let command = Command::new("watching");
     typed(&command, &["watching".into()], Spelling::COLONS);
-    let output = Output::new(
+    let output = Run::new(
         ViewFlags::new(),
         crumbkit::DryRun::default(),
         command,

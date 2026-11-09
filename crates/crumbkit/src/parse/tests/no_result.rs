@@ -10,7 +10,7 @@ use clap::{Args as _, Command};
 
 use crate::help::{Help, Leaf};
 use crate::twins::assert_one_word_apart;
-use crate::{Code, Failure, Output, Recovery, Sink, Tool};
+use crate::{Code, Failure, Recovery, Run, Sink, Tool};
 
 const TOOL: Tool =
     Tool::new().help(Help::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]));
@@ -30,7 +30,7 @@ fn tree() -> Command {
 /// type, and the output when it did.
 struct Parsed {
     code: Option<ExitCode>,
-    output: Option<Output>,
+    output: Option<Run>,
     out: String,
     err: String,
 }

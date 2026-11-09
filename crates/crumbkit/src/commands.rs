@@ -46,16 +46,16 @@
 //!
 //! fn run(args: &[&str]) -> ExitCode {
 //!     let parsed = crumbkit::parse_from::<Cli>(&TOOL, args);
-//!     let (cli, mut output) = match parsed {
+//!     let (cli, mut run) = match parsed {
 //!         Ok(parsed) => parsed,
 //!         Err(stop) => return stop.exit_code(),
 //!     };
 //!     match cli.resource {
 //!         Resource::Commands { command: CommandsCommand::List(args) } => {
-//!             // `list` builds the command tree in `output`, so it runs
+//!             // `list` builds the command tree in `run`, so it runs
 //!             // before `finish`.
-//!             let result = commands::list(&mut output, &TOOL, &args);
-//!             crumbkit::finish(output, commands::COMMANDS_LIST, result)
+//!             let result = commands::list(&mut run, &TOOL, &args);
+//!             crumbkit::finish(run, commands::COMMANDS_LIST, result)
 //!         }
 //!     }
 //! }
@@ -76,7 +76,7 @@ use serde_json::Value;
 
 pub use self::row::CommandRow;
 use crate::help::exit;
-use crate::{Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, Tool, codes};
+use crate::{Call, Code, Document, Error, Failure, Listing, Page, Recovery, Run, Tool, codes};
 
 #[cfg(test)]
 mod tests;
@@ -164,7 +164,7 @@ impl JsonSchema for CommandsList {
 }
 
 /// Returns the rows of the branch that `args` names in the command tree
-/// that `output` holds, one page of them as
+/// that `run` holds, one page of them as
 /// `args` asks, for the tool to pass to [`finish`](crate::finish) with
 /// [`COMMANDS_LIST`].
 ///
@@ -184,7 +184,7 @@ impl JsonSchema for CommandsList {
 /// subcommands. A tool that builds its tree with plain clap and keeps
 /// clap's generated `help` subcommands sees them listed as commands.
 ///
-/// It builds the whole command tree through [`Output::command`], so the
+/// It builds the whole command tree through [`Run::command`], so the
 /// rows show each command's inherited global arguments, argument groups and
 /// numbers of values. The rest of the work grows with the size of the
 /// branch, and happens only when the caller runs `commands list`. It builds rows for the page only, and
@@ -199,12 +199,8 @@ impl JsonSchema for CommandsList {
 /// visible command, such as `shelf commands list books`, rendered against
 /// the tool's command, so it has no next step when the tool hides or lacks
 /// `commands list`.
-pub fn list(
-    output: &mut Output,
-    tool: &Tool,
-    args: &CommandsList,
-) -> Result<Listing<CommandRow>, Error> {
-    let root = output.command();
+pub fn list(run: &mut Run, tool: &Tool, args: &CommandsList) -> Result<Listing<CommandRow>, Error> {
+    let root = run.command();
     let mut node = root;
     let mut path = Vec::new();
     for word in &args.path {

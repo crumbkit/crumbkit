@@ -17,7 +17,7 @@ use self::message::command_line_refusal;
 use self::page::print_page;
 use self::pick::{Picking, Step};
 use self::walk::{help_word, own_names, program_stem, typed_words, walk};
-use crate::{Output, Sink, Spelling, Tool};
+use crate::{Run, Sink, Spelling, Tool};
 
 mod attempt;
 mod declared;
@@ -35,17 +35,17 @@ pub(crate) mod walk;
 mod walked;
 
 /// Parses the process's command line against `C`'s command with the tool's
-/// `tool`, and returns the tool's parsed type and an [`Output`], which
+/// `tool`, and returns the tool's parsed type and a [`Run`], which
 /// holds the view flags, the command that it parsed against, the words
 /// that the caller typed and what `tool` decides about printing.
 ///
 /// A tool's `main` calls it in place of clap's `Cli::parse`, and passes the
-/// returned `Output` to [`finish`](crate::finish()) with the handler's
+/// returned `Run` to [`finish`](crate::finish()) with the handler's
 /// result. `parse` reads the view flags that the tool's type flattens as
 /// [`ViewFlags`](crate::ViewFlags) by their ids, before the tool's type
 /// takes them, and reads [`DryRun`](crate::DryRun)'s `--dry-run` from the
 /// deepest command in the same way, which
-/// [`Output::is_dry_run`](crate::Output::is_dry_run) reports. A tool
+/// [`Run::is_dry_run`](crate::Run::is_dry_run) reports. A tool
 /// without goal headings or topics passes `&Tool::new()`:
 ///
 /// ```no_run
@@ -92,7 +92,7 @@ mod walked;
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
 /// refusal. It holds the exit code for `main` to return, and whether the
 /// caller asked for JSON.
-pub fn parse<C: CommandFactory + FromArgMatches>(tool: &Tool) -> Result<(C, Output), Stop> {
+pub fn parse<C: CommandFactory + FromArgMatches>(tool: &Tool) -> Result<(C, Run), Stop> {
     parse_from(tool, std::env::args_os())
 }
 
@@ -108,7 +108,7 @@ pub fn parse<C: CommandFactory + FromArgMatches>(tool: &Tool) -> Result<(C, Outp
 pub fn parse_from<C: CommandFactory + FromArgMatches>(
     tool: &Tool,
     args: impl IntoIterator<Item = impl Into<OsString>>,
-) -> Result<(C, Output), Stop> {
+) -> Result<(C, Run), Stop> {
     try_parse_to(&mut Sink::standard(), C::command(), tool, args).map_err(Unparsed::print)
 }
 
@@ -138,7 +138,7 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 /// `reading-lists`. Before anything else reads the words, crumbkit replaces each
 /// word that reaches a command by its dashed form with the command's own
 /// name, so help, refusals, the usage log and the words in the returned
-/// [`Output`] name the command as the tool does. An option's value that
+/// [`Run`] name the command as the tool does. An option's value that
 /// equals a dashed form stays as typed.
 ///
 /// A command that `tool` gives goals lists its subcommands under their
@@ -281,7 +281,7 @@ pub fn parse_to<C: CommandFactory + FromArgMatches>(
     sink: &mut Sink<impl Write, impl Write, impl BufRead>,
     tool: &Tool,
     args: impl IntoIterator<Item = impl Into<OsString>>,
-) -> Result<(C, Output), Stop> {
+) -> Result<(C, Run), Stop> {
     try_parse_to(sink, C::command(), tool, args).map_err(|unparsed| unparsed.print_to(sink))
 }
 
@@ -356,7 +356,7 @@ pub fn try_parse_to<C: FromArgMatches>(
     command: Command,
     tool: &Tool,
     args: impl IntoIterator<Item = impl Into<OsString>>,
-) -> Result<(C, Output), Unparsed> {
+) -> Result<(C, Run), Unparsed> {
     sink.following_terminal(
         || tool.get_output().detects(crate::sink::stdout_is_terminal),
         |sink| run(sink, command, tool, args),
@@ -373,7 +373,7 @@ fn run<C, I, T, O, E, R>(
     command: Command,
     tool: &Tool,
     args: I,
-) -> Result<(C, Output), Unparsed>
+) -> Result<(C, Run), Unparsed>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -415,7 +415,7 @@ fn read<C, I, T, O, E, R>(
     spelling: Spelling,
     args: I,
     standard: bool,
-) -> Result<(C, Output), Unparsed>
+) -> Result<(C, Run), Unparsed>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -463,7 +463,7 @@ where
     // Schema, so crumbkit builds the schema only when the walk reads
     // `--help` as a flag, also after the `help` rewrite above.
     let walked = walk(&command, &args);
-    // No `Output` exists before parsing, so a refusal and a `Stop` take
+    // No `Run` exists before parsing, so a refusal and a `Stop` take
     // `--json` from the walk.
     let (path, long_help, json) = (walked.path, walked.long_help, walked.json);
     // Only a run that prints the clap root's help reads a person's aliases.
@@ -476,7 +476,7 @@ where
     crate::trace::spans::command(&path);
     add_help_lines(&mut command, tool, has_topics, aliases, &path, long_help);
 
-    // `Output::confirm` repeats the typed words, so they outlive parsing.
+    // `Run::confirm` repeats the typed words, so they outlive parsing.
     let mut words = args.get(1..).unwrap_or_default().to_vec();
     let mut parsed = attempt::<C>(&mut command, args, tool);
     // A command line that leaves out a required argument can have it
@@ -515,7 +515,7 @@ where
         }) => {
             return Ok((
                 parsed,
-                Output::parsed(view, command, words, dry_run, no_input, tool, &path),
+                Run::parsed(view, command, words, dry_run, no_input, tool, &path),
             ));
         }
         Ok(Attempt {

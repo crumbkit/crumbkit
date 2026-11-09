@@ -2,7 +2,7 @@
 // links to files in the repository, which work on GitHub. The definitions below
 // come first, so rustdoc uses them for the same labels (ADR-0013).
 //! [`run`]: crate::run()
-//! [`Limits`]: crate::Limits
+//! [`RunOptions`]: crate::RunOptions
 //! [`Escalation`]: crate::Escalation
 //! [`line_queue`]: crate::line_queue
 //! [`forward`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-process/src/forward.rs
@@ -33,5 +33,5 @@ pub use self::group::{Scope, Signal};
 pub use self::lines::{LineQueue, Lines, Silent, line_queue};
 pub use self::outcome::{Outcome, Status, StopReason};
 pub use self::run::{
-    Capture, Captured, ChildFinished, DRAIN_GRACE, Input, Limits, OverLimit, RunError, run,
+    Capture, Captured, ChildFinished, DRAIN_GRACE, Input, OverLimit, RunError, RunOptions, run,
 };

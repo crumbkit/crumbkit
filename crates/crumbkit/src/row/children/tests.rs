@@ -5,14 +5,14 @@ use std::fmt;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::{Children, Duration, Row, Shown};
+use crate::{Children, Elapsed, Row, Shown};
 
 /// One step of a job, which prints as `fetch: 3s`.
 struct Step {
     /// The step's name.
     name: &'static str,
     /// How long the step took.
-    took: Duration,
+    took: Elapsed,
 }
 
 impl fmt::Display for Step {
@@ -45,11 +45,11 @@ fn job() -> Job {
         steps: vec![
             Step {
                 name: "fetch",
-                took: Duration::new(std::time::Duration::from_secs(3)),
+                took: Elapsed::new(std::time::Duration::from_secs(3)),
             },
             Step {
                 name: "build",
-                took: Duration::new(std::time::Duration::from_secs(250)),
+                took: Elapsed::new(std::time::Duration::from_secs(250)),
             },
         ],
     }

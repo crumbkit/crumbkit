@@ -13,7 +13,7 @@ use clap::{CommandFactory as _, Parser};
 
 use super::{hand_over_to, respond_text};
 use crumbkit::tool::Exit;
-use crumbkit::{Output, Sink, Spelling, Tool, ViewFlags};
+use crumbkit::{Run, Sink, Spelling, Tool, ViewFlags};
 
 use crate::testing::assert_one_word_apart;
 use crumbkit::tool::Failures;
@@ -33,10 +33,10 @@ struct Cli {
 
 /// Parses `vault` followed by `flags` into the output of the run, as a
 /// tool that parses with clap alone builds it.
-fn output(flags: &[&str]) -> Output {
+fn output(flags: &[&str]) -> Run {
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Cli::try_parse_from(&words).unwrap().view;
-    Output::new(
+    Run::new(
         view,
         crumbkit::DryRun::default(),
         Cli::command(),
@@ -235,7 +235,7 @@ const USAGE_64: Tool = Tool::new().failures(Failures::new().exits(&[
 fn a_refused_json_exits_with_the_code_that_the_tool_gives_a_refused_command_line() {
     let words = ["vault", "--json"];
     let view = Cli::try_parse_from(words).unwrap().view;
-    let output = Output::new(
+    let output = Run::new(
         view,
         crumbkit::DryRun::default(),
         Cli::command(),
@@ -256,11 +256,11 @@ const DOTS: Spelling =
 /// Parses `vault` followed by `flags` into the output of the run, as a tool
 /// that parses with clap alone and sets the dotted spelling on its tool record
 /// builds it.
-fn dotted(flags: &[&str]) -> Output {
+fn dotted(flags: &[&str]) -> Run {
     const TOOL: Tool = Tool::new().failures(Failures::new().spelling(DOTS));
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Cli::try_parse_from(&words).unwrap().view;
-    Output::new(
+    Run::new(
         view,
         crumbkit::DryRun::default(),
         Cli::command(),

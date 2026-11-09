@@ -7,12 +7,12 @@ use schemars::{JsonSchema, schema_for};
 use serde::Serialize;
 use serde_json::json;
 
-use super::Duration;
+use super::Elapsed;
 use crate::shown::TextCells;
 
 /// Returns the JSON form of `duration` as a string, without its quotes.
 fn iso(duration: Std) -> String {
-    serde_json::to_value(Duration::new(duration))
+    serde_json::to_value(Elapsed::new(duration))
         .unwrap()
         .as_str()
         .unwrap()
@@ -74,7 +74,7 @@ fn the_largest_duration_writes_every_hour_and_nanosecond() {
 
 /// Returns the text form of `duration`.
 fn text(duration: Std) -> String {
-    Duration::new(duration).to_string()
+    Elapsed::new(duration).to_string()
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn a_smaller_unit_after_a_zero_next_unit_is_left_out() {
 fn a_duration_serializes_as_its_compact_form_while_the_text_mode_is_set() {
     let value = {
         let _cells = TextCells::enter();
-        serde_json::to_value(Duration::new(Std::from_secs(4 * 60 + 10))).unwrap()
+        serde_json::to_value(Elapsed::new(Std::from_secs(4 * 60 + 10))).unwrap()
     };
 
     assert_eq!(value, json!("4m 10s"));
@@ -139,33 +139,33 @@ fn a_duration_serializes_as_its_compact_form_while_the_text_mode_is_set() {
 
 #[test]
 fn a_duration_converts_from_a_standard_duration() {
-    let duration: Duration = Std::from_secs(5).into();
+    let duration: Elapsed = Std::from_secs(5).into();
 
-    assert_eq!(duration, Duration::new(Std::from_secs(5)));
+    assert_eq!(duration, Elapsed::new(Std::from_secs(5)));
 }
 
 #[test]
 fn a_duration_returns_the_standard_duration_it_was_made_from() {
     let standard = Std::from_millis(1_500);
 
-    assert_eq!(Duration::new(standard).get(), standard);
+    assert_eq!(Elapsed::new(standard).get(), standard);
 }
 
 #[test]
 fn a_duration_made_with_new_is_usable_in_a_constant() {
-    const TIMEOUT: Duration = Duration::new(Std::from_secs(30));
+    const TIMEOUT: Elapsed = Elapsed::new(Std::from_secs(30));
 
     assert_eq!(TIMEOUT.get(), Std::from_secs(30));
 }
 
 #[test]
 fn durations_order_by_their_length() {
-    assert!(Duration::new(Std::from_secs(1)) < Duration::new(Std::from_secs(2)));
+    assert!(Elapsed::new(Std::from_secs(1)) < Elapsed::new(Std::from_secs(2)));
 }
 
 #[test]
 fn the_schema_of_a_duration_is_a_string_with_a_pattern_and_no_format() {
-    let schema = schema_for!(Duration).to_value();
+    let schema = schema_for!(Elapsed).to_value();
 
     assert_eq!(schema.get("type"), Some(&json!("string")));
     assert_eq!(schema.get("pattern"), Some(&json!(super::PATTERN)));
@@ -235,9 +235,9 @@ fn the_pattern_refuses_forms_that_a_duration_never_writes() {
 #[derive(Serialize, JsonSchema)]
 struct Call {
     /// How long the call took.
-    took: Duration,
+    took: Elapsed,
     /// How long the call waited, if it did.
-    waited: Option<Duration>,
+    waited: Option<Elapsed>,
 }
 
 #[test]

@@ -52,7 +52,7 @@ exist, to `Expect::check` before it changes anything. A mismatch fails with
 code 1 unless the tool record lists the code for another, names the `expected`
 and `current` versions as fields, and recovers by running the command that the
 tool passes as the read call. A tool that compares versions in its own way calls
-`Expect::conflict` directly. The check runs before `Output::confirm`, so a
+`Expect::conflict` directly. The check runs before `Run::confirm`, so a
 conflict comes before the question, and a replacing command still takes `--yes`
 because it is destructive.
 

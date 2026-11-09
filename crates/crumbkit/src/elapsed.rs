@@ -23,7 +23,7 @@ const DAY: u64 = 24 * HOUR;
 /// The seconds in a week.
 const WEEK: u64 = 7 * DAY;
 
-/// The units of the compact forms of [`Age`](crate::Age) and [`Duration`],
+/// The units of the compact forms of [`Age`](crate::Age) and [`Elapsed`],
 /// largest first, each with the seconds it holds and its spelling.
 const UNITS: [(u64, char); 5] = [
     (WEEK, 'w'),
@@ -33,11 +33,11 @@ const UNITS: [(u64, char); 5] = [
     (1, 's'),
 ];
 
-/// The units under a second of the text form of a [`Duration`], largest
+/// The units under a second of the text form of an [`Elapsed`], largest
 /// first, each with the nanoseconds it holds and its spelling.
 const SUB_SECOND_UNITS: [(u32, &str); 3] = [(1_000_000, "ms"), (1_000, "\u{b5}s"), (1, "ns")];
 
-/// The pattern of the JSON form of a [`Duration`], which matches every
+/// The pattern of the JSON form of an [`Elapsed`], which matches every
 /// string that [`Iso8601`] writes and no other: whole hours without leading
 /// zeros, minutes and seconds from 0 to 59 without leading zeros, and a
 /// fraction of a second of one to nine digits without trailing zeros.
@@ -85,36 +85,36 @@ const PATTERN: &str = concat!(
 /// saving time can make 23 or 25 hours long.
 ///
 /// The field's JSON Schema is an inline string with a `pattern` that
-/// matches exactly the strings that `Duration` writes. It declares no
+/// matches exactly the strings that `Elapsed` writes. It declares no
 /// `format`, because the JSON Schema format `duration` follows the grammar
 /// in appendix A of RFC 3339, which has no fraction of a second, so a
 /// validator that checks formats would refuse every duration under a
 /// second.
 ///
-/// `Duration` implements [`Shown`], so the text table, `--fields` text and
+/// `Elapsed` implements [`Shown`], so the text table, `--fields` text and
 /// a stream's text line print the text form, and every JSON form, including
 /// a failure field from [`Field::shown`](crate::Field::shown), holds the
 /// ISO 8601 duration.
 ///
 /// ```
-/// use crumbkit::Duration;
+/// use crumbkit::Elapsed;
 ///
-/// let took = Duration::new(std::time::Duration::from_secs(4 * 60 + 10));
+/// let took = Elapsed::new(std::time::Duration::from_secs(4 * 60 + 10));
 ///
 /// assert_eq!(took.to_string(), "4m 10s");
 /// assert_eq!(took.get(), std::time::Duration::from_secs(250));
 /// assert_eq!(serde_json::to_string(&took).unwrap(), r#""PT4M10S""#);
 /// ```
 //
-// RUST-10: `Duration` serializes and has no `Deserialize`, because crumbkit
+// RUST-10: `Elapsed` serializes and has no `Deserialize`, because crumbkit
 // prints documents and does not read them back. Reading the ISO 8601 form
 // needs a parser for the general form, with days, weeks and fractions on
 // any part, and the iso8601 crate or a parser of that size replaces this
 // once a tool reads such documents.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Duration(std::time::Duration);
+pub struct Elapsed(std::time::Duration);
 
-impl Duration {
+impl Elapsed {
     /// Wraps a standard duration, so a row field prints it in the compact
     /// text form and as an ISO 8601 duration in JSON.
     #[must_use]
@@ -129,7 +129,7 @@ impl Duration {
     }
 }
 
-impl From<std::time::Duration> for Duration {
+impl From<std::time::Duration> for Elapsed {
     fn from(duration: std::time::Duration) -> Self {
         Self(duration)
     }
@@ -137,7 +137,7 @@ impl From<std::time::Duration> for Duration {
 
 /// Writes the duration in its largest unit and the next one, such as
 /// `4m 10s`, or in its largest unit under a second, such as `300ms`.
-impl fmt::Display for Duration {
+impl fmt::Display for Elapsed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let seconds = self.0.as_secs();
         if seconds == 0 {
@@ -190,7 +190,7 @@ impl fmt::Display for Largest {
 /// Writes the JSON form as an ISO 8601 duration in hours, minutes and
 /// seconds, and describes it as an inline string with a `pattern` and no
 /// `format`.
-impl Shown for Duration {
+impl Shown for Elapsed {
     fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.collect_str(&Iso8601(self.0))
     }
@@ -204,7 +204,7 @@ impl Shown for Duration {
     }
 }
 
-crate::shown!(Duration);
+crate::shown!(Elapsed);
 
 /// A duration whose `Display` writes it in ISO 8601, such as `PT4M10S`.
 struct Iso8601(std::time::Duration);

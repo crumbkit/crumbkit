@@ -59,7 +59,7 @@ where
     // `parse_from` would take from `Parsed`.
     let parsed =
         crumbkit::try_parse_to::<Parsed>(&mut Sink::standard(), command(&lists), &tool, args);
-    let (parsed, mut output) = match parsed.map_err(Unparsed::print) {
+    let (parsed, mut run) = match parsed.map_err(Unparsed::print) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
@@ -69,14 +69,14 @@ where
             command: ListCommand::List(args),
         } => {
             let result = lists::entries(dir.as_deref(), &name, &args.page);
-            crumbkit::finish(output, lists::ENTRIES_LIST, result)
+            crumbkit::finish(run, lists::ENTRIES_LIST, result)
         }
         Parsed::Grafted {
             name,
             command: ListCommand::Edit,
         } => {
             let editor = lists::editor(dir.as_deref(), &name);
-            crumbkit_child::hand_over(output, editor)
+            crumbkit_child::hand_over(run, editor)
         }
         Parsed::Static(cli) => {
             match cli.resource {
@@ -84,24 +84,24 @@ where
                     command: EntriesCommand::List(args),
                 } => {
                     let result = lists::entries(dir.as_deref(), &args.list, &args.page);
-                    crumbkit::finish(output, lists::ENTRIES_LIST, result)
+                    crumbkit::finish(run, lists::ENTRIES_LIST, result)
                 }
                 Resource::Entries {
                     command: EntriesCommand::Stream(args),
-                } => lists::stream_entries(output, dir.as_deref(), &args.list),
+                } => lists::stream_entries(run, dir.as_deref(), &args.list),
                 Resource::Entries {
                     command: EntriesCommand::Export(args),
                 } => {
                     let result = lists::export(dir.as_deref(), &args.list);
-                    crumbkit::finish(output, lists::ENTRIES_EXPORT, result)
+                    crumbkit::finish(run, lists::ENTRIES_EXPORT, result)
                 }
                 // `set` reads `--dry-run` and asks for confirmation through
-                // `output`, so it runs before `finish` takes it.
+                // `run`, so it runs before `finish` takes it.
                 Resource::Entries {
                     command: EntriesCommand::Set(args),
                 } => {
-                    let result = lists::set(&mut output, dir.as_deref(), &args);
-                    crumbkit::finish(output, lists::ENTRIES_SET, result)
+                    let result = lists::set(&mut run, dir.as_deref(), &args);
+                    crumbkit::finish(run, lists::ENTRIES_SET, result)
                 }
                 Resource::Lists {
                     command: ListsCommand::List(args),
@@ -111,42 +111,42 @@ where
                     let now = SystemTime::now();
                     let summaries = lists::summaries(dir.as_deref(), &args.page, now);
                     let result = Ok::<_, lists::EntriesError>(summaries);
-                    crumbkit::finish(output, lists::LISTS_LIST, result)
+                    crumbkit::finish(run, lists::LISTS_LIST, result)
                 }
                 Resource::Lists {
                     command: ListsCommand::Show(args),
                 } => {
                     let result =
                         Ok::<_, lists::EntriesError>(lists::show(dir.as_deref(), &args.names));
-                    crumbkit::finish(output, lists::LISTS_SHOW, result)
+                    crumbkit::finish(run, lists::LISTS_SHOW, result)
                 }
                 // `commands list` and `schemas` read the command tree
-                // through `&mut output`, so each runs before `finish`
-                // takes `output` in turn.
+                // through `&mut run`, so each runs before `finish`
+                // takes `run` in turn.
                 Resource::Commands {
                     command: CommandsCommand::List(args),
                 } => {
-                    let result = crumbkit::commands::list(&mut output, &tool, &args);
+                    let result = crumbkit::commands::list(&mut run, &tool, &args);
                     let document = crumbkit::commands::COMMANDS_LIST;
-                    crumbkit::finish(output, document, result)
+                    crumbkit::finish(run, document, result)
                 }
                 Resource::Where => {
                     let location = lists::Location::of(dir.as_deref());
                     // Finding the directory cannot fail, so the error
                     // type is crumbkit's own and never occurs.
                     let result = Ok::<_, crumbkit::Error>(crumbkit::Prose::new(location));
-                    crumbkit::finish(output, lists::WHERE, result)
+                    crumbkit::finish(run, lists::WHERE, result)
                 }
                 Resource::Schemas { command } => match command {
                     SchemasCommand::List(args) => {
-                        let result = crumbkit::schemas::list(&mut output, &tool, &args);
+                        let result = crumbkit::schemas::list(&mut run, &tool, &args);
                         let document = crumbkit::schemas::SCHEMAS_LIST;
-                        crumbkit::finish(output, document, result)
+                        crumbkit::finish(run, document, result)
                     }
                     SchemasCommand::Show(args) => {
-                        let result = crumbkit::schemas::show(&mut output, &tool, &args);
+                        let result = crumbkit::schemas::show(&mut run, &tool, &args);
                         let document = crumbkit::schemas::SCHEMAS_SHOW;
-                        crumbkit::finish(output, document, result)
+                        crumbkit::finish(run, document, result)
                     }
                 },
             }

@@ -28,7 +28,7 @@ impl Leaf {
     ///
     /// The command never succeeds. It ends with a failure, such as the
     /// interrupt that stopped the server, which it prints and returns with
-    /// [`Output::fail`](crate::Output::fail), so each observer receives the
+    /// [`Run::fail`](crate::Run::fail), so each observer receives the
     /// exit code:
     ///
     /// ```no_run
@@ -36,15 +36,15 @@ impl Leaf {
     ///
     /// use crumbkit::Tool;
     /// use crumbkit::help::{Help, Leaf};
-    /// use crumbkit::{Failure, Output, Sink};
+    /// use crumbkit::{Failure, Run, Sink};
     ///
     /// const TOOL: Tool =
     ///     Tool::new().help(Help::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]));
     ///
     /// /// Ends a run of `serve` with `failure`, such as the interrupt that
     /// /// stopped the server.
-    /// fn end(output: &mut Output, failure: &dyn Failure) -> ExitCode {
-    ///     output.fail(&mut Sink::standard(), failure)
+    /// fn end(run: &mut Run, failure: &dyn Failure) -> ExitCode {
+    ///     run.fail(&mut Sink::standard(), failure)
     /// }
     /// ```
     #[must_use]

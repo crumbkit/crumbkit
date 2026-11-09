@@ -105,12 +105,12 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
 
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(&Tool::new());
-    let (cli, output) = match parsed {
+    let (cli, run) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
     let result = list(&cli);
-    crumbkit::finish(output, BOOKS_LIST, result)
+    crumbkit::finish(run, BOOKS_LIST, result)
 }
 ```
 
@@ -121,9 +121,9 @@ a fuller one.
 
 The [behaviour docs] describe each part.
 
-- Output: [`Output`], [`finish`], [`Row`], [`Document`], [`Listing`],
+- Output: [`Run`], [`finish`], [`Row`], [`Document`], [`Listing`],
   [`Page`], [`Batch`] and [`Prose`].
-- Value types of your own: [`Shown`] and [`Duration`].
+- Value types of your own: [`Shown`] and [`Elapsed`].
 - Failures: [`Failure`], [`Recovery`], [`Code`], [`Spelling`] and
   [`Error`].
 - Parsing and help: [`parse`], [`help`] and [`Call`].
@@ -144,7 +144,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 
 [tutorial]: ../../docs/tutorial.md
 [golden files]: ../../examples/shelf/tests/golden
-[`Output`]: src/output.rs
+[`Run`]: src/output.rs
 [`finish`]: src/output.rs
 [`Row`]: src/row.rs
 [`Document`]: src/document.rs
@@ -153,7 +153,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`Batch`]: src/batch.rs
 [`Prose`]: src/prose.rs
 [`Shown`]: src/shown.rs
-[`Duration`]: src/duration.rs
+[`Elapsed`]: src/elapsed.rs
 [`Failure`]: src/failure.rs
 [`Recovery`]: src/failure.rs
 [`Code`]: src/code.rs

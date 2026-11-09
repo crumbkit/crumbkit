@@ -42,8 +42,8 @@ Why: ADR-0039, ADR-0024.
 
 A command that changes something may flatten `DryRun`, which adds
 `--dry-run`. `parse` reads the flag from the deepest command's matches and
-records it in `Output`, and a tool that parses with clap alone passes its
-`DryRun` to `Output::new`. The handler reads `Output::is_dry_run` and skips
+records it in `Run`, and a tool that parses with clap alone passes its
+`DryRun` to `Run::new`. The handler reads `Run::is_dry_run` and skips
 its changes, and `finish` marks the result. The command still validates its
 arguments and returns the result that a real run would return.
 
@@ -68,7 +68,7 @@ Why: ADR-0039, ADR-0016, ADR-0041.
 ## Confirmation
 
 A command that destroys data flattens `Yes`, which adds `--yes`, and calls
-`Output::confirm` with a question before it changes anything. `confirm`
+`Run::confirm` with a question before it changes anything. `confirm`
 proceeds at once with `--yes` or on a dry run.
 
 - When a person can answer ([pickers](pickers.md#who-can-answer)), `confirm`
@@ -79,8 +79,8 @@ proceeds at once with `--yes` or on a dry run.
   fails with `<tool>::confirmation::needs_yes`. Its recovery runs the words
   that the caller typed with `--yes` added before any `--`, through
   `Call::typed`, so an agent can repeat the command exactly. The
-  [`Output`](../../../crates/crumbkit/src/output.rs) that `parse` returns
-  holds those words, and so does the one that `Output::new` builds from the
+  [`Run`](../../../crates/crumbkit/src/output.rs) that `parse` returns
+  holds those words, and so does the one that `Run::new` builds from the
   argv. A typed word that is not UTF-8 leaves the recovery without a next
   step.
 

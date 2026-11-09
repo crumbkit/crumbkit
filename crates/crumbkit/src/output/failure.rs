@@ -89,7 +89,7 @@ impl Printing {
     }
 
     /// Returns the exit code of the exit that lists `code`, or `None`, as
-    /// [`Output::listed_exit`](crate::Output::listed_exit) describes.
+    /// [`Run::listed_exit`](crate::Run::listed_exit) describes.
     pub(crate) fn listed_exit(self, code: &'static Code) -> Option<u8> {
         rename::listed_exit(self.exits, self.renames, code)
     }

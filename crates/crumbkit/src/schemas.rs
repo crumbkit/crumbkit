@@ -61,21 +61,21 @@
 //!
 //! fn run(args: &[&str]) -> ExitCode {
 //!     let parsed = crumbkit::parse_from::<Cli>(&TOOL, args);
-//!     let (cli, mut output) = match parsed {
+//!     let (cli, mut run) = match parsed {
 //!         Ok(parsed) => parsed,
 //!         Err(stop) => return stop.exit_code(),
 //!     };
 //!     match cli.resource {
 //!         Resource::Schemas { command } => match command {
-//!             // `list` and `show` build the command tree in `output`,
+//!             // `list` and `show` build the command tree in `run`,
 //!             // so each runs before `finish`.
 //!             SchemasCommand::List(args) => {
-//!                 let result = schemas::list(&mut output, &TOOL, &args);
-//!                 crumbkit::finish(output, SCHEMAS_LIST, result)
+//!                 let result = schemas::list(&mut run, &TOOL, &args);
+//!                 crumbkit::finish(run, SCHEMAS_LIST, result)
 //!             }
 //!             SchemasCommand::Show(args) => {
-//!                 let result = schemas::show(&mut output, &TOOL, &args);
-//!                 crumbkit::finish(output, SCHEMAS_SHOW, result)
+//!                 let result = schemas::show(&mut run, &TOOL, &args);
+//!                 crumbkit::finish(run, SCHEMAS_SHOW, result)
 //!             }
 //!         },
 //!     }
@@ -105,7 +105,7 @@ pub(crate) use self::envelope::{envelope, file_format};
 pub use self::row::{SchemaRow, SchemaShowRow};
 pub use self::served::{Served, documents};
 use crate::{
-    Batch, Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, Tool, codes,
+    Batch, Call, Code, Document, Error, Failure, Listing, Page, Recovery, Run, Tool, codes,
 };
 
 #[cfg(test)]
@@ -189,19 +189,15 @@ pub struct SchemasShow {
 /// [`SCHEMAS_LIST`]. [`documents`] says which documents those are and in
 /// which order.
 ///
-/// It builds the whole command tree through [`Output::command`], so it sees
+/// It builds the whole command tree through [`Run::command`], so it sees
 /// each command that `Command::defer` adds, and it builds no JSON Schema.
 ///
 /// # Errors
 ///
 /// It returns no failure. It returns a `Result` so that a tool passes it to
 /// `finish` as it passes any handler's result.
-pub fn list(
-    output: &mut Output,
-    tool: &Tool,
-    args: &SchemasList,
-) -> Result<Listing<SchemaRow>, Error> {
-    let root = output.command();
+pub fn list(run: &mut Run, tool: &Tool, args: &SchemasList) -> Result<Listing<SchemaRow>, Error> {
+    let root = run.command();
     let rows = documents(root, tool).iter().map(SchemaRow::new).collect();
     Ok(args.page.first_of(rows).described("documents").next(
         Call::new(SHOW_PATH).arg("ids"),
@@ -216,18 +212,18 @@ pub fn list(
 /// An id that names no document of [`documents`] adds a failure with the
 /// code `<tool>::schemas::not_found` to the batch. Its recovery runs
 /// `schemas list`. It builds the whole command tree through
-/// [`Output::command`], and the JSON Schema of each id given once.
+/// [`Run::command`], and the JSON Schema of each id given once.
 ///
 /// # Errors
 ///
 /// It returns no failure of its own. It returns a `Result` so that a tool
 /// passes it to `finish` as it passes any handler's result.
 pub fn show(
-    output: &mut Output,
+    run: &mut Run,
     tool: &Tool,
     args: &SchemasShow,
 ) -> Result<Batch<SchemaShowRow, Error>, Error> {
-    let root = output.command();
+    let root = run.command();
     let served = documents(root, tool);
     let mut batch = Batch::new(SHOW_PATH, "ids", &args.ids);
     for id in &args.ids {

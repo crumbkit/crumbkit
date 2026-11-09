@@ -1,7 +1,7 @@
 # ADR-0180. Tool and its records replace Guide
 
 - Date: 2026-11-08
-- Status: accepted
+- Status: amended by ADR-0184
 - Supersedes: ADR-0036, ADR-0056 and ADR-0086, which it amends
 
 ## Context

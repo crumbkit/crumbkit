@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{Parser, Subcommand};
-use crumbkit::{Age, Batch, Document, Error, Output, Row, Sink, Stream, Tool, ViewFlags};
+use crumbkit::{Age, Batch, Document, Error, Row, Run, Sink, Stream, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -77,7 +77,7 @@ fn file() -> File {
 
 /// Parses `files` followed by `args`, and returns the output, or `None`
 /// when the line does not parse.
-fn parse(args: &[&str]) -> Option<Output> {
+fn parse(args: &[&str]) -> Option<Run> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["files"].iter().chain(args);

@@ -1,5 +1,5 @@
 //! Tests for the view flags that `finish_to` refuses because the result
-//! cannot use them, and for the pairs that `Output::new_to` refuses, for a
+//! cannot use them, and for the pairs that `Run::new_to` refuses, for a
 //! tool that parses without crumbkit's `parse`.
 
 use std::process::ExitCode;

@@ -12,7 +12,7 @@ use serde::Serialize;
 use super::stream_to;
 use crate::Envelope;
 use crate::twins::assert_one_word_apart;
-use crate::{Call, Code, Document, DryRun, Error, Failure, Output, Recovery, Row, Sink, Stream};
+use crate::{Call, Code, Document, DryRun, Error, Failure, Recovery, Row, Run, Sink, Stream};
 
 mod children;
 mod empty;
@@ -112,13 +112,13 @@ enum Command {
 /// Parses `birds watch` followed by `flags`, and returns the output as a
 /// tool that parses with clap alone builds it, with the `--dry-run` that
 /// `flags` hold.
-fn parse(flags: &[&str]) -> Output {
+fn parse(flags: &[&str]) -> Run {
     let mut command = Cli::command();
     let args = ["birds", "watch"].iter().chain(flags);
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
     let tool = Cli::from_arg_matches(&matches).unwrap();
     let Command::Watch { dry_run } = tool.command;
-    Output::new(tool.view, dry_run, command, &crate::Tool::new(), args).unwrap()
+    Run::new(tool.view, dry_run, command, &crate::Tool::new(), args).unwrap()
 }
 
 /// What a stream wrote and the exit code it ended with.
@@ -486,7 +486,7 @@ fn run_budgeted_as(
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
     let view = Cli::from_arg_matches(&matches).unwrap().view;
     let tool = crate::Tool::new().output(crate::tool::Output::new().budget(1024, "a short watch"));
-    let output = Output::new(view, DryRun::default(), command, &tool, args).unwrap();
+    let output = Run::new(view, DryRun::default(), command, &tool, args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -558,7 +558,7 @@ fn a_stream_always_prints_its_first_item_even_past_the_budget() {
         .unwrap();
     let view = Cli::from_arg_matches(&matches).unwrap().view;
     let tool = crate::Tool::new().output(crate::tool::Output::new().budget(1024, "a short watch"));
-    let output = Output::new(view, DryRun::default(), command, &tool, ["birds", "watch"]).unwrap();
+    let output = Run::new(view, DryRun::default(), command, &tool, ["birds", "watch"]).unwrap();
     let long: &'static str = Box::leak("w".repeat(2000).into_boxed_str());
     let wren = Sighting {
         bird: long,

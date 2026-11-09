@@ -54,7 +54,7 @@ const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 ///   dry run's document with `dry_run` and a tool's own flag does not;
 /// - a destructive leaf without an argument with the long name `--yes`,
 ///   unless an opt-out from [`Rule::Yes`] covers it, because
-///   `Output::confirm` fails without a terminal unless the caller passes
+///   `Run::confirm` fails without a terminal unless the caller passes
 ///   `--yes`;
 /// - a tool that can ask a question, because `tool` has a picker or a
 ///   command has an argument with the long name `--yes`, without the

@@ -19,9 +19,7 @@ use crate::answered::answered;
 use crate::events::TraceIds;
 use crate::events::testing::give_trace_ids;
 use crate::tool::{Exit, Failures};
-use crate::{
-    Code, Document, Error, Failure, Output, Recovery, Row, Sink, Tool, finish_to, parse_to,
-};
+use crate::{Code, Document, Error, Failure, Recovery, Row, Run, Sink, Tool, finish_to, parse_to};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
@@ -270,7 +268,7 @@ enum Planets {
 
 /// Parses `args` into memory, and returns the parsed tool's output flags
 /// with the tool's command, or the exit code of a run that parsing ended.
-fn parse(args: &[&str]) -> Result<Output, ExitCode> {
+fn parse(args: &[&str]) -> Result<Run, ExitCode> {
     let (_, output) = parse_to::<Cli>(&mut Sink::new(Vec::new(), Vec::new()), &TOOL, args)?;
     Ok(output)
 }

@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use super::DryRun;
 use crate::Envelope;
-use crate::{Document, Error, Output, Prose, Row, Sink, Tool, ViewFlags, finish_to};
+use crate::{Document, Error, Prose, Row, Run, Sink, Tool, ViewFlags, finish_to};
 
 /// A removed planet.
 #[derive(Serialize, JsonSchema)]
@@ -59,7 +59,7 @@ fn finish_with<T: crate::Rows>(
     let args = ["tool", "remove"].iter().chain(flags);
     let tool = Cli::try_parse_from(args.clone()).unwrap();
     let Commands::Remove { dry_run } = tool.command;
-    let output = Output::new(tool.view, dry_run, Cli::command(), &Tool::new(), args).unwrap();
+    let output = Run::new(tool.view, dry_run, Cli::command(), &Tool::new(), args).unwrap();
     let dry_run = output.is_dry_run();
     let mut out = Vec::new();
     let mut err = Vec::new();
@@ -82,7 +82,7 @@ fn output_new_records_the_dry_run_flag_it_is_given() {
     assert!(!finish_with(&[], REMOVED, Ok(pluto())).dry_run);
 
     let args = ["tool", "remove"];
-    let output = Output::new(
+    let output = Run::new(
         ViewFlags::new(),
         DryRun::default(),
         Cli::command(),
@@ -155,7 +155,7 @@ fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_
     let args = ["tool", "remove", "--dry-run", "--json"];
     let tool = Cli::try_parse_from(args).unwrap();
     let Commands::Remove { dry_run } = tool.command;
-    let output = Output::new(tool.view, dry_run, Cli::command(), &Tool::new(), args).unwrap();
+    let output = Run::new(tool.view, dry_run, Cli::command(), &Tool::new(), args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(pluto());

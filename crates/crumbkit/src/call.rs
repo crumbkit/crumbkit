@@ -156,7 +156,7 @@ impl Call {
     /// Returns a call of the command line whose words after the program
     /// name are `words`, such as `books remove 2 --yes`.
     ///
-    /// `crumbkit::Output::confirm` uses it as the recovery of a run that
+    /// `crumbkit::Run::confirm` uses it as the recovery of a run that
     /// needs `--yes`, because the caller's own words, with `--yes` added,
     /// are the command to run next. The call renders each word without
     /// looking it up, and quotes a word that a POSIX shell would split or

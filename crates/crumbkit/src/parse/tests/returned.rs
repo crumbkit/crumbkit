@@ -1,5 +1,5 @@
 //! Tests for what `parse` returns: for a command line that parses, the
-//! tool's type and an `Output` that holds the view flags, the command and
+//! tool's type and a `Run` that holds the view flags, the command and
 //! the words, and for a run that it ended, a `Stop` that says what printed.
 
 use crate::parse::tests::parse_tree_to;
@@ -121,8 +121,8 @@ enum Removes {
     },
 }
 
-/// Parses `args` as the removing tool, and returns its `Output`.
-fn removing(args: &[&str]) -> crate::Output {
+/// Parses `args` as the removing tool, and returns its `Run`.
+fn removing(args: &[&str]) -> crate::Run {
     let mut sink = Sink::new(Vec::new(), Vec::new());
     let (_, output) = crate::parse_to::<Removing>(&mut sink, &Tool::new(), args)
         .unwrap_or_else(|_| panic!("the command line did not parse"));
