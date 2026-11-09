@@ -56,8 +56,8 @@ impl ChildFinished {
     }
 
     /// Returns the time from the child's start to the first byte of its
-    /// standard output, or `None` when it printed none or the run neither
-    /// kept nor copied standard output.
+    /// standard output, or `None` when it printed none, when the run inherited
+    /// standard output, or when the run discarded it and had no copy function.
     #[must_use]
     pub const fn first_stdout(&self) -> Option<Duration> {
         self.first_stdout

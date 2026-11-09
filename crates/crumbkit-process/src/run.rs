@@ -202,7 +202,9 @@ impl RunOptions {
     /// Calls `copy` with each chunk of standard error as the run reads it,
     /// whatever the capture keeps.
     ///
-    /// A chunk can end in the middle of a line or of a UTF-8 character.
+    /// A chunk can end in the middle of a line or of a UTF-8 character. The
+    /// run does not read a stream with [`Capture::Inherit`], so its function
+    /// receives nothing.
     /// Each stream's function runs on that stream's reader thread, so the
     /// two streams can interleave. A function that blocks holds the reader:
     /// the child then waits on its full pipe, and the run waits for the
@@ -317,9 +319,10 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
 }
 
 /// Returns the standard stream for an output with `capture` and `copy`. A
-/// copy needs a pipe even when the capture keeps nothing.
+/// copy needs a pipe even when the capture keeps nothing. An inherited
+/// stream stays the tool's own, so a copy of it receives nothing.
 fn output_stdio(capture: &Capture, copy: Option<&OutputCopy>) -> Stdio {
-    if copy.is_some() {
+    if copy.is_some() && !matches!(capture, Capture::Inherit) {
         Stdio::piped()
     } else {
         capture.stdio()

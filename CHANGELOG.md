@@ -17,6 +17,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: `RunOptions::stdout_copy` and `stderr_copy` give a function
   each chunk of a stream while the capture keeps its limit
   ([behaviour/processes]).
+- crumbkit-process: `Capture::Inherit` sends a stream to the tool's own, so a
+  run can hold an interactive step and return ([behaviour/processes]).
 
 ### Changed
 

@@ -85,6 +85,36 @@ fn stdin_bytes_reach_the_child_and_end_with_the_end_of_its_input() {
     assert_eq!(finished.stdout().bytes(), b"given\n");
 }
 
+/// Returns the inode of the child's standard output under `capture`, which
+/// the child prints on standard error.
+fn inode_of_stdout(capture: Capture) -> u64 {
+    inode_under(&RunOptions::new().stdout(capture).stderr(WHOLE))
+}
+
+/// Returns the inode of the child's standard output under `options`.
+fn inode_under(options: &RunOptions) -> u64 {
+    let finished = run_sh("ls -iL /dev/fd/3 3>&1 >&2", options);
+    assert_eq!(finished.first_stdout(), None);
+    let printed = String::from_utf8_lossy(finished.stderr().bytes()).into_owned();
+    printed.split_whitespace().next().unwrap().parse().unwrap()
+}
+
+/// Returns the inode of the test's own standard output.
+fn own_inode() -> u64 {
+    use std::os::unix::fs::MetadataExt as _;
+    std::fs::metadata("/dev/fd/1").unwrap().ino()
+}
+
+#[test]
+fn an_inherited_stream_is_the_tools_own_and_the_run_keeps_nothing_of_it() {
+    assert_eq!(inode_of_stdout(Capture::Inherit), own_inode());
+}
+
+#[test]
+fn a_kept_stream_is_a_pipe_of_its_own_and_not_the_tools() {
+    assert_ne!(inode_of_stdout(WHOLE), own_inode());
+}
+
 #[test]
 fn a_child_that_never_reads_its_large_input_still_ends_the_run() {
     let input = Input::Bytes(vec![b'x'; 4 << 20]);

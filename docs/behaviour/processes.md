@@ -70,6 +70,9 @@ failure, when the child closes its input.
 Each output stream has a `Capture`:
 
 - `Discard` sends the stream to the null device.
+- `Inherit` sends the stream to the tool's own. With `Scope::Child` and
+  `Input::Inherit`, a child that the person answers stays in the tool's
+  foreground group, and the tool carries on when it ends.
 - `Whole` keeps the stream's first `limit` bytes. A longer stream is over
   its limit, and `OverLimit` decides what happens then: `Stop` stops the
   child, and `Sink` reads the rest of the stream and drops it, so the child
