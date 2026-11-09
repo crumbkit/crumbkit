@@ -81,3 +81,13 @@ fn a_copy_that_panics_lets_the_child_run_to_its_end_and_fails_the_run() {
     )]
     std::fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn a_copy_of_an_inherited_stream_leaves_the_stream_the_tools_own() {
+    let options = RunOptions::new()
+        .stdout(Capture::Inherit)
+        .stderr(super::WHOLE)
+        .stdout_copy(|_| panic!("the run gave a chunk of an inherited stream"));
+
+    assert_eq!(super::inode_under(&options), super::own_inode());
+}

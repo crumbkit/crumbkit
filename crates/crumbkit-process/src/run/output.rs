@@ -21,6 +21,16 @@ pub enum Capture {
     /// The stream goes to the null device, and the run keeps nothing.
     #[default]
     Discard,
+    /// The stream goes to the tool's own stream, and the run keeps nothing.
+    ///
+    /// A child in a group of its own is in the background of the terminal.
+    /// It can write there unless the terminal has `tostop` set, and it is
+    /// stopped when it reads. A stopped child holds a run with no deadline. For a step that
+    /// the person answers, use [`Scope::Child`](crate::Scope::Child) with
+    /// [`Input::Inherit`](crate::Input::Inherit), so the child stays in the
+    /// tool's foreground group and the tool carries on when it ends. Ctrl-C
+    /// then reaches both.
+    Inherit,
     /// The run keeps the stream's first `limit` bytes. A stream longer than
     /// `limit` bytes is over its limit, and `over` says what the run does
     /// then.
@@ -98,6 +108,7 @@ impl Capture {
     pub(super) fn stdio(&self) -> Stdio {
         match self {
             Self::Discard => Stdio::null(),
+            Self::Inherit => Stdio::inherit(),
             Self::Whole { .. } | Self::Tail { .. } | Self::Lines { .. } => Stdio::piped(),
         }
     }
@@ -229,7 +240,7 @@ impl Keeper {
     pub(super) fn add(&mut self, bytes: &[u8]) -> bool {
         let kept = &mut self.kept;
         match self.capture {
-            Capture::Discard => false,
+            Capture::Discard | Capture::Inherit => false,
             Capture::Lines {
                 line,
                 total,
