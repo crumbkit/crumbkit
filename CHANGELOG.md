@@ -48,8 +48,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `RecoveryStep` is read from `crumbkit_test` too. The `form` module is gone.
 - crumbkit: breaking: `pick::NoInput` is only `crumbkit::NoInput`.
 - crumbkit: `help::STREAM_LINE`, `BYTES_LINE`, `HEADED_LINE`, `text_line`,
-  `children_line` and `Effects::writes_line` left the public documentation.
-  They still compile, for crumbkit-markdown.
+  `children_line`, `Effects::line` and `Effects::writes_line` left the public
+  documentation. They still compile, for crumbkit-markdown.
 - crumbkit-test: breaking: `crumbkit_test::Tool` is removed; use
   `crumbkit::Tool`.
 - crumbkit: breaking: `Leaf::get_document` returns `Option<&LeafDocument>`.

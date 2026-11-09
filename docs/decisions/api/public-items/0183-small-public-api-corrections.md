@@ -3,7 +3,7 @@
 - Date: 2026-11-09
 - Status: accepted
 - Supersedes: ADR-0174, ADR-0175, ADR-0178 and ADR-0088, which it amends
-- Missed: ADR-0178 renamed `Run`, `Exit` and `Finished` because crumbkit's own items have those names, and it left `Stop`, which `crumbkit::Stop` also names. ADR-0174 turned down `Exit::Ended(Status)` because it changes every match, and it did not weigh that one variant removes the repeated status for every later caller. ADR-0175 kept `RecoveryStep` at `crumbkit::form`, and it did not ask who reads that path: only crumbkit-test does.
+- Missed: ADR-0178 renamed `Run`, `Exit` and `Finished` because crumbkit's own items have those names, and it left `Stop`, which `crumbkit::Stop` also names. ADR-0174 turned down `Exit::Ended(Status)` because it changes every match, and it did not weigh that one variant removes the repeated status for every later caller. ADR-0175 kept `RecoveryStep` at `crumbkit::form`, and it did not ask which crate should own that path: crumbkit-test reads the printed failure, and an outside tool that imports the path moves to `crumbkit_test`.
 
 ## Context
 
@@ -19,7 +19,8 @@ caller. Each is small on its own and none needs a record of its own.
   other names had.
 - `Recovery::None` needed a struct literal and `.to_owned()` at each use, and
   `#[failure(...)]` had no key for a failure with no next step.
-- `crumbkit::form` existed only for crumbkit-test's reader of a printed failure.
+- `crumbkit::form` held the type that crumbkit-test reads a printed failure
+  into. An outside tool also imports it, and moves to `crumbkit_test`.
 - Items that only a sibling crate reads were marked inconsistently.
   `crumbkit::NoInput` had a second public path, and `crumbkit_test::Tool` had no
   caller.
@@ -38,9 +39,11 @@ caller. Each is small on its own and none needs a record of its own.
   `form` module is gone. `RecoveryStep` stays defined in crumbkit, which prints
   it, and is hidden from crumbkit's documentation.
 - A `pub` item that exists only for a sibling crate carries `#[doc(hidden)]` and
-  a comment naming the sibling. `Effects::line` stays documented, because a
-  tool that renders its own help prints it. `NoInput` has one path, `crumbkit::NoInput`, and
-  `crumbkit_test::Tool` is gone.
+  a comment naming the sibling. The seven line helpers that crumbkit-markdown
+  reads are one such set: `Effects::line`, `Effects::writes_line`,
+  `help::STREAM_LINE`, `help::BYTES_LINE`, `help::HEADED_LINE`,
+  `help::text_line` and `help::children_line`. `NoInput` has one path,
+  `crumbkit::NoInput`, and `crumbkit_test::Tool` is gone.
 - `Output::no_input` reports whether the caller passed `--no-input`.
 
 ## Consequences

@@ -218,7 +218,7 @@ fn a_refused_view_flag_reports_that_a_refusal_printed() {
 
 #[test]
 fn the_handle_reports_whether_the_caller_passed_no_input() {
-    use clap::{CommandFactory as _, Parser};
+    use clap::Parser;
 
     #[derive(Parser)]
     #[command(name = "tool")]

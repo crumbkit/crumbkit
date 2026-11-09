@@ -32,9 +32,10 @@ mod tests;
 /// | `crate = PATH` | type | The path of the crate that holds `Failure`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each variant that does not forward needs `code` and exactly one of
-/// `recovery`, `hint` and `no_next_step`. A forwarding variant takes no other key except
-/// `diagnostic`, which forwards `diagnostic()` too. A key given twice, an
-/// unknown key and a missing key are compile errors that name the variant.
+/// `recovery`, `hint` and `no_next_step`. A forwarding variant takes no other
+/// key except `diagnostic`, which forwards `diagnostic()` too. A key given
+/// twice, an unknown key and a missing key are compile errors that name the
+/// variant.
 ///
 /// The expressions in `recovery`, `alternative`, `field` and `url` read the
 /// variant's fields by name, and the fields of a tuple variant as `f0`, `f1`
