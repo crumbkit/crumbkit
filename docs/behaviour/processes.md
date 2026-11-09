@@ -43,6 +43,23 @@ so the outer tool's signals still reach its child.
 
 Why: ADR-0171, ADR-0172, ADR-0173.
 
+## Around the start
+
+`RunOptions::around_spawn` gives a run a hook that the run calls in place of
+starting the child. The hook calls `Spawn::start` itself, so it can hold a lock
+for exactly the length of the start, or make a descriptor inheritable and close
+it on exec again afterwards. The start returns a `Spawned`, the only value the
+hook can return for success, so a hook that returns `Ok` has started the child.
+
+A hook that fails ends the run with `RunError::Start`. A child that had already
+started is killed and reaped, with its scope, when its `Spawned` drops. The
+time the hook takes counts towards the deadline and is outside the time bound
+of a run. The time the hook spends after the start counts towards
+`ChildFinished::first_stdout`, because the run reads the child's output only
+once the hook returns.
+
+Why: ADR-0187.
+
 ## Input and output
 
 The child's standard input is the null device, bytes that a thread writes
@@ -135,7 +152,7 @@ for at most one second after the reap, and keeps running.
 
 On Unix, for a child that the tool may signal, a run takes at most the
 time to its deadline, plus the graces of its escalation, plus the drain
-grace. A child that refuses the tool's signals, such as a setuid program,
+grace, plus the time that a hook around the start takes. A child that refuses the tool's signals, such as a setuid program,
 holds the run until it exits. On Windows a reader blocks until its pipe
 closes, so a process outside the job that holds a pipe, as a grandchild of
 a child in `Scope::Child` can, holds the run until it exits.

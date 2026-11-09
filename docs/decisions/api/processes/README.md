@@ -20,3 +20,4 @@ decided.
 - [ADR-0176. A full line queue waits half a drain grace after the reap](0176-full-queue-waits-after-the-reap.md)
 - [ADR-0178. The process crate's types have names of their own](0178-process-type-names.md)
 - [ADR-0179. The forwarder ends the tool and runs the usage line](0179-the-forwarder-ends-the-tool-and-runs-the-usage-line.md)
+- [ADR-0187. A run's hook wraps the start of its child](0187-a-hook-wraps-the-start-of-the-child.md)

@@ -13,6 +13,7 @@ use crate::{Cancel, Escalation, Group, Outcome, Scope, Signal, Status, StopReaso
 
 mod output;
 mod pipes;
+mod spawn;
 
 #[cfg(test)]
 mod tests;
@@ -20,6 +21,8 @@ mod tests;
 use self::output::Keeper;
 pub use self::output::{Capture, Captured, OverLimit};
 use self::pipes::{Ends, Kept};
+use self::spawn::AroundSpawn;
+pub use self::spawn::{Spawn, Spawned};
 
 /// How long a run keeps reading the child's pipes after it reaps the
 /// child. A descendant outside the child's scope that holds a pipe open
@@ -60,6 +63,7 @@ pub struct RunOptions {
     cancel: Option<Cancel>,
     escalation: Escalation,
     scope: Scope,
+    around_spawn: Option<AroundSpawn>,
 }
 
 impl RunOptions {
@@ -116,6 +120,62 @@ impl RunOptions {
     #[must_use]
     pub const fn scope(mut self, scope: Scope) -> Self {
         self.scope = scope;
+        self
+    }
+
+    /// Makes `hook` start the child, so the caller can hold a lock or change
+    /// process-wide state for exactly the length of the start.
+    ///
+    /// The run calls `hook` once, on the thread that called [`run`], and
+    /// never when its cancel was already cancelled. The hook does its work
+    /// before the start, calls [`Spawn::start`], does its work after the
+    /// start, and returns the [`Spawned`] that the start gave. The hook
+    /// surrounds the whole start, including the `forward` feature's lock.
+    ///
+    /// A hook that returns an error ends the run with [`RunError::Start`].
+    /// When the child had started, dropping its [`Spawned`] kills the child
+    /// and every process in its scope and reaps the child. A panic in the
+    /// hook does the same as it unwinds.
+    ///
+    /// The time the hook takes counts towards the deadline, and it is not
+    /// part of the time bound that [`run`] states. Time that the hook spends
+    /// after the start counts towards
+    /// [`first_stdout`](ChildFinished::first_stdout), because the run reads
+    /// the child's output only once the hook returns. A hook that waits for a
+    /// lock can check the deadline itself and return an error. With the
+    /// `forward` feature, a start waits forever once the tool has received
+    /// a signal, so a clean-up must not wait for a lock that the hook holds.
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::process::Command;
+    /// use std::sync::Mutex;
+    ///
+    /// use crumbkit_process::{RunOptions, run};
+    ///
+    /// static FORK_GATE: Mutex<()> = Mutex::new(());
+    ///
+    /// fn inherit(descriptors: bool) -> io::Result<()> {
+    ///     // Clears or sets CLOEXEC on the descriptors the child inherits.
+    ///     # let _ = descriptors;
+    ///     Ok(())
+    /// }
+    ///
+    /// let options = RunOptions::new().around_spawn(|spawn| {
+    ///     let _gate = FORK_GATE.lock().map_err(|_| io::Error::other("poisoned"))?;
+    ///     inherit(true)?;
+    ///     let spawned = spawn.start();
+    ///     inherit(false)?;
+    ///     spawned
+    /// });
+    /// # let _ = run(Command::new("true"), &options);
+    /// ```
+    #[must_use]
+    pub fn around_spawn(
+        mut self,
+        hook: impl Fn(Spawn) -> io::Result<Spawned> + Send + Sync + 'static,
+    ) -> Self {
+        self.around_spawn = Some(AroundSpawn::new(hook));
         self
     }
 
@@ -195,7 +255,9 @@ impl ChildFinished {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum RunError {
-    /// The program does not exist or cannot be started.
+    /// The program does not exist or cannot be started, or the hook of
+    /// [`RunOptions::around_spawn`] returned this error. No child is left
+    /// running.
     Start(io::Error),
     /// Waiting for the child, reaping it, reading its output or starting a
     /// thread failed after it started. The child was stopped and reaped.
@@ -233,7 +295,8 @@ impl std::error::Error for RunError {
 ///
 /// On Unix, for a child that the tool may signal, a run takes at most the
 /// time to its deadline, plus the graces of its escalation, plus
-/// [`DRAIN_GRACE`]. Every thread that it starts is joined before it
+/// [`DRAIN_GRACE`], plus the time that a hook of
+/// [`RunOptions::around_spawn`] takes. Every thread that it starts is joined before it
 /// returns. On Windows a stop ends the job at once, and a reader waits for
 /// its pipe to close, which ending the job causes for every process in the
 /// job, so a process outside the job that holds a pipe holds the run.
@@ -250,7 +313,8 @@ impl std::error::Error for RunError {
 ///
 /// # Errors
 ///
-/// Returns [`RunError::Start`] when the program cannot be started, and
+/// Returns [`RunError::Start`] when the program cannot be started or a hook
+/// of [`RunOptions::around_spawn`] fails, and
 /// [`RunError::Run`] when waiting for, reaping or reading the child fails.
 /// The child is stopped and reaped on every path.
 pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, RunError> {
@@ -273,8 +337,9 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
         .stdin(input)
         .stdout(options.stdout.stdio())
         .stderr(options.stderr.stdio());
-    let started = Instant::now();
-    let mut group = Group::start(command, options.scope).map_err(RunError::Start)?;
+    let spawned = spawn::start(command, options.scope, options.around_spawn.as_ref())
+        .map_err(RunError::Start)?;
+    let (mut group, started) = spawned.into_parts();
     let notice = Arc::new(Notice::default());
     if let Some(cancel) = &options.cancel {
         cancel.watch(&notice);

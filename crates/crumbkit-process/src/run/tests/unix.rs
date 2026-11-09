@@ -11,6 +11,8 @@ use crate::notice::Notice;
 use crate::testing::{gone, kill, pid_in, sh};
 use crate::{Group, Scope, Signal};
 
+mod around_spawn;
+
 /// Keeps up to 1 MiB of each stream whole and stops the child past it.
 const WHOLE: Capture = Capture::Whole {
     limit: 1 << 20,
