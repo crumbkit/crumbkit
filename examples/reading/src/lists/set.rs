@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::Path;
 
-use crumbkit::{Document, Error, Output};
+use crumbkit::{Document, Error, Run};
 
 use super::{EntriesError, Entry, every_entry, file, is_entry};
 use crate::cli::EntriesSet;
@@ -21,13 +21,13 @@ pub(crate) const ENTRIES_SET: Document<Entry> = Document::new(
 /// Writes the title that `args` names at its position in the list that it
 /// names in `dir`, and returns the entry. A position one past the last
 /// entry appends the entry after the last line of the file. On a dry run,
-/// which [`Output::is_dry_run`] reports, it returns the same entry and writes
+/// which [`Run::is_dry_run`] reports, it returns the same entry and writes
 /// nothing.
 ///
 /// The version that `--expect` names is the title that the entry has now,
 /// and `--expect none` requires that the position is one past the last
 /// entry. The function checks it and then asks for confirmation with
-/// [`Output::confirm`], so a conflict comes before the question.
+/// [`Run::confirm`], so a conflict comes before the question.
 ///
 /// # Errors
 ///
@@ -35,19 +35,15 @@ pub(crate) const ENTRIES_SET: Document<Entry> = Document::new(
 /// `EntriesError::Unreadable` when its file cannot be read or written,
 /// `EntriesError::OutOfRange` when the position is more than one past the
 /// last entry, the conflict of `Expect::check`, and the failures of
-/// [`Output::confirm`].
+/// [`Run::confirm`].
 //
 // RUST-10: a title is a weak version, because two edits can leave an entry
 // with the title it had, and a real tool would compare a revision number or
 // an ETag that changes on every write. The function also reads the file,
 // checks the version and writes the file in three steps without a lock, so
 // a write by another process between the check and the write is lost.
-pub(crate) fn set(
-    output: &mut Output,
-    dir: Option<&Path>,
-    args: &EntriesSet,
-) -> Result<Entry, Error> {
-    let dry_run = output.is_dry_run();
+pub(crate) fn set(run: &mut Run, dir: Option<&Path>, args: &EntriesSet) -> Result<Entry, Error> {
+    let dry_run = run.is_dry_run();
     let name = args.list.as_str();
     let path = file(dir, name)?;
     let unreadable = |error| EntriesError::Unreadable {
@@ -73,7 +69,7 @@ pub(crate) fn set(
     let line = entries.get(position - 1).copied();
     let current = line.map(|line| lines[line].trim());
     args.expect.check(current, every_entry(name))?;
-    output.confirm(
+    run.confirm(
         args.yes,
         &format!("Write entry {position} of the {name} list?"),
     )?;

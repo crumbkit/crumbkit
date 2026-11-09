@@ -103,7 +103,7 @@ impl Age {
     /// It is for a duration that the tool measured, such as with
     /// [`Instant::elapsed`](std::time::Instant::elapsed), when the tool has
     /// no time that the duration counts from. A row field that JSON should
-    /// hold as a length of time is a [`Duration`](crate::Duration), whose
+    /// hold as a length of time is an [`Elapsed`](crate::Elapsed), whose
     /// text form shows two units, such as `4m 10s`.
     ///
     /// ```
@@ -119,14 +119,14 @@ impl Age {
     /// ```
     #[must_use]
     pub const fn compact(elapsed: Duration) -> impl fmt::Display {
-        crate::duration::Largest(elapsed)
+        crate::elapsed::Largest(elapsed)
     }
 }
 
 /// Writes the compact age, such as `3h`, in the largest whole unit.
 impl fmt::Display for Age {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        crate::duration::Largest(self.elapsed).fmt(f)
+        crate::elapsed::Largest(self.elapsed).fmt(f)
     }
 }
 

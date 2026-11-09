@@ -1,5 +1,5 @@
 //! A tool outside crumbkit with value types of its own: a page count that
-//! reads `432 pages` in text and `432` in JSON, a `Duration`, and child
+//! reads `432 pages` in text and `432` in JSON, an `Elapsed`, and child
 //! lines from shown values, as the text table, `--json`, `--fields`, the
 //! schema and a failure's fields print them.
 
@@ -9,8 +9,8 @@ use std::time::Duration as Std;
 use clap::{Parser, Subcommand};
 use crumbkit::schemars::{JsonSchema, Schema, SchemaGenerator};
 use crumbkit::{
-    Call, Children, Code, Document, Duration, Failure, Field, Output, Recovery, Row, Shown, Sink,
-    Tool, ViewFlags,
+    Call, Children, Code, Document, Elapsed, Failure, Field, Recovery, Row, Run, Shown, Sink, Tool,
+    ViewFlags,
 };
 use serde::{Serialize, Serializer};
 use serde_json::{Value, json};
@@ -54,7 +54,7 @@ impl Shown for Pages {
 crumbkit::shown!(Pages);
 
 /// A reminder sent about a loan, which prints as `reminded after 2w`.
-struct Reminder(Duration);
+struct Reminder(Elapsed);
 
 impl fmt::Display for Reminder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -74,7 +74,7 @@ struct Loan {
     /// The book's length.
     pages: Pages,
     /// How long the reader has had the book.
-    kept: Duration,
+    kept: Elapsed,
     /// The reminders sent about the loan.
     reminders: Vec<Reminder>,
 }
@@ -92,7 +92,7 @@ const OVERDUE: Code = Code::new("loans", "loans", "overdue");
 #[derive(Debug)]
 struct Overdue {
     /// How long past its term the loan is.
-    late: Duration,
+    late: Elapsed,
 }
 
 impl fmt::Display for Overdue {
@@ -122,14 +122,14 @@ fn loan() -> Loan {
     Loan {
         title: "Pride and Prejudice",
         pages: Pages(432),
-        kept: Duration::new(Std::from_secs(15 * 24 * 3_600 + 3 * 3_600)),
-        reminders: vec![Reminder(Duration::new(Std::from_secs(14 * 24 * 3_600)))],
+        kept: Elapsed::new(Std::from_secs(15 * 24 * 3_600 + 3 * 3_600)),
+        reminders: vec![Reminder(Elapsed::new(Std::from_secs(14 * 24 * 3_600)))],
     }
 }
 
 /// Parses `loans list` followed by `flags`, or returns `None` when the line
 /// does not parse.
-fn parse(flags: &[&str]) -> Option<Output> {
+fn parse(flags: &[&str]) -> Option<Run> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["loans", "list"].iter().chain(flags);
@@ -218,7 +218,7 @@ fn the_row_schema_describes_each_shown_value_in_its_json_form() {
 
 #[test]
 fn a_failure_prints_a_shown_field_as_text_in_its_message_and_json_in_its_fields() {
-    let late = Duration::new(Std::from_secs(3 * 24 * 3_600));
+    let late = Elapsed::new(Std::from_secs(3 * 24 * 3_600));
 
     let (code, _, err) = run(&[], Err(Overdue { late })).unwrap();
     assert_eq!(code, 1);

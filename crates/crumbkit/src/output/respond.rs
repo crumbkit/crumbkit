@@ -9,7 +9,7 @@ use super::budget::OverBudget;
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
 use super::result::{Answer, write_result};
-use super::{Output, fields};
+use super::{Run, fields};
 use crate::sink::role::{Deliver, Message, Role};
 use crate::{AsFailure, Document, Rows, Spelling, exit};
 
@@ -22,7 +22,7 @@ use crate::{AsFailure, Document, Rows, Spelling, exit};
 )]
 pub(super) fn respond<T: Rows, E: AsFailure>(
     sink: &mut dyn Deliver,
-    output: &mut Output,
+    output: &mut Run,
     spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
@@ -30,7 +30,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
     let printing = output.printing();
     // A tool may finish an early failure in another document than its leaf
     // declares, so a failure is not checked against the document. The
-    // `Output` holds only a view that every printer accepts (ADR-0093).
+    // `Run` holds only a view that every printer accepts (ADR-0093).
     if result.is_ok()
         && let Some(refusal) = fields::flags_refusal(output, document)
     {
@@ -96,7 +96,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
     // The text and a document without the envelope have no `dry_run` field,
     // so a dry-run message marks a dry run, after any failures. A
     // result that was refused or failed to print gets no line.
-    let dry_run_line = output.dry_run
+    let dry_run_line = output.dry_mode
         && (!output.is_json() || !document.get_envelope().wraps())
         && code == 0
         && !matches!(answer, Answer::Refused(_));
@@ -141,7 +141,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
 /// otherwise.
 fn print_failures<T: Rows>(
     sink: &mut dyn Deliver,
-    output: &mut Output,
+    output: &mut Run,
     spelling: Spelling,
     document: Document<T>,
     failures: Option<Vec<PreparedFailure<'_>>>,
@@ -183,7 +183,7 @@ fn print_failures<T: Rows>(
 /// short, and the failure that ends a batch whose later rows were left out.
 fn answered<'a>(
     sink: &mut dyn Deliver,
-    output: &mut Output,
+    output: &mut Run,
     spelling: Spelling,
     answer: &'a Answer,
     code: u8,

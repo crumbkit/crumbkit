@@ -64,7 +64,7 @@ impl Row for Comet {
 /// Finishes `value` as `document` with `flags` on a dry run.
 fn finish_dry<T: crate::Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
     let mut output = super::parse_against(Cli::command(), flags);
-    output.dry_run = true;
+    output.dry_mode = true;
     finish_output(output, document, value)
 }
 

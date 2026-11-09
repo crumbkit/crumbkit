@@ -8,7 +8,7 @@ use std::path::Path;
 
 use crumbkit::pick::Choice;
 use crumbkit::{
-    Batch, Call, Code, Document, Duration, Failure, FieldValue, Listing, Program, Recovery, Room,
+    Batch, Call, Code, Document, Elapsed, Failure, FieldValue, Listing, Program, Recovery, Room,
     Row, Step, Style,
 };
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
@@ -73,7 +73,7 @@ pub(crate) struct Book {
     /// The number of pages in a common edition.
     pub(crate) pages: Pages,
     /// The time it takes to read the book at two minutes a page.
-    pub(crate) reading: Duration,
+    pub(crate) reading: Elapsed,
 }
 
 impl Row for Book {

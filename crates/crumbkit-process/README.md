@@ -25,11 +25,11 @@ long the child may run, and reads how the child ended:
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use crumbkit_process::{Capture, Escalation, Limits, Outcome, OverLimit, RunError, Signal, Status};
+use crumbkit_process::{Capture, Escalation, Outcome, OverLimit, RunError, RunOptions, Signal, Status};
 
 fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
     tool.arg("--version");
-    let settings = Limits::new()
+    let settings = RunOptions::new()
         .stdout(Capture::Whole { limit: 64 * 1024, over: OverLimit::Stop })
         .stderr(Capture::Tail { limit: 4096 })
         .deadline(Instant::now() + Duration::from_secs(10))
@@ -60,7 +60,7 @@ the forwarder alone ends the tool and the log's line is its first clean-up.
 
 ## Where to read more
 
-- [`run`] and [`Limits`] describe the one-shot run, its limits, deadline,
+- [`run`] and [`RunOptions`] describe the one-shot run, its limits, deadline,
   cancel and scope, and [`Outcome`] how it ended. `ChildFinished::status`
   gives the child's own status, which a stopped run has too.
 - [`Escalation`] lists the steps that stop the child, and [`forward`]
@@ -72,7 +72,7 @@ Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`run`]: src/run.rs
-[`Limits`]: src/run.rs
+[`RunOptions`]: src/run.rs
 [`line_queue`]: src/lines.rs
 [`forward`]: src/forward.rs
 [`Escalation`]: src/escalation.rs

@@ -11,7 +11,7 @@ mod tests;
 /// Checks a tool's failure codes as the spelling of `tool` prints them, and
 /// panics, as a failed test assertion does, naming every problem it finds.
 ///
-/// A tool passes the tool record that it passes to `parse` or `Output::new`, so
+/// A tool passes the tool record that it passes to `parse` or `Run::new`, so
 /// the check spells each code as the tool prints it.
 ///
 /// `codes` holds the `CODES` list of each of the tool's error types. A code

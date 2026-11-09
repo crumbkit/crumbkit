@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::{
-    Call, Code, Document, Error, Failure, Field, FieldValue, Output, Recovery, Row, Sink, finish_to,
+    Call, Code, Document, Error, Failure, Field, FieldValue, Recovery, Row, Run, Sink, finish_to,
 };
 
 mod alternatives;
@@ -158,7 +158,7 @@ struct Finished {
 fn fail_with(flags: &[&str], failure: impl Into<Error>) -> Finished {
     let args = ["tool", "list"].iter().chain(flags);
     let view = Cli::try_parse_from(args.clone()).unwrap().view;
-    let output = Output::new(
+    let output = Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
@@ -170,7 +170,7 @@ fn fail_with(flags: &[&str], failure: impl Into<Error>) -> Finished {
 }
 
 /// Finishes `result` into memory with the flags and command in `output`.
-fn fail_output<E: crate::AsFailure>(output: Output, error: E) -> Finished {
+fn fail_output<E: crate::AsFailure>(output: Run, error: E) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, E> = Err(error);
@@ -455,7 +455,7 @@ fn an_unknown_field_on_a_failed_run_of_a_tool_that_parses_with_clap_alone_prints
 #[test]
 fn finish_prints_a_crumbkit_error_as_it_prints_the_failure_inside() {
     let view = Cli::try_parse_from(["tool", "list"]).unwrap().view;
-    let output = Output::new(
+    let output = Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
@@ -486,11 +486,11 @@ impl Write for Failing {
 }
 
 /// Returns the output of `tool list --json`.
-fn json() -> Output {
+fn json() -> Run {
     let view = Cli::try_parse_from(["tool", "list", "--json"])
         .unwrap()
         .view;
-    Output::new(
+    Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
@@ -501,7 +501,7 @@ fn json() -> Output {
 }
 
 /// Finishes a failure into `sink` with `output`.
-fn fail_into<O: Write, W: Write>(sink: &mut Sink<O, W>, output: Output) -> u8 {
+fn fail_into<O: Write, W: Write>(sink: &mut Sink<O, W>, output: Run) -> u8 {
     let result: Result<Vec<Planet>, Missing> = Err(missing(Recovery::Retry));
     finish_to(sink, output, PLANETS, result)
 }
@@ -536,7 +536,7 @@ fn a_failed_write_of_the_text_failure_still_exits_with_code_1() {
     let mut out = Vec::new();
     let mut sink = Sink::new(&mut out, Failing(io::ErrorKind::Other));
 
-    let code = fail_into(&mut sink, Output::of(clap::Command::new("tool")));
+    let code = fail_into(&mut sink, Run::of(clap::Command::new("tool")));
 
     assert_eq!(code, 1);
     assert_eq!(String::from_utf8(out).unwrap(), "");

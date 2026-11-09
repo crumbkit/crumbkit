@@ -1,4 +1,4 @@
-//! Tests for `Output::progress_allowed` and the terminal width that a text
+//! Tests for `Run::progress_allowed` and the terminal width that a text
 //! table fits.
 
 use std::cell::Cell;

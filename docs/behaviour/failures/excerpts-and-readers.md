@@ -41,12 +41,11 @@ that the first of them reads.
   that has any, as a batch prints them.
 - A failed example's problem names the code and steps that the check read.
 
-`check_recoveries` follows the `Run` recoveries that it reads. When the
-reader reads no failure from a run that failed, and the run prints no
+`check_recoveries` follows the `Recovery::Run` recoveries that it reads. When
+the reader reads no failure from a run that failed, and the run prints no
 failure document and no `code:` line, the check stops with one problem. The
-problem says that the tool's reader reads the failure, or names the root in
-an opt-out of `Rule::Recoveries`, id `recoveries/follow`. The first
-unreadable run stops the check, because every later run would fail the same
-way.
+problem says that the tool's reader reads the failure, or names the root in an
+opt-out of `Rule::Recoveries`, id `recoveries/follow`. The first unreadable
+run stops the check, because every later run would fail the same way.
 
 Why: ADR-0045, ADR-0088.

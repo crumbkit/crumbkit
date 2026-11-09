@@ -8,12 +8,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- crumbkit: `Output::fail` prints a failure, reports its exit code and returns
+- crumbkit: `Run::fail` prints a failure, reports its exit code and returns
   it, for a command that ends without `finish` ([behaviour/output/shapes]).
 - crumbkit: `Recovery::none` and `Recovery::hint` build a recovery from text,
   and `#[failure(no_next_step = "...")]` declares a failure with no next step
   ([behaviour/failures]).
-- crumbkit: `Output::no_input` reports whether the caller passed `--no-input`.
+- crumbkit: `Run::no_input` reports whether the caller passed `--no-input`.
 - crumbkit-process: [`run`] runs a child in a process group or job object
   of its own, reads its output within byte limits and a deadline, stops it
   with an [`Escalation`], and reaps it ([behaviour/processes]).
@@ -83,9 +83,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit::help` to `crumbkit::tool` ([behaviour/adoption]).
 - crumbkit: breaking: `Guide::documents` is now `Help::file_formats`, a name
   that says it registers file formats ([behaviour/schemas/commands]).
+- crumbkit: breaking: `Output`, the handle of one run that `parse` returns, is
+  now `Run`. `tool::Output`, the section of the `Tool` record, keeps its name
+  ([behaviour/parsing]).
+- crumbkit: breaking: `Stop::output` and `Refused::output`, which return that
+  handle, are now `Stop::run` and `Refused::run` ([behaviour/parsing]).
+- crumbkit: breaking: `Duration` is now `Elapsed`, so a handler that also
+  uses `std::time::Duration` needs no alias ([behaviour/output/values]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).
-- crumbkit-process: breaking: `Run` is now `Limits`, `Exit` is now `Outcome`
+- crumbkit-process: breaking: `Run` is now `RunOptions`, `Exit` is now `Outcome`
   and `Finished` is now `ChildFinished`, whose `exit` is now `outcome`, so a
   tool that imports crumbkit needs no alias for `events::Finished` or
   `help::Exit` ([behaviour/processes]).
@@ -1455,7 +1462,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Bytes`]: crates/crumbkit/src/bytes.rs
 [`Age`]: crates/crumbkit/src/age.rs
 [`Shown`]: crates/crumbkit/src/shown.rs
-[`Duration`]: crates/crumbkit/src/duration.rs
+[`Duration`]: crates/crumbkit/src/elapsed.rs
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs

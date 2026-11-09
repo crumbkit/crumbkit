@@ -12,7 +12,7 @@ categories = ["command-line-interface"]
 include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
-# `list` returns crumbkit's `Listing` of rows, takes `Output` and `Page`, and
+# `list` returns crumbkit's `Listing` of rows, takes `Run` and `Page`, and
 # fails with crumbkit's `Failure`, and the rows quote words with
 # `crumbkit::help::quote`. `derive` writes the `Failure` impl of `list`'s
 # error from its `#[failure(...)]` attributes.

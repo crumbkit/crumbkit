@@ -7,24 +7,24 @@ use std::process::ExitCode;
 
 use super::{State, Streaming};
 use crate::help::view::{Kind, Printed};
-use crate::output::{Output, children, fields, lines, table};
+use crate::output::{Run, children, fields, lines, table};
 use crate::{Document, Row, Sink, Stream};
 
 /// Opens the stream on `sink`, as [`stream_to`](super::stream_to)
 /// describes.
 pub(super) fn open<R: Row, O: Write, W: Write>(
     sink: Sink<O, W>,
-    output: Output,
+    output: Run,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<R, O, W>, ExitCode> {
     crate::output::columns::require_for_stream::<R>();
     let (spelling, document) = output.named(document);
     let budget = output.budget();
     let printing = output.printing();
-    let Output {
+    let Run {
         view,
         command,
-        dry_run,
+        dry_mode: dry_run,
         ..
     } = output;
     let columns: Vec<Cow<'static, str>> = if let Some(names) = view.names() {

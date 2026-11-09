@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use super::super::{
-    Cancel, Capture, ChildFinished, DRAIN_GRACE, Escalation, Input, Limits, Outcome, OverLimit,
-    RunError, StopReason, control, run,
+    Cancel, Capture, ChildFinished, DRAIN_GRACE, Escalation, Input, Outcome, OverLimit, RunError,
+    RunOptions, StopReason, control, run,
 };
 use crate::Status;
 use crate::notice::Notice;
@@ -18,12 +18,12 @@ const WHOLE: Capture = Capture::Whole {
 };
 
 /// The settings that keep both streams whole.
-fn kept() -> Limits {
-    Limits::new().stdout(WHOLE).stderr(WHOLE)
+fn kept() -> RunOptions {
+    RunOptions::new().stdout(WHOLE).stderr(WHOLE)
 }
 
 /// Runs `script` with `settings`.
-fn run_sh(script: &str, settings: &Limits) -> ChildFinished {
+fn run_sh(script: &str, settings: &RunOptions) -> ChildFinished {
     run(sh(script), settings).unwrap()
 }
 
@@ -52,7 +52,7 @@ fn a_child_that_a_signal_ended_gives_the_signals_number() {
 
 #[test]
 fn a_discarded_stream_keeps_nothing_and_has_no_first_byte() {
-    let finished = run_sh("echo out; echo err >&2", &Limits::new());
+    let finished = run_sh("echo out; echo err >&2", &RunOptions::new());
 
     assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(0)));
     assert_eq!(finished.stdout().bytes(), b"");
@@ -121,7 +121,7 @@ fn a_deadline_that_passes_after_the_child_exited_gives_the_childs_exit() {
         }
     });
 
-    let stopped = control(&group, &notice, &Limits::new().deadline(Instant::now()));
+    let stopped = control(&group, &notice, &RunOptions::new().deadline(Instant::now()));
 
     waiter.join().unwrap();
     assert_eq!(stopped, None);

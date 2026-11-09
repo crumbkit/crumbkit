@@ -26,28 +26,28 @@ on. That decision lasts for the one parse, and `Sink::standard().styled(false)`
 keeps help plain.
 
 On success, `parse` returns the tool's parsed type and an
-[`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the view
+[`Run`](../../../crates/crumbkit/src/output.rs). The `Run` holds the view
 flags, the command tree, the tool record's settings with the spelling of its
 codes, the words the caller typed with any values that a
 [picker](../effects/pickers.md) added, whether the caller passed `--no-input` or
 `--dry-run`, and the code renames of the leaf that the words name.
-`Output::confirm` repeats those words with `--yes` in its recovery.
+`Run::confirm` repeats those words with `--yes` in its recovery.
 
 A tool flattens [`ViewFlags`](../../../crates/crumbkit/src/output/build.rs)
 into its clap types to accept `--json`, `--fields`, `--long` and `--full`.
 `parse` reads them before the tool's type takes its values, so a handler
-reads them through the `Output`. A tool that does not flatten `ViewFlags`
+reads them through the `Run`. A tool that does not flatten `ViewFlags`
 parses with every view flag off.
 
-A tool that parses with clap alone builds its `Output` with
-`Output::new(view, dry_run, command, &TOOL, args)`, where `dry_run` is the
+A tool that parses with clap alone builds its `Run` with
+`Run::new(view, dry_run, command, &TOOL, args)`, where `dry_run` is the
 `DryRun` that the command parsed, or `DryRun::default()` in a tool without
-the flag, and `args` is the argv with the program name first. `Output::new`
+the flag, and `args` is the argv with the program name first. `Run::new`
 returns `Err` with the `Stop` of a refused command line when `--full` comes
 without `--json` or `--fields`
 comes with `--long` or `--full`, after it printed the refusal on standard
 error, so a tool's `main` returns the stop's code as it does after `parse`.
-`Output::new_to` prints the refusal to a sink instead. `Output::new` finds
+`Run::new_to` prints the refusal to a sink instead. `Run::new` finds
 the leaf that the words name, so the run gets that leaf's code renames, and
 it keeps the words for the `--yes` recovery. It takes the spelling of codes
 from the tool record, as `parse` does. It reads no `--no-input`.
@@ -67,7 +67,7 @@ a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a bare
 `ExitCode`. `try_parse_to` returns the `Stop` of help or the version inside
 `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a refusal. A
 tool's `main` returns `stop.exit_code()`. A tool that prints more before it
-exits reads `Stop::output`, whose `Output::is_json` says whether the caller
+exits reads `Stop::run`, whose `Run::is_json` says whether the caller
 asked for JSON, or, after `Refused::as_json`, which form the refusal printed in.
 `Stop::exit` returns the same exit code as a `u8`: 0 after help or the version,
 the code that the tool record lists for a refused command line, which is 2
@@ -83,7 +83,7 @@ reads it, because the number is 0 after help, the version and a topic alike.
 `Printed` is `#[non_exhaustive]`. A `Stop` offers `path`, `flags` and `value` as
 a `Refused` does, and they read the caller's words in the same way, so a tool
 that prints a note after a help page reads a global option such as `--format`
-from it, and `tool help planets` reports no flags. The `Output`, the path and
+from it, and `tool help planets` reports no flags. The `Run`, the path and
 the words inside a `Stop` sit in a `Box`, which costs one allocation only on a
 run that `parse` ends.
 
@@ -93,24 +93,24 @@ Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111, ADR-0136, ADR-0160.
 
 Help pages, the `Next:` lines of listings and the calls in recoveries are
 rendered from the `clap::Command` that the tool builds at run time, which
-may hide or remove commands. The `Output` that `parse` returns holds that
+may hide or remove commands. The `Run` that `parse` returns holds that
 tree.
 
-- The `Output` keeps the tree as parsing left it, with the root and each
+- The `Run` keeps the tree as parsing left it, with the root and each
   command on the typed path built.
 - `finish` builds only the branch below the root that a call names, or the
   whole tree for a call to the root.
 - The commands that read the whole tree, such as `commands list` and the
   [schema commands](../schemas/commands.md), build it through
-  `Output::command`.
+  `Run::command`.
 
-Those commands therefore take `&mut Output`, `finish` takes the `Output`
+Those commands therefore take `&mut Run`, `finish` takes the `Run`
 by value because nothing reads it after, a handler that reads the tree runs
 before `finish`, and the work of a run grows with the command typed. A
 `Call` that does not resolve against the tree is left out,
 or prints as `Recovery::None`. crumbkit prints a hidden command or flag only
 where the caller typed it. The rustdoc of
-[`Output::command`](../../../crates/crumbkit/src/output.rs) states what it
+[`Run::command`](../../../crates/crumbkit/src/output.rs) states what it
 builds.
 
 Why: ADR-0015, ADR-0076, ADR-0094.
@@ -193,8 +193,8 @@ as a flag, so a value of an option that allows hyphen values is no request
 for JSON. It also counts the word only where the typed command declares
 `--json` or a command above it declares a global `--json`, so a refusal on a
 command without the flag prints as text. A tool cannot name its own output flags for the walk to treat as
-`--json`, because on the parsed path crumbkit cannot set the `Output` that
-the tool's own type builds, and `Output::is_json` would answer differently
+`--json`, because on the parsed path crumbkit cannot set the `Run` that
+the tool's own type builds, and `Run::is_json` would answer differently
 on the two paths ([help](../help/README.md#the-walk-before-parsing)).
 
 The refusal names real names only. When clap suggests a hidden alias of a
@@ -228,7 +228,7 @@ A `Refused` holds what the refusal prints and what the run knew:
   after the tool record's renames and the recovery after the tool's declared
   hint or calls, so a tool that prints its own document prints its hint;
 - `exit`, the exit code that the run ends with once the refusal prints;
-- `output`, the output flags as far as the walk found them;
+- `run`, the handle with the view flags as far as the walk found them;
 - `typed`, the words after the program name as the caller typed them;
 - `parsed`, the words that crumbkit gave clap, after it turned the word
   `help` into `--help`, replaced a dashed form or added a picked value;
@@ -277,9 +277,9 @@ text`, reads that flag with `Refused::value` and calls
 `true` the refusal prints the document on the output writer, and with
 `false` it prints text on the error writer, whatever the words said. So
 `tool --error-format text list --nosuch --json` prints text on standard
-error. The call leaves `Refused::output` reporting the words, and it
+error. The call leaves `Refused::run` reporting the words, and it
 changes neither the exit code nor the observers' events. The `Stop` that
-printing returns reports the printed form through `Output::is_json`. A tool
+printing returns reports the printed form through `Run::is_json`. A tool
 holding an `Unparsed` matches `Unparsed::Refused(refused)` and calls
 `refused.as_json(..)`, because `Unparsed::print` prints in the form that
 the words chose.

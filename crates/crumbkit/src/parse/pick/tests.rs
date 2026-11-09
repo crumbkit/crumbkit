@@ -178,7 +178,7 @@ impl FromArgMatches for Matches {
 
 /// What `parse_to` returned and printed.
 struct Run {
-    result: Result<(Matches, crate::Output), Stop>,
+    result: Result<(Matches, crate::Run), Stop>,
     out: String,
     err: String,
 }

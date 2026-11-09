@@ -9,7 +9,7 @@ use clap::{Arg, Command};
 use super::Stop;
 use crate::parse::{Unparsed, try_parse_to};
 use crate::twins::assert_one_word_apart;
-use crate::{DryRun, Output, Sink, Tool, ViewFlags};
+use crate::{DryRun, Run, Sink, Tool, ViewFlags};
 
 /// A tool with a version, a global `--format` option and a `planets` group
 /// whose `show` takes names and a `--sort` key.
@@ -164,12 +164,12 @@ fn the_stop_of_a_refused_view_flag_reports_the_path_and_an_option_s_value() {
     assert_eq!(stop.value("format"), Some(OsStr::new("json")));
 }
 
-/// Builds an `Output` over [`Viewed`] with the view flags `view` and
+/// Builds a `Run` over [`Viewed`] with the view flags `view` and
 /// `args`, printing to memory.
-fn built(view: ViewFlags, args: &[&str]) -> Result<Output, Stop> {
+fn built(view: ViewFlags, args: &[&str]) -> Result<Run, Stop> {
     let command = <Viewed as clap::CommandFactory>::command();
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    Output::new_to(
+    Run::new_to(
         &mut sink,
         view,
         DryRun::default(),

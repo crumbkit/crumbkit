@@ -10,7 +10,7 @@ use clap::{CommandFactory as _, FromArgMatches as _};
 
 use super::{Cli, SIGHTINGS, Writer, kingfisher, robin};
 use crate::tool::{Exit, Failures};
-use crate::{Code, Failure, Output, Recovery, Sink, Tool, stream_to};
+use crate::{Code, Failure, Recovery, Run, Sink, Tool, stream_to};
 
 const TIMED_OUT: Code = Code::new("birds", "watch", "timed_out");
 const UNREADABLE: Code = Code::new("birds", "sightings", "unreadable");
@@ -44,13 +44,13 @@ impl Failure for Failed {
 
 /// Parses `birds watch` and builds the output with `TOOL`, as a tool that
 /// parses with clap alone builds it.
-fn output_of() -> Output {
+fn output_of() -> Run {
     let mut command = Cli::command();
     let matches = command
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
     let view = Cli::from_arg_matches(&matches).unwrap().view;
-    Output::new(
+    Run::new(
         view,
         crate::DryRun::default(),
         command,

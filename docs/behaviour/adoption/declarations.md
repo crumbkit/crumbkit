@@ -83,7 +83,7 @@ ADR-0123, ADR-0143.
 `Leaf::codes` gives one command its own codes for crumbkit's failures, such
 as a command that prints `ledger::rows::moved` for a version conflict while
 the rest of the tool prints `ledger::rows::stale`. `parse` finds the leaf of
-the parsed command and keeps its renames in the `Output` that it returns, so
+the parsed command and keeps its renames in the `Run` that it returns, so
 `finish`, `stream`, the usage log and the trace print and record the leaf's
 code. The leaf's renames come first, and the tool record's renames cover every
 code that the leaf does not rename. An exit that lists a leaf's code covers
@@ -94,7 +94,7 @@ before it knows which command the line names, so the refusal prints the
 tool record's usage code for every command. `Leaf::codes` is a `const fn` that
 panics on such a rename, so a `const` tool record with one fails to compile.
 
-`Output::new` takes the argv and finds the leaf in the same way, so a tool that
+`Run::new` takes the argv and finds the leaf in the same way, so a tool that
 parses with clap alone prints the leaf's renames too. `RuntimeLeaf` has no
 `codes` setting, and a runtime leaf prints the tool record's renames.
 

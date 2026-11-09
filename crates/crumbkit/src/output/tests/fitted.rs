@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::process::ExitCode;
 
 use super::{Cli, Finished, built_with};
-use crate::{Document, Error, Listing, Output, Row, Rows, Sink, Tool, finish_to};
+use crate::{Document, Error, Listing, Row, Rows, Run, Sink, Tool, finish_to};
 
 /// A book whose `isbn` is an identifier that a person copies, so the fit
 /// never cuts it.
@@ -49,7 +49,7 @@ fn books() -> Vec<Book> {
 }
 
 /// Returns the output of `tool list` with `flags` and `tool`.
-fn built(tool: &Tool, flags: &[&str]) -> Output {
+fn built(tool: &Tool, flags: &[&str]) -> Run {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     built_with(Cli::command(), tool, &args)
 }
@@ -57,7 +57,7 @@ fn built(tool: &Tool, flags: &[&str]) -> Output {
 /// Finishes `value` with `output` into a sink that gives the result
 /// `width` columns, as `finish` gives it the width of a terminal.
 fn finish_at<T: Rows>(
-    output: Output,
+    output: Run,
     document: Document<T>,
     value: T,
     width: Option<usize>,

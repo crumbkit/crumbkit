@@ -49,7 +49,7 @@ mod tests;
 /// document always prints its first answer.
 ///
 /// The bytes are held in memory. A handler that reads a file can read at
-/// most one byte more than `Output::budget` with `Read::take`, and return a
+/// most one byte more than `Run::budget` with `Read::take`, and return a
 /// failure of its own when that byte arrives.
 ///
 /// ```

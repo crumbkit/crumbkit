@@ -89,7 +89,7 @@ impl Printing {
     }
 
     /// Returns the exit code of the exit that lists `code`, or `None`, as
-    /// [`Output::listed_exit`](crate::Output::listed_exit) describes.
+    /// [`Run::listed_exit`](crate::Run::listed_exit) describes.
     pub(crate) fn listed_exit(self, code: &'static Code) -> Option<u8> {
         rename::listed_exit(self.exits, self.renames, code)
     }
@@ -214,8 +214,9 @@ pub(crate) struct PreparedFailure<'a> {
     /// order it gives them. It is empty when the failure has no diagnostic.
     #[cfg(feature = "miette")]
     related: Vec<related::Related>,
-    /// The failure's recovery, with a `Run` call rendered as text, or the
-    /// first alternative that offers a step when the recovery offers none.
+    /// The failure's recovery, with a `Recovery::Run` call rendered as text,
+    /// or the first alternative that offers a step when the recovery offers
+    /// none.
     step: RecoveryStep,
     /// The failure's other alternatives that offer a step, in order.
     alternatives: Vec<RecoveryStep>,
@@ -241,13 +242,13 @@ impl<'a> PreparedFailure<'a> {
     ///
     /// It leaves out each field of the failure whose name breaks the rule,
     /// and each field that repeats an earlier name, and a debug build, such
-    /// as the one a tool's tests run, delivers a warning that names the
-    /// field to `sink`, so a test that compares standard error shows it. A
-    /// debug build also delivers a warning to `sink` for each `Run` call of
-    /// the recovery or an alternative that does not render, with the
-    /// reason, so a test sees a recovery that names a command the tool
-    /// lacks. A release build delivers neither. Each warning is delivered
-    /// before the failure prints.
+    /// as the one a tool's tests run, delivers a warning that names the field
+    /// to `sink`, so a test that compares standard error shows it. A debug
+    /// build also delivers a warning to `sink` for each `Recovery::Run` call
+    /// of the recovery or an alternative that does not render, with the
+    /// reason, so a test sees a recovery that names a command the tool lacks.
+    /// A release build delivers neither. Each warning is delivered before the
+    /// failure prints.
     pub(crate) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,

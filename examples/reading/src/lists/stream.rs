@@ -7,7 +7,7 @@ use std::ops::ControlFlow;
 use std::path::Path;
 use std::process::ExitCode;
 
-use crumbkit::{Document, Output, Stream};
+use crumbkit::{Document, Run, Stream};
 
 use super::{EntriesError, Entry, file};
 
@@ -22,15 +22,15 @@ pub(crate) const ENTRIES_STREAM: Document<Stream<Entry>> = Document::new(
 .when_empty("the list has no entries");
 
 /// Prints each entry of the list named `name` in `dir` as a stream, in the
-/// format that `output` chooses, and returns the process's exit code.
+/// format that `run` chooses, and returns the process's exit code.
 ///
 /// It reads the list's file one line at a time and prints each entry as it
 /// reads it, so the first entries print before the rest of the file is
 /// read. It stops reading when the reader of standard output closes the
 /// pipe. A list that does not exist or cannot be read ends the stream with
 /// its failure.
-pub(crate) fn stream_entries(output: Output, dir: Option<&Path>, name: &str) -> ExitCode {
-    let mut streaming = match crumbkit::stream(output, ENTRIES_STREAM) {
+pub(crate) fn stream_entries(run: Run, dir: Option<&Path>, name: &str) -> ExitCode {
+    let mut streaming = match crumbkit::stream(run, ENTRIES_STREAM) {
         Ok(streaming) => streaming,
         Err(code) => return code,
     };

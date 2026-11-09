@@ -13,7 +13,7 @@ use super::testing::{DOTS, give_child_env, watch};
 use super::{Observer, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in};
 use crate::tool::{Exit, Failures};
 use crate::{
-    Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Stream, Tool, finish_to,
+    Code, Document, Error, Failure, Listing, Recovery, Row, Run, Sink, Stream, Tool, finish_to,
     parse_to, stream_to,
 };
 
@@ -245,7 +245,7 @@ enum Books {
 /// [`DOTS`], and
 /// returns the output flags with the tool's command, or the exit code of a
 /// run that parsing ended.
-fn parse(args: &[&str]) -> Result<Output, ExitCode> {
+fn parse(args: &[&str]) -> Result<Run, ExitCode> {
     let (_, output) = parse_to::<Cli>(&mut Sink::new(Vec::new(), Vec::new()), &TOOL, args)?;
     Ok(output)
 }
