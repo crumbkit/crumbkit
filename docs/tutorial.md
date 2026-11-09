@@ -265,6 +265,15 @@ then passes them, and root help lists them under a `Verbs` heading. A tool that
 wants its root help unchanged declares them in its opt-outs with
 `Allow::root_verbs` instead ([root verbs docs]).
 
+pantry calls each check by hand here, so that each one is visible. A tool that
+runs the whole set declares one `Suite` constant with the inputs of the checks
+and calls `crumbkit_test::conventions!(SUITE)`, which writes one test for each
+check. A check that crumbkit-test adds later then reaches the tool with no edit.
+A check whose input the suite does not set fails and names the input, so the
+tool sets it or skips the check with `.skip(Check::Listings, "the reason")`.
+[shelf's convention tests](../examples/shelf/tests/conventions.rs) show a whole
+suite, and the [checks docs] describe its inputs.
+
 ## Where to go next
 
 - A `show` command that takes many ids returns a [`Batch`], which holds a
@@ -295,6 +304,7 @@ wants its root help unchanged declares them in its opt-outs with
 [effects docs]: behaviour/effects/README.md
 [help docs]: behaviour/help/README.md
 [opt-outs docs]: behaviour/adoption/opt-outs.md
+[checks docs]: behaviour/checks/README.md
 [root verbs docs]: behaviour/adoption/declarations.md#root-verbs
 [output budget docs]: behaviour/output/budget/README.md
 [completion docs]: behaviour/parsing/completion.md

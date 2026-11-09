@@ -14,6 +14,34 @@ A tool adds crumbkit-test as a dev-dependency:
 crumbkit-test = "0.1"
 ```
 
+## Every check at once
+
+A tool built with crumbkit declares one [`Suite`] that holds the checks'
+inputs. [`conventions!`] expands it to one named `#[test]` for each [`Check`],
+so a new check reaches the tool with no edit:
+
+```rust,no_run
+use clap::Command;
+use crumbkit::Tool;
+use crumbkit_test::{Check, Examples, Suite};
+
+const TOOL: Tool = Tool::new();
+
+fn command() -> Command {
+    Command::new("shelf")
+}
+
+// In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
+const SUITE: Suite<'_> = Suite::new(command, &TOOL)
+    .examples(Examples::new("/path/to/shelf", "tests/golden/examples"))
+    .skip(Check::Listings, "shelf has no list commands.");
+
+crumbkit_test::conventions!(SUITE);
+```
+
+A check whose input is missing fails and names the input, unless `.skip`
+gives a reason. Each `check_*` function below also runs alone.
+
 ## Checks for any clap tool
 
 These checks read a `clap::Command`, so a tool that parses with clap alone
@@ -79,6 +107,9 @@ these checks exist.
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
+[`Suite`]: src/suite.rs
+[`Check`]: src/suite/check.rs
+[`conventions!`]: src/suite/check.rs
 [`check_codes`]: src/codes.rs
 [`check_command_reference`]: src/reference.rs
 [`Allow`]: src/allow.rs
