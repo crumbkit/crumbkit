@@ -27,38 +27,20 @@ its binary's package:
 ```rust
 const SUITE: Suite<'_> = Suite::new(|| (Cli::command(), TOOL))
     .allow(ALLOW)
-    .examples(Examples::new(env!("CARGO_BIN_EXE_shelf"), "tests/golden/examples"))
+    .examples(EXAMPLES)
     .codes(&[CODES])
-    .path_budgets(PATH_BUDGETS)
-    .recoveries(RECOVERIES)
-    .twins(TWINS)
     .skip(Check::CommandReference, "The commands come from the caller's files.");
 
 crumbkit_test::conventions!(SUITE);
 ```
 
-The macro expands to one `#[test]` for each check, named as a sentence such as
-`every_command_declares_its_effects`, so each check appears under its own name
-in test output and `cargo test` can select it. A check added to crumbkit-test
-reaches every tool that uses the macro with no edit to the tool.
-
-`Suite::new` takes one function that returns the command tree and the tool
-record, so a tool that builds them at run time passes that function. With
-`.examples` set, the help checks read what the binary prints. Without it, they
-read pages rendered in the test.
-
-Five inputs have no default: `.path_budgets`, `.examples`, `.codes`,
-`.recoveries` and `.twins`. A check that needs one of them and does not have it
-fails, and the failure names the setter. `.skip(Check::CommandReference,
-"reason")` leaves a check out, its reason must be one non-empty line, and the
-[opt-out report](../adoption/opt-outs.md) lists it under `suite/skip`. Nothing
-fails when a skip goes stale, because finding that out means running the check.
-Every other input has a default: no opt-outs, no extra verbs, crumbkit's default
-budgets, and golden files under `tests/golden`, which `.goldens` changes. The
-command reference is always `docs/commands.md`.
-
-A tool may still call the checks by hand, and a tool that needs one check alone
-calls its `check_*` function.
+The macro expands to one named `#[test]` for each check, so `cargo test` can
+select a check, and a check added to crumbkit-test reaches the tool with no
+edit. A check whose input is missing fails and names the setter. `.skip` takes
+a one-line reason, and the [opt-out report](../adoption/opt-outs.md) lists it
+under `suite/skip`. Nothing detects a stale skip. With `.examples` set, the
+help checks read what the binary prints. The rustdoc of `Suite` lists each
+input and its default. A tool may still call the checks by hand.
 
 Why: ADR-0185.
 
