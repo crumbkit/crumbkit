@@ -427,10 +427,10 @@ impl Failure for EntriesError {
     fn recovery(&self) -> Recovery {
         match self {
             Self::NotFound { .. } => Recovery::Run(Call::new(&["commands", "list"])),
-            Self::Unreadable { .. } => Recovery::Hint(
-                "make the list's file a UTF-8 text file that reading can read".to_owned(),
-            ),
-            Self::CannotOpen { path, .. } => Recovery::Hint(format!(
+            Self::Unreadable { .. } => {
+                Recovery::hint("make the list's file a UTF-8 text file that reading can read")
+            }
+            Self::CannotOpen { path, .. } => Recovery::hint(format!(
                 "reading could not open {}, so check that the file exists and that reading may read it",
                 path.display()
             )),

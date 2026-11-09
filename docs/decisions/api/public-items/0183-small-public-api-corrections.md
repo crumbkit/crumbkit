@@ -2,8 +2,8 @@
 
 - Date: 2026-11-09
 - Status: accepted
-- Supersedes: ADR-0178 and ADR-0088, which it amends
-- Missed: ADR-0178 renamed `Run`, `Exit` and `Finished` because crumbkit's own items have those names, and it left `Stop`, which `crumbkit::Stop` also names.
+- Supersedes: ADR-0174, ADR-0175, ADR-0178 and ADR-0088, which it amends
+- Missed: ADR-0178 renamed `Run`, `Exit` and `Finished` because crumbkit's own items have those names, and it left `Stop`, which `crumbkit::Stop` also names. ADR-0174 turned down `Exit::Ended(Status)` because it changes every match, and it did not weigh that one variant removes the repeated status for every later caller. ADR-0175 kept `RecoveryStep` at `crumbkit::form`, and it did not ask who reads that path: only crumbkit-test does.
 
 ## Context
 
@@ -38,7 +38,8 @@ caller. Each is small on its own and none needs a record of its own.
   `form` module is gone. `RecoveryStep` stays defined in crumbkit, which prints
   it, and is hidden from crumbkit's documentation.
 - A `pub` item that exists only for a sibling crate carries `#[doc(hidden)]` and
-  a comment naming the sibling. `NoInput` has one path, `crumbkit::NoInput`, and
+  a comment naming the sibling. `Effects::line` stays documented, because a
+  tool that renders its own help prints it. `NoInput` has one path, `crumbkit::NoInput`, and
   `crumbkit_test::Tool` is gone.
 - `Output::no_input` reports whether the caller passed `--no-input`.
 

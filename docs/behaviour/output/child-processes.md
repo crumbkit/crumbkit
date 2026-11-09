@@ -19,8 +19,8 @@ as its last step, in place of `finish`, so only the result, the usage log's
 line and the exit remain after the child exits.
 
 crumbkit-child prints its failures and refusals through crumbkit's public
-`Output` methods `fail`, `refuse_fields_for_text` and `print_failure`, so they look and exit as `finish` would print them. It
-reports the hand-over to the [run observer](../run-observer/README.md)
+`Output` methods `fail` and `refuse_fields_for_text`, so they look and exit
+as `finish` would print them. It reports the hand-over to the [run observer](../run-observer/README.md)
 through the public `events` functions.
 
 The failure codes print with the tool's name, as crumbkit's own codes do

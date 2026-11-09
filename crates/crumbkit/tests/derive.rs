@@ -64,6 +64,8 @@ enum BooksError {
     Unreadable(String),
     #[failure(code = NOT_FOUND, no_next_step = "the daemon owns {path}")]
     Owned { path: String },
+    #[failure(code = NOT_FOUND, no_next_step = "the daemon owns the shelf")]
+    Sealed,
     #[failure(forward)]
     Book(NoSuchBook),
 }
@@ -329,5 +331,13 @@ fn a_no_next_step_key_gives_the_reason_with_the_fields_that_it_names() {
     assert_eq!(
         failure.recovery(),
         Recovery::none("the daemon owns shelf.sock")
+    );
+}
+
+#[test]
+fn no_next_step_without_braces_is_the_reason_as_written() {
+    assert_eq!(
+        BooksError::Sealed.recovery(),
+        Recovery::none("the daemon owns the shelf")
     );
 }

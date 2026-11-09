@@ -47,6 +47,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `form::ReadFailure` moved to `crumbkit_test`, and
   `RecoveryStep` is read from `crumbkit_test` too. The `form` module is gone.
 - crumbkit: breaking: `pick::NoInput` is only `crumbkit::NoInput`.
+- crumbkit: `help::STREAM_LINE`, `BYTES_LINE`, `HEADED_LINE`, `text_line`,
+  `children_line` and `Effects::writes_line` left the public documentation.
+  They still compile, for crumbkit-markdown.
 - crumbkit-test: breaking: `crumbkit_test::Tool` is removed; use
   `crumbkit::Tool`.
 - crumbkit: breaking: `help::Guide` is now `crumbkit::Tool`, composed of the
@@ -1515,7 +1518,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`pick::Menu`]: crates/crumbkit/src/pick/menu.rs
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
-[`ReadFailure`]: crates/crumbkit/src/form.rs
+[`ReadFailure`]: crates/crumbkit-test/src/failures.rs
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs

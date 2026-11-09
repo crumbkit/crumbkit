@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use crate::examples::Examples;
 use crate::runs;
+
 /// The failure that one run printed, as crumbkit-test reads it back from
 /// the run's output: the code in the tool's spelling, the
 /// steps, the recovery first and then each alternative, and the fields.

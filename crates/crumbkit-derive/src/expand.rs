@@ -83,10 +83,10 @@ fn recovery(krate: &Path, arms: &[Arm]) -> TokenStream {
             let recovery = match &own.recovery {
                 RecoveryKey::Expr(expr) => expr.to_token_stream(),
                 RecoveryKey::Hint(hint) if hint.value().contains('{') => {
-                    quote!(#krate::Recovery::Hint(::std::format!(#hint)))
+                    quote!(#krate::Recovery::hint(::std::format!(#hint)))
                 }
                 RecoveryKey::Hint(hint) => {
-                    quote!(#krate::Recovery::Hint(::std::string::String::from(#hint)))
+                    quote!(#krate::Recovery::hint(#hint))
                 }
                 RecoveryKey::NoNextStep(reason) if reason.value().contains('{') => {
                     quote!(#krate::Recovery::none(::std::format!(#reason)))

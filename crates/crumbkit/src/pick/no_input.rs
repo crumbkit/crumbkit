@@ -44,8 +44,9 @@ const NO_INPUT_HELP: &str = "Fail instead of asking a question";
 /// [`Output::confirm`](crate::Output::confirm) fails with
 /// `<tool>::confirmation::needs_yes` instead of asking. The flag's clap id is
 /// `crumbkit_no_input`. `parse` reads it from the matches, and
-/// [`Output::no_input`](crate::Output::no_input) reports it. crumbkit-test's `check_effects` requires the flag at the root
-/// of a tool that has a picker or a `--yes` (ADR-0043).
+/// [`Output::no_input`](crate::Output::no_input) reports it. crumbkit-test's
+/// `check_effects` requires the flag at the root of a tool that has a picker
+/// or a `--yes` (ADR-0043).
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
 // The doc comment is rustdoc, and clap would copy it into the help of a
 // command without a description of its own.
