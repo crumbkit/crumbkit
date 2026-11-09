@@ -251,12 +251,9 @@ fn leaf_sections(
         long,
         columns: leaf
             .get_document()
-            .is_some_and(help::LeafDocument::has_columns)
-            .then(|| {
-                if leaf
-                    .get_document()
-                    .is_some_and(|doc| doc.document().is_headed())
-                {
+            .filter(|document| document.has_columns())
+            .map(|document| {
+                if document.document().is_headed() {
                     "JSON field"
                 } else {
                     "column"
