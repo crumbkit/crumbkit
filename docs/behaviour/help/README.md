@@ -33,7 +33,7 @@ The lines print in this order, each only on the pages named:
    then `Children:` on a leaf that is not headed and whose rows print
    their children under them, such as `Children: one indented line under
    each row for each of its components.` or the row type's
-   `Row::CHILDREN_HELP`
+   `Children::help`
    ([rows with children](../output/shapes/README.md#rows-with-children)),
    then `Problems:` on a leaf whose row type names a problem field, then
    `Rows:` when the document [lists only problem rows](../output/listings/README.md#a-listing-that-lists-only-its-problem-rows),
@@ -138,7 +138,7 @@ start with `-` and is no option's value, also in the separate form
   command's words, so `<tool> help --json` prints the root's help, as
   `<tool> --help --json` does, also on a tool whose root takes no
   `--json`. An unknown word gets clap's usual refusal with its suggestions.
-  A tool that calls `try_parse` gets the refusal unprinted, with the words
+  A tool that calls `try_parse_to` gets the refusal unprinted, with the words
   as typed, the words with `--help`, and the unknown word
   ([parsing](../parsing/README.md#refused-command-lines)).
 

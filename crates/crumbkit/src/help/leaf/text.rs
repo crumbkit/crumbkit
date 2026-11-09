@@ -28,24 +28,14 @@ pub fn text_line(form: &str, fields: bool, long: bool) -> String {
 }
 
 impl Leaf {
-    /// Returns the form of the text line that each row of the leaf's
-    /// document prints, the row type's [`Row::LINE`](crate::Row::LINE), or
-    /// `None` when the leaf has no document or its rows print a table.
-    #[must_use]
-    pub const fn line(&self) -> Option<&'static str> {
-        match self.columns {
-            Some(columns) => columns.line,
-            None => None,
-        }
-    }
-
     /// Returns the `Text:` line that the leaf's `-h` and `--help` print
     /// after the `Output:` line, as [`text_line`] builds it, or `None` when
     /// the leaf's rows print a table. A headed leaf has none, because its
     /// text prints each row's bytes.
     pub(crate) fn text_help_line(&self) -> Option<String> {
-        let form = self.line()?;
-        if self.get_document()?.is_headed() {
+        let document = self.get_document()?;
+        let form = document.line()?;
+        if document.document().is_headed() {
             return None;
         }
         Some(text_line(

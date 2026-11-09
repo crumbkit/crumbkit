@@ -19,19 +19,20 @@ pub(super) fn check_lines(
     stdout: &str,
     failures: &mut Vec<String>,
 ) {
-    let Some(document) = leaf.get_document() else {
+    let Some(declared) = leaf.get_document() else {
         return;
     };
+    let document = declared.document();
     if !document.get_envelope().wraps() {
         return;
     }
     let id = tool.schema_id(&document.to_string());
-    if !leaf.is_stream() && matches!(layout, JsonLayout::Pretty { .. }) {
+    if !declared.is_stream() && matches!(layout, JsonLayout::Pretty { .. }) {
         check_indented(&id, line, stdout, failures);
         return;
     }
     let lines: Vec<&str> = stdout.lines().collect();
-    if !leaf.is_stream() && lines.len() != 1 {
+    if !declared.is_stream() && lines.len() != 1 {
         failures.push(format!(
             "{line}: the command prints one document, so its --json output must be exactly one line, and the run printed {} lines",
             lines.len()

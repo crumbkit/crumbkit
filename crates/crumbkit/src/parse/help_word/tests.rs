@@ -2,6 +2,7 @@
 //! turns it into `--help`, and `topic_page`, which finds the topic that the
 //! words after it name.
 
+use crate::parse::tests::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
@@ -9,7 +10,7 @@ use clap::{Arg, Command};
 
 use super::{ask_for_help, topic_page};
 use crate::help::{Help, Topic};
-use crate::{Sink, Tool, parse_to};
+use crate::{Sink, Tool};
 
 /// A tool with a global option that takes one value, `--units <UNIT>`, and
 /// one group.
@@ -37,8 +38,7 @@ const TOOL: Tool = Tool::new().help(Help::new().topics(&[ORBITS]));
 fn page(line: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, line);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, line);
 
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(String::from_utf8(err).unwrap(), "");
@@ -179,7 +179,7 @@ fn a_topic_followed_by_a_flag_prints_the_topic_as_text() {
             .action(clap::ArgAction::SetTrue),
     );
     let mut out = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(&mut out, Vec::new()),
         tool,
         &TOOL,

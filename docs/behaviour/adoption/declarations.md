@@ -187,7 +187,7 @@ record's refusal function and hint function once each for every run, and each
 leaf whose row type declares `Row::LINE` (as a `text-line` declaration that
 names the form of the line), and each leaf whose row type declares
 `Row::CHILDREN` (as a `children` declaration that names the field and quotes any
-`Row::CHILDREN_HELP`), and each example that needs a precondition (as an
+`Children::help`), and each example that needs a precondition (as an
 `example-precondition` declaration that names the example's command line and the
 names it needs). A leaf's code rename, and an exit that lists a code that only a
 leaf renames, apply to that leaf's command line. The dashed-forms declaration is

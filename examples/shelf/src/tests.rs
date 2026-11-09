@@ -19,7 +19,6 @@ fn catalogue() -> Result<Vec<crumbkit::pick::Choice>, crumbkit::Error> {
 
 #[test]
 fn books_show_without_ids_asks_the_menu_and_shows_the_picked_books() {
-    use clap::CommandFactory as _;
     use crumbkit::Tool;
     use crumbkit::help::Leaf;
     use crumbkit::pick::Choices;
@@ -34,12 +33,7 @@ fn books_show_without_ids_asks_the_menu_and_shows_the_picked_books() {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = crumbkit::Sink::with_input(&mut out, &mut err, &b"austen\n1\n"[..], true);
-    let parsed = crumbkit::parse_to::<crate::Cli, _, _, _, _>(
-        &mut sink,
-        crate::Cli::command(),
-        &TOOL,
-        ["shelf", "books", "show"],
-    );
+    let parsed = crumbkit::parse_to::<crate::Cli>(&mut sink, &TOOL, ["shelf", "books", "show"]);
 
     assert!(parsed.is_ok());
     let err = String::from_utf8(err).unwrap();

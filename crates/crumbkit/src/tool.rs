@@ -31,7 +31,7 @@ mod tests;
 /// command typed, and prints its topics:
 ///
 /// ```
-/// use clap::{CommandFactory, Parser, Subcommand};
+/// use clap::{Parser, Subcommand};
 /// use crumbkit::Tool;
 /// use crumbkit::help::{Example, Goal, Group, Help, Leaf, Topic};
 ///
@@ -64,7 +64,7 @@ mod tests;
 /// );
 ///
 /// let args = ["shelf", "books"];
-/// let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &TOOL, args);
+/// let parsed = crumbkit::parse_from::<Cli>(&TOOL, args);
 /// assert!(parsed.is_ok());
 /// ```
 #[derive(Clone, Copy, Debug)]

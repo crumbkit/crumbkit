@@ -1,15 +1,16 @@
 //! Tests for `parse_to`: what it returns, and what it prints for help, the
 //! version and a refused command line.
 
-use std::io::{self, Write};
+use std::ffi::OsString;
+use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::message::message;
-use super::{Stop, Unparsed, parse_to, try_parse_to};
+use super::{Stop, Unparsed, try_parse_to};
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, Tool};
+use crate::{Output, Sink, Tool};
 
 mod aliases;
 mod alternatives;
@@ -32,6 +33,18 @@ mod root;
 mod styled;
 mod usage;
 mod views;
+
+/// Parses `args` against `command` as `parse_to` does with `C`'s command.
+/// Most of the crate's tests build their tree by hand, so `command` differs
+/// from what `C` derives.
+pub(crate) fn parse_tree_to<C: clap::FromArgMatches>(
+    sink: &mut Sink<impl Write, impl Write, impl BufRead>,
+    command: Command,
+    tool: &Tool,
+    args: impl IntoIterator<Item = impl Into<OsString>>,
+) -> Result<(C, Output), Stop> {
+    try_parse_to(sink, command, tool, args).map_err(|unparsed| unparsed.print_to(sink))
+}
 
 /// A tool with two global flags, a version, and a group that holds a visible
 /// leaf with an alias and a hidden leaf.
@@ -110,7 +123,7 @@ fn parse(args: &[&str]) -> Parsed {
 fn parse_tree(command: Command, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = try_parse_to::<(), _, _, _, _>(
+    let result = try_parse_to::<()>(
         &mut Sink::new(&mut out, &mut err),
         command,
         &Tool::new(),
@@ -455,7 +468,7 @@ impl Write for Failing {
 #[test]
 fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Failing(io::ErrorKind::BrokenPipe), &mut err),
         tree(),
         &Tool::new(),
@@ -469,7 +482,7 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
 #[test]
 fn a_page_that_cannot_be_written_stops_with_exit_1() {
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Failing(io::ErrorKind::Other), &mut err),
         tree(),
         &Tool::new(),

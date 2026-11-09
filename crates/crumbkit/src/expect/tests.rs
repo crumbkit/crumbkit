@@ -2,7 +2,7 @@
 
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, Parser};
+use clap::Parser;
 
 use super::Expect;
 use crate::twins::assert_one_word_apart;
@@ -22,7 +22,7 @@ struct Rename {
 fn expect(words: &[&str]) -> Result<Expect, ExitCode> {
     let args = std::iter::once("rename").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    crate::parse_to::<Rename, _, _, _, _>(&mut sink, Rename::command(), &Tool::new(), args)
+    crate::parse_to::<Rename>(&mut sink, &Tool::new(), args)
         .map(|(rename, _)| rename.expect)
         .map_err(ExitCode::from)
 }

@@ -52,6 +52,20 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   They still compile, for crumbkit-markdown.
 - crumbkit-test: breaking: `crumbkit_test::Tool` is removed; use
   `crumbkit::Tool`.
+- crumbkit: breaking: `Leaf::get_document` returns `Option<&LeafDocument>`.
+  Reading that record replaces `Leaf`'s getters for the printed document, such
+  as `is_stream`, `shape`, `problem` and `column_descriptions`
+  ([behaviour/help]).
+- crumbkit: breaking: `Row::CHILDREN` is `Option<Children>`, a const-built
+  record that holds the field, `indent`, `spaced` and `help`, which replace
+  `Row::CHILD_INDENT`, `Row::SPACED` and `Row::CHILDREN_HELP`
+  ([behaviour/output/shapes]).
+- crumbkit: breaking: `parse`, `parse_from` and `parse_to` take the command
+  from the parsed type, so a tool writes `crumbkit::parse::<Cli>(&TOOL)`. A
+  turbofish names only that type. `try_parse_to` still takes a `Command`. With
+  a sink from `Sink::standard` it behaves as `parse` does.
+- crumbkit: breaking: `try_parse` and `try_parse_from` are removed. Use
+  `try_parse_to` with `Sink::standard` ([behaviour/parsing]).
 - crumbkit: breaking: `help::Guide` is now `crumbkit::Tool`, composed of the
   `help::Help`, `tool::Failures` and `tool::Output` records, with the picker
   and dashed forms on `Tool`. `Guide::output_budget` is `tool::Output::budget`,

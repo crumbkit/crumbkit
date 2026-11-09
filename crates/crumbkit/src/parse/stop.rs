@@ -15,7 +15,7 @@ mod tests;
 /// What [`parse`](crate::parse) returns after it printed help, the version,
 /// a topic, a refusal or a picker's failure, so the run ends without a
 /// parsed command.
-/// [`try_parse`](crate::try_parse) returns it inside
+/// [`try_parse_to`](crate::try_parse_to) returns it inside
 /// [`Unparsed::Stopped`](crate::Unparsed::Stopped) after help or the
 /// version, and [`Refused::print`](crate::Refused::print) returns it after
 /// the refusal prints.
@@ -130,7 +130,7 @@ impl Stop {
     /// ```
     /// use std::process::ExitCode;
     ///
-    /// use clap::{CommandFactory as _, Parser};
+    /// use clap::Parser;
     /// use crumbkit::Tool;
     /// use crumbkit::{Sink, ViewFlags};
     ///
@@ -143,7 +143,7 @@ impl Stop {
     ///
     /// let mut sink = Sink::new(Vec::new(), Vec::new());
     /// let parsed =
-    ///     crumbkit::parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &Tool::new(), ["tool", "--help"]);
+    ///     crumbkit::parse_to::<Cli>(&mut sink, &Tool::new(), ["tool", "--help"]);
     /// let stop = parsed.err().unwrap();
     ///
     /// assert_eq!(stop.exit_code(), ExitCode::SUCCESS);
@@ -159,7 +159,7 @@ impl Stop {
     /// here, because `ExitCode` cannot be read back as a number.
     ///
     /// ```
-    /// use clap::{CommandFactory as _, Parser};
+    /// use clap::Parser;
     /// use crumbkit::Tool;
     /// use crumbkit::{Sink, ViewFlags};
     ///
@@ -172,7 +172,7 @@ impl Stop {
     ///
     /// let mut sink = Sink::new(Vec::new(), Vec::new());
     /// let parsed =
-    ///     crumbkit::parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &Tool::new(), ["tool", "--srot"]);
+    ///     crumbkit::parse_to::<Cli>(&mut sink, &Tool::new(), ["tool", "--srot"]);
     ///
     /// assert_eq!(parsed.err().map(|stop| stop.exit()), Some(2));
     /// ```

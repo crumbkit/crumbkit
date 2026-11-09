@@ -78,7 +78,7 @@ enforces these rules:
 - A read-only leaf that takes crumbkit's `--expect` fails, and so does a
   `per_item` leaf whose document is not a `Batch`, a `Prose` or a stream,
   because those are the documents that report a failure for each item.
-  `Leaf::shape` returns the document's `Shape` for this rule. These rules
+  `LeafDocument::shape` returns the document's `Shape` for this rule. These rules
   have no opt-out. A read-only leaf cannot declare how its items end,
   because that `const` fails to compile.
 

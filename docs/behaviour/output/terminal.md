@@ -16,9 +16,9 @@ therefore pins what a person reads at a terminal wider than the table.
 
 Detection changes only these:
 
-- Help keeps clap's colours when standard output is a terminal. `parse`
-  marks its `Sink` as styled then, and a tool that passes its own sink to
-  `parse_to` marks it with `Sink::styled` ([help](../help/README.md)).
+- Help keeps clap's colours for one parse when standard output is a
+  terminal and the sink comes from `Sink::standard`. `Sink::styled` decides
+  in place of that rule ([help](../help/README.md)).
 - A refusal and the group page printed for it keep clap's styles when
   `CLICOLOR_FORCE` is set, or when standard error is a terminal whose
   `TERM` is not `dumb` and `CLICOLOR` is not `0`. They never keep them

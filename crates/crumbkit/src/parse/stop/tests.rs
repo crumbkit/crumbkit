@@ -31,7 +31,7 @@ fn tree() -> Command {
 #[track_caller]
 fn stopped(args: &[&str]) -> Stop {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    match try_parse_to::<(), _, _, _, _>(&mut sink, tree(), &Tool::new(), args) {
+    match try_parse_to::<()>(&mut sink, tree(), &Tool::new(), args) {
         Err(Unparsed::Stopped(stop)) => stop,
         Err(Unparsed::Refused(refused)) => unreachable!("{args:?} was refused: {refused:?}"),
         Ok(_) => unreachable!("{args:?} parsed"),
@@ -141,7 +141,7 @@ enum Listed {
 fn viewed(args: &[&str]) -> Result<(), Stop> {
     let command = <Viewed as clap::CommandFactory>::command();
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    match try_parse_to::<(), _, _, _, _>(&mut sink, command, &Tool::new(), args) {
+    match try_parse_to::<()>(&mut sink, command, &Tool::new(), args) {
         Ok(_) => Ok(()),
         Err(unparsed) => Err(unparsed.print_to(&mut sink)),
     }

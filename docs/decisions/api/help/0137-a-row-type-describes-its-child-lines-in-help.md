@@ -1,7 +1,7 @@
 # ADR-0137. A row type describes its child lines in help
 
 - Date: 2026-10-21
-- Status: accepted
+- Status: amended by ADR-0182
 - Supersedes: ADR-0120 and ADR-0135, which it amends
 - Missed: ADR-0120 fixed the help sentence of child lines and ADR-0135 kept it, so help called the lines indented at an indent of 0 and described one line per item for a row whose child lines fold several items into one.
 

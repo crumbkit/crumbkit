@@ -25,7 +25,8 @@ pub use self::effects::{Effects, Items};
 pub use self::format::FileFormat;
 pub use self::group::{Goal, Group};
 pub use self::leaf::{
-    BYTES_LINE, Column, Example, HEADED_LINE, Leaf, STREAM_LINE, children_line, text_line,
+    BYTES_LINE, Column, Example, HEADED_LINE, Leaf, LeafDocument, STREAM_LINE, children_line,
+    text_line,
 };
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;

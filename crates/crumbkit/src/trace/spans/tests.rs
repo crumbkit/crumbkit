@@ -6,7 +6,7 @@ use std::fmt;
 use std::process::ExitCode;
 use std::sync::Once;
 
-use clap::{CommandFactory as _, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
@@ -271,12 +271,7 @@ enum Planets {
 /// Parses `args` into memory, and returns the parsed tool's output flags
 /// with the tool's command, or the exit code of a run that parsing ended.
 fn parse(args: &[&str]) -> Result<Output, ExitCode> {
-    let (_, output) = parse_to::<Cli, _, _, _, _>(
-        &mut Sink::new(Vec::new(), Vec::new()),
-        Cli::command(),
-        &TOOL,
-        args,
-    )?;
+    let (_, output) = parse_to::<Cli>(&mut Sink::new(Vec::new(), Vec::new()), &TOOL, args)?;
     Ok(output)
 }
 

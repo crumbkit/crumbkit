@@ -3,7 +3,7 @@
 This page covers how a tool parses its command line with crumbkit: the
 `parse` call in `main`, the `Stop` it returns when it ends the run itself,
 the command tree that it hands on to `finish`, command lines that crumbkit
-refuses, `try_parse`, which returns a refusal unprinted, and how a tool
+refuses, `try_parse_to`, which returns a refusal unprinted, and how a tool
 keeps clap's matches after parsing. [Aliases](aliases.md) and
 [shell completion](completion.md) have pages of their own.
 
@@ -19,9 +19,11 @@ sink of in-memory writers. The rustdoc of `parse`, `parse_from` and
 A sink asks for no styles by default, so `parse_to` writes plain help. A
 sink built with `Sink::styled(true)` receives help with clap's styles when
 crumbkit's `color` feature is on, so a tool or a test can render help for a
-terminal through its own writer ([help](../help/README.md)). `parse` and
-`parse_from` mark their standard sink as styled when standard output is a
-terminal and terminal detection is on.
+terminal through its own writer ([help](../help/README.md)). `parse_to` and
+`try_parse_to`, and so `parse` and `parse_from`, style help for a sink from
+`Sink::standard` when standard output is a terminal and terminal detection is
+on. That decision lasts for the one parse, and `Sink::standard().styled(false)`
+keeps help plain.
 
 On success, `parse` returns the tool's parsed type and an
 [`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the view
@@ -51,9 +53,9 @@ it keeps the words for the `--yes` recovery. It takes the spelling of codes
 from the tool record, as `parse` does. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
-`crumbkit_aliases::expand` before `parse_from`, as the
-[aliases page](aliases.md) describes. A tool that reads a refused command
-line before it prints calls `try_parse`
+`crumbkit_aliases::expand` before it parses, and passes the `Command` that
+`expand` read to `try_parse_to`, as the [aliases page](aliases.md) describes.
+A tool that reads a refused command line before it prints calls `try_parse_to`
 ([a refusal that the tool prints](#a-refusal-that-the-tool-prints)).
 
 Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002, ADR-0102.
@@ -62,7 +64,7 @@ Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002, ADR-0102.
 
 When `parse` prints help, the version or a refusal, it ends the run and returns
 a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a bare
-`ExitCode`. `try_parse` returns the `Stop` of help or the version inside
+`ExitCode`. `try_parse_to` returns the `Stop` of help or the version inside
 `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a refusal. A
 tool's `main` returns `stop.exit_code()`. A tool that prints more before it
 exits reads `Stop::output`, whose `Output::is_json` says whether the caller
@@ -210,13 +212,15 @@ ADR-0131, ADR-0133.
 
 ## A refusal that the tool prints
 
-[`try_parse`](../../../crates/crumbkit/src/parse.rs), `try_parse_from` and
-`try_parse_to` parse as `parse`, `parse_from` and `parse_to` do and take the
-same arguments. They print help, the version and a topic, and return
-`Unparsed::Stopped` with the `Stop`. They print no refusal. A refused
+[`try_parse_to`](../../../crates/crumbkit/src/parse.rs) parses as `parse_to`
+does. It takes the sink, the command, the tool record and the arguments, so a
+tool that builds its command at run time passes that command. A sink from
+`Sink::standard` makes it read terminals as `parse` does. It prints help, the
+version and a topic, and returns `Unparsed::Stopped` with the `Stop`. It prints
+no refusal. A refused
 command line comes back as `Unparsed::Refused` with a
 [`Refused`](../../../crates/crumbkit/src/parse/refused.rs), and `parse` is
-`try_parse` followed by printing it.
+`try_parse_to` with `C::command()` followed by printing it.
 
 A `Refused` holds what the refusal prints and what the run knew:
 
@@ -326,8 +330,22 @@ impl FromArgMatches for WithMatches {
 }
 ```
 
-The tool calls `crumbkit::parse::<WithMatches>(Cli::command(), &TOOL)` and
-reads a subcommand's sources through `ArgMatches::subcommand_matches`.
+The tool parses with `try_parse_to`, which takes `Cli::command()` because
+`WithMatches` derives no `CommandFactory`, and prints a refusal through the
+`Unparsed` it returns:
+
+```rust
+let parsed = crumbkit::try_parse_to::<WithMatches>(
+    &mut Sink::standard(),
+    Cli::command(),
+    &TOOL,
+    std::env::args_os(),
+)
+.map_err(crumbkit::Unparsed::print);
+```
+
+The tool reads a subcommand's sources through
+`ArgMatches::subcommand_matches`.
 crumbkit reads `--json`, `--dry-run`, `--no-input` and the view flags from
 the matches before the tool's type runs, so the wrapper changes nothing
 that crumbkit reads or prints. Each parse clones the matches once. A

@@ -1,6 +1,7 @@
 //! Tests for leaves: the examples and columns that `parse_to` adds to the
 //! help of a leaf, and the examples that `extend` adds.
 
+use crate::parse::tests::parse_tree_to;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::process::ExitCode;
@@ -9,9 +10,9 @@ use clap::{Arg, ArgAction, Command};
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 
-use super::{Column, Example, Leaf};
+use super::{Example, Leaf};
 use crate::help::{Help, extend};
-use crate::{Document, Prose, Row, Sink, Tool, parse_to};
+use crate::{Document, Prose, Row, Sink, Tool};
 
 mod document;
 
@@ -82,7 +83,7 @@ const EXAMPLES: &[Example] = &[
 fn help(tool: &Tool, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
@@ -327,8 +328,7 @@ fn the_schema_is_built_only_when_the_words_ask_for_long_help() {
             )),
         ]);
     let run = |args: &[&str]| {
-        let _ =
-            parse_to::<(), _, _, _, _>(&mut Sink::new(Vec::new(), Vec::new()), tree(), &TOOL, args);
+        let _ = parse_tree_to::<()>(&mut Sink::new(Vec::new(), Vec::new()), tree(), &TOOL, args);
         SCHEMAS.get()
     };
 
@@ -346,7 +346,7 @@ fn a_leaf_off_the_typed_path_keeps_its_help() {
         .examples(EXAMPLES)
         .document(PLANETS)]);
 
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(Vec::new(), Vec::new()),
         tree(),
         &TOOL,
@@ -398,7 +398,7 @@ fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse()
     for flag in ["-h", "--help"] {
         let mut out = Vec::new();
         let mut err = Vec::new();
-        let result = parse_to::<(), _, _, _, _>(
+        let result = parse_tree_to::<()>(
             &mut Sink::new(&mut out, &mut err),
             extend(tree(), &TOOL),
             &TOOL,
@@ -436,6 +436,8 @@ fn extend_applies_only_the_first_of_two_leaves_with_one_path() {
 fn column_descriptions_lists_the_columns_and_then_the_long_columns_in_declared_order() {
     let columns = Leaf::new(&["planets", "list"])
         .document(PLANETS)
+        .get_document()
+        .unwrap()
         .column_descriptions();
 
     let read: Vec<(&str, bool, bool, Option<&str>)> = columns
@@ -489,6 +491,8 @@ fn column_descriptions_reports_a_column_that_is_not_a_property_and_one_without_a
             1,
             "The test rows.",
         ))
+        .get_document()
+        .unwrap()
         .column_descriptions();
     let moons = Leaf::new(&["planets", "show"])
         .document(Document::<Vec<Moon>>::new(
@@ -497,6 +501,8 @@ fn column_descriptions_reports_a_column_that_is_not_a_property_and_one_without_a
             1,
             "The test rows.",
         ))
+        .get_document()
+        .unwrap()
         .column_descriptions();
 
     assert_eq!(comets[1].name(), "period");
@@ -543,6 +549,8 @@ fn column_descriptions_read_the_fields_of_each_variant_of_a_row_type() {
             1,
             "The test rows.",
         ))
+        .get_document()
+        .unwrap()
         .column_descriptions();
 
     let read: Vec<(&str, bool, Option<&str>)> = columns
@@ -561,11 +569,4 @@ fn column_descriptions_read_the_fields_of_each_variant_of_a_row_type() {
             ),
         ]
     );
-}
-
-#[test]
-fn column_descriptions_of_a_leaf_without_a_document_is_empty() {
-    let leaf = Leaf::new(&["planets", "list"]).examples(EXAMPLES);
-
-    assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
 }

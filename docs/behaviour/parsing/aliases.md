@@ -33,7 +33,8 @@ same way ([usage log](../usage-log/README.md)).
 
 A tool passes its arguments through
 [`expand`](../../../crates/crumbkit-aliases/src/expand.rs) before
-`parse_from`. `expand` replaces only the first word, once, with no shell, and
+`try_parse_to`, and passes `try_parse_to` the `Command` that `expand` read.
+`expand` replaces only the first word, once, with no shell, and
 a real command always wins. It never prints or fails, and it tells the usage
 log that an alias expanded.
 

@@ -1,4 +1,4 @@
-//! `Unparsed` and `Refused`, which `try_parse` returns when it does not
+//! `Unparsed` and `Refused`, which `try_parse_to` returns when it does not
 //! return a parsed command, so a tool can print a refusal itself.
 
 use std::ffi::{OsStr, OsString};
@@ -15,7 +15,7 @@ use crate::{Code, Failure as _, Output, Recovery, Sink};
 #[cfg(test)]
 mod tests;
 
-/// What [`try_parse`](crate::try_parse) returns when it returns no parsed
+/// What [`try_parse_to`](crate::try_parse_to) returns when it returns no parsed
 /// command.
 ///
 /// A tool that prints every refusal as crumbkit does calls
@@ -62,7 +62,7 @@ impl Unparsed {
     }
 }
 
-/// A command line that [`try_parse`](crate::try_parse) refused and has not
+/// A command line that [`try_parse_to`](crate::try_parse_to) refused and has not
 /// printed.
 ///
 /// It holds the refusal that [`parse`](crate::parse) would print, the
@@ -194,8 +194,13 @@ impl Refused {
     ///     view: ViewFlags,
     /// }
     ///
-    /// let parsed =
-    ///     crumbkit::try_parse_from::<Cli, _, _>(Cli::command(), &Tool::new(), ["tool", "--srot"]);
+    /// let mut sink = crumbkit::Sink::new(Vec::new(), Vec::new());
+    /// let parsed = crumbkit::try_parse_to::<Cli>(
+    ///     &mut sink,
+    ///     Cli::command(),
+    ///     &Tool::new(),
+    ///     ["tool", "--srot"],
+    /// );
     /// let Err(Unparsed::Refused(refused)) = parsed else {
     ///     panic!("the command line parsed");
     /// };
@@ -370,7 +375,7 @@ impl Refused {
     /// is plain otherwise (ADR-0131).
     ///
     /// The run's observers hear of the refusal when it prints, and not
-    /// when `try_parse` returns it, so a run that prints no refusal reports
+    /// when `try_parse_to` returns it, so a run that prints no refusal reports
     /// none.
     #[must_use]
     pub fn print_to<O: Write, E: Write, R>(self, sink: &mut Sink<O, E, R>) -> Stop {

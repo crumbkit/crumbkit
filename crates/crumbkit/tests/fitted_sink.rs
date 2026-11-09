@@ -5,8 +5,8 @@
 use std::ops::ControlFlow;
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, Parser, Subcommand};
-use crumbkit::{Document, Error, Listing, Output, Row, Sink, Stream, Tool, ViewFlags};
+use clap::{Parser, Subcommand};
+use crumbkit::{Children, Document, Error, Listing, Output, Row, Sink, Stream, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -71,12 +71,7 @@ fn parse(tool: &Tool, args: &[&str]) -> Option<Output> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["library"].iter().chain(args);
-    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        Cli::command(),
-        tool,
-        words,
-    );
+    let parsed = crumbkit::parse_to::<Cli>(&mut Sink::new(&mut out, &mut err), tool, words);
     parsed.ok().map(|(_tool, output)| output)
 }
 
@@ -243,8 +238,7 @@ struct Catalogued {
 
 impl Row for Catalogued {
     const COLUMNS: &'static [&'static str] = &["title", "shelf"];
-    const CHILDREN: Option<&'static str> = Some("reference");
-    const CHILD_INDENT: u8 = 0;
+    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
 
     fn child_lines(&self) -> Vec<String> {
         vec![self.reference.clone()]

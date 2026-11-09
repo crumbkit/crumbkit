@@ -1,4 +1,4 @@
-//! Tests for a row type that sets `Row::SPACED`, whose text prints a blank
+//! Tests for a row type that sets `Children::spaced`, whose text prints a blank
 //! line after a row that printed child lines when another row follows
 //! (ADR-0151).
 
@@ -9,7 +9,7 @@ use serde::Serialize;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Batch, Document, Error, Listing, Row, Tool};
+use crate::{Batch, Children, Document, Error, Listing, Row, Tool};
 
 /// A service and the processes it runs, each of which prints under the
 /// service, with a blank line between services.
@@ -28,8 +28,7 @@ struct Service {
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name", "state"];
     const LONG_COLUMNS: &'static [&'static str] = &["region"];
-    const CHILDREN: Option<&'static str> = Some("processes");
-    const SPACED: bool = true;
+    const CHILDREN: Option<Children> = Some(Children::field("processes").spaced());
 }
 
 const SERVICES: Document<Vec<Service>> =
@@ -130,8 +129,7 @@ struct Lined {
 impl Row for Lined {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LINE: Option<&'static str> = Some("service <NAME>");
-    const CHILDREN: Option<&'static str> = Some("processes");
-    const SPACED: bool = true;
+    const CHILDREN: Option<Children> = Some(Children::field("processes").spaced());
 
     fn text_line(&self) -> Option<String> {
         Some(format!("service {}", self.name))
@@ -270,8 +268,7 @@ struct Detailed {
 impl Row for Detailed {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LONG_COLUMNS: &'static [&'static str] = &["region"];
-    const CHILDREN: Option<&'static str> = Some("processes");
-    const SPACED: bool = true;
+    const CHILDREN: Option<Children> = Some(Children::field("processes").spaced());
 
     fn child_lines(&self) -> Vec<String> {
         Vec::new()

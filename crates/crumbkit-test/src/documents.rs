@@ -2,6 +2,7 @@
 //! a leaf prints to the leaf's path.
 
 use clap::Command;
+use crumbkit::help::LeafDocument;
 use crumbkit::{Document, Tool};
 
 use crate::allow::{Allow, Allowances, Rule};
@@ -66,9 +67,10 @@ pub fn check_document_ids(command: &Command, tool: &Tool, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::Envelope, Rule::RowsWhole]);
     let mut problems = Vec::new();
     for leaf in tool.get_help().get_leaves() {
-        let Some(document) = leaf.get_document() else {
+        let Some(declared) = leaf.get_document() else {
             continue;
         };
+        let document = declared.document();
         if !document.get_envelope().wraps()
             && !allowances.excuses(Rule::Envelope, &leaf.path().join(" "))
         {
@@ -78,7 +80,7 @@ pub fn check_document_ids(command: &Command, tool: &Tool, allow: &[Allow]) {
                 Rule::Envelope.id()
             ));
         }
-        if leaf.rows_whole() && !allowances.excuses(Rule::RowsWhole, &leaf.path().join(" ")) {
+        if declared.rows_whole() && !allowances.excuses(Rule::RowsWhole, &leaf.path().join(" ")) {
             problems.push(format!(
                 "{}: the command prints the rows of {document} whole, because its row type sets `Row::WHOLE`, which needs an opt-out from `{}` with a reason",
                 command_line(command, leaf.path()),
@@ -141,7 +143,7 @@ pub(crate) fn declared_name(
 pub fn check_mounts(command: &Command, tool: &Tool) {
     let mut problems = Vec::new();
     for leaf in tool.get_help().get_leaves() {
-        let Some(document) = leaf.get_document() else {
+        let Some(document) = leaf.get_document().map(LeafDocument::document) else {
             continue;
         };
         let Some(fixed) = fixed_path(document.component(), document.name()) else {

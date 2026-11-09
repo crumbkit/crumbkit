@@ -1,6 +1,7 @@
 //! Tests for help topics: what `parse_to` prints for `help` and for help
 //! pages with a tool record that has topics.
 
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
@@ -9,7 +10,7 @@ use super::Topic;
 use crate::help::{Help, exit};
 use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, Tool, parse_to};
+use crate::{Sink, Tool};
 
 /// A tool with a global flag and one group.
 fn tree() -> Command {
@@ -56,8 +57,7 @@ struct Printed {
 fn run(command: Command, tool: &Tool, args: &[&str]) -> Printed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     Printed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),

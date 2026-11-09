@@ -2,13 +2,14 @@
 //! record's root names it, in the failure document's id and in crumbkit's
 //! codes.
 
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::{Parsed, tree};
 use crate::help::Help;
-use crate::parse::{Stop, parse_to};
+use crate::parse::Stop;
 use crate::tool::{Failures, Rename};
 use crate::{Code, Sink, Tool, codes};
 
@@ -17,8 +18,7 @@ use crate::{Code, Sink, Tool, codes};
 fn parse(command: Command, tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),
