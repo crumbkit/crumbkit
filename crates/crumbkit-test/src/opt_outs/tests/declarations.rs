@@ -3,13 +3,14 @@
 
 use clap::Command;
 use crumbkit::codes::CLI_USAGE;
-use crumbkit::help::{Exit, Help, Leaf, RefusalContext, Rename};
+use crumbkit::help::{Help, Leaf};
 use crumbkit::schemas::SCHEMAS_LIST;
+use crumbkit::tool::{Exit, RefusalContext, Rename};
 use crumbkit::{Call, Code, Document, Prose, Tool};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
 
-use super::{read, run_guided};
+use super::{read, run_with_tool};
 use crate::opt_outs::declarations::declarations;
 use crate::temp::TempDir;
 use crumbkit::tool::Failures;
@@ -54,13 +55,13 @@ const DECLARING: Tool = Tool::new()
 fn the_report_lists_declarations_under_declarations_without_a_reason_or_a_cost() {
     let dir = TempDir::new("opt-outs-declarations").unwrap();
 
-    run_guided(&DECLARING, &dir, Action::Overwrite);
+    run_with_tool(&DECLARING, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 7 declarations, which need no reason.\n\
+         shelf has 7 declarations, which need no reason.\n\
          \n\
          code-rename: every run of shelf\n\
          \x20 Declares: Runs print shelf::cli::usage in place of shelf::cli::usage.\n\
@@ -100,10 +101,10 @@ fn the_report_lists_declarations_under_declarations_without_a_reason_or_a_cost()
 fn a_report_without_declarations_leaves_out_declarations() {
     let dir = TempDir::new("opt-outs-no-declarations").unwrap();
 
-    run_guided(&Tool::new(), &dir, Action::Overwrite);
+    run_with_tool(&Tool::new(), &dir, Action::Overwrite);
 
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
-    assert_eq!(report, json!({ "schema": "shelf/opt-outs/v1", "data": [] }));
+    assert_eq!(report, json!({ "schema": "shelf/opt-outs/v2", "data": [] }));
 }
 
 #[test]
@@ -112,7 +113,7 @@ fn a_leaf_that_prints_no_result_adds_nothing_to_the_report() {
         Tool::new().help(Help::new().leaves(&[Leaf::new(&["books", "show"]).prints_no_result()]));
     let dir = TempDir::new("opt-outs-no-result").unwrap();
 
-    run_guided(&TOOL, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -127,7 +128,7 @@ fn an_exit_that_lists_the_tool_s_own_code_is_no_declaration() {
         .failures(Failures::new().exits(&[Exit::new(3, "No such book.").failures(&[&MINE])]));
     let dir = TempDir::new("opt-outs-own-exit").unwrap();
 
-    run_guided(&TOOL, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -147,13 +148,13 @@ fn a_document_named_other_than_its_command_path_is_a_document_name_declaration()
     ]));
     let dir = TempDir::new("opt-outs-document-name").unwrap();
 
-    run_guided(&TOOL, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 1 declaration, which needs no reason.\n\
+         shelf has 1 declaration, which needs no reason.\n\
          \n\
          document-name: shelf books show\n\
          \x20 Declares: The command prints shelf/book-show/v1, where its path gives the name books-show.\n"

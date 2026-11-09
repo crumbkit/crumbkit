@@ -10,8 +10,8 @@ use serde::Serialize;
 
 use super::parse_to;
 use crate::Envelope;
-use crate::help::{Exit, Help, Leaf, Rename};
-use crate::tool::Failures;
+use crate::help::{Help, Leaf};
+use crate::tool::{Exit, Failures, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Stream, Tool};
 

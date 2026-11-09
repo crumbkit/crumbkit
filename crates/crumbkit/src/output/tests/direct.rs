@@ -8,8 +8,7 @@ use std::process::ExitCode;
 use clap::{CommandFactory as _, Parser};
 
 use super::PLANETS;
-use crate::help::Exit;
-use crate::tool::Failures;
+use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{Code, Failure, Output, Recovery, Sink, Tool};
 
@@ -54,7 +53,7 @@ struct Cli {
 
 /// Parses `tool` followed by `flags`, and builds the output with `TOOL`,
 /// as a tool that parses with clap alone builds it.
-fn guided(flags: &[&str]) -> Output {
+fn output_of(flags: &[&str]) -> Output {
     let view = Cli::try_parse_from(["tool"].iter().chain(flags))
         .unwrap()
         .view;
@@ -89,14 +88,14 @@ fn printed<R>(print: impl FnOnce(&mut Sink<&mut Vec<u8>, &mut Vec<u8>>) -> R) ->
 
 #[test]
 fn listed_exit_gives_the_exit_that_the_tool_lists_and_none_for_an_unlisted_code() {
-    let output = guided(&[]);
+    let output = output_of(&[]);
     assert_eq!(output.listed_exit(&TIMED_OUT), Some(124));
     assert_eq!(output.listed_exit(&NOT_FOUND), None);
 }
 
 #[test]
 fn failure_exit_gives_the_listed_exit_or_crumbkit_s_default() {
-    let output = guided(&[]);
+    let output = output_of(&[]);
     assert_eq!(output.failure_exit(&TIMED_OUT), 124);
     assert_eq!(output.failure_exit(&NOT_FOUND), 1);
     assert_eq!(output.failure_exit(&crate::codes::CLI_USAGE), 2);
@@ -104,7 +103,7 @@ fn failure_exit_gives_the_listed_exit_or_crumbkit_s_default() {
 
 #[test]
 fn print_failure_prints_a_failure_as_finish_prints_it() {
-    let mut output = guided(&[]);
+    let mut output = output_of(&[]);
     let printed = printed(|sink| {
         output.print_failure(sink, &Failed(&NOT_FOUND));
     });
@@ -121,12 +120,12 @@ fn refuse_view_refuses_a_field_that_the_document_lacks_with_the_refusal_s_exit()
         &["--json", "--fields", "rings"],
         &["--json", "--fields", "name"],
     );
-    let mut admitted = guided(&["--json", "--fields", "name"]);
+    let mut admitted = output_of(&["--json", "--fields", "name"]);
     let admitted = printed(|sink| admitted.refuse_view(sink, PLANETS));
     assert_eq!(admitted.returned, None);
     assert_eq!(format!("{}{}", admitted.out, admitted.err), "");
 
-    let mut refused = guided(&["--json", "--fields", "rings"]);
+    let mut refused = output_of(&["--json", "--fields", "rings"]);
     let refused = printed(|sink| refused.refuse_view(sink, PLANETS));
     assert_eq!(refused.returned, Some(ExitCode::from(2)));
     let document: serde_json::Value = serde_json::from_str(&refused.out).unwrap();
@@ -136,11 +135,11 @@ fn refuse_view_refuses_a_field_that_the_document_lacks_with_the_refusal_s_exit()
 #[test]
 fn refuse_fields_for_text_refuses_fields_with_the_caller_s_reason() {
     assert_one_word_apart(&["--fields=name"], &["--long"]);
-    let mut admitted = guided(&["--long"]);
+    let mut admitted = output_of(&["--long"]);
     let admitted = printed(|sink| admitted.refuse_fields_for_text(sink, "it prints prose"));
     assert_eq!(admitted.returned, None);
 
-    let mut refused = guided(&["--fields=name"]);
+    let mut refused = output_of(&["--fields=name"]);
     let refused = printed(|sink| refused.refuse_fields_for_text(sink, "it prints prose"));
     assert_eq!(refused.returned, Some(ExitCode::from(2)));
     let expected = "\

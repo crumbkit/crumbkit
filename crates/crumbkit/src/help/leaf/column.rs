@@ -74,7 +74,7 @@ impl Column {
     /// Reports whether the column's type has a value that means no
     /// problem when the column is the field that [`Row::PROBLEM`] names:
     /// its JSON Schema type is a string or a boolean, or it can be null.
-    /// crumbkit-test's `check_guide` reads it for that field.
+    /// crumbkit-test's `check_help` reads it for that field.
     //
     // RUST-10: the type is read from the property itself and from the
     // variants under its `anyOf` or `oneOf`. A field whose type schemars

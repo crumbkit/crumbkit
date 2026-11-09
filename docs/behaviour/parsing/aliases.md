@@ -15,9 +15,9 @@ unless the tool opts in to showing aliases.
 A built-in alias is a hidden clap alias, such as `ls` for `books list`, which
 `check_names` accepts. A tool that wants a built-in alias in help makes it a
 visible clap alias and opts out of `Rule::OneName` with a reason. Help then
-prints it after the command's description as clap does, as in `[alias: ls]`,
-on guided pages too. Such an alias is the same on every machine and costs
-only help bytes and a second spelling.
+prints it after the command's description as clap does, as in `[alias: ls]`, on
+pages with goal headings too. Such an alias is the same on every machine and
+costs only help bytes and a second spelling.
 
 Why: ADR-0027.
 

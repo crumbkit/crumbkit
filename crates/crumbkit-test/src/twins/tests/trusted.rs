@@ -2,7 +2,7 @@
 //! when `crumbkit::codes::ALL` or the list of the add-on crates' codes holds
 //! it, whatever its component (ADR-0177).
 
-use crumbkit::help::{Exit, Rename};
+use crumbkit::tool::{Exit, Rename};
 use crumbkit::{Code, Tool};
 
 use super::tree;

@@ -2,7 +2,8 @@
 //! exits that the tool record declares for failure codes (ADR-0037).
 
 use crumbkit::Tool;
-use crumbkit::help::{Exit, Help, Leaf};
+use crumbkit::help::{Help, Leaf};
+use crumbkit::tool::Exit;
 use snapbox::Assert;
 use snapbox::assert::Action;
 

@@ -71,7 +71,7 @@ fn section(page: &str) -> &str {
 }
 
 #[test]
-fn a_guided_group_lists_its_children_under_each_goal_heading_in_guide_order() {
+fn a_headed_group_lists_its_children_under_each_goal_heading_in_guide_order() {
     const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &[],
         &[
@@ -103,7 +103,7 @@ Next: tool <COMMAND> -h
 }
 
 #[test]
-fn a_guided_nested_group_lists_its_children_under_its_own_goals() {
+fn a_headed_nested_group_lists_its_children_under_its_own_goals() {
     const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[
@@ -126,7 +126,7 @@ Options:
 }
 
 #[test]
-fn a_guided_groups_long_help_lists_the_goal_headings_before_the_options() {
+fn a_headed_groups_long_help_lists_the_goal_headings_before_the_options() {
     const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[
@@ -160,7 +160,7 @@ Next: tool planets <COMMAND> -h
 }
 
 #[test]
-fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
+fn a_headed_group_off_the_typed_path_keeps_its_default_help() {
     const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["planets"],
         &[Goal::new("Read", &["list", "show", "rename"])],
@@ -187,7 +187,7 @@ fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
 }
 
 #[test]
-fn a_guided_command_prints_its_own_before_help_above_its_about_and_the_goal_list_below_its_usage() {
+fn a_headed_command_prints_its_own_before_help_above_its_about_and_the_goal_list_below_its_usage() {
     const TOOL: Tool =
         Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool")
@@ -215,7 +215,7 @@ Options:
 }
 
 #[test]
-fn a_guided_command_prints_its_own_before_long_help_in_its_long_help() {
+fn a_headed_command_prints_its_own_before_long_help_in_its_long_help() {
     const TOOL: Tool =
         Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool")
@@ -233,7 +233,7 @@ fn a_guided_command_prints_its_own_before_long_help_in_its_long_help() {
 }
 
 #[test]
-fn a_guided_command_whose_list_holds_a_brace_keeps_the_list_in_before_help() {
+fn a_headed_command_whose_list_holds_a_brace_keeps_the_list_in_before_help() {
     const TOOL: Tool =
         Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool")
@@ -254,7 +254,7 @@ Options:
 }
 
 #[test]
-fn a_guided_page_without_long_help_keeps_clap_s_short_help_line() {
+fn a_headed_page_without_long_help_keeps_clap_s_short_help_line() {
     const TOOL: Tool =
         Tool::new().help(Help::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]));
     let tool = Command::new("tool").subcommand(Command::new("list").about("List the planets"));
@@ -401,7 +401,7 @@ fn a_tool_path_that_names_no_command_or_a_command_without_subcommands_changes_no
 }
 
 #[test]
-fn a_guided_list_prints_each_visible_alias_after_the_description_as_clap_s_list_does() {
+fn a_headed_list_prints_each_visible_alias_after_the_description_as_clap_s_list_does() {
     const TOOL: Tool = Tool::new().help(Help::new().groups(&[Group::new(
         &["moons"],
         &[Goal::new("Read", &["list", "forget"])],

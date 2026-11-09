@@ -7,8 +7,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::RuntimeLeaf;
-use crate::help::{Column, Example, Exit, Goal, Group, Help, Leaf, RefusalContext, Rename, Topic};
-use crate::tool::Failures;
+use crate::help::{Column, Example, Goal, Group, Help, Leaf, Topic};
+use crate::tool::{Exit, Failures, RefusalContext, Rename};
 use crate::{Call, Code, Document, Row, Sink, Tool, parse_to};
 
 const TOOL: Tool = Tool::new()

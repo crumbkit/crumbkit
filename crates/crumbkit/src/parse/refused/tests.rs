@@ -10,9 +10,8 @@ use clap::{Arg, ArgAction, Command};
 use super::{Refused, Unparsed};
 use crate::codes::CLI_USAGE;
 use crate::events::testing::watch;
-use crate::help::Exit;
 use crate::parse::{parse_to, try_parse_to};
-use crate::tool::Failures;
+use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, Tool, ViewFlags};
 

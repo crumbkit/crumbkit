@@ -4,7 +4,7 @@
 use std::process::ExitStatus;
 
 use clap::Command;
-use crumbkit::help::{Exit, Rename};
+use crumbkit::tool::{Exit, Rename};
 use crumbkit::{Code, Spelling, Tool};
 
 use crate::allow::{Allow, Allowances, Rule, command_line};
@@ -31,7 +31,7 @@ mod tests;
 ///   A code from 129 to 159 passes, because a shell reports a run that a
 ///   signal ended as 128 plus the signal's number, such as 130 after
 ///   Ctrl-C, and a tool that catches the signal exits with the same code;
-/// - a range from [`Exit::range`](crumbkit::help::Exit::range) that starts
+/// - a range from [`Exit::range`](crumbkit::tool::Exit::range) that starts
 ///   below 3, because 0, 1 and 2 keep their meanings, or that ends before
 ///   it starts. A range may run up to 255, because its codes come from
 ///   another program;
@@ -41,7 +41,7 @@ mod tests;
 ///   holds a code that another declaration holds;
 /// - a meaning that is empty, only whitespace or more than one line;
 /// - a command path of a code that names no command below `command`;
-/// - a failure code that [`Exit::failures`](crumbkit::help::Exit::failures)
+/// - a failure code that [`Exit::failures`](crumbkit::tool::Exit::failures)
 ///   lists for two codes, where one of crumbkit's codes counts as the tool's
 ///   code that the tool record prints in its place, or that a leaf's
 ///   [`Leaf::codes`](crumbkit::help::Leaf::codes) prints in its place in a run
@@ -71,8 +71,7 @@ mod tests;
 /// ```
 /// use clap::Command;
 /// use crumbkit::Tool;
-/// use crumbkit::help::Exit;
-/// use crumbkit::tool::Failures;
+/// use crumbkit::tool::{Exit, Failures};
 ///
 /// const TOOL: Tool = Tool::new()
 ///     .failures(Failures::new().exits(&[Exit::new(3, "The catalogue was locked.")]));

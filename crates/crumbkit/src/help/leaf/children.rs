@@ -43,7 +43,7 @@ impl Leaf {
     /// [`Row::CHILDREN_HELP`](crate::Row::CHILDREN_HELP), or `None` when the
     /// leaf has no document or the row type sets none. A row type may set
     /// it without [`Row::CHILDREN`](crate::Row::CHILDREN), and
-    /// crumbkit-test's `check_guide` reads it to fail on that.
+    /// crumbkit-test's `check_help` reads it to fail on that.
     #[must_use]
     pub const fn children_help(&self) -> Option<&'static str> {
         match self.columns {
@@ -74,7 +74,7 @@ impl Leaf {
     /// with its property and description read from the row type's JSON
     /// Schema as [`Leaf::column_descriptions`] reads a column's, or `None`
     /// when the leaf's row type names no such field. It builds the schema
-    /// on each call. crumbkit-test's `check_guide` reads it to fail on a
+    /// on each call. crumbkit-test's `check_help` reads it to fail on a
     /// field that is not a property or has no doc comment.
     #[must_use]
     pub fn children_column(&self) -> Option<Column> {

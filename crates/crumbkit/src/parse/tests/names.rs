@@ -7,9 +7,9 @@ use std::process::ExitCode;
 use clap::{Arg, ArgAction, Command};
 
 use super::{Parsed, tree};
-use crate::help::{Help, Rename};
+use crate::help::Help;
 use crate::parse::{Stop, parse_to};
-use crate::tool::Failures;
+use crate::tool::{Failures, Rename};
 use crate::{Code, Sink, Tool, codes};
 
 /// Runs `parse_to` over `command` with `tool` and `args` into memory, for

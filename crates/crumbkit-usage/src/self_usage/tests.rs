@@ -8,8 +8,7 @@ use serde_json::json;
 use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
 use crate::testing::{line, now, tree};
 use crumbkit::Tool;
-use crumbkit::help::Exit;
-use crumbkit::tool::Failures;
+use crumbkit::tool::{Exit, Failures};
 
 /// Returns the summary of `runs` runs by people, in `sessions` sessions,
 /// since 30 September 2026, with `skipped` skipped records.

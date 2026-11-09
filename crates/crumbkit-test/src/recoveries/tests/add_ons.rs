@@ -3,7 +3,7 @@
 //! of which only crumbkit's own codes and its add-on crates' codes have
 //! their recoveries followed, and the warnings that crumbkit prints.
 
-use crumbkit::help::Rename;
+use crumbkit::tool::Rename;
 use crumbkit::{Code, Tool};
 use snapbox::assert::Action;
 

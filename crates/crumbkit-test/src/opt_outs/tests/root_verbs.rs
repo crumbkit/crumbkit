@@ -5,7 +5,7 @@ use crumbkit::Tool;
 use serde_json::{Value, json};
 use snapbox::assert::Action;
 
-use super::{read, run, run_guided};
+use super::{read, run, run_with_tool};
 use crate::Allow;
 use crate::temp::TempDir;
 use crumbkit::help::Help;
@@ -16,15 +16,15 @@ const REASON: &str = "People type `shelf version` from habit.";
 #[test]
 fn root_verbs_on_the_tool_are_a_declaration_with_their_reason_and_heading() {
     const TOOL: Tool = Tool::new().help(Help::new().root_verbs(&["version"], REASON));
-    let dir = TempDir::new("opt-outs-root-verbs-guide").unwrap();
+    let dir = TempDir::new("opt-outs-root-verbs-tool").unwrap();
 
-    run_guided(&TOOL, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 1 declaration.\n\
+         shelf has 1 declaration.\n\
          \n\
          root-verbs: shelf version\n\
          \x20 Declares: Each command sits directly under the root as a verb, and root help lists it under the heading Verbs.\n\
@@ -53,7 +53,7 @@ fn root_verbs_declared_with_allow_root_verbs_are_a_declaration_and_no_opt_out() 
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 1 declaration.\n\
+         shelf has 1 declaration.\n\
          \n\
          root-verbs: shelf version\n\
          \x20 Declares: Each command sits directly under the root as a verb.\n\

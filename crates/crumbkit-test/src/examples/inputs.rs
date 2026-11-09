@@ -8,7 +8,7 @@ use crumbkit::Tool;
 use snapbox::Redactions;
 
 use super::example_golden_name;
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{WorkDir, Xdg};
 
 /// Returns the name of the file whose bytes are an example's standard

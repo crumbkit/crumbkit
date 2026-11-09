@@ -13,7 +13,7 @@ use crate::allow::{self, Allowances, Rule};
 use crate::examples::is_crumbkit_warning;
 use crate::exits;
 use crate::failures::{self, Reader};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note, with_json};
 use fill::{fill_word, path_below, value};
 

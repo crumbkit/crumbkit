@@ -5,8 +5,7 @@
 use std::io::{self, Write};
 
 use clap::{CommandFactory as _, Parser, Subcommand};
-use crumbkit::help::Exit;
-use crumbkit::tool::Failures;
+use crumbkit::tool::{Exit, Failures};
 use crumbkit::{Sink, Tool, ViewFlags};
 
 /// A tool record that lists exit 64 for a refused command line.

@@ -11,7 +11,7 @@ use crumbkit::Tool;
 
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
@@ -40,7 +40,7 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 ///   and it prints one document whose `data` is one object, or an array of
 ///   one row, which a batch of one answer prints;
 /// - it exits with the code that the tool record gives the over-budget failure,
-///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
+///   which is 1 unless an [`Exit`](crumbkit::tool::Exit) lists the code,
 ///   and its last JSON document, on one line or
 ///   indented, is a failure document, or a document whose last entry of
 ///   `failures` is one, with the field `budget` set to the budget, or, for

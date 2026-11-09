@@ -53,14 +53,14 @@ mod tests;
 ///   because crumbkit prints a note that says so;
 /// - a visible command without subcommands, the root included when it has
 ///   none, that no leaf with at least one example names, because its help
-///   then shows no example, unless an opt-out from [`Rule::GuideExamples`]
+///   then shows no example, unless an opt-out from [`Rule::HelpExamples`]
 ///   in `allow` covers it;
 /// - a leaf whose [`Effects`](crumbkit::help::Effects) change something,
 ///   whose command takes a view flag and that declares no document with
 ///   `Leaf::document` or `Leaf::stream`, because the leaf then offers
 ///   every view flag, and only `finish` or `stream` refuses a flag that
 ///   the output cannot use, after the handler has made its change
-///   (ADR-0016), unless an opt-out from [`Rule::GuideDocument`] in `allow`
+///   (ADR-0016), unless an opt-out from [`Rule::HelpDocument`] in `allow`
 ///   covers it. A command takes a view flag when it reaches a global
 ///   argument with the id `json`, `fields`, `long` or `full`, which is how
 ///   `parse` recognises one (ADR-0115). A read-only leaf, a leaf without
@@ -136,11 +136,11 @@ mod tests;
 /// covers the command it names and every command below it
 /// ([opt-outs docs]):
 ///
-/// - [`Rule::GuideExamples`] excuses the example rule, so a tool that
+/// - [`Rule::HelpExamples`] excuses the example rule, so a tool that
 ///   adopts goal headings and leaves before it has written an example for
 ///   every command passes the check, and the reason says when the examples
 ///   come;
-/// - [`Rule::GuideDocument`] excuses the document rule, so a tool that
+/// - [`Rule::HelpDocument`] excuses the document rule, so a tool that
 ///   prints its own output and uses crumbkit for help can declare the
 ///   effects of a leaf that changes something before its output moves
 ///   onto crumbkit's documents. crumbkit then cannot refuse a view flag
@@ -184,20 +184,20 @@ mod tests;
 ///         .subcommand(Command::new("show")),
 /// );
 ///
-/// crumbkit_test::check_guide(&shelf, &TOOL, &[]);
+/// crumbkit_test::check_help(&shelf, &TOOL, &[]);
 /// ```
 ///
 /// # Panics
 ///
 /// Panics when the tool record breaks a rule above, or when an opt-out from
-/// [`Rule::GuideExamples`] or [`Rule::GuideDocument`] names no command or
+/// [`Rule::HelpExamples`] or [`Rule::HelpDocument`] names no command or
 /// excuses no problem. The
 /// message lists each problem on its own line and names each command by its
 /// path from `command`, such as `shelf books`.
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
-pub fn check_guide(command: &Command, tool: &Tool, allow: &[Allow]) {
-    let mut allowances = Allowances::new(allow, &[Rule::GuideExamples, Rule::GuideDocument]);
+pub fn check_help(command: &Command, tool: &Tool, allow: &[Allow]) {
+    let mut allowances = Allowances::new(allow, &[Rule::HelpExamples, Rule::HelpDocument]);
     let mut problems = Vec::new();
     let root = tool.get_help().get_root();
     if tree::find(command, root.iter().copied()).is_none() {
@@ -274,11 +274,11 @@ pub fn check_guide(command: &Command, tool: &Tool, allow: &[Allow]) {
     }
     check_leaves(command, tool, &mut allowances, &mut problems);
     check_topics(command, tool, &mut problems);
-    allowances.report(command, "guide rules", problems);
+    allowances.report(command, "help rules", problems);
 }
 
 /// Adds a problem to `problems` for each leaf of `tool` that breaks a leaf
-/// rule of [`check_guide`], and for each visible command without
+/// rule of [`check_help`], and for each visible command without
 /// subcommands that no leaf with an example names and no opt-out in
 /// `allowances` covers.
 fn check_leaves(
@@ -364,7 +364,7 @@ fn check_leaves(
             .any(|leaf| !leaf.get_examples().is_empty() && leaf.path().join(" ") == visit.below());
         if !visit.command().has_subcommands()
             && !named
-            && !allowances.excuses(Rule::GuideExamples, visit.below())
+            && !allowances.excuses(Rule::HelpExamples, visit.below())
         {
             problems.push(format!(
                 "{}: no leaf with an example names the command, so its help shows no example",
@@ -532,7 +532,7 @@ pub(crate) fn command_line(text: &str, words: &[&str]) -> String {
 }
 
 /// Adds a problem to `problems` for each topic of `tool` that breaks a
-/// topic rule of [`check_guide`].
+/// topic rule of [`check_help`].
 fn check_topics(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
     let tool_name = command.get_name();
     let topics = tool.get_help().get_topics();

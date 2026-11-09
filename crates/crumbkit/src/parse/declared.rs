@@ -9,7 +9,7 @@ use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
 use super::attempt;
-use crate::help::RefusalContext;
+use crate::tool::RefusalContext;
 use crate::{Call, Tool};
 
 /// What the tool's functions returned for one refused command line.

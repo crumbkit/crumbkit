@@ -16,10 +16,10 @@ mod tests;
 ///
 /// ```
 /// use crumbkit::Tool;
-/// use crumbkit::tool::Output;
+/// use crumbkit::tool;
 ///
 /// const TOOL: Tool =
-///     Tool::new().output(Output::new().budget(4096, "A pager reads the output."));
+///     Tool::new().output(tool::Output::new().budget(4096, "A pager reads the output."));
 /// assert_eq!(TOOL.get_output().get_budget().map(|(bytes, _)| bytes), Some(4096));
 /// ```
 #[derive(Clone, Copy, Debug)]
@@ -85,12 +85,12 @@ impl Output {
     /// ```
     /// use crumbkit::JsonLayout;
     /// use crumbkit::Tool;
-    /// use crumbkit::tool::Output;
+    /// use crumbkit::tool;
     ///
     /// const PRETTY: JsonLayout = JsonLayout::Pretty {
     ///     reason: "Our scripts read indented JSON.",
     /// };
-    /// const TOOL: Tool = Tool::new().output(Output::new().json_layout(PRETTY));
+    /// const TOOL: Tool = Tool::new().output(tool::Output::new().json_layout(PRETTY));
     /// assert_eq!(TOOL.get_output().get_json_layout(), PRETTY);
     /// assert_eq!(Tool::new().get_output().get_json_layout(), JsonLayout::OneLine);
     /// ```
@@ -142,10 +142,10 @@ impl Output {
     ///
     /// ```
     /// use crumbkit::Tool;
-    /// use crumbkit::tool::Output;
+    /// use crumbkit::tool;
     ///
     /// const TOOL: Tool = Tool::new()
-    ///     .output(Output::new().without_terminal_detection("Our CI runs in a pseudo-terminal."));
+    ///     .output(tool::Output::new().without_terminal_detection("Our CI runs in a pseudo-terminal."));
     /// assert_eq!(
     ///     TOOL.get_output().get_without_terminal_detection(),
     ///     Some("Our CI runs in a pseudo-terminal.")

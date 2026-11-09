@@ -106,9 +106,9 @@ fn every_option_with_many_values_accepts_repeats_and_commas() {
 }
 
 #[test]
-fn every_command_and_leaf_meets_the_guide_rules() {
+fn every_command_and_leaf_meets_the_help_rules() {
     let (command, tool) = fixture_tool();
-    crumbkit_test::check_guide(&command, &tool, ALLOW);
+    crumbkit_test::check_help(&command, &tool, ALLOW);
 }
 
 #[test]

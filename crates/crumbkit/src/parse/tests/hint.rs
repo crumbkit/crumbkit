@@ -9,8 +9,8 @@ use clap::{Arg, Args as _, Command};
 use serde_json::{Value, json};
 
 use super::{Parsed, Stop, Unparsed, admits, tree, try_parse_to};
-use crate::help::{Help, Leaf, RefusalContext};
-use crate::tool::Failures;
+use crate::help::{Help, Leaf};
+use crate::tool::{Failures, RefusalContext};
 use crate::{Call, Page, Recovery, Sink, Tool, parse_to};
 
 /// The hint of a refused unknown flag at a command that passes its trailing
@@ -67,7 +67,7 @@ const TOOL: Tool = Tool::new()
 /// A tool record whose function [`every_refusal`] serves every command line,
 /// whose leaf `planets launch` sets [`after_dashes`] as its own function,
 /// and whose leaf `planets list` offers `tool planets list` too.
-const GUIDE_WIDE: Tool = Tool::new()
+const TOOL_WIDE: Tool = Tool::new()
     .help(Help::new().leaves(&[
         Leaf::new(&["planets", "launch"]).refusal_hint(after_dashes),
         Leaf::new(&["planets", "list"]).refusal_alternatives(list_planets),
@@ -162,7 +162,7 @@ error: a value is required for '--probe <NAME>' but none was supplied
 fn a_leafs_own_hint_function_replaces_the_tools_for_its_command_line() {
     let refused = ["tool", "planets", "launch", "--probe"];
 
-    let parsed = parse(&GUIDE_WIDE, &refused);
+    let parsed = parse(&TOOL_WIDE, &refused);
 
     let expected = "\
 error: a value is required for '--probe <NAME>' but none was supplied
@@ -181,7 +181,7 @@ error: a value is required for '--probe <NAME>' but none was supplied
 fn a_limit_above_its_bound_keeps_all_as_the_recovery_and_offers_the_hint_after_crumbkits_own() {
     let refused = ["tool", "planets", "list", "--limit", "11"];
 
-    let parsed = parse(&GUIDE_WIDE, &refused);
+    let parsed = parse(&TOOL_WIDE, &refused);
 
     let expected = "\
 error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1 to 10

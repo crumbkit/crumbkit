@@ -48,7 +48,7 @@ The lines print in this order, each only on the pages named:
    a `Next:` line that opens one of them. A leaf's `-h` ends with a `Next:`
    line that points to `--help` for its columns.
 
-crumbkit's lines appear on guided and unguided pages alike. Help, the
+crumbkit's lines appear on pages with and without goal headings alike. Help, the
 version and a topic print to standard output with exit code 0.
 
 Help keeps clap's colours only when the
@@ -163,7 +163,7 @@ and 2 and then the codes that the tool declares
 `Topics:` line. A root has the topic, and answers `help`,
 when it has subcommands or the tool declares topics, so a root without
 either reads `help` as an ordinary word. A tool's topic named `exit-codes`
-never prints, and `check_guide` rejects one.
+never prints, and `check_help` rejects one.
 
 A topic's text prints as plain text, also on a terminal and when `--json`
 follows its name. The root's help

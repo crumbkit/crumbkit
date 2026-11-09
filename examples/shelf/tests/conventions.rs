@@ -77,8 +77,8 @@ fn every_option_with_many_values_accepts_repeats_and_commas() {
 }
 
 #[test]
-fn every_command_leaf_and_topic_meets_the_guide_rules() {
-    crumbkit_test::check_guide(&Cli::command(), &TOOL, ALLOW);
+fn every_command_leaf_and_topic_meets_the_help_rules() {
+    crumbkit_test::check_help(&Cli::command(), &TOOL, ALLOW);
 }
 
 #[test]

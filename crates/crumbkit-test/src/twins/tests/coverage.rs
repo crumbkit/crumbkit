@@ -1,7 +1,8 @@
 //! Tests for `check_twins`, which runs every twin of a tool and requires a
 //! twin for each declared code.
 
-use crumbkit::help::{Help, Leaf, Rename};
+use crumbkit::help::{Help, Leaf};
+use crumbkit::tool::Rename;
 use crumbkit::{Code, Tool};
 
 use super::tree;

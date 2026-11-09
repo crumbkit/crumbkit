@@ -36,7 +36,7 @@ each format character escaped. A format character is a Unicode character of
 general category Cf, such as a bidirectional override or a zero-width space.
 The menu escapes both in every label it shows. A tool usually reads the same
 rows as its `list` command.
-crumbkit-test's `check_guide` fails choices that name no argument of their
+crumbkit-test's `check_help` fails choices that name no argument of their
 leaf.
 
 Why: ADR-0043, ADR-0114.

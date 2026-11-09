@@ -1,4 +1,4 @@
-//! The headed list of a guided group's subcommands, its compact form of
+//! The headed list of a group's subcommands, its compact form of
 //! names only, and the line of a list that the goal list and the column
 //! list share.
 

@@ -91,7 +91,7 @@ Why: ADR-0025, ADR-0004, ADR-0027.
 crumbkit-test has no bundled check that runs every check. A tool calls each
 check from its own `#[test]`, so a failure names the rule that broke.
 
-- `check_guide` holds the leaf rules, and takes opt-outs of its example
+- `check_help` holds the leaf rules, and takes opt-outs of its example
   rule and its document rule alone
   ([leaf checks](examples.md#checks-of-leaves)).
 - [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) checks the

@@ -297,7 +297,7 @@ fn a_row_holds_the_text_that_help_prints_on_the_children_line_and_null_without_c
         crate::Document::new("shelf", "books-remove", 1, "The removed shelves.");
     const TOOL: Tool =
         Tool::new().help(Help::new().leaves(&[Leaf::new(&["books", "remove"]).document(SHELVES)]));
-    const FOLDED_GUIDE: Tool =
+    const FOLDED_TOOL: Tool =
         Tool::new().help(Help::new().leaves(&[Leaf::new(&["books", "remove"]).document(FOLDED)]));
 
     assert_eq!(
@@ -305,7 +305,7 @@ fn a_row_holds_the_text_that_help_prints_on_the_children_line_and_null_without_c
         json!("one indented line under each row for each of its books.")
     );
     assert_eq!(
-        row(&FOLDED_GUIDE)["children_help"],
+        row(&FOLDED_TOOL)["children_help"],
         json!("one line for each book, or one folded line for more than ten books.")
     );
     assert_eq!(row(&Tool::new())["children_help"], Value::Null);

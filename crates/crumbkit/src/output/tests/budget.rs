@@ -16,8 +16,7 @@ use crate::Envelope;
 mod batch;
 mod rerun;
 mod room;
-use crate::help::{Exit, Rename};
-use crate::tool::Failures;
+use crate::tool::{Exit, Failures, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{
     AsFailure, Batch, Call, Code, Document, Error, Failure, JsonLayout, Listing, Output, Prose,
@@ -86,7 +85,7 @@ fn keyed<E: AsFailure>(rows: Vec<Star>, failures: Vec<E>) -> Batch<Star, E> {
 /// Returns the output flags for `flags` with a tool record whose budget is
 /// `budget`, as `Output::new` builds them.
 fn budgeted(budget: usize, flags: &[&str]) -> Output {
-    guided(
+    output_of(
         &Tool::new().output(crate::tool::Output::new().budget(budget, "the tests print little")),
         flags,
     )
@@ -94,7 +93,7 @@ fn budgeted(budget: usize, flags: &[&str]) -> Output {
 
 /// Returns the output flags for `flags` with `tool`, as `Output::new`
 /// builds them.
-fn guided(tool: &Tool, flags: &[&str]) -> Output {
+fn output_of(tool: &Tool, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     super::built_with(Cli::command(), tool, &args)
 }
@@ -119,7 +118,7 @@ fn a_pretty_layout_cuts_a_listing_where_its_indented_bytes_stop_fitting() {
             }),
     );
     let compact = finish_small(&["--json"], STAR_LISTING, listing());
-    let indented = finish_output(guided(&tool, &["--json"]), STAR_LISTING, listing());
+    let indented = finish_output(output_of(&tool, &["--json"]), STAR_LISTING, listing());
 
     assert_eq!(indented.code, ExitCode::SUCCESS);
     assert!(indented.out.len() <= BUDGET, "{}", indented.out.len());
@@ -228,7 +227,7 @@ fn a_full_json_listing_over_the_budget_is_cut_too() {
 
 #[test]
 fn a_tool_that_renames_the_over_budget_code_marks_a_cut_with_the_tool_s_code() {
-    let output = guided(&RENAMED, &["--json"]);
+    let output = output_of(&RENAMED, &["--json"]);
     let finished = finish_output(output, STAR_LISTING, Listing::new(stars(20), 20));
 
     assert_eq!(parsed(&finished.out)["cut"]["code"], "sky::stars::too_much");
@@ -240,7 +239,7 @@ fn a_row_refused_with_a_renamed_over_budget_code_exits_with_the_code_the_tool_li
         name: "vega".to_owned(),
         story: "a".repeat(2 * BUDGET),
     };
-    let output = guided(&RENAMED, &["--json"]);
+    let output = output_of(&RENAMED, &["--json"]);
     let finished = finish_output(output, STAR, star);
 
     assert_eq!(parsed(&finished.out)["code"], "sky::stars::too_much");

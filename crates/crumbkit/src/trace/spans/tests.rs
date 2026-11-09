@@ -18,8 +18,7 @@ use tracing_core::span::Current;
 use crate::answered::answered;
 use crate::events::TraceIds;
 use crate::events::testing::give_trace_ids;
-use crate::help::Exit;
-use crate::tool::Failures;
+use crate::tool::{Exit, Failures};
 use crate::{
     Code, Document, Error, Failure, Output, Recovery, Row, Sink, Tool, finish_to, parse_to,
 };

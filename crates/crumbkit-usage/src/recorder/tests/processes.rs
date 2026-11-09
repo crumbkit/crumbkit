@@ -8,8 +8,7 @@ use serde_json::Value;
 
 use crate::recorder::{listens, start, start_under};
 use crate::testing::TempDir;
-use crumbkit::help::Exit;
-use crumbkit::tool::Failures;
+use crumbkit::tool::{Exit, Failures};
 use crumbkit::{Code, Document, Output, Sink, Spelling, Stream, Tool, ViewFlags, stream_to};
 
 /// Tells the usage log that the tool `command` received `args`, as

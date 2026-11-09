@@ -2,6 +2,7 @@
 
 - Date: 2026-11-08
 - Status: accepted
+- Supersedes: ADR-0036, ADR-0056 and ADR-0086, which it amends
 
 ## Context
 
@@ -31,12 +32,18 @@ The record of what a run prints has the path `crumbkit::tool::Output`,
 because `crumbkit::Output` is the handle of one run. `Failures` shares its
 module so a tool imports both records from one path.
 
-The opt-out report says "declarations" where it said "customisations". Its
-JSON array is `declarations`.
+`Exit`, `Rename` and `RefusalContext` move from `crumbkit::help` to
+`crumbkit::tool`, so a tool imports the failure declarations from one path.
 
-Dated decision records keep the name `Guide` (ADR-0017). `check_guide` and
-the opt-out ids `guide/examples` and `guide/document` keep their names,
-because they name the help rules that the check enforces.
+The opt-out report says "declarations" where it said "customisations". Its
+JSON array is `declarations`, and because that renames a field the report's
+id is `opt-outs/v2`.
+
+The word "guide" leaves crumbkit-test's public names: `check_guide` is
+`check_help`, `Rule::GuideExamples` and `Rule::GuideDocument` are
+`Rule::HelpExamples` and `Rule::HelpDocument`, and the opt-out ids are
+`help/examples` and `help/document`. Dated decision records keep the name
+`Guide` (ADR-0017).
 
 ## Consequences
 

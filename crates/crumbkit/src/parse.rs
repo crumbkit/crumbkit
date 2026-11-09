@@ -292,7 +292,7 @@ where
 ///   title`, still prints the topic, and the value of an option names no
 ///   topic.
 /// - `shelf help exit-codes` lists crumbkit's exit codes 0, 1 and 2 and then
-///   the [`Exit`](crate::help::Exit) codes of the tool record, each with its
+///   the [`Exit`](crate::tool::Exit) codes of the tool record, each with its
 ///   meaning. It leaves out 2 when the tool record lists another exit for a
 ///   refused command line. A topic of the tool's own named `exit-codes` never
 ///   prints, because crumbkit's topic has the name.

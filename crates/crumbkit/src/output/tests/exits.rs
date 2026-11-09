@@ -7,8 +7,8 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
-use crate::help::{Exit, Help, Leaf, Rename};
-use crate::tool::Failures;
+use crate::help::{Help, Leaf};
+use crate::tool::{Exit, Failures, Rename};
 use crate::{Batch, Code, Document, Failure, Output, Prose, Recovery, Sink, Tool, finish_to};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
@@ -59,7 +59,7 @@ enum Command {
 
 /// Parses `tool list` and builds the output with `TOOL`, as a tool that
 /// parses with clap alone builds it.
-fn guided() -> Output {
+fn output_of() -> Output {
     let view = Cli::try_parse_from(["tool", "list"]).unwrap().view;
     Output::new(
         view,
@@ -108,13 +108,13 @@ fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
 
 #[test]
 fn a_failure_whose_code_an_exit_lists_ends_finish_with_that_exit() {
-    let code = finish(guided(), PLANETS, Err(Failed(&TIMED_OUT)));
+    let code = finish(output_of(), PLANETS, Err(Failed(&TIMED_OUT)));
     assert_eq!(code, 124);
 }
 
 #[test]
 fn a_failure_whose_code_no_exit_lists_ends_finish_with_code_1() {
-    let code = finish(guided(), PLANETS, Err(Failed(&NOT_FOUND)));
+    let code = finish(output_of(), PLANETS, Err(Failed(&NOT_FOUND)));
     assert_eq!(code, 1);
 }
 
@@ -139,7 +139,7 @@ fn a_batch_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         vec![mercury()],
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
-    let code = finish(guided(), PLANETS_SHOW, Ok(batch));
+    let code = finish(output_of(), PLANETS_SHOW, Ok(batch));
     assert_eq!(code, 124);
 }
 
@@ -149,7 +149,7 @@ fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_
         vec![mercury()],
         vec![Failed(&NOT_FOUND), Failed(&TIMED_OUT)],
     );
-    let code = finish(guided(), PLANETS_SHOW, Ok(batch));
+    let code = finish(output_of(), PLANETS_SHOW, Ok(batch));
     assert_eq!(code, 1);
 }
 
@@ -269,6 +269,6 @@ fn a_prose_result_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         String::from("Mercury is the closest planet."),
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
-    let code = finish(guided(), SUMMARY, Ok(prose));
+    let code = finish(output_of(), SUMMARY, Ok(prose));
     assert_eq!(code, 124);
 }

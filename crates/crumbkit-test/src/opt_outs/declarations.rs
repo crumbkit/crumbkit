@@ -4,7 +4,8 @@
 
 use clap::Command;
 use crumbkit::codes::CLI_USAGE;
-use crumbkit::help::{Leaf, Rename};
+use crumbkit::help::Leaf;
+use crumbkit::tool::Rename;
 use crumbkit::{Code, Spelling, Tool};
 use serde::Serialize;
 
@@ -231,7 +232,7 @@ fn leaf_declarations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<
         };
         list.push(Declaration {
             kind: "example-precondition",
-            applies_to: crate::guide::command_line(&text, example.words()),
+            applies_to: crate::help::command_line(&text, example.words()),
             declares: format!("The example runs only in a test run that provides {names}."),
             reason: None,
         });

@@ -13,12 +13,11 @@ use crate::expect;
 use crate::help::{self, Effects, Leaf, ViewFlag, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
-/// applies to each of those commands the groups of `tool` that name it. A
-/// guided group off `path` keeps clap's help, so the work grows with the
+/// applies to each of those commands the groups of `tool` that name it. A group
+/// with goal headings off `path` keeps clap's help, so the work grows with the
 /// typed depth. When the tool `has_topics`, the lines of the tool record's root
 /// name the tool record's topics and `exit-codes`. When `aliases` is set, the
-/// lines of the clap root name the aliases that it returns for the clap
-/// root.
+/// lines of the clap root name the aliases that it returns for the clap root.
 ///
 /// The deepest command on `path` also gets the sections of the leaf of
 /// `tool` whose path is `path`, the first when two leaves share it. Its
@@ -58,7 +57,8 @@ pub(super) fn add_help_lines(
     } else {
         String::new()
     };
-    // Every guided page prints with the root's styles, as in `help::extend`.
+    // Every page with goal headings prints with the root's styles, as in
+    // `help::extend`.
     let styles = command.get_styles();
     let header = *styles.get_header();
     let literal = *styles.get_literal();

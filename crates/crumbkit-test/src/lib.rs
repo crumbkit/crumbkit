@@ -15,7 +15,7 @@
 //! [`check_effects`]: crate::check_effects
 //! [`check_listings`]: crate::check_listings
 //! [`check_filters`]: crate::check_filters
-//! [`check_guide`]: crate::check_guide
+//! [`check_help`]: crate::check_help
 //! [`check_exit_codes`]: crate::check_exit_codes
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
@@ -61,7 +61,7 @@ mod failures;
 mod filters;
 mod goldens;
 mod grammar;
-mod guide;
+mod help;
 mod listings;
 mod names;
 mod opt_outs;
@@ -90,7 +90,7 @@ pub use crate::failures::FailureReader;
 pub use crate::filters::check_filters;
 pub use crate::goldens::check_help_goldens;
 pub use crate::grammar::check_grammar;
-pub use crate::guide::check_guide;
+pub use crate::help::check_help;
 pub use crate::listings::check_listings;
 pub use crate::names::check_names;
 pub use crate::opt_outs::check_opt_outs;

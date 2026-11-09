@@ -15,7 +15,7 @@ use snapbox::{Assert, Redactions};
 use crate::allow::{Allowances, Rule};
 use crate::failures::{self, Reader};
 use crate::goldens::{compare, remove_stale};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
@@ -45,7 +45,7 @@ mod tests;
 /// order. It runs the binary once for each example, one run at a time, with
 /// the leaf's path and the example's words as separate arguments and no
 /// shell. It skips a leaf whose path names no command, which
-/// [`check_guide`](crate::check_guide) reports, the leaves of each
+/// [`check_help`](crate::check_help) reports, the leaves of each
 /// command that an opt-out of `examples` covers, and each example that an
 /// [`Allow::example`](crate::Allow::example) names. It runs
 /// the examples of a hidden command, because that command's own help lists

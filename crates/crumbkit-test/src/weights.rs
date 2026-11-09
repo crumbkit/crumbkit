@@ -11,7 +11,7 @@ use clap::Command;
 use crumbkit::Tool;
 
 use crate::budget::{Budget, Departure, Limit};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::pages::Pages;
 use crate::sizes::{find, names_nothing};
 use crate::tree::{self, Visit};

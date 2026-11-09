@@ -2,7 +2,8 @@
 //! its command tree at run time, such as one command for each file that a
 //! person writes.
 
-use super::{Effects, Example, Leaf, RefusalContext};
+use super::{Effects, Example, Leaf};
+use crate::tool::RefusalContext;
 use crate::{Call, Document, Rows, Tool};
 
 #[cfg(test)]
@@ -151,7 +152,7 @@ impl Tool {
     /// Every function that reads a tool record reads the joined one as it reads
     /// a `const` tool record, and of two leaves with one path only the first
     /// applies, so a runtime leaf with the path of a `const` leaf changes
-    /// nothing. crumbkit-test's `check_guide` reports both.
+    /// nothing. crumbkit-test's `check_help` reports both.
     ///
     /// A tool without commands added at run time does not call it, and its
     /// runs do no work for runtime leaves.

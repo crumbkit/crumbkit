@@ -329,7 +329,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// closed the pipe early. When the stream printed a failure or `result`
     /// is an `Err`, the exit code is the one that the tool record declares
     /// for the code of the stream's first failure with
-    /// [`Exit::failures`](crate::help::Exit::failures), or 1 when it
+    /// [`Exit::failures`](crate::tool::Exit::failures), or 1 when it
     /// declares none, as [`finish_to`](crate::finish_to) exits (ADR-0037).
     /// It is 1 when a write failed for a reason other than a closed pipe,
     /// and when the stream stopped at the output budget, unless an earlier

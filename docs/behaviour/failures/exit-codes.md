@@ -72,7 +72,7 @@ and its tool record's root is `crumbkit`. That command answers `help` with the
 topics, and its help has the `Topics:` line. The topic lines and the
 `commands list` note start with the clap root's name and the root's path,
 such as `cargo crumbkit help exit-codes`, so every printed command runs.
-`check_guide` reports a root that names no command, and `parse` then uses the
+`check_help` reports a root that names no command, and `parse` then uses the
 clap root.
 
 Why: ADR-0037, ADR-0023, ADR-0042, ADR-0050, ADR-0103.

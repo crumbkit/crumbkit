@@ -7,7 +7,7 @@
 //! its rows as nothing while `total` still counted them. A headed batch is
 //! exempt, because its text prints each row's bytes and its JSON holds
 //! every field. The compiler cannot tell a headed batch from any other
-//! batch, so a batch passes here and crumbkit-test's `check_guide` fails a
+//! batch, so a batch passes here and crumbkit-test's `check_help` fails a
 //! leaf whose batch is not headed and whose row type has no columns. A row
 //! type that sets `Row::WHOLE` and declares `Row::LINE` is also exempt,
 //! because its JSON holds every field and its text prints each row's own

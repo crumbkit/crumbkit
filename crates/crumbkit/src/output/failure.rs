@@ -14,10 +14,11 @@ use serde::ser::{SerializeMap, Serializer};
 use super::layout;
 use super::layout::JsonLayout;
 use super::table::escape_controls;
+use crate::help::Leaf;
 use crate::help::rename::{self, Renames};
-use crate::help::{Exit, Leaf};
 use crate::parse::page;
 use crate::sink::role::{Deliver, Message, Role};
+use crate::tool::Exit;
 use crate::{Code, Document, Failure, FieldValue, Spelling, Tool, ToolName};
 
 #[cfg(feature = "miette")]

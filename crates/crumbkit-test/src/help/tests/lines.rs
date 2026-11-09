@@ -6,7 +6,7 @@ use crumbkit::{Batch, Bytes, Document, Error, Headed, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{check_guide, leaf, panic_message, shelf};
+use super::{check_help, leaf, panic_message, shelf};
 
 /// A book that prints its own text line.
 #[derive(Serialize, JsonSchema)]
@@ -79,7 +79,7 @@ fn a_row_type_with_a_one_line_text_form_passes() {
         leaf(&["authors", "list"]),
     ]));
 
-    check_guide(&shelf(), &TOOL, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 #[test]
@@ -96,8 +96,8 @@ fn check_tool_fails_on_a_text_line_form_that_spans_two_lines() {
     ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type's LINE is not one non-empty line, so help cannot show the form of each row's line on one line; write the form as one line, such as `<ID> <TITLE>`"
     );
 }
@@ -116,7 +116,7 @@ fn check_tool_fails_on_a_text_line_form_that_is_blank() {
     ]));
 
     assert!(
-        panic_message(|| check_guide(&shelf(), &TOOL, &[]))
+        panic_message(|| check_help(&shelf(), &TOOL, &[]))
             .unwrap()
             .contains("the row type's LINE is not one non-empty line")
     );
@@ -141,8 +141,8 @@ fn check_tool_fails_on_a_headed_leaf_whose_row_type_declares_a_text_line() {
     );
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type declares LINE and the document is headed, so its text prints each row's bytes and never the line; remove LINE or the headed form"
     );
 }

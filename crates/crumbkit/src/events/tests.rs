@@ -11,8 +11,7 @@ use serde::Serialize;
 
 use super::testing::{DOTS, give_child_env, watch};
 use super::{Observer, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in};
-use crate::help::Exit;
-use crate::tool::Failures;
+use crate::tool::{Exit, Failures};
 use crate::{
     Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Stream, Tool, finish_to,
     parse_to, stream_to,

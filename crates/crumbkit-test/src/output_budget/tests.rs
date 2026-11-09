@@ -133,7 +133,7 @@ fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_exa
 
     use crate::allow::Allow;
     use crate::examples::{Examples, example_golden_name};
-    use crate::guide::command_line;
+    use crate::help::command_line;
     use crate::temp::TempDir;
 
     const TOOL: Tool = Tool::new()
@@ -257,7 +257,8 @@ fn a_leaf_whose_rename_of_the_over_budget_failure_an_exit_lists_makes_that_code_
     use clap::Command;
     use crumbkit::Code;
     use crumbkit::Tool;
-    use crumbkit::help::{Example, Exit, Leaf, Rename};
+    use crumbkit::help::{Example, Leaf};
+    use crumbkit::tool::{Exit, Rename};
 
     use crate::examples::Examples;
     use crate::temp::TempDir;

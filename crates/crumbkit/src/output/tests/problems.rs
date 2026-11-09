@@ -131,9 +131,9 @@ fn a_single_row_and_a_list_whose_rows_report_a_problem_exit_with_1() {
 fn a_batch_failure_decides_the_exit_before_a_row_that_reports_a_problem() {
     const MAPPED: Tool = Tool::new()
         .failures(Failures::new().exits(&[
-            crate::help::Exit::new(3, "A check is unreadable.").failures(&[&UNREADABLE]),
+            crate::tool::Exit::new(3, "A check is unreadable.").failures(&[&UNREADABLE]),
         ]));
-    let output = guided(&MAPPED, &[]);
+    let output = output_of(&MAPPED, &[]);
     let batch = answered(vec![broken("one")], vec![Unreadable]);
 
     let finished = finish_output(output, CHECK_BATCH, batch);
@@ -146,7 +146,7 @@ fn a_batch_failure_decides_the_exit_before_a_row_that_reports_a_problem() {
 fn a_row_that_the_output_budget_left_unprinted_still_decides_the_exit() {
     let mut rows: Vec<Check> = (0..40).map(|n| passing(&"a".repeat(n + 60))).collect();
     rows.push(broken("last"));
-    let output = guided(
+    let output = output_of(
         &Tool::new().output(crate::tool::Output::new().budget(1024, "the tests print little")),
         &[],
     );
@@ -317,7 +317,7 @@ fn a_listing_from_all_rows_without_a_limit_counts_its_problem_rows_as_before() {
 
 /// Returns the output flags for `flags` with `tool`, as `Output::new`
 /// builds them.
-fn guided(tool: &Tool, flags: &[&str]) -> Output {
+fn output_of(tool: &Tool, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     super::built_with(Cli::command(), tool, &args)
 }

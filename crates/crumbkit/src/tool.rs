@@ -6,6 +6,9 @@
 use clap::Command;
 
 pub use crate::failure::declared::Failures;
+pub use crate::help::exit::Exit;
+pub use crate::help::leaf::RefusalContext;
+pub use crate::help::rename::Rename;
 pub use crate::output::declared::Output;
 
 use crate::ToolName;

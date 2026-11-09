@@ -6,8 +6,8 @@ use std::process::ExitCode;
 use clap::{Arg, ArgAction, Command};
 
 use super::Topic;
-use crate::help::{Exit, Help, exit};
-use crate::tool::Failures;
+use crate::help::{Help, exit};
+use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, Tool, parse_to};
 

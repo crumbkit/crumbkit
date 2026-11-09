@@ -30,7 +30,7 @@
 //! A child that cannot run fails as `finish` prints a failure, with one of
 //! these codes in the spelling that the tool record sets, or the tool's
 //! own code when its tool record renames it. Each exits with 1 unless an
-//! [`Exit`](crumbkit::help::Exit) of the tool record lists the code:
+//! [`Exit`](crumbkit::tool::Exit) of the tool record lists the code:
 //!
 //! - `<tool>::child::not_found`, when the program does not exist.
 //! - `<tool>::child::not_started`, when the operating system refused to

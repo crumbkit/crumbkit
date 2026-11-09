@@ -16,7 +16,7 @@ use snapbox::assert::Action;
 
 use super::{Examples, check, example_golden_name};
 use crate::allow::{Allow, Rule};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 

@@ -1,13 +1,13 @@
 //! Tests for the rule that a leaf whose effects change something and whose
 //! command takes a view flag declares a document or that it prints no
-//! result, for its opt-out, `guide/document`, and for the rule that a leaf
+//! result, for its opt-out, `help/document`, and for the rule that a leaf
 //! declares only one of the two.
 
 use clap::{Arg, ArgAction, Args as _, Command};
 use crumbkit::help::{Effects, Help};
 use crumbkit::{Document, Prose, Tool, ViewFlags};
 
-use super::{LEAVES, check_guide, leaf, panic_message, shelf};
+use super::{LEAVES, check_help, leaf, panic_message, shelf};
 use crate::{Allow, Rule};
 
 /// The tool of `shelf()` with crumbkit's view flags, which are global
@@ -28,7 +28,7 @@ const ADDING_SHOW: Tool = Tool::new().help(Help::new().leaves(&[
 const SHOW: Document<Prose<String>> = Document::new("shelf", "books-show", 1, "One book.");
 
 /// The problem that the document rule reports for `shelf books show`.
-const SHOW_PROBLEM: &str = "the command tree breaks crumbkit's guide rules:\n\
+const SHOW_PROBLEM: &str = "the command tree breaks crumbkit's help rules:\n\
      shelf books show: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream";
 
 /// Returns a `--json` flag with the id `json`, global when `global` is set.
@@ -44,14 +44,14 @@ fn a_changing_leaf_without_a_document_fails_when_the_root_takes_global_json() {
     let tool = shelf().arg(json(true));
 
     assert_eq!(
-        panic_message(|| check_guide(&tool, &ADDING_SHOW, &[])).unwrap(),
+        panic_message(|| check_help(&tool, &ADDING_SHOW, &[])).unwrap(),
         SHOW_PROBLEM
     );
 }
 
 #[test]
 fn a_changing_leaf_without_a_document_passes_when_its_command_takes_no_view_flag() {
-    check_guide(&shelf(), &ADDING_SHOW, &[]);
+    check_help(&shelf(), &ADDING_SHOW, &[]);
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn a_changing_leaf_without_a_document_passes_when_its_own_json_is_not_global() {
         books.mut_subcommand("show", |show| show.arg(json(false)))
     });
 
-    check_guide(&tool, &ADDING_SHOW, &[]);
+    check_help(&tool, &ADDING_SHOW, &[]);
 }
 
 #[test]
@@ -70,18 +70,18 @@ fn a_changing_leaf_without_a_document_passes_when_a_command_above_it_declares_js
         .arg(json(true))
         .mut_subcommand("books", |books| books.arg(json(false)));
 
-    check_guide(&tool, &ADDING_SHOW, &[]);
+    check_help(&tool, &ADDING_SHOW, &[]);
 }
 
 #[test]
 fn an_opt_out_from_tool_document_passes_a_changing_leaf_without_a_document() {
     const ALLOW: &[Allow] = &[Allow::new(
-        Rule::GuideDocument,
+        Rule::HelpDocument,
         "books show",
         "The command prints its own output until it moves onto crumbkit's documents.",
     )];
 
-    check_guide(&viewed_shelf(), &ADDING_SHOW, ALLOW);
+    check_help(&viewed_shelf(), &ADDING_SHOW, ALLOW);
 }
 
 #[test]
@@ -92,14 +92,14 @@ fn an_opt_out_from_tool_document_covers_the_command_it_names_and_every_command_b
         leaf(&["authors", "list"]).effects(Effects::additive()),
     ]));
     const ALLOW: &[Allow] = &[Allow::new(
-        Rule::GuideDocument,
+        Rule::HelpDocument,
         "books",
         "The books commands print their own output until they move onto crumbkit's documents.",
     )];
 
     assert_eq!(
-        panic_message(|| check_guide(&viewed_shelf(), &TOOL, ALLOW)).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&viewed_shelf(), &TOOL, ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf authors list: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
     );
 }
@@ -108,15 +108,15 @@ fn an_opt_out_from_tool_document_covers_the_command_it_names_and_every_command_b
 fn an_opt_out_from_tool_document_that_excuses_nothing_fails_the_check() {
     const TOOL: Tool = Tool::new().help(Help::new().leaves(LEAVES));
     const ALLOW: &[Allow] = &[Allow::new(
-        Rule::GuideDocument,
+        Rule::HelpDocument,
         "books show",
         "The command prints its own output until it moves onto crumbkit's documents.",
     )];
 
     assert_eq!(
-        panic_message(|| check_guide(&viewed_shelf(), &TOOL, ALLOW)).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
-         the opt-out from `guide/document` for `shelf books show` excuses no problem, so it is stale"
+        panic_message(|| check_help(&viewed_shelf(), &TOOL, ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
+         the opt-out from `help/document` for `shelf books show` excuses no problem, so it is stale"
     );
 }
 
@@ -124,15 +124,15 @@ fn an_opt_out_from_tool_document_that_excuses_nothing_fails_the_check() {
 fn an_opt_out_from_tool_document_on_a_changing_leaf_whose_command_takes_no_view_flag_excuses_no_problem()
  {
     const ALLOW: &[Allow] = &[Allow::new(
-        Rule::GuideDocument,
+        Rule::HelpDocument,
         "books show",
         "The command prints its own output until it moves onto crumbkit's documents.",
     )];
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &ADDING_SHOW, ALLOW)).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
-         the opt-out from `guide/document` for `shelf books show` excuses no problem, so it is stale"
+        panic_message(|| check_help(&shelf(), &ADDING_SHOW, ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
+         the opt-out from `help/document` for `shelf books show` excuses no problem, so it is stale"
     );
 }
 
@@ -143,14 +143,14 @@ fn an_opt_out_from_tool_document_does_not_excuse_the_example_rule() {
         leaf(&["books", "show"]).effects(Effects::additive()),
     ]));
     const ALLOW: &[Allow] = &[Allow::new(
-        Rule::GuideDocument,
+        Rule::HelpDocument,
         "",
         "The tool prints its own output until it moves onto crumbkit's documents.",
     )];
 
     assert_eq!(
-        panic_message(|| check_guide(&viewed_shelf(), &TOOL, ALLOW)).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&viewed_shelf(), &TOOL, ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf authors list: no leaf with an example names the command, so its help shows no example"
     );
 }
@@ -167,7 +167,7 @@ fn a_changing_leaf_that_prints_no_result_passes_without_an_opt_out_from_tool_doc
         ]),
     );
 
-    check_guide(&viewed_shelf(), &TOOL, &[]);
+    check_help(&viewed_shelf(), &TOOL, &[]);
 }
 
 #[test]
@@ -179,8 +179,8 @@ fn a_leaf_that_declares_a_document_and_prints_no_result_fails_the_check() {
     ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&viewed_shelf(), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&viewed_shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books show: the leaf declares a document and also that its command prints no result, so help and parse follow the document and ignore the declaration; keep only `Leaf::document` or `Leaf::stream` when the command prints a result, or only `Leaf::prints_no_result` when it prints none"
     );
 }

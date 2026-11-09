@@ -12,7 +12,7 @@ use crate::tree;
 /// declares both a document and that its command prints no result, and
 /// when its effects change something, its command takes a view flag, and
 /// it declares neither, unless it passes on a program's exit code or an
-/// opt-out from [`Rule::GuideDocument`] in `allowances` covers it.
+/// opt-out from [`Rule::HelpDocument`] in `allowances` covers it.
 pub(super) fn check_document(
     text: &str,
     leaf: &Leaf,
@@ -40,7 +40,7 @@ pub(super) fn check_document(
         && !documented
         && !leaf.get_prints_no_result()
         && takes_view_flag(command, path)
-        && !allowances.excuses(Rule::GuideDocument, &path.join(" "))
+        && !allowances.excuses(Rule::HelpDocument, &path.join(" "))
     {
         problems.push(format!(
             "{text}: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"

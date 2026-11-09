@@ -151,7 +151,7 @@ fn a_failed_run_on_a_leaf_without_a_document_prints_its_own_failure_for_long() {
 
 #[test]
 fn a_view_flag_that_the_leaf_s_document_cannot_use_is_still_refused_before_the_handler_runs() {
-    const PROSE_GUIDE: Tool =
+    const PROSE_TOOL: Tool =
         Tool::new().help(Help::new().leaves(&[Leaf::new(&["list"]).document(EARLY)]));
     let mut out = Vec::new();
     let mut err = Vec::new();
@@ -160,7 +160,7 @@ fn a_view_flag_that_the_leaf_s_document_cannot_use_is_still_refused_before_the_h
     let parsed = parse_to::<Cli, _, _, _, _>(
         &mut sink,
         Cli::command(),
-        &PROSE_GUIDE,
+        &PROSE_TOOL,
         ["tool", "list", "--long"],
     );
 

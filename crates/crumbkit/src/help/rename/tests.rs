@@ -2,8 +2,8 @@
 //! the exit code that a failure ends a run with.
 
 use crate::codes::{CLI_USAGE, OUTPUT_OVER_BUDGET, VERSION_CONFLICT};
-use crate::help::{Exit, Help, Leaf, Rename};
-use crate::tool::Failures;
+use crate::help::{Help, Leaf};
+use crate::tool::{Exit, Failures, Rename};
 use crate::{Code, Tool};
 
 const USAGE: Code = Code::new("ledger", "cli", "usage");
@@ -97,7 +97,7 @@ fn a_refused_command_line_prints_the_tool_s_usage_code_and_exits_with_the_code_i
 /// A tool record with `TOOL`'s renames and exits, whose `rows edit` leaf
 /// renames the conflict code and the over-budget code, and whose exit 6 lists
 /// the leaf's conflict code.
-const LEAF_GUIDE: Tool = Tool::new()
+const LEAF_TOOL: Tool = Tool::new()
     .help(Help::new().leaves(&[Leaf::new(&["rows", "edit"]).codes(&[
         Rename::new(&VERSION_CONFLICT, &CHANGED),
         Rename::new(&OUTPUT_OVER_BUDGET, &TOO_LONG),
@@ -117,43 +117,43 @@ const LEAF_GUIDE: Tool = Tool::new()
 #[test]
 fn a_leaf_s_rename_prints_in_place_of_the_tool_s_for_runs_of_that_command_only() {
     assert_eq!(
-        LEAF_GUIDE.printed(&["rows", "edit"], &VERSION_CONFLICT),
+        LEAF_TOOL.printed(&["rows", "edit"], &VERSION_CONFLICT),
         &CHANGED
     );
     assert_eq!(
-        LEAF_GUIDE.printed(&["rows", "list"], &VERSION_CONFLICT),
+        LEAF_TOOL.printed(&["rows", "list"], &VERSION_CONFLICT),
         &STALE
     );
-    assert_eq!(LEAF_GUIDE.printed(&[], &VERSION_CONFLICT), &STALE);
+    assert_eq!(LEAF_TOOL.printed(&[], &VERSION_CONFLICT), &STALE);
 }
 
 #[test]
 fn a_leaf_s_rename_of_a_code_that_the_tool_does_not_rename_prints_for_that_command_only() {
     assert_eq!(
-        LEAF_GUIDE.printed(&["rows", "edit"], &OUTPUT_OVER_BUDGET),
+        LEAF_TOOL.printed(&["rows", "edit"], &OUTPUT_OVER_BUDGET),
         &TOO_LONG
     );
     assert_eq!(
-        LEAF_GUIDE.printed(&["rows", "list"], &OUTPUT_OVER_BUDGET),
+        LEAF_TOOL.printed(&["rows", "list"], &OUTPUT_OVER_BUDGET),
         &OUTPUT_OVER_BUDGET
     );
 }
 
 #[test]
 fn a_leaf_keeps_the_tool_s_renames_of_the_codes_that_it_does_not_rename() {
-    assert_eq!(LEAF_GUIDE.printed(&["rows", "edit"], &CLI_USAGE), &USAGE);
-    assert_eq!(LEAF_GUIDE.failure_exit(&["rows", "edit"], &CLI_USAGE), 64);
+    assert_eq!(LEAF_TOOL.printed(&["rows", "edit"], &CLI_USAGE), &USAGE);
+    assert_eq!(LEAF_TOOL.failure_exit(&["rows", "edit"], &CLI_USAGE), 64);
 }
 
 #[test]
 fn an_exit_that_lists_a_leaf_s_code_covers_the_failure_of_that_command_only() {
     assert_eq!(
-        LEAF_GUIDE.failure_exit(&["rows", "edit"], &VERSION_CONFLICT),
+        LEAF_TOOL.failure_exit(&["rows", "edit"], &VERSION_CONFLICT),
         6
     );
-    assert_eq!(LEAF_GUIDE.failure_exit(&["rows", "edit"], &CHANGED), 6);
+    assert_eq!(LEAF_TOOL.failure_exit(&["rows", "edit"], &CHANGED), 6);
     assert_eq!(
-        LEAF_GUIDE.failure_exit(&["rows", "list"], &VERSION_CONFLICT),
+        LEAF_TOOL.failure_exit(&["rows", "list"], &VERSION_CONFLICT),
         1
     );
 }

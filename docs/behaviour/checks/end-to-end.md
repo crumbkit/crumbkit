@@ -100,7 +100,7 @@ problem it reports. These rules matter most to a tool's author:
   example in every run and no check fails.
 - A skipped example keeps its golden files. A run without the precondition
   never reads, rewrites or deletes them, so the run that provides it owns
-  them. `check_guide` still parses every example, skipped or not, and
+  them. `check_help` still parses every example, skipped or not, and
   `check_opt_outs` lists each example that needs a precondition among the
   [declarations](../adoption/declarations.md#the-declarations-section),
   because the example is correct and needs no reason.

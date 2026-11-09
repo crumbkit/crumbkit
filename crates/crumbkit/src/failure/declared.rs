@@ -2,7 +2,7 @@
 //! their codes (ADR-0001, ADR-0086), its renames of crumbkit's codes
 //! (ADR-0056), its exit codes and its answers to a refused command line.
 
-use crate::help::{Exit, RefusalContext, Rename};
+use crate::tool::{Exit, RefusalContext, Rename};
 use crate::{Call, Spelling};
 
 /// What a tool declares about its failures: the spelling of their codes,
@@ -15,8 +15,7 @@ use crate::{Call, Spelling};
 ///
 /// ```
 /// use crumbkit::Tool;
-/// use crumbkit::help::Exit;
-/// use crumbkit::tool::Failures;
+/// use crumbkit::tool::{Exit, Failures};
 ///
 /// const TOOL: Tool =
 ///     Tool::new().failures(Failures::new().exits(&[Exit::new(3, "The shelf was locked.")]));
@@ -158,8 +157,7 @@ impl Failures {
     /// ```
     /// use crumbkit::Call;
     /// use crumbkit::Tool;
-    /// use crumbkit::help::RefusalContext;
-    /// use crumbkit::tool::Failures;
+    /// use crumbkit::tool::{Failures, RefusalContext};
     ///
     /// /// Offers the refused line with `.json` cut from the refused value.
     /// fn without_json(context: &RefusalContext<'_>) -> Vec<Call> {
@@ -215,8 +213,7 @@ impl Failures {
     /// use clap::Arg;
     /// use clap::error::ErrorKind;
     /// use crumbkit::Tool;
-    /// use crumbkit::help::RefusalContext;
-    /// use crumbkit::tool::Failures;
+    /// use crumbkit::tool::{Failures, RefusalContext};
     ///
     /// /// Tells the caller where the program's words go.
     /// fn after_dashes(context: &RefusalContext<'_>) -> Option<String> {

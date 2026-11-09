@@ -7,7 +7,7 @@ use serde::Serialize;
 use crate::tool::Output;
 use crate::{Batch, Document, Error, JsonLayout, Row, Tool};
 
-use super::{STAR_BATCH, Star, budgeted, finish_output, guided, star};
+use super::{STAR_BATCH, Star, budgeted, finish_output, output_of, star};
 
 /// Returns a batch of `tool show` that holds `rows`, one for each key.
 fn answered(rows: Vec<Star>) -> Batch<Star, Error> {
@@ -26,7 +26,7 @@ fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
                 reason: "the readers expect it",
             }),
     );
-    let output = guided(&tool, &["--json", "--fields", "story"]);
+    let output = output_of(&tool, &["--json", "--fields", "story"]);
     let mut room = output.room(STAR_BATCH);
     let mut batch = answered(Vec::new());
     assert!(room.has_room(&batch));
@@ -38,7 +38,7 @@ fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
 
     assert_eq!(room.printed(), finished.out.len(), "{}", finished.out);
     let flags = ["--json", "--fields", "story"];
-    let nothing = finish_output(guided(&tool, &flags), STAR_BATCH, answered(Vec::new()));
+    let nothing = finish_output(output_of(&tool, &flags), STAR_BATCH, answered(Vec::new()));
     assert_eq!(empty, nothing.out.len());
 }
 

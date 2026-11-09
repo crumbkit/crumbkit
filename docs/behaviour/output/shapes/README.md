@@ -150,10 +150,10 @@ Its text then prints each row's own line
 `--fields`, and `--long` without `--json`, are refused, because there is
 no table to shape.
 `finish` and `stream` fail to compile for a whole row type without columns
-and without a `LINE`, and crumbkit-test's `check_guide` fails a batch of
+and without a `LINE`, and crumbkit-test's `check_help` fails a batch of
 such a row type, which the compiler cannot check.
 
-`check_guide` also fails a row type that sets `Row::WHOLE`, names no
+`check_help` also fails a row type that sets `Row::WHOLE`, names no
 columns and has fields in its JSON Schema, because those fields could be
 the columns of a table. Its `check_document_ids` requires an
 [opt-out](../../adoption/opt-outs.md) from `documents/rows-whole` for each
@@ -174,7 +174,7 @@ one line of compact JSON.
 the [output budget](../budget/README.md) and the listing footer work as for a
 table, and help prints a `Text:` line ([help](../../help/README.md)). A row
 type that also sets `Row::WHOLE` and names no columns offers neither flag,
-so its `Text:` line names no table. crumbkit-test's `check_guide` fails a
+so its `Text:` line names no table. crumbkit-test's `check_help` fails a
 `LINE` that is not one non-empty line, and a
 [headed](#headed-bytes) leaf whose row type declares one.
 
@@ -215,7 +215,7 @@ names it, and the text then prints it as a cell of compact JSON and prints
 no child lines. Help prints a `Children:` line ([help](../../help/README.md))
 with `Row::CHILDREN_HELP`, the row type's own description of its child
 lines, or with crumbkit's sentence, which calls the lines indented only
-when the indent is above 0. crumbkit-test's `check_guide` fails a field
+when the indent is above 0. crumbkit-test's `check_help` fails a field
 that is not a documented field of the row type, a field that is also one of
 the columns, a [headed](#headed-bytes) leaf whose row type sets `CHILDREN`,
 and a `CHILDREN_HELP` that is not one line ending with a full stop or that
@@ -271,7 +271,7 @@ with `Output::print_failure`, takes its exit code from
 `Output::failure_exit` and returns the code through `events::ended`. The
 leaf has no document, so it publishes no schema and `commands list` gives
 it `form: null` and `prints_no_result: true`. crumbkit-test's
-`check_guide` accepts the leaf without an opt-out from `guide/document`,
+`check_help` accepts the leaf without an opt-out from `help/document`,
 and fails a leaf that declares both a document and
 `Leaf::prints_no_result` ([help checks](../../help/checks.md)).
 

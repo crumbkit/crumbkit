@@ -59,7 +59,7 @@ it fits:
   table does.
 - A column that the row type names in `Row::UNCUT_COLUMNS`, such as an
   identifier that a person copies, never narrows, also in a `--fields`
-  table. crumbkit-test's `check_guide` fails a name there that is in
+  table. crumbkit-test's `check_help` fails a name there that is in
   neither `COLUMNS` nor `LONG_COLUMNS`.
 - When the uncut columns and the other columns' headers are wider than
   the width on their own, the table prints unfitted. A table without

@@ -74,19 +74,19 @@ pub enum Rule {
     /// examples of a command, or one example that
     /// [`Allow::example`](crate::Allow::example) names. Its id is `examples/run`.
     Examples,
-    /// [`check_guide`](crate::check_guide): a visible command without
-    /// subcommands has no leaf with an example. Its id is `guide/examples`,
+    /// [`check_help`](crate::check_help): a visible command without
+    /// subcommands has no leaf with an example. Its id is `help/examples`,
     /// and its opt-out covers the command it names and every command below
     /// it.
-    GuideExamples,
-    /// [`check_guide`](crate::check_guide): a leaf whose effects change
+    HelpExamples,
+    /// [`check_help`](crate::check_help): a leaf whose effects change
     /// something and whose command takes a view flag declares no document
     /// with `Leaf::document` or `Leaf::stream`, and does not declare that it
     /// prints no result with `Leaf::prints_no_result`. Its id is
-    /// `guide/document`, and its opt-out covers the command it names and
-    /// every command below it. The other rules of `check_guide` take no
+    /// `help/document`, and its opt-out covers the command it names and
+    /// every command below it. The other rules of `check_help` take no
     /// opt-out.
-    GuideDocument,
+    HelpDocument,
     /// [`check_document_ids`](crate::check_document_ids): a command prints
     /// its document without crumbkit's envelope, because its document has
     /// `Envelope::Without`. Its id is `documents/envelope`.
@@ -157,8 +157,8 @@ impl Rule {
             Self::RepeatsAndCommas => "filters/repeats-and-commas",
             Self::OneValuePerUse => "filters/one-value-per-use",
             Self::Examples => "examples/run",
-            Self::GuideExamples => "guide/examples",
-            Self::GuideDocument => "guide/document",
+            Self::HelpExamples => "help/examples",
+            Self::HelpDocument => "help/document",
             Self::Envelope => "documents/envelope",
             Self::RowsWhole => "documents/rows-whole",
             Self::ShellExitCode => "exit-codes/shell-code",
@@ -232,11 +232,11 @@ impl Rule {
                 "The examples are not run, so help can show an example that fails.",
                 "The command's output weight counts 0 bytes, so its path weight is too low.",
             ],
-            Self::GuideExamples => &[
+            Self::HelpExamples => &[
                 "The command's help shows no example, so an agent builds its first command line from the argument list alone.",
                 "check_examples runs nothing for the command, so its output weight counts 0 bytes and its path weight is too low.",
             ],
-            Self::GuideDocument => &[
+            Self::HelpDocument => &[
                 "Help offers every view flag on the command, and crumbkit cannot refuse a flag that the output cannot use before the change happens, so the tool's own output decides what the flag does.",
                 "An agent that gets a refusal or an output it did not ask for after the change may run the command again and repeat the change.",
             ],

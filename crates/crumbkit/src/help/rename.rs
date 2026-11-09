@@ -1,7 +1,8 @@
 //! The tool's own codes for crumbkit's failures, and the exit code that a
 //! failure ends a run with (ADR-0056).
 
-use crate::help::{Exit, Leaf};
+use crate::help::Leaf;
+use crate::tool::Exit;
 use crate::{Code, Tool};
 
 #[cfg(test)]
@@ -53,8 +54,7 @@ impl Tool {
 /// use crumbkit::Code;
 /// use crumbkit::codes::CLI_USAGE;
 /// use crumbkit::Tool;
-/// use crumbkit::help::{Exit, Rename};
-/// use crumbkit::tool::Failures;
+/// use crumbkit::tool::{Exit, Failures, Rename};
 ///
 /// const USAGE: Code = Code::new("ledger", "cli", "usage");
 ///
@@ -86,7 +86,7 @@ impl Rename {
     ///
     /// ```compile_fail
     /// use crumbkit::Code;
-    /// use crumbkit::help::Rename;
+    /// use crumbkit::tool::Rename;
     ///
     /// const MINE: Code = Code::new("ledger", "rows", "stale");
     /// const BACKWARDS: Rename = Rename::new(&MINE, &crumbkit::codes::VERSION_CONFLICT);

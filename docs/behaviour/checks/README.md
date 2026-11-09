@@ -30,7 +30,7 @@ no arguments on a command that the tool gives to `Command::defer`.
 | [`check_effects`](../../../crates/crumbkit-test/src/effects.rs) | Every visible leaf declares its effects, and `--dry-run`, `--yes`, `--no-input` and `--expect` sit where crumbkit puts them. |
 | [`check_listings`](../../../crates/crumbkit-test/src/listings.rs) | Every `list` command has `--limit` and `--all`, and every `show` command takes 1 to 100 ids. |
 | [`check_filters`](../../../crates/crumbkit-test/src/filters.rs) | An option that takes many values accepts them both repeated and separated by commas, with one value per use. |
-| [`check_guide`](../../../crates/crumbkit-test/src/guide.rs) | The tool record's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
+| [`check_help`](../../../crates/crumbkit-test/src/help.rs) | The tool record's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
 | [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The tool record's declared exit codes avoid 0, 1 and 2, keep single codes to 3 to 125 or 129 to 159, never overlap, and declare each code and rename once. |
 | [`check_codes`](../../../crates/crumbkit-test/src/codes.rs) | No two failure codes spell the same text, and each code is printable ASCII without spaces. |
 | [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has crumbkit's envelope. |
@@ -47,14 +47,14 @@ its `--help` and `--version` flags. Every function that takes a
 `clap::Command` works on any node of the tree, so a crate or a team can
 apply the checks to its own subtree.
 
-`check_guide` takes opt-outs for its example rule and its document rule
+`check_help` takes opt-outs for its example rule and its document rule
 alone, so a tool can adopt goal headings and leaves before every command
 has an example, and before every leaf that changes something prints one of
 crumbkit's documents. A leaf that declares `Leaf::prints_no_result` needs
 no opt-out from the document rule
 ([result shapes](../output/shapes/README.md#a-command-that-prints-no-result)).
 A tool that wants clap's list for a command leaves
-that command out of its tool record, so the other rules of `check_guide` take no
+that command out of its tool record, so the other rules of `check_help` take no
 opt-out. The help checks take no opt-outs either, because they take
 budgets. Each other tree check takes the tool's opt-outs.
 
@@ -95,8 +95,8 @@ help checks with `Pages::clap` run on a tool that parses with clap alone, so a
 tool can try crumbkit-test before it adopts crumbkit's runtime. Such a tool
 needs no crumbkit dependency of its own. `check_names` and `check_grammar` read
 the tool record from the `Pages` they take, and `Pages::clap` carries no tool
-record, so a guided tool passes `Pages::rendered` or `Pages::binary` with its
-tool record.
+record, so a tool with a tool record passes `Pages::rendered` or `Pages::binary`
+with its tool record.
 
 [`Pages::clap`](../../../crates/crumbkit-test/src/pages.rs) renders each help
 page in memory as clap prints it to a pipe, without crumbkit's lines and without

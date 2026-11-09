@@ -44,7 +44,7 @@ fn run(allow: &[Allow], dir: &TempDir, action: Action) {
 
 /// Runs the check on `shelf()` with `tool` and no opt-outs against `dir`
 /// with `action`.
-fn run_guided(tool: &Tool, dir: &TempDir, action: Action) {
+fn run_with_tool(tool: &Tool, dir: &TempDir, action: Action) {
     check(
         &shelf(),
         tool,
@@ -112,7 +112,7 @@ fn overwrite_writes_each_opt_out_as_json() {
     assert_eq!(
         read(&dir, "opt-outs.json"),
         r#"{
-  "schema": "shelf/opt-outs/v1",
+  "schema": "shelf/opt-outs/v2",
   "data": [
     {
       "rule": "listings/show-ids",
@@ -141,7 +141,7 @@ fn a_tool_without_opt_outs_reports_that_it_has_none() {
     );
     assert_eq!(
         read(&dir, "opt-outs.json"),
-        "{\n  \"schema\": \"shelf/opt-outs/v1\",\n  \"data\": []\n}\n"
+        "{\n  \"schema\": \"shelf/opt-outs/v2\",\n  \"data\": []\n}\n"
     );
 }
 
@@ -266,7 +266,7 @@ fn the_json_report_gives_a_raised_budget_its_extra_bytes_and_tokens() {
     assert_eq!(
         read(&dir, "opt-outs.json"),
         r#"{
-  "schema": "shelf/opt-outs/v1",
+  "schema": "shelf/opt-outs/v2",
   "data": [
     {
       "rule": "path-budget/command",
@@ -294,7 +294,7 @@ fn the_report_lists_the_output_budget_that_the_tool_sets_beside_crumbkit_s_defau
         .output(crumbkit::tool::Output::new().budget(2_097_152, "Exports print every book."));
     let dir = TempDir::new("opt-outs-output-budget").unwrap();
 
-    run_guided(&TOOL, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -311,7 +311,7 @@ fn the_report_lists_the_output_budget_that_the_tool_sets_beside_crumbkit_s_defau
 fn a_tool_that_keeps_the_default_output_budget_adds_no_entry() {
     let dir = TempDir::new("opt-outs-default-output-budget").unwrap();
 
-    run_guided(&Tool::new(), &dir, Action::Overwrite);
+    run_with_tool(&Tool::new(), &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -330,7 +330,7 @@ fn the_report_lists_the_json_layout_that_the_tool_sets_with_its_cost() {
     );
     let dir = TempDir::new("opt-outs-json-layout").unwrap();
 
-    run_guided(&TOOL, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     let text = read(&dir, "opt-outs.txt");
     assert!(
@@ -357,7 +357,7 @@ fn the_report_lists_a_tool_without_terminal_detection_with_its_reason_and_costs(
     );
     let dir = TempDir::new("opt-outs-terminal-detection").unwrap();
 
-    run_guided(&TOOL, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     let text = read(&dir, "opt-outs.txt");
     assert_eq!(

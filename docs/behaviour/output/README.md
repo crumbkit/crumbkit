@@ -35,7 +35,7 @@ a single row, a `Vec` or a `Listing` whose row type has an empty
 rows of such a result cannot vanish while `total` still counts them. A
 batch compiles, because a [headed batch](shapes/README.md#headed-bytes) prints each row's
 bytes in text and every field in JSON and may name no column.
-crumbkit-test's `check_guide` fails a leaf whose batch is not headed and
+crumbkit-test's `check_help` fails a leaf whose batch is not headed and
 whose row type has no compact column. A row type that sets `Row::WHOLE` and
 declares `Row::LINE` may also name no column, as [rows printed whole](shapes/README.md#rows-printed-whole) describes.
 
@@ -146,7 +146,7 @@ their ids are `json`, `fields`, `long` and `full` and they are global.
 
 On a command that changes something and whose leaf declares no document,
 an agent may repeat a write that already happened, because the refusal
-comes after the handler has run. crumbkit-test's `check_guide` therefore
+comes after the handler has run. crumbkit-test's `check_help` therefore
 fails a leaf whose effects change something, whose command takes a view
 flag and that declares neither a document nor `Leaf::prints_no_result`
 ([help checks](../help/checks.md)).
@@ -155,7 +155,7 @@ A command takes a view flag when it reaches a global argument whose id is
 command takes no view flag needs no document, because no caller can type
 a view flag that crumbkit would refuse after the change. A tool that
 prints its own output for a leaf that the rule covers opts out of
-`guide/document` until the output moves onto crumbkit's documents, and
+`help/document` until the output moves onto crumbkit's documents, and
 the tool's own output then decides what a view flag does
 ([opt-outs](../adoption/opt-outs.md)). A leaf that passes
 on a program's exit code needs no document, because crumbkit-child's

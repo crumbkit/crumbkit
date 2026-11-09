@@ -1,7 +1,8 @@
 //! Tests for the exit code check.
 
 use clap::Command;
-use crumbkit::help::{Exit, Help, Leaf, Rename};
+use crumbkit::help::{Help, Leaf};
+use crumbkit::tool::{Exit, Rename};
 use crumbkit::{Code, Tool};
 
 use super::check_exit_codes;

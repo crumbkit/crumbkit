@@ -13,10 +13,10 @@ applies them to the whole tree, for a tool that parses with plain clap and
 for tests, through the same per-group function. The rustdoc of `extend`
 states the layout of the list.
 
-- A guided command gets clap's default template with the headed list in
-  place of clap's argument sections, so a guided page has no `Arguments:`
-  section, and the tool's own `before_help` and `before_long_help` still
-  print at the top of the page.
+- A command with goal headings gets clap's default template with the headed list
+  in place of clap's argument sections, so its page has no `Arguments:` section,
+  and the tool's own `before_help` and `before_long_help` still print at the top
+  of the page.
 - A list that holds `{` goes in `before_help` instead, because clap expands
   each `{tag}` in a template, and that command loses the tool's own
   `before_help`.
@@ -30,12 +30,12 @@ states the layout of the list.
   compact group's command loses the tool's own `before_help` and
   `before_long_help`. Its `-h` ends its help line with
   `(see more with '--help')`.
-- A guided list ends a description with the command's visible aliases, as
+- A headed list ends a description with the command's visible aliases, as
   clap's `Commands:` list does, such as `[alias: ls]`.
 - A command that the tool record does not name keeps clap's `Commands:` list,
   unless it is a root with [root verbs](#root-verbs).
 - `parse` and `extend` never fail on a tool record.
-  [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a tool
+  [`check_help`](../../../../crates/crumbkit-test/src/help.rs) catches a tool
   record that does not match the tree.
 - `commands list` writes the goal headings that a group's help page prints
   in the `goals` field of the group's row

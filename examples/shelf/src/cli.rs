@@ -5,9 +5,10 @@ use std::path::PathBuf;
 use clap::error::ErrorKind;
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
-use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf, RefusalContext, Topic};
+use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf, Topic};
 use crumbkit::pick::{Choices, Menu};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
+use crumbkit::tool::RefusalContext;
 use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
 use crumbkit_usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
@@ -56,20 +57,19 @@ fn list_books(context: &RefusalContext<'_>) -> Vec<Call> {
     vec![Call::new(&["books", "list"])]
 }
 
-/// shelf's goal headings, leaves and help topics. shelf guides only its
-/// root, and the group is compact, so `shelf -h` names `books` after
-/// `Browse the catalogue:`, `commands` and `schemas` after `Explore the
-/// commands:` and `self` after `Review how shelf is used:`, one line each,
-/// and `shelf --help` lists each command with its description under those
-/// headings. `shelf books -h` keeps clap's `Commands:` list. The help of
-/// each leaf lists its examples, and the `--help` of a leaf that prints
-/// rows describes their columns.
-/// `shelf help catalogue` prints `cli/catalogue.txt`. `shelf -h` names the
-/// person's aliases that expand, which differ between machines, so shelf's
+/// shelf's goal headings, leaves and help topics. shelf gives goal headings
+/// only to its root, and the group is compact, so `shelf -h` names `books`
+/// after `Browse the catalogue:`, `commands` and `schemas` after `Explore the
+/// commands:` and `self` after `Review how shelf is used:`, one line each, and
+/// `shelf --help` lists each command with its description under those headings.
+/// `shelf books -h` keeps clap's `Commands:` list. The help of each leaf lists
+/// its examples, and the `--help` of a leaf that prints rows describes their
+/// columns. `shelf help catalogue` prints `cli/catalogue.txt`. `shelf -h` names
+/// the person's aliases that expand, which differ between machines, so shelf's
 /// tests opt out of crumbkit's rule against that. A person at a terminal who
 /// leaves out the ids of `shelf books show` picks books from the menu, and a
-/// refused `shelf books show` recovers with `shelf books list`, except when
-/// it types ids beside `--from`.
+/// refused `shelf books show` recovers with `shelf books list`, except when it
+/// types ids beside `--from`.
 pub const TOOL: Tool = Tool::new()
     .help(
         Help::new()

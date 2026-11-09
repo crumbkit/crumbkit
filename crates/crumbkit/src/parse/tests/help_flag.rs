@@ -9,7 +9,8 @@ use clap::{Arg, ArgAction, Command, value_parser};
 use serde_json::{Value, json};
 
 use super::{Parsed, Stop, admits, parse_tree};
-use crate::help::{Help, Leaf, RefusalContext};
+use crate::help::{Help, Leaf};
+use crate::tool::RefusalContext;
 use crate::{Call, Sink, Tool, parse_to};
 
 /// The reason of the recovery of a refusal whose path offers no help page.
@@ -72,7 +73,7 @@ fn bash(_: &RefusalContext<'_>) -> Vec<Call> {
 
 /// Runs `parse_to` over `command` and `tool` with `args` into memory, for
 /// a command line that does not parse.
-fn parse_guided(command: Command, tool: &Tool, args: &[&str]) -> Parsed {
+fn parse_with_tool(command: Command, tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
@@ -195,7 +196,7 @@ fn a_tool_s_call_at_a_leaf_without_a_help_flag_offers_the_group_s_help_as_the_fi
         &["tool", "completion", "query", "--", "--help"],
     );
 
-    let parsed = parse_guided(tree(), &TOOL, &refused);
+    let parsed = parse_with_tool(tree(), &TOOL, &refused);
 
     assert!(
         parsed
@@ -217,7 +218,7 @@ fn a_tool_s_call_on_a_path_without_a_help_flag_is_the_recovery_with_no_help_call
         &["tool", "query", "--", "--help"],
     );
 
-    let parsed = parse_guided(tool_without_help(), &TOOL, &refused);
+    let parsed = parse_with_tool(tool_without_help(), &TOOL, &refused);
 
     assert!(
         parsed.err.contains("  help:  run `tool bash`\n  code:"),

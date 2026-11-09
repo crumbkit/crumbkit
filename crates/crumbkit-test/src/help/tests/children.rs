@@ -6,7 +6,7 @@ use crumbkit::{Batch, Bytes, Document, Error, Headed, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{check_guide, leaf, panic_message, shelf};
+use super::{check_help, leaf, panic_message, shelf};
 
 /// A book whose chapters print under it.
 #[derive(Serialize, JsonSchema)]
@@ -143,7 +143,7 @@ impl Row for ChildlessBook {
     const CHILDREN_HELP: Option<&'static str> = Some("one line for each chapter.");
 }
 
-/// Returns the problem that `check_guide` reports for a tool record whose
+/// Returns the problem that `check_help` reports for a tool record whose
 /// `books list` leaf has `document`, without the heading line.
 fn problem<T: crumbkit::Rows>(document: Document<T>) -> String {
     let tool = Tool::new().help(Help::new().leaves(Box::leak(Box::new([
@@ -151,9 +151,9 @@ fn problem<T: crumbkit::Rows>(document: Document<T>) -> String {
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
     ]))));
-    let message = panic_message(|| check_guide(&shelf(), &tool, &[])).unwrap();
+    let message = panic_message(|| check_help(&shelf(), &tool, &[])).unwrap();
     message
-        .strip_prefix("the command tree breaks crumbkit's guide rules:\n")
+        .strip_prefix("the command tree breaks crumbkit's help rules:\n")
         .unwrap_or(&message)
         .to_owned()
 }
@@ -171,7 +171,7 @@ fn a_row_type_whose_children_field_is_a_documented_field_outside_the_columns_pas
         leaf(&["authors", "list"]),
     ]));
 
-    check_guide(&shelf(), &TOOL, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 #[test]
@@ -240,10 +240,10 @@ fn a_row_type_whose_children_help_is_one_sentence_on_one_line_passes() {
         leaf(&["authors", "list"]),
     ]));
 
-    check_guide(&shelf(), &TOOL, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
-/// The problem that `check_guide` reports for a children text that help
+/// The problem that `check_help` reports for a children text that help
 /// cannot print as one line.
 const NOT_ONE_LINE: &str = "shelf books list: the row type's CHILDREN_HELP is empty or holds a control character, such as a line feed, so help cannot print it on the one Children: line; write the text as one line";
 

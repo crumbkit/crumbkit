@@ -68,7 +68,7 @@ impl Picking {
     /// number of values outside the argument's count. A failed source prints
     /// its failure with `json` and `spelling`, and stops the run with the exit
     /// code that the tool record gives its code, which is 1 unless an
-    /// [`Exit`](crate::help::Exit) lists it.
+    /// [`Exit`](crate::tool::Exit) lists it.
     //
     // RUST-10: an argument counts as required only when clap marks it
     // `required`. An argument that `required_unless_present`,

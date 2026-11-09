@@ -51,7 +51,7 @@ These checks read the tool record, failure codes or crumbkit's output:
 
 - Failure codes: [`check_codes`].
 - Effects: [`check_effects`].
-- The tool record: [`check_guide`], and [`check_exit_codes`].
+- The tool record: [`check_help`], and [`check_exit_codes`].
 - Help pages: the checks above with [`Pages::rendered`] or
   [`Pages::binary`], and [`PathBudgets`] with the example golden files.
 - Example output: [`check_examples`] with [`Examples`], and
@@ -94,7 +94,7 @@ option.
 [`check_effects`]: src/effects.rs
 [`check_listings`]: src/listings.rs
 [`check_filters`]: src/filters.rs
-[`check_guide`]: src/guide.rs
+[`check_help`]: src/help.rs
 [`check_exit_codes`]: src/exits.rs
 [`check_help_sizes`]: src/sizes.rs
 [`Budgets`]: src/sizes.rs

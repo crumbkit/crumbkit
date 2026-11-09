@@ -1,4 +1,5 @@
-//! Tests for the goal headings that the row of a guided group lists.
+//! Tests for the goal headings that the row of a group with goal headings
+//! lists.
 
 use serde_json::json;
 

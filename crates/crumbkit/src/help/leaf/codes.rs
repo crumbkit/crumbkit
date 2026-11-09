@@ -2,8 +2,8 @@
 //! (ADR-0060).
 
 use super::Leaf;
-use crate::help::Rename;
 use crate::help::rename::same_text;
+use crate::tool::Rename;
 
 impl Leaf {
     /// Sets the tool's own codes for crumbkit's failures in the runs of the
@@ -11,14 +11,15 @@ impl Leaf {
     /// [`Rename`] in place of crumbkit's, and reads the renames of
     /// [`Failures::codes`](crate::tool::Failures::codes) for the codes that the
     /// leaf does not rename. The usage log, the trace, the exit that an
-    /// [`Exit`](crate::help::Exit) lists for a code and crumbkit-test's
+    /// [`Exit`](crate::tool::Exit) lists for a code and crumbkit-test's
     /// checks read the same code (ADR-0060).
     ///
     /// ```
     /// use crumbkit::Code;
     /// use crumbkit::codes::VERSION_CONFLICT;
     /// use crumbkit::Tool;
-    /// use crumbkit::help::{Help, Leaf, Rename};
+    /// use crumbkit::help::{Help, Leaf};
+    /// use crumbkit::tool::Rename;
     ///
     /// const MOVED: Code = Code::new("ledger", "rows", "moved");
     ///
@@ -40,7 +41,8 @@ impl Leaf {
     /// ```compile_fail
     /// use crumbkit::Code;
     /// use crumbkit::codes::CLI_USAGE;
-    /// use crumbkit::help::{Leaf, Rename};
+    /// use crumbkit::help::Leaf;
+    /// use crumbkit::tool::Rename;
     ///
     /// const BAD_LINE: Code = Code::new("ledger", "cli", "bad_line");
     /// const LEAF: Leaf = Leaf::new(&["rows", "move"]).codes(&[Rename::new(&CLI_USAGE, &BAD_LINE)]);

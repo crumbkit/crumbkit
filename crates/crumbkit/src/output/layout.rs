@@ -19,12 +19,12 @@ use serde::Serialize;
 /// ```
 /// use crumbkit::JsonLayout;
 /// use crumbkit::Tool;
-/// use crumbkit::tool::Output;
+/// use crumbkit::tool;
 ///
 /// const PRETTY: JsonLayout = JsonLayout::Pretty {
 ///     reason: "Our scripts read indented JSON.",
 /// };
-/// const TOOL: Tool = Tool::new().output(Output::new().json_layout(PRETTY));
+/// const TOOL: Tool = Tool::new().output(tool::Output::new().json_layout(PRETTY));
 /// assert_eq!(TOOL.get_output().get_json_layout(), PRETTY);
 /// assert_eq!(Tool::new().get_output().get_json_layout(), JsonLayout::OneLine);
 /// ```

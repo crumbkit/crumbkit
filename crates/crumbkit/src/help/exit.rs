@@ -39,8 +39,7 @@ const CRUMBKIT: [(u8, &str); 3] = [
 ///
 /// ```
 /// use crumbkit::Tool;
-/// use crumbkit::help::Exit;
-/// use crumbkit::tool::Failures;
+/// use crumbkit::tool::{Exit, Failures};
 ///
 /// const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
 ///     Exit::new(124, "The download ran out of time.").commands(&[&["books", "import"]]),
@@ -58,8 +57,7 @@ const CRUMBKIT: [(u8, &str); 3] = [
 /// ```
 /// use crumbkit::Code;
 /// use crumbkit::Tool;
-/// use crumbkit::help::Exit;
-/// use crumbkit::tool::Failures;
+/// use crumbkit::tool::{Exit, Failures};
 ///
 /// const TIMED_OUT: Code = Code::new("shelf", "download", "timed_out");
 ///
@@ -77,8 +75,7 @@ const CRUMBKIT: [(u8, &str); 3] = [
 ///
 /// ```
 /// use crumbkit::Tool;
-/// use crumbkit::help::Exit;
-/// use crumbkit::tool::Failures;
+/// use crumbkit::tool::{Exit, Failures};
 ///
 /// const TOOL: Tool = Tool::new().failures(
 ///     Failures::new().exits(&[

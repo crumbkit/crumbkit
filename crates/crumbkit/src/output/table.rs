@@ -116,7 +116,7 @@ impl<'a> Table<'a> {
     /// row, a column whose field is `null` or missing in every written row
     /// is left out, header included. A column that names no field of the
     /// row type is missing in every row, so it is left out too.
-    /// crumbkit-test's `check_guide` fails a leaf whose columns name such a
+    /// crumbkit-test's `check_help` fails a leaf whose columns name such a
     /// field.
     ///
     /// Each row's child lines follow the row. When the table is spaced, a

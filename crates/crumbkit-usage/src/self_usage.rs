@@ -399,7 +399,7 @@ impl CommandFigures {
                     .get_exits()
                     .iter()
                     .find(|declared| declared.codes().contains(&exit) && declared.covers(&path))
-                    .map(crumbkit::help::Exit::meaning),
+                    .map(crumbkit::tool::Exit::meaning),
                 runs,
             })
             .collect();

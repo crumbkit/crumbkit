@@ -323,11 +323,11 @@ impl Allow {
     /// the option, such as `shelf books list --author`.
     pub(crate) fn line(&self, root: &Command) -> String {
         if let Some(refused) = self.refused {
-            return crate::guide::command_line(root.get_name(), refused.words());
+            return crate::help::command_line(root.get_name(), refused.words());
         }
         let line = command_line(root, self.path);
         match (self.words, self.option) {
-            (Some(words), _) => crate::guide::command_line(&line, words),
+            (Some(words), _) => crate::help::command_line(&line, words),
             (None, Some(option)) => format!("{line} {option}"),
             (None, None) => line,
         }

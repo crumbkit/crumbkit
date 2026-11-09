@@ -1,4 +1,4 @@
-//! The tool record's declaration of the verbs that sit directly under the
+//! The declaration in [`Help`] of the verbs that sit directly under the
 //! tool's root, which root help lists under their own heading (ADR-0165).
 
 use super::Help;
@@ -13,7 +13,7 @@ impl Help {
     /// root [`Group`](super::Group) names under the heading `Verbs`, in the
     /// order of `verbs`, after the root group's goals and before the
     /// `Commands` heading of the other subcommands. The root is the clap
-    /// root, the command that the tool's own name runs. A tool record that
+    /// root, the command that the tool's own name runs. A `Help` that
     /// declares no root verbs keeps the root's help as it was.
     ///
     /// crumbkit-test's `check_grammar` then passes each of `verbs` without

@@ -22,14 +22,11 @@ pub(crate) mod words;
 use clap::Command;
 
 pub use self::effects::{Effects, Items};
-pub use self::exit::Exit;
 pub use self::format::FileFormat;
 pub use self::group::{Goal, Group};
 pub use self::leaf::{
-    BYTES_LINE, Column, Example, HEADED_LINE, Leaf, RefusalContext, STREAM_LINE, children_line,
-    text_line,
+    BYTES_LINE, Column, Example, HEADED_LINE, Leaf, STREAM_LINE, children_line, text_line,
 };
-pub use self::rename::Rename;
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 pub use self::view::ViewFlag;
@@ -229,7 +226,7 @@ impl Default for Help {
 /// to the groups that the typed words pass through, and the leaf of the deepest
 /// command typed, so a tool that parses with crumbkit does not call `extend`. A
 /// tool that parses with plain clap calls it once before parsing, and a test
-/// calls it to check the whole guided tree, such as with clap's
+/// calls it to check the whole tree with its goal headings, such as with clap's
 /// `Command::debug_assert`.
 ///
 /// Each group's help page lists its visible subcommands under its goals'
@@ -250,7 +247,7 @@ impl Default for Help {
 /// is listed under both. The `Options:` section and crumbkit's lines from
 /// [`parse`](crate::parse) follow the list in `-h` and `--help`.
 ///
-/// The guided command's own `before_help` prints at the top of `-h`, and its
+/// A command's own `before_help` prints at the top of `-h`, and its
 /// `before_long_help` at the top of `--help`, as in clap's default layout.
 /// A list that holds `{` replaces them, because clap's template would expand
 /// or drop that text, so a description or a heading with a brace costs the
@@ -277,7 +274,7 @@ impl Default for Help {
 /// `extend` skips a group whose path names no command or a command without
 /// visible subcommands, a leaf whose path names no command, and leaves every
 /// command that the tool record does not name with clap's own help.
-/// crumbkit-test's `check_guide` fails on a tool record that names a missing
+/// crumbkit-test's `check_help` fails on a tool record that names a missing
 /// command or misses a visible one. `extend` reads no topics, because
 /// `parse` reads them from the tool record.
 ///
@@ -289,7 +286,7 @@ impl Default for Help {
 #[must_use]
 pub fn extend(mut command: Command, tool: &Tool) -> Command {
     // clap copies the root's styles to every subcommand when it builds the
-    // tree, so every guided page prints with the root's styles.
+    // tree, so every page with goal headings prints with the root's styles.
     let styles = command.get_styles();
     let header = *styles.get_header();
     let literal = *styles.get_literal();

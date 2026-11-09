@@ -12,7 +12,8 @@ use crate::temp::TempDir;
 #[cfg(unix)]
 use crate::testing::help_binary;
 
-/// A tool with a global flag, a guided root and one leaf with examples.
+/// A tool with a global flag, a root with goal headings and one leaf with
+/// examples.
 fn tree() -> Command {
     Command::new("tool")
         .arg(
@@ -140,7 +141,7 @@ fn the_pages_leave_out_the_personal_aliases_so_they_match_on_every_machine() {
     let tool = tree();
     let mut problems = Vec::new();
 
-    let guided = pages(
+    let with_aliases = pages(
         &tool,
         Pages::rendered(&TOOL.help(TOOL.get_help().personal_aliases(unread))),
         "-h",
@@ -148,7 +149,7 @@ fn the_pages_leave_out_the_personal_aliases_so_they_match_on_every_machine() {
     );
     let plain = pages(&tool, Pages::rendered(&TOOL), "-h", &mut problems);
 
-    assert_eq!(guided[0].1, plain[0].1);
+    assert_eq!(with_aliases[0].1, plain[0].1);
     assert!(problems.is_empty(), "{problems:?}");
 }
 

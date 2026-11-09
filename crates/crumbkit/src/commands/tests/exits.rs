@@ -3,8 +3,8 @@
 
 use super::{args, output, paths};
 use crate::commands::{COMMANDS_LIST, list};
-use crate::help::{Exit, Help};
-use crate::tool::Failures;
+use crate::help::Help;
+use crate::tool::{Exit, Failures};
 use crate::{Sink, Tool, finish_to};
 
 /// A tool record with a code that every command returns and a code that only

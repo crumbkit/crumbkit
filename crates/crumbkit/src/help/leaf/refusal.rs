@@ -122,7 +122,8 @@ impl Leaf {
     ///
     /// ```
     /// use crumbkit::Call;
-    /// use crumbkit::help::{Leaf, RefusalContext};
+    /// use crumbkit::help::Leaf;
+    /// use crumbkit::tool::RefusalContext;
     ///
     /// /// Offers `get /tasks/a` for a refused `get tasks/a.json`.
     /// fn as_path(context: &RefusalContext<'_>) -> Vec<Call> {
@@ -193,7 +194,8 @@ impl Leaf {
     /// ```
     /// use clap::Arg;
     /// use clap::error::ErrorKind;
-    /// use crumbkit::help::{Leaf, RefusalContext};
+    /// use crumbkit::help::Leaf;
+    /// use crumbkit::tool::RefusalContext;
     ///
     /// /// Tells the caller where the program's words go.
     /// fn after_dashes(context: &RefusalContext<'_>) -> Option<String> {

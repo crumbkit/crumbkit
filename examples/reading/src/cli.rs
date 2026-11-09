@@ -41,12 +41,12 @@ static MENU: Menu = Menu::new();
 /// `--list`.
 const LISTS: &[Choices] = &[Choices::new("list", choices)];
 
-/// The leaves of reading's static commands and its root verb `where`.
-/// reading guides no command, so `reading -h` lists `where` under the
+/// The leaves of reading's static commands and its root verb `where`. reading
+/// gives no command goal headings, so `reading -h` lists `where` under the
 /// `Verbs` heading and every other command, including the command of each
-/// reading list, under `Commands`. `crate::guide` adds a leaf for each
-/// list's commands at run time. A person at a terminal who leaves out
-/// `--list` picks a list from the menu.
+/// reading list, under `Commands`. `crate::tool` adds a leaf for each list's
+/// commands at run time. A person at a terminal who leaves out `--list` picks a
+/// list from the menu.
 pub const TOOL: Tool = Tool::new().help(Help::new().root_verbs(
         &["where"],
         "People ask where their lists are kept, and the directory belongs to no one list.",

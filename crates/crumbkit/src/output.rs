@@ -38,8 +38,8 @@ use self::failure::Printing;
 pub use self::layout::JsonLayout;
 pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
-use crate::help::Exit;
 use crate::help::rename::Renames;
+use crate::tool::Exit;
 use crate::view::View;
 use crate::{AsFailure, Document, Rows, Sink, Spelling};
 

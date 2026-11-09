@@ -1,6 +1,6 @@
 [package]
 name = "crumbkit-test"
-description = "Tests that check a clap tool's command tree and help pages, and a crumbkit tool's failure codes, guide and examples, against the crumbkit conventions"
+description = "Tests that check a clap tool's command tree and help pages, and a crumbkit tool's failure codes, help and examples, against the crumbkit conventions"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,7 +13,7 @@ include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
 # The codes check takes crumbkit's `Code` and `Tool`, and spells each code in
-# the guide's `Spelling`, as the tool's `finish` prints it.
+# the tool record's `Spelling`, as the tool's `finish` prints it.
 crumbkit = { workspace = true }
 # The command reference check renders a tool's `commands list` document with
 # crumbkit-markdown, which `cargo crumbkit docs` also calls, so the two write
@@ -37,11 +37,11 @@ snapbox = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 # The opt-out report derives `Serialize` for its entries, so the JSON report
 # keeps its fields in the order a reader expects: the schema id first. The
-# guide check's tests also give leaves row types that derive `Serialize`.
+# help check's tests also give leaves row types that derive `Serialize`.
 serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-# The guide check's tests give leaves row types, which derive `JsonSchema`.
+# The help check's tests give leaves row types, which derive `JsonSchema`.
 schemars = { workspace = true, features = ["derive"] }
 # The tests of the recovery check's command-line reading generate words with
 # proptest and check that the reading returns each word that `help::quote`

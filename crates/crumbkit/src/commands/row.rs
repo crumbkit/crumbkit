@@ -173,7 +173,7 @@ impl CommandRow {
                 meaning: exit.meaning(),
             })
             .collect();
-        // `check_guide` rejects two groups with one path. `rfind` follows
+        // `check_help` rejects two groups with one path. `rfind` follows
         // help's rule that the last such group's headings show.
         let group = tool
             .get_help()

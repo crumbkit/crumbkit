@@ -47,8 +47,8 @@ rule's page gives its reason.
 | `RepeatsAndCommas` | `filters/repeats-and-commas` | an option with many values does not take both repeats and commas |
 | `OneValuePerUse` | `filters/one-value-per-use` | an option takes several values per use |
 | `Examples` | `examples/run` | an example is skipped ([end-to-end checks](../checks/end-to-end.md)) |
-| `GuideExamples` | `guide/examples` | a visible command without subcommands has no example yet ([leaf checks](../help/examples.md#checks-of-leaves)) |
-| `GuideDocument` | `guide/document` | a leaf that changes something and takes a view flag prints the tool's own output and declares no document yet |
+| `HelpExamples` | `help/examples` | a visible command without subcommands has no example yet ([leaf checks](../help/examples.md#checks-of-leaves)) |
+| `HelpDocument` | `help/document` | a leaf that changes something and takes a view flag prints the tool's own output and declares no document yet |
 | `Envelope` | `documents/envelope` | a command keeps the shape of an existing document with `Envelope::Without` ([result shapes](../output/shapes/README.md#documents-without-the-envelope)) |
 | `RowsWhole` | `documents/rows-whole` | a command's row type sets `Row::WHOLE`, so `--json` prints every field of each row ([result shapes](../output/shapes/README.md#rows-printed-whole)) |
 | `Effects` | `effects/declared` | a visible leaf declares no effects ([effects](../effects/README.md)) |
@@ -82,7 +82,7 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
 - A tool declares its verbs to `check_grammar`, and its
   [root verbs](declarations.md#root-verbs) once. The rule that keeps a
   resource from answering to a root verb's word has no opt-out.
-- `check_guide` takes opt-outs for its example rule and its document rule alone.
+- `check_help` takes opt-outs for its example rule and its document rule alone.
   A tool that wants clap's list for a command leaves the command out of its tool
   record, and each other problem of the tool record is a name or a declaration
   that the tool can correct.

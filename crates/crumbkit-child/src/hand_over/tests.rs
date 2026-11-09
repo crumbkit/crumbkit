@@ -12,7 +12,7 @@ use std::process::{self, ExitCode, ExitStatus};
 use clap::{CommandFactory as _, Parser};
 
 use super::{hand_over_to, respond_text};
-use crumbkit::help::Exit;
+use crumbkit::tool::Exit;
 use crumbkit::{Output, Sink, Spelling, Tool, ViewFlags};
 
 use crate::testing::assert_one_word_apart;

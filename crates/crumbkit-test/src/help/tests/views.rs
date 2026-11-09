@@ -6,7 +6,7 @@ use clap::{Arg, ArgAction, Args as _};
 use crumbkit::help::{Effects, Example, Help};
 use crumbkit::{Batch, Document, Prose, Tool, ViewFlags};
 
-use super::{check_guide, leaf, panic_message, shelf};
+use super::{check_help, leaf, panic_message, shelf};
 
 /// The prose document of `shelf books list` in these tests.
 const COUNT: Document<Prose<String>> = Document::new("shelf", "count", 1, "The count.");
@@ -24,8 +24,8 @@ fn check_tool_fails_on_an_example_that_types_a_view_flag_its_leaf_does_not_offer
     );
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --long` types --long, which the command does not offer, so crumbkit refuses it"
     );
 }
@@ -57,8 +57,8 @@ fn check_tool_fails_on_an_example_that_types_a_view_flag_which_adds_nothing_to_i
     );
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --json --full` types --full, which adds nothing to the command's JSON, so crumbkit prints a note that says so"
     );
 }
@@ -84,8 +84,8 @@ fn check_tool_reports_an_unoffered_flag_below_a_command_that_declares_its_own_js
     });
 
     assert_eq!(
-        panic_message(|| check_guide(&tool, &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&tool, &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --full` types --full, which the command does not offer, so crumbkit refuses it"
     );
 }
@@ -120,8 +120,8 @@ fn check_tool_fails_on_an_example_that_types_an_offered_view_flag_which_adds_not
     );
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --json --long` types --long, which adds nothing to the command's JSON, so crumbkit prints a note that says so"
     );
 }
@@ -140,7 +140,7 @@ fn an_example_that_types_long_without_json_on_whole_rows_with_long_columns_passe
         ]),
     );
 
-    check_guide(&ViewFlags::augment_args(shelf()), &TOOL, &[]);
+    check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[]);
 }
 
 #[test]
@@ -152,8 +152,8 @@ fn check_tool_fails_on_a_leaf_that_declares_a_change_and_no_document() {
     ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books show: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
     );
 }
@@ -166,7 +166,7 @@ fn a_read_only_leaf_without_a_document_passes() {
         leaf(&["authors", "list"]),
     ]));
 
-    check_guide(&shelf(), &TOOL, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 #[test]
@@ -181,7 +181,7 @@ fn a_changing_leaf_that_passes_on_a_programs_exit_code_passes_without_a_document
         ]),
     );
 
-    check_guide(&shelf(), &TOOL, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 /// A book's file whose bytes sit under `content` in place of the top level
@@ -223,8 +223,8 @@ fn check_tool_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
     );
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the field `text` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`\n\
          shelf books list: the field `base64` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`"
     );
@@ -265,8 +265,8 @@ fn check_tool_fails_on_a_leaf_whose_batch_is_not_headed_and_whose_row_type_has_n
     ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type has no COLUMNS, so the table and the JSON without --full print nothing of each row; name the fields that identify a row in `Row::COLUMNS`"
     );
 }
@@ -279,7 +279,7 @@ fn a_headed_leaf_whose_row_type_has_no_columns_passes() {
         leaf(&["authors", "list"]),
     ]));
 
-    check_guide(&shelf(), &TOOL, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 /// A query answer that a tool's readers expect whole and that serializes
@@ -313,8 +313,8 @@ fn check_tool_fails_on_a_batch_whose_whole_row_type_has_no_columns_and_no_line()
     ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type sets Row::WHOLE and has no COLUMNS and no LINE, so its text has no form for a row; declare the row's own text line in `Row::LINE`"
     );
 }
@@ -328,7 +328,7 @@ fn a_leaf_whose_whole_rows_have_no_fields_passes_without_columns() {
         leaf(&["authors", "list"]),
     ]));
 
-    check_guide(&shelf(), &TOOL, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 /// A book that a tool's readers expect whole and whose row type names no
@@ -355,8 +355,8 @@ fn check_tool_fails_on_a_leaf_whose_whole_row_type_has_fields_and_no_columns() {
     ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &TOOL, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type has fields and no COLUMNS, so its text prints each row's own line where a table could show its fields; name the fields that identify a row in `Row::COLUMNS`"
     );
 }

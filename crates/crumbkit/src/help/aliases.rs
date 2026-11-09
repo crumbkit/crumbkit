@@ -1,4 +1,4 @@
-//! The tool record's function that names a person's aliases on the root's help
+//! The function in [`Help`] that names a person's aliases on the root's help
 //! (ADR-0027).
 
 use clap::Command;
@@ -29,7 +29,7 @@ impl Help {
         self
     }
 
-    /// Returns the tool record without the function that
+    /// Returns this `Help` without the function that
     /// [`Help::personal_aliases`](crate::help::Help::personal_aliases) set, so
     /// the root's help is the same on every machine, as crumbkit-test's help
     /// checks print it.

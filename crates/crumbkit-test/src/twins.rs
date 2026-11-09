@@ -10,7 +10,7 @@ use crumbkit::Tool;
 use crate::examples::Examples;
 use crate::exits;
 use crate::failures;
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::recoveries::Failing;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note};
 
@@ -69,8 +69,8 @@ mod tests;
 ///
 /// The refused line must exit with the code that
 /// [`Tool::failure_exit`](crumbkit::Tool::failure_exit) gives its
-/// failure: the code of the tool record's [`Exit`](crumbkit::help::Exit) that
-/// lists its code with [`Exit::failures`](crumbkit::help::Exit::failures),
+/// failure: the code of the tool record's [`Exit`](crumbkit::tool::Exit) that
+/// lists its code with [`Exit::failures`](crumbkit::tool::Exit::failures),
 /// the code of a refused command line for `<tool>::cli::usage`, which is
 /// 2 unless an exit lists it, and 1 for any other code. A command whose
 /// leaf declares [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)

@@ -1,5 +1,5 @@
 {
-  "schema": "shelf/opt-outs/v1",
+  "schema": "shelf/opt-outs/v2",
   "data": [
     {
       "rule": "examples/run",

@@ -23,8 +23,8 @@ use self::declarations::{Declaration, declarations};
 
 /// The id of the JSON report's schema, which a reader checks before it
 /// reads the entries. The report names the tool in place of `crumbkit`,
-/// such as `shelf/opt-outs/v1` (ADR-0079).
-const SCHEMA: &str = "crumbkit/opt-outs/v1";
+/// such as `shelf/opt-outs/v2` (ADR-0079).
+const SCHEMA: &str = "crumbkit/opt-outs/v2";
 
 /// Checks that the report of the tool's opt-outs from crumbkit's
 /// conventions matches the golden files `opt-outs.txt` and
@@ -80,7 +80,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// ```
 ///
 /// The JSON file holds the same entries under `data`, with the schema id
-/// `<tool>/opt-outs/v1` under `schema`. Each entry has the fields `rule`,
+/// `<tool>/opt-outs/v2` under `schema`. Each entry has the fields `rule`,
 /// `applies_to`, `reason`, `costs` and `budget`, which is `null` for an
 /// opt-out and holds `bytes`, `default`, `extra_bytes` and `extra_tokens`
 /// for a budget. When the tool declares a declaration, the JSON file
@@ -309,7 +309,7 @@ struct BudgetEntry {
 /// The JSON report: the schema id, the entries and the declarations.
 #[derive(Serialize)]
 struct Report<'a> {
-    /// The id of the report's schema, such as `shelf/opt-outs/v1`.
+    /// The id of the report's schema, such as `shelf/opt-outs/v2`.
     schema: &'a str,
     /// The opt-outs and the budgets, in the order the report lists them.
     data: &'a [Entry],
@@ -360,22 +360,19 @@ fn text(tool: &str, entries: &[Entry], declared: &[Declaration]) -> String {
     match (declared.len(), reasoned) {
         (0, _) => {}
         (1, false) => {
-            let _ = writeln!(
-                text,
-                "\n{tool} declares 1 declaration, which needs no reason."
-            );
+            let _ = writeln!(text, "\n{tool} has 1 declaration, which needs no reason.");
         }
         (1, true) => {
-            let _ = writeln!(text, "\n{tool} declares 1 declaration.");
+            let _ = writeln!(text, "\n{tool} has 1 declaration.");
         }
         (count, false) => {
             let _ = writeln!(
                 text,
-                "\n{tool} declares {count} declarations, which need no reason."
+                "\n{tool} has {count} declarations, which need no reason."
             );
         }
         (count, true) => {
-            let _ = writeln!(text, "\n{tool} declares {count} declarations.");
+            let _ = writeln!(text, "\n{tool} has {count} declarations.");
         }
     }
     for declaration in declared {

@@ -236,7 +236,7 @@ fn every_command_is_a_resource_followed_by_a_verb() {
 }
 ```
 
-The file also runs `check_effects`, `check_listings`, `check_guide` and
+The file also runs `check_effects`, `check_listings`, `check_help` and
 `check_codes`. With no opt-outs, `check_names` fails, because help shows the
 visible alias `ls` as a second name for `jars list`. pantry could make the
 alias hidden, which passes the check and keeps `ls` working. pantry keeps it

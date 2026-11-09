@@ -9,7 +9,7 @@ use super::{Admitted, named, refuse, tool_name, twin};
 use crate::allow::{Allow, Rule};
 use crate::codes::Declared;
 use crate::examples::Examples;
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::recoveries::{Failing, Unprovoked, library_codes};
 use crate::runs::with_json;
 
@@ -180,7 +180,7 @@ impl<'a> Twins<'a> {
 ///   twin refuses, that [`Twins::unprovoked`] lists or that crumbkit owns.
 ///   The last three are stale.
 /// - a listed code that is not declared or that a twin refuses;
-/// - a failure code that [`Exit::failures`](crumbkit::help::Exit::failures)
+/// - a failure code that [`Exit::failures`](crumbkit::tool::Exit::failures)
 ///   lists and no `CODES` list holds.
 ///
 /// Each line runs with `--json` added, as each run of
