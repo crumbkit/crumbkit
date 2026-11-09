@@ -8,6 +8,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit-test: [`Suite`] holds the inputs of every convention check, and
+  `crumbkit_test::conventions!` expands it to one named test for each check. A
+  check whose input is missing fails and names the input, unless `Suite::skip`
+  gives a reason ([behaviour/checks]).
 - crumbkit: `Run::fail` prints a failure, reports its exit code and returns
   it, for a command that ends without `finish` ([behaviour/output/shapes]).
 - crumbkit: `Recovery::none` and `Recovery::hint` build a recovery from text,
@@ -1557,6 +1561,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/adoption/declarations]: docs/behaviour/adoption/declarations.md
 [behaviour/adoption/opt-outs]: docs/behaviour/adoption/opt-outs.md
 [behaviour/checks]: docs/behaviour/checks/README.md
+[`Suite`]: crates/crumbkit-test/src/suite.rs
 [behaviour/checks/end-to-end]: docs/behaviour/checks/end-to-end.md
 [behaviour/checks/recovery-chains]: docs/behaviour/checks/recovery-chains.md
 [behaviour/effects]: docs/behaviour/effects/README.md

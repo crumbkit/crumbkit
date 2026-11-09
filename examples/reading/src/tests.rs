@@ -7,18 +7,12 @@ use std::path::Path;
 
 use clap::Command;
 
-use crate::lists::EntriesError;
 use crumbkit::help::Help;
 
 /// Returns the command tree that reading builds from the lists in its
 /// fixture directory.
 fn fixture_command() -> Command {
     crate::command(&crate::lists_in(Path::new("tests/fixtures/lists")))
-}
-
-#[test]
-fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(&crate::cli::TOOL, &[EntriesError::CODES]);
 }
 
 #[test]

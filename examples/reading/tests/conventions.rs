@@ -16,8 +16,7 @@ use std::path::Path;
 use clap::Command;
 use crumbkit::Tool;
 use crumbkit_test::{
-    Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Twin, Twins,
-    Unprovoked,
+    Allow, Check, Examples, Failing, PathBudgets, Recoveries, Rule, Suite, Twin, Twins, Unprovoked,
 };
 
 /// The directory of reading's fixture lists.
@@ -32,8 +31,8 @@ const SAVE: &str = "the person in the editor chooses whether to save the list, s
 /// The reason that each list's `edit` has no `--expect`.
 const WHOLE_FILE: &str = "the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it";
 
-/// reading's opt-outs from crumbkit's conventions, which every check below
-/// reads. They name the `edit` command of each fixture list.
+/// reading's opt-outs from crumbkit's conventions, which every check reads.
+/// They name the `edit` command of each fixture list.
 const ALLOW: &[Allow] = &[
     Allow::new(Rule::Examples, "finished edit", EDITOR),
     Allow::new(Rule::Examples, "to-read edit", EDITOR),
@@ -42,9 +41,6 @@ const ALLOW: &[Allow] = &[
     Allow::new(Rule::Expect, "finished edit", WHOLE_FILE),
     Allow::new(Rule::Expect, "to-read edit", WHOLE_FILE),
 ];
-
-/// The budgets of reading's `-h` pages, which are crumbkit's defaults.
-const BUDGETS: Budgets = Budgets::new();
 
 /// The budgets of the paths through reading's help.
 const PATH_BUDGETS: PathBudgets<'_> = PathBudgets::new("tests/golden/examples").path(
@@ -70,116 +66,6 @@ const EXAMPLES: Examples<'_> =
 fn fixture_tool() -> (Command, Tool) {
     let lists = reading::lists_in(Path::new(LISTS));
     (reading::command(&lists), reading::tool(&lists))
-}
-
-#[test]
-fn every_command_and_argument_has_one_name() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_names(&command, Pages::rendered(&tool), ALLOW);
-}
-
-#[test]
-fn every_command_is_a_resource_followed_by_list_show_stream_edit_set_or_export() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_grammar(
-        &command,
-        Pages::rendered(&tool),
-        &["stream", "edit", "set", "export"],
-        ALLOW,
-    );
-}
-
-#[test]
-fn every_command_declares_its_effects() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_effects(&command, &tool, ALLOW);
-}
-
-#[test]
-fn every_list_command_pages() {
-    crumbkit_test::check_listings(&fixture_tool().0, ALLOW);
-}
-
-#[test]
-fn every_option_with_many_values_accepts_repeats_and_commas() {
-    crumbkit_test::check_filters(&fixture_tool().0, ALLOW);
-}
-
-#[test]
-fn every_command_and_leaf_meets_the_help_rules() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_help(&command, &tool, ALLOW);
-}
-
-#[test]
-fn every_exit_code_meets_the_exit_code_rules() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_exit_codes(&command, &tool, ALLOW);
-}
-
-#[test]
-fn every_help_page_fits_its_size_budget() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_help_sizes(&command, Pages::binary(&tool, &EXAMPLES), &BUDGETS);
-}
-
-#[test]
-fn every_path_through_the_help_fits_its_weight_budget() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_path_weights(&command, Pages::binary(&tool, &EXAMPLES), &PATH_BUDGETS);
-}
-
-#[test]
-fn every_help_page_matches_its_golden_file() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_help_goldens(
-        &command,
-        Pages::binary(&tool, &EXAMPLES),
-        "tests/golden/help",
-    );
-}
-
-#[test]
-fn every_document_schema_matches_its_golden_file() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_schema_goldens(&command, &tool, "tests/golden/schemas");
-}
-
-#[test]
-fn every_document_is_named_after_the_path_of_the_command_that_prints_it() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_document_ids(&command, &tool, ALLOW);
-}
-
-#[test]
-fn every_crumbkit_command_sits_at_its_fixed_path() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_mounts(&command, &tool);
-}
-
-#[test]
-fn every_example_in_the_tool_runs_and_prints_its_golden_output() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_examples(&command, &tool, &EXAMPLES);
-}
-
-#[test]
-fn every_json_example_cuts_or_refuses_a_result_past_its_output_budget() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_output_budget(&command, &tool, &EXAMPLES);
-}
-
-#[test]
-fn every_opt_out_matches_the_opt_out_report() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_opt_outs(
-        &command,
-        &tool,
-        ALLOW,
-        &BUDGETS,
-        Some(&PATH_BUDGETS),
-        "tests/golden",
-    );
 }
 
 /// `entries list` of a list that does not exist.
@@ -236,12 +122,6 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[reading::CODES])
     ])
     .unprovoked(UNPROVOKED);
 
-#[test]
-fn every_recovery_leads_to_a_command_that_runs() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_recoveries(&command, &tool, &RECOVERIES, "tests/golden");
-}
-
 /// The settings of reading's twin check: one twin for each declared code
 /// that a command line can provoke. Each twin differs from its refused line
 /// in one word, so that word is the reason for the refusal (TEST-1).
@@ -264,8 +144,21 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[reading::CODES])
     ])
     .unprovoked(UNPROVOKED);
 
-#[test]
-fn every_declared_code_has_a_twin_that_the_tool_accepts() {
-    let (command, tool) = fixture_tool();
-    crumbkit_test::check_twins(&command, &tool, &TWINS);
-}
+/// Everything the checks read, which `conventions!` expands to one test for
+/// each check. With examples set, the help checks read what the binary prints,
+/// which reading needs because it builds part of its help from the lists it
+/// finds at start.
+const SUITE: Suite<'_> = Suite::new(fixture_tool)
+    .allow(ALLOW)
+    .verbs(&["stream", "edit", "set", "export"])
+    .path_budgets(PATH_BUDGETS)
+    .examples(EXAMPLES)
+    .codes(&[reading::CODES])
+    .recoveries(RECOVERIES)
+    .twins(TWINS)
+    .skip(
+        Check::CommandReference,
+        "reading's commands come from the lists in the caller's directory, so no checked-in reference holds for every caller.",
+    );
+
+crumbkit_test::conventions!(SUITE);

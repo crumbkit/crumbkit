@@ -17,6 +17,33 @@ the rules and their ids.
 
 Why: ADR-0025, ADR-0036.
 
+## The convention suite
+
+A tool built with crumbkit can run every check through one
+[`Suite`](../../../crates/crumbkit-test/src/suite.rs) constant and one call of
+`crumbkit_test::conventions!`, in a file of its own in an integration test of
+its binary's package:
+
+```rust
+const SUITE: Suite<'_> = Suite::new(|| (Cli::command(), TOOL))
+    .allow(ALLOW)
+    .examples(EXAMPLES)
+    .codes(&[CODES])
+    .skip(Check::CommandReference, "The commands come from the caller's files.");
+
+crumbkit_test::conventions!(SUITE);
+```
+
+The macro expands to one named `#[test]` for each check, so `cargo test` can
+select a check, and a check added to crumbkit-test reaches the tool with no
+edit. A check whose input is missing fails and names the setter. `.skip` takes
+a one-line reason, and the [opt-out report](../adoption/opt-outs.md) lists it
+under `suite/skip`. Nothing detects a stale skip. With `.examples` set, the
+help checks read what the binary prints. The rustdoc of `Suite` lists each
+input and its default. A tool may still call the checks by hand.
+
+Why: ADR-0185.
+
 ## Checks that read the command tree
 
 These checks read a `clap::Command` without running the tool, so a tool that

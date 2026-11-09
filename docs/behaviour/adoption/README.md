@@ -44,8 +44,9 @@ Each part follows an existing convention:
 - Results derive `Serialize` and `JsonSchema` and implement `Row` to name
   their table columns ([output](../output/README.md)).
 - Each crumbkit-test check is a free function that a tool calls from an
-  ordinary `#[test]`, as it calls clap's `Command::debug_assert`
-  ([checks](../checks/README.md)).
+  ordinary `#[test]`, as it calls clap's `Command::debug_assert`, or a tool
+  runs them all through one
+  [`Suite`](../checks/README.md#the-convention-suite).
 
 Each argument type that crumbkit gives a tool to flatten or to take as a
 command's arguments, such as `ViewFlags`, `Page` or `CommandsList`, clears the

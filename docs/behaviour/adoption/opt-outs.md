@@ -23,6 +23,11 @@ names no command, names no option of its command or excuses no problem, so
 the opt-out of a removed or fixed command or option cannot stay in a tool's
 list.
 
+An opt-out departs from one rule for one command. A tool that leaves out a
+whole check gives its reason with `Suite::skip`
+([the convention suite](../checks/README.md#the-convention-suite)), and the
+report lists it under the rule `suite/skip`.
+
 An example that runs only where something is present, such as a container
 daemon, needs no opt-out. It names that precondition with `Example::needs`,
 a run that lacks it skips the example
