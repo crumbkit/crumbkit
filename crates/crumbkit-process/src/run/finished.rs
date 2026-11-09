@@ -15,6 +15,7 @@ pub struct ChildFinished {
     pub(super) stdout: Captured,
     pub(super) stderr: Captured,
     pub(super) first_stdout: Option<Duration>,
+    pub(super) survivors: bool,
 }
 
 impl ChildFinished {
@@ -35,6 +36,17 @@ impl ChildFinished {
     #[must_use]
     pub const fn status(&self) -> Option<Status> {
         self.status
+    }
+
+    /// Returns true when [`RunOptions::report_survivors`](crate::RunOptions::report_survivors) asked, the child
+    /// ended by itself, and another process in its group still ran then.
+    /// A run that stopped the child gives false.
+    ///
+    /// A process that left the group, such as one that called `setsid`, is
+    /// not in it, so it does not count.
+    #[must_use]
+    pub const fn survivors(&self) -> bool {
+        self.survivors
     }
 
     /// Returns what the run kept of standard output.

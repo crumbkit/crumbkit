@@ -171,6 +171,12 @@ the child, and reads the pipes for at most `DRAIN_GRACE`, one second, more.
 A descendant outside the group that holds a pipe therefore holds the run
 for at most one second after the reap, and keeps running.
 
+`RunOptions::report_survivors` makes the run check, before that kill, whether
+any other process in the group still runs, and `ChildFinished::survivors` gives
+the answer. It answers for a child that ended by itself, and a run that stopped
+its child gives false. The check is off by default because on Linux it reads
+every process in `/proc`. It reports on `Scope::Group` on Linux and macOS alone.
+
 On Unix, for a child that the tool may signal, a run takes at most the
 time to its deadline, plus the graces of its escalation, plus the drain
 grace, plus the time that a hook around the start takes, plus the time that a copy

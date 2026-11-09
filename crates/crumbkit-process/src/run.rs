@@ -75,6 +75,7 @@ pub struct RunOptions {
     around_spawn: Option<AroundSpawn>,
     stdout_copy: Option<OutputCopy>,
     stderr_copy: Option<OutputCopy>,
+    report_survivors: bool,
 }
 
 impl RunOptions {
@@ -217,6 +218,19 @@ impl RunOptions {
         self
     }
 
+    /// Makes the run check, when the child ends by itself and before the run
+    /// kills what is left of the group, whether any other process in the
+    /// group still runs. [`ChildFinished::survivors`] gives the answer. The
+    /// run kills those processes as it always does.
+    ///
+    /// The check is off by default because on Linux it reads every process
+    /// in `/proc`. It reports on [`Scope::Group`] on Linux and macOS alone.
+    #[must_use]
+    pub const fn report_survivors(mut self) -> Self {
+        self.report_survivors = true;
+        self
+    }
+
     /// Tells the queue of each stream delivered as lines that the run began
     /// to stop its child.
     fn stopping(&self) {
@@ -280,6 +294,7 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
             stdout: Captured::default(),
             stderr: Captured::default(),
             first_stdout: None,
+            survivors: false,
         });
     }
     let input = match &options.stdin {
@@ -308,11 +323,12 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
         };
         follow(threads, &mut *unwind.group, &notice, &ends, options)
     });
-    let (outcome, status, stdout, stderr) = followed.map_err(RunError::Run)?;
+    let (outcome, status, stdout, stderr, survivors) = followed.map_err(RunError::Run)?;
     Ok(ChildFinished {
         outcome,
         status: Some(status),
         first_stdout: stdout.first.map(|first| first - started),
+        survivors,
         stdout: stdout.captured,
         stderr: stderr.captured,
     })
@@ -377,7 +393,7 @@ fn follow<'scope>(
     notice: &'scope Notice,
     ends: &'scope Ends,
     options: &'scope RunOptions,
-) -> io::Result<(Outcome, Status, Kept, Kept)> {
+) -> io::Result<(Outcome, Status, Kept, Kept, bool)> {
     let pipes = (group.take_stdin(), group.take_stdout(), group.take_stderr());
     let exit = group.waiter();
     let waiter = match Builder::new().spawn_scoped(threads, move || {
@@ -405,6 +421,8 @@ fn follow<'scope>(
     } else {
         control(group, notice, options)
     };
+    let survivors =
+        options.report_survivors && failure.is_none() && stopped.is_none() && group.others_alive();
     let status = group.reap();
     // The child is gone. The queues drop lines from the middle of the drain,
     // so the reader still has time to read the rest of the pipe and `lost`
@@ -434,6 +452,7 @@ fn follow<'scope>(
         status,
         stdout.transpose()?.unwrap_or_else(unread),
         stderr.transpose()?.unwrap_or_else(unread),
+        survivors,
     ))
 }
 
