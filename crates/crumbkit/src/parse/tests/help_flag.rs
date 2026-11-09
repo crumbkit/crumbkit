@@ -2,7 +2,7 @@
 //! that turned its help flag off: the call names the deepest command on the
 //! path that keeps a help flag, or the refusal offers no step.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 

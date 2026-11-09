@@ -2,7 +2,7 @@
 //! as a server that runs until it is interrupted: `parse` refuses the view
 //! flags, accepts `--json`, and its help prints an `Output:` line.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::fmt;
 use std::process::ExitCode;
 

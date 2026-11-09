@@ -3,7 +3,7 @@
 //! `--json` on a leaf whose row type sets `Row::WHOLE` (ADR-0138,
 //! ADR-0140, ADR-0149).
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Args as _, Command};

@@ -30,7 +30,7 @@ mod refused;
 mod stop;
 pub(crate) mod suggestion;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 pub(crate) mod walk;
 mod walked;
 
@@ -120,8 +120,11 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 /// Tests and golden files call it with a sink over in-memory writers, as
 /// they call [`finish_to`](crate::finish_to). Help and the version print as
 /// plain text, unless the sink asks for styles with [`Sink::styled`], and
-/// a refusal unless it asks with [`Sink::styled_errors`]. The styles need
-/// crumbkit's `color` feature. A topic prints as plain text to every sink.
+/// a refusal unless it asks with [`Sink::styled_errors`]. A sink from
+/// [`Sink::standard`] that has not called [`Sink::styled`] also follows the
+/// tool record's terminal detection for help, as [`try_parse_to`] does. The
+/// styles need crumbkit's `color` feature. A topic prints as plain text to
+/// every sink.
 ///
 /// Before parsing, crumbkit walks the typed words down the tree to the
 /// deepest command they name, and changes the help of each command on the
@@ -354,21 +357,10 @@ pub fn try_parse_to<C: FromArgMatches>(
     tool: &Tool,
     args: impl IntoIterator<Item = impl Into<OsString>>,
 ) -> Result<(C, Output), Unparsed> {
-    sink.follow_terminal(|| tool.get_output().detects(crate::sink::stdout_is_terminal));
-    run(sink, command, tool, args)
-}
-
-/// Parses `args` against `command` as [`parse_to`] does with `C`'s command.
-/// Most of the crate's tests build their tree by hand, so `command` differs
-/// from what `C` derives.
-#[cfg(test)]
-pub(crate) fn parse_tree_to<C: FromArgMatches>(
-    sink: &mut Sink<impl Write, impl Write, impl BufRead>,
-    command: Command,
-    tool: &Tool,
-    args: impl IntoIterator<Item = impl Into<OsString>>,
-) -> Result<(C, Output), Stop> {
-    try_parse_to(sink, command, tool, args).map_err(|unparsed| unparsed.print_to(sink))
+    sink.following_terminal(
+        || tool.get_output().detects(crate::sink::stdout_is_terminal),
+        |sink| run(sink, command, tool, args),
+    )
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes, without

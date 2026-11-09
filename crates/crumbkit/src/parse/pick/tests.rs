@@ -1,7 +1,7 @@
 //! Tests for picking a missing argument: what `parse_to` asks the tool record's
 //! picker, what it adds to the command line, and when it refuses instead.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 

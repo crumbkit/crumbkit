@@ -1,7 +1,7 @@
 //! Tests for a command named in another style, which also answers to its
 //! dashed form when the tool record declares dashed forms.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 

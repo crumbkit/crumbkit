@@ -20,7 +20,7 @@ fn telescope() -> Command {
 /// Returns the root's `-h` of `telescope()` with `tool`.
 fn root_help(tool: &Tool) -> String {
     let mut out = Vec::new();
-    let _ = crate::parse::parse_tree_to::<()>(
+    let _ = crate::parse::tests::parse_tree_to::<()>(
         &mut crate::Sink::new(&mut out, Vec::new()),
         telescope(),
         tool,

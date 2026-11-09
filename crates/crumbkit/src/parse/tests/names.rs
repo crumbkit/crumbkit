@@ -2,7 +2,7 @@
 //! record's root names it, in the failure document's id and in crumbkit's
 //! codes.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};

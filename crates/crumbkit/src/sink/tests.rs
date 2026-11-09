@@ -403,20 +403,30 @@ impl io::Write for Short {
     }
 }
 
-#[test]
-fn a_sink_over_the_standard_streams_asks_for_styles_when_the_tool_detects_a_terminal() {
-    let mut sink = Sink::standard();
-
-    sink.follow_terminal(|| true);
-
-    assert!(sink.is_styled());
+/// Runs one parse's terminal decision on `sink`, which says the result reaches
+/// a terminal, and returns whether the result was styled during it.
+fn styled_at_a_terminal<O, E, I>(sink: &mut Sink<O, E, I>) -> bool {
+    sink.following_terminal(|| true, |sink| sink.is_styled())
 }
 
 #[test]
-fn a_sink_over_other_writers_keeps_the_styles_that_its_caller_set() {
+fn a_standard_sink_is_styled_at_a_terminal_for_one_parse_only() {
+    let mut sink = Sink::standard();
+
+    assert!(styled_at_a_terminal(&mut sink));
+    assert!(!sink.is_styled());
+}
+
+#[test]
+fn a_standard_sink_that_the_caller_kept_plain_stays_plain_at_a_terminal() {
+    let mut sink = Sink::standard().styled(false);
+
+    assert!(!styled_at_a_terminal(&mut sink));
+}
+
+#[test]
+fn a_sink_over_other_writers_ignores_the_terminal() {
     let mut sink = Sink::new(Vec::new(), Vec::new());
 
-    sink.follow_terminal(|| true);
-
-    assert!(!sink.is_styled());
+    assert!(!styled_at_a_terminal(&mut sink));
 }

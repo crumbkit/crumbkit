@@ -2,7 +2,7 @@
 //! turns it into `--help`, and `topic_page`, which finds the topic that the
 //! words after it name.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 

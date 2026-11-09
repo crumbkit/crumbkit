@@ -1,7 +1,7 @@
 //! Tests for the `Children:` line of a leaf whose rows print their children
 //! as lines under them (ADR-0120, ADR-0137).
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};

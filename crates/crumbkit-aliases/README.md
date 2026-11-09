@@ -68,7 +68,9 @@ const TOOL: Tool = Tool::new();
 fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
     let command = Cli::command();
     let args = crumbkit_aliases::expand(&command, args, file);
-    let (cli, mut output) = match crumbkit::parse_from::<Cli>(&TOOL, args) {
+    // `expand` needed the tree, so the parse takes it and the run builds it once.
+    let parsed = crumbkit::try_parse_to::<Cli>(&mut crumbkit::Sink::standard(), command, &TOOL, args);
+    let (cli, mut output) = match parsed.map_err(crumbkit::Unparsed::print) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };

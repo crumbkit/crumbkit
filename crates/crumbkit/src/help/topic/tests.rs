@@ -1,7 +1,7 @@
 //! Tests for help topics: what `parse_to` prints for `help` and for help
 //! pages with a tool record that has topics.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};

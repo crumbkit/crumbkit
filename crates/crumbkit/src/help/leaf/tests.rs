@@ -1,7 +1,7 @@
 //! Tests for leaves: the examples and columns that `parse_to` adds to the
 //! help of a leaf, and the examples that `extend` adds.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::process::ExitCode;

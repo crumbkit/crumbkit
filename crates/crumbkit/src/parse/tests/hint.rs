@@ -2,7 +2,7 @@
 //! a leaf that sets none, returns for a refusal of a command line that names
 //! the leaf.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::error::ErrorKind;

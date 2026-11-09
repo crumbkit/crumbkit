@@ -1,6 +1,6 @@
 //! Tests for the word `help`, which `parse_to` answers in place of clap.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::ffi::OsString;
 use std::process::ExitCode;
 

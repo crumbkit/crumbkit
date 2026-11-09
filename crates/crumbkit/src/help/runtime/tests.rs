@@ -1,6 +1,6 @@
 //! Tests for runtime leaves and their join with a const tool record.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::Command;

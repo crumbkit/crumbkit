@@ -2,7 +2,7 @@
 //! `--long` although its rows have no long columns, and its help says that
 //! `--long` prints the note (ADR-0139).
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Args as _, Command};

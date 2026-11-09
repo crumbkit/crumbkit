@@ -1,6 +1,6 @@
 //! Tests for the names that a refusal suggests, through `parse_to`.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use clap::{Arg, ArgAction, Command};
 
 use crate::{Sink, Tool};

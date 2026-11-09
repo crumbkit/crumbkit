@@ -1,7 +1,7 @@
 //! Tests for the `Text:` line of a leaf whose rows print their own text
 //! line (ADR-0064).
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};

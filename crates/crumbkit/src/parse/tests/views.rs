@@ -2,7 +2,7 @@
 //! whose declared document cannot use them: its help leaves them out, and
 //! `parse` refuses them before the handler runs.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Args as _, Command};

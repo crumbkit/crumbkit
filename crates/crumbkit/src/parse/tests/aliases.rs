@@ -1,6 +1,6 @@
 //! Tests for the line that names a person's aliases on the root's help.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::Command;

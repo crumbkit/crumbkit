@@ -2,7 +2,7 @@
 //! with the words that the caller typed and parsed, and prints what
 //! `parse_to` prints when the tool prints it.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::ffi::{OsStr, OsString};
 
 use clap::error::{ContextKind, ContextValue, ErrorKind};

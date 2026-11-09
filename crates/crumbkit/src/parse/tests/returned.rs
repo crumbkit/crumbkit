@@ -2,7 +2,7 @@
 //! tool's type and an `Output` that holds the view flags, the command and
 //! the words, and for a run that it ended, a `Stop` that says what printed.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use clap::{Arg, ArgAction, Command};
 
 use super::{Flags, admits, tree};
@@ -49,9 +49,8 @@ fn parse_reads_the_view_flags_that_a_tool_flattens_before_the_tool_s_type_takes_
     }
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_tree_to::<Viewed>(
+    let result = crate::parse_to::<Viewed>(
         &mut Sink::new(&mut out, &mut err),
-        <Viewed as clap::CommandFactory>::command(),
         &Tool::new(),
         ["tool", "list", "--json", "--fields", "name,moons"],
     );
@@ -125,8 +124,7 @@ enum Removes {
 /// Parses `args` as the removing tool, and returns its `Output`.
 fn removing(args: &[&str]) -> crate::Output {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let command = <Removing as clap::CommandFactory>::command();
-    let (_, output) = parse_tree_to::<Removing>(&mut sink, command, &Tool::new(), args)
+    let (_, output) = crate::parse_to::<Removing>(&mut sink, &Tool::new(), args)
         .unwrap_or_else(|_| panic!("the command line did not parse"));
     output
 }

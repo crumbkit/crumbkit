@@ -1,7 +1,7 @@
 //! Tests for a leaf's effects: the words help prints and the object that
 //! `commands list` writes.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};

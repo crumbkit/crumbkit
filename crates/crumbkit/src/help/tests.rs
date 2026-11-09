@@ -1,7 +1,7 @@
 //! Tests for goal headings: the help pages that `parse_to` prints with a
 //! tool record, and the tree that `extend` returns.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};

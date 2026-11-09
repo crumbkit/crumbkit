@@ -3,7 +3,7 @@
 //! carries clap's styles to a sink whose error writer wants them
 //! (ADR-0131).
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use super::{Stop, Unparsed, tree, try_parse_to};

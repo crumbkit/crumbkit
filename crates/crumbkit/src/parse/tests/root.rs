@@ -1,7 +1,7 @@
 //! Tests for a tool record whose root is a subcommand, as for a tool that
 //! another program runs with a fixed first word, such as a cargo subcommand.
 
-use crate::parse::parse_tree_to;
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use super::{Parsed, tree};
