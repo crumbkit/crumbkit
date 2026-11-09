@@ -1,7 +1,6 @@
 //! The one-shot run: start a child, write its input, read its output within
 //! limits and a deadline, stop it when needed, and reap it.
 
-use std::fmt;
 use std::fs::File;
 use std::io;
 use std::process::{Command, Stdio};
@@ -12,6 +11,7 @@ use std::time::{Duration, Instant};
 use crate::notice::Notice;
 use crate::{Cancel, Escalation, Group, Outcome, Scope, Signal, Status, StopReason, sys};
 
+mod finished;
 mod output;
 mod pipes;
 mod spawn;
@@ -19,8 +19,9 @@ mod spawn;
 #[cfg(test)]
 mod tests;
 
-use self::output::Keeper;
+pub use self::finished::{ChildFinished, RunError};
 pub use self::output::{Capture, Captured, LongLine, OverLimit};
+use self::output::{Keeper, OutputCopy};
 use self::pipes::{Ends, Kept};
 use self::spawn::AroundSpawn;
 pub use self::spawn::{Spawn, Spawned};
@@ -72,6 +73,8 @@ pub struct RunOptions {
     escalation: Escalation,
     scope: Scope,
     around_spawn: Option<AroundSpawn>,
+    stdout_copy: Option<OutputCopy>,
+    stderr_copy: Option<OutputCopy>,
 }
 
 impl RunOptions {
@@ -187,6 +190,31 @@ impl RunOptions {
         self
     }
 
+    /// Calls `copy` with each chunk of standard output as the run reads it,
+    /// whatever the capture keeps, so a tool can show the output while the
+    /// run keeps a bounded copy. See [`RunOptions::stderr_copy`].
+    #[must_use]
+    pub fn stdout_copy(mut self, copy: impl Fn(&[u8]) + Send + Sync + 'static) -> Self {
+        self.stdout_copy = Some(OutputCopy::new(copy));
+        self
+    }
+
+    /// Calls `copy` with each chunk of standard error as the run reads it,
+    /// whatever the capture keeps.
+    ///
+    /// A chunk can end in the middle of a line or of a UTF-8 character.
+    /// Each stream's function runs on that stream's reader thread, so the
+    /// two streams can interleave. A function that blocks holds the reader:
+    /// the child then waits on its full pipe, and the run waits for the
+    /// function past the time bound that [`run`] states. A function that
+    /// panics gets no more chunks, the run reads the rest of the stream so
+    /// the child runs on, and the run ends with [`RunError::Run`].
+    #[must_use]
+    pub fn stderr_copy(mut self, copy: impl Fn(&[u8]) + Send + Sync + 'static) -> Self {
+        self.stderr_copy = Some(OutputCopy::new(copy));
+        self
+    }
+
     /// Tells the queue of each stream delivered as lines that the run began
     /// to stop its child.
     fn stopping(&self) {
@@ -199,93 +227,6 @@ impl RunOptions {
     fn drain_until(&self, deadline: Instant) {
         self.stdout.drain_until(deadline);
         self.stderr.drain_until(deadline);
-    }
-}
-
-/// How a run's child ended and what the run kept of its output.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ChildFinished {
-    outcome: Outcome,
-    status: Option<Status>,
-    stdout: Captured,
-    stderr: Captured,
-    first_stdout: Option<Duration>,
-}
-
-impl ChildFinished {
-    /// Returns how the child ended.
-    #[must_use]
-    pub const fn outcome(&self) -> Outcome {
-        self.outcome
-    }
-
-    /// Returns the child's own status as the run reaped it, or `None` when
-    /// the run started no child because its cancel was already cancelled.
-    ///
-    /// The status tells how the child ended even when the run stopped it.
-    /// A run whose cancel stopped a child that SIGINT ended gives
-    /// `Outcome::Stopped(StopReason::Cancelled)` and the status `Status::Signal(2)`,
-    /// whose [`Status::shell_code`] is 130. A child that handles the signal
-    /// and exits with a code of its own gives that code.
-    #[must_use]
-    pub const fn status(&self) -> Option<Status> {
-        self.status
-    }
-
-    /// Returns what the run kept of standard output.
-    #[must_use]
-    pub const fn stdout(&self) -> &Captured {
-        &self.stdout
-    }
-
-    /// Returns what the run kept of standard error.
-    #[must_use]
-    pub const fn stderr(&self) -> &Captured {
-        &self.stderr
-    }
-
-    /// Returns what the run kept of standard output and standard error.
-    #[must_use]
-    pub fn into_output(self) -> (Captured, Captured) {
-        (self.stdout, self.stderr)
-    }
-
-    /// Returns the time from the child's start to the first byte of its
-    /// standard output, or `None` when it printed none or the run discarded
-    /// standard output.
-    #[must_use]
-    pub const fn first_stdout(&self) -> Option<Duration> {
-        self.first_stdout
-    }
-}
-
-/// A run that could not start its child or follow it to its end.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum RunError {
-    /// The program does not exist or cannot be started, or the hook of
-    /// [`RunOptions::around_spawn`] returned this error, or an
-    /// [`Input::File`] could not be duplicated. No child is left running.
-    Start(io::Error),
-    /// Waiting for the child, reaping it, reading its output or starting a
-    /// thread failed after it started. The child was stopped and reaped.
-    Run(io::Error),
-}
-
-impl fmt::Display for RunError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Start(_) => "cannot start the program",
-            Self::Run(_) => "cannot follow the program to its end",
-        })
-    }
-}
-
-impl std::error::Error for RunError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Start(error) | Self::Run(error) => Some(error),
-        }
     }
 }
 
@@ -304,8 +245,9 @@ impl std::error::Error for RunError {
 /// On Unix, for a child that the tool may signal, a run takes at most the
 /// time to its deadline, plus the graces of its escalation, plus
 /// [`DRAIN_GRACE`], plus the time that a hook of
-/// [`RunOptions::around_spawn`] takes. Every thread that it starts is joined before it
-/// returns. On Windows a stop ends the job at once, and a reader waits for
+/// [`RunOptions::around_spawn`] takes, plus the time that a function of
+/// [`RunOptions::stdout_copy`] or [`RunOptions::stderr_copy`] blocks. Every
+/// thread that it starts is joined before it returns. On Windows a stop ends the job at once, and a reader waits for
 /// its pipe to close, which ending the job causes for every process in the
 /// job, so a process outside the job that holds a pipe holds the run.
 ///
@@ -324,7 +266,8 @@ impl std::error::Error for RunError {
 /// Returns [`RunError::Start`] when the program cannot be started, a hook
 /// of [`RunOptions::around_spawn`] fails, or an [`Input::File`] cannot be
 /// duplicated, and
-/// [`RunError::Run`] when waiting for, reaping or reading the child fails.
+/// [`RunError::Run`] when waiting for, reaping or reading the child fails
+/// or a copy function panics.
 /// The child is stopped and reaped on every path.
 pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, RunError> {
     let _end = EndLines(options);
@@ -345,8 +288,8 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
     };
     command
         .stdin(input)
-        .stdout(options.stdout.stdio())
-        .stderr(options.stderr.stdio());
+        .stdout(output_stdio(&options.stdout, options.stdout_copy.as_ref()))
+        .stderr(output_stdio(&options.stderr, options.stderr_copy.as_ref()));
     let spawned = spawn::start(command, options.scope, options.around_spawn.as_ref())
         .map_err(RunError::Start)?;
     let (mut group, started) = spawned.into_parts();
@@ -371,6 +314,16 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
         stdout: stdout.captured,
         stderr: stderr.captured,
     })
+}
+
+/// Returns the standard stream for an output with `capture` and `copy`. A
+/// copy needs a pipe even when the capture keeps nothing.
+fn output_stdio(capture: &Capture, copy: Option<&OutputCopy>) -> Stdio {
+    if copy.is_some() {
+        Stdio::piped()
+    } else {
+        capture.stdio()
+    }
 }
 
 /// Ends the line queues of a run when the run returns, on every path.
@@ -498,17 +451,17 @@ fn start_pipes<'scope>(
     let over = || notice.set(|flags| flags.over_limit = true);
     if let Some(stdout) = stdout {
         let keeper = Keeper::new(&options.stdout);
-        started.stdout = Some(
-            Builder::new()
-                .spawn_scoped(threads, move || pipes::read(stdout, ends, keeper, over))?,
-        );
+        let copy = options.stdout_copy.as_ref();
+        started.stdout = Some(Builder::new().spawn_scoped(threads, move || {
+            pipes::read(stdout, ends, keeper, copy, over)
+        })?);
     }
     if let Some(stderr) = stderr {
         let keeper = Keeper::new(&options.stderr);
-        started.stderr = Some(
-            Builder::new()
-                .spawn_scoped(threads, move || pipes::read(stderr, ends, keeper, over))?,
-        );
+        let copy = options.stderr_copy.as_ref();
+        started.stderr = Some(Builder::new().spawn_scoped(threads, move || {
+            pipes::read(stderr, ends, keeper, copy, over)
+        })?);
     }
     if let (Some(stdin), Input::Bytes(bytes)) = (stdin, &options.stdin) {
         started.stdin =

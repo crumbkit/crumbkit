@@ -14,6 +14,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: [`Cancel`] states that any thread may cancel at any time,
   how the run reports it, and how a tool bridges a polled flag to it
   ([behaviour/processes]).
+- crumbkit-process: `RunOptions::stdout_copy` and `stderr_copy` give a function
+  each chunk of a stream while the capture keeps its limit
+  ([behaviour/processes]).
 
 ### Changed
 
