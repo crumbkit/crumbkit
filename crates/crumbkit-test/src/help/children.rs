@@ -2,8 +2,7 @@
 //! of the text that `Children::help` sets (ADR-0137).
 
 use crumbkit::Children;
-use crumbkit::help::Leaf;
-use crumbkit::help::LeafDocument;
+use crumbkit::help::{Leaf, LeafDocument};
 
 /// Adds a problem to `problems` for each way in which the field that
 /// `Row::CHILDREN` names for the leaf at `text` breaks the rules: the

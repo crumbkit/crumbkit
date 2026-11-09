@@ -4,7 +4,8 @@
 use schemars::{JsonSchema, Schema};
 
 use super::Column;
-use crate::help::view::{Kind, Printed};
+use crate::help::ViewFlag;
+use crate::help::view::{self, Kind, Printed};
 use crate::{Children, Document, Row, Rows, Shape, Stream, row};
 
 /// The document that a leaf's command prints and the columns of its row
@@ -16,11 +17,11 @@ use crate::{Children, Document, Row, Rows, Shape, Stream, row};
 #[derive(Clone, Copy, Debug)]
 pub struct LeafDocument {
     /// The document's id and description.
-    pub(super) document: Document<()>,
+    document: Document<()>,
     /// The row type's [`Row::COLUMNS`].
-    pub(super) compact: &'static [&'static str],
+    compact: &'static [&'static str],
     /// The row type's [`Row::LONG_COLUMNS`].
-    pub(super) long: &'static [&'static str],
+    long: &'static [&'static str],
     /// The row type's [`Row::UNCUT_COLUMNS`].
     uncut: &'static [&'static str],
     /// The row type's [`Row::PROBLEM`].
@@ -31,13 +32,13 @@ pub struct LeafDocument {
     children: Option<Children>,
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
-    pub(super) schema: fn() -> Schema,
+    schema: fn() -> Schema,
     /// Builds the JSON Schema of the whole document from its id and
     /// description. A stream's schema describes one line.
     pub(crate) envelope: fn(Document<()>) -> Schema,
     /// The shape of the document's result, or a stream when
     /// [`Leaf::stream`](super::Leaf::stream) set the document.
-    pub(super) kind: Kind,
+    kind: Kind,
     /// The row type's [`Row::WHOLE`].
     whole: bool,
 }
@@ -91,6 +92,40 @@ impl LeafDocument {
             whole: self.whole,
             listing: self.document.listing_text(),
         }
+    }
+
+    /// Reports whether `flag`, passed with `--json` when `json` is true,
+    /// adds nothing to the JSON of the leaf's command (ADR-0149).
+    ///
+    /// `--long` and `--full` add nothing when the JSON already holds the
+    /// whole result: for prose and bytes, for a document or stream without
+    /// crumbkit's envelope, for a headed document and for rows whose type
+    /// sets [`Row::WHOLE`]. `parse`, `finish` and `stream` then accept the
+    /// flag with `--json`, also when [`Leaf::offers`](super::Leaf::offers)
+    /// reports that the leaf does not offer it, print what `--json` alone
+    /// prints and write a note that the flag adds nothing. `--fields` never
+    /// adds nothing.
+    ///
+    /// crumbkit-test's `check_help` reads it, so it is public and hidden
+    /// from the documentation.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn adds_nothing(&self, flag: ViewFlag, json: bool) -> bool {
+        view::adds_nothing(&self.printed(), flag, json)
+    }
+
+    /// Returns the JSON Schema of the row type. It builds the schema on each
+    /// call.
+    pub(crate) fn row_schema(&self) -> Schema {
+        (self.schema)()
+    }
+
+    /// Reports whether the row type has columns, which the leaf's `--help`
+    /// lists. A prose document has none. A headed document always has some,
+    /// because its `--help` lists `text` and `base64` among the JSON fields
+    /// also when its row type names no column.
+    pub(crate) const fn has_columns(&self) -> bool {
+        self.document.is_headed() || !self.compact.is_empty() || !self.long.is_empty()
     }
 
     /// Returns the document without its result type.
@@ -213,17 +248,6 @@ impl LeafDocument {
     #[must_use]
     pub const fn children(&self) -> Option<Children> {
         self.children
-    }
-
-    /// Returns the text that help prints after `Children: `, or `None` when
-    /// the row type has no child lines. The text is the text that
-    /// [`Children::help`] set, and otherwise crumbkit's sentence, such as
-    /// `one indented line under each row for each of its components.`, which
-    /// leaves out `indented` when [`Children::indent`] set 0. `commands list`
-    /// writes it as `children_help`.
-    #[must_use]
-    pub fn children_text(&self) -> Option<String> {
-        self.children.map(Children::text)
     }
 
     /// Returns the field that [`Children::field`] names as a [`Column`],

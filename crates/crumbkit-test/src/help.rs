@@ -3,8 +3,7 @@
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
-use crumbkit::help::LeafDocument;
-use crumbkit::help::{Column, Leaf, ViewFlag, quote};
+use crumbkit::help::{Column, Leaf, LeafDocument, ViewFlag, quote};
 use crumbkit::{Shape, Tool};
 
 use crate::allow::{Allow, Allowances, Rule};
@@ -380,30 +379,28 @@ fn check_leaves(
 /// `base64` that is not at the top level of the row type, and for rows
 /// whose row type has no compact column.
 fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
-    let declared = leaf.get_document();
-    let columns = declared.map_or_else(Vec::new, LeafDocument::column_descriptions);
-    if let Some(field) = declared.and_then(LeafDocument::problem) {
+    let Some(document) = leaf.get_document() else {
+        return;
+    };
+    let columns = document.column_descriptions();
+    if let Some(field) = document.problem() {
         check_problem(text, field, &columns, problems);
     }
-    let headed = declared.is_some_and(|document| document.document().is_headed());
+    let headed = document.document().is_headed();
     // Prose and bytes have no rows, a headed batch prints each row's bytes
     // in text and every field in JSON, and rows that print whole without
     // columns print each row's own line in text and every field in JSON,
     // so only other rows need a compact column. The compiler refuses a
     // whole row type without columns and without a `LINE` for every shape
     // but a batch, which this check covers (ADR-0072).
-    let without_rows = matches!(
-        declared.and_then(LeafDocument::shape),
-        Some(Shape::Prose | Shape::Bytes)
-    );
-    let rows = declared.is_some() && !without_rows && !headed;
-    let whole_without_columns =
-        declared.is_some_and(LeafDocument::rows_whole) && columns.is_empty();
-    if rows && whole_without_columns && declared.and_then(LeafDocument::line).is_none() {
+    let without_rows = matches!(document.shape(), Some(Shape::Prose | Shape::Bytes));
+    let rows = !without_rows && !headed;
+    let whole_without_columns = document.rows_whole() && columns.is_empty();
+    if rows && whole_without_columns && document.line().is_none() {
         problems.push(format!(
             "{text}: the row type sets Row::WHOLE and has no COLUMNS and no LINE, so its text has no form for a row; declare the row's own text line in `Row::LINE`"
         ));
-    } else if rows && whole_without_columns && declared.is_some_and(LeafDocument::row_has_fields) {
+    } else if rows && whole_without_columns && document.row_has_fields() {
         problems.push(format!(
             "{text}: the row type has fields and no COLUMNS, so its text prints each row's own line where a table could show its fields; name the fields that identify a row in `Row::COLUMNS`"
         ));
@@ -490,7 +487,7 @@ fn check_problem(text: &str, field: &str, columns: &[Column], problems: &mut Vec
 
 /// Returns each view flag that the caller typed in `matches`, the matches
 /// of one example of `leaf`, and that the leaf does not offer or that adds
-/// nothing to the leaf's JSON, as `Leaf::adds_nothing` decides (ADR-0149),
+/// nothing to the leaf's JSON, as `LeafDocument::adds_nothing` decides (ADR-0149),
 /// with whether it adds nothing. crumbkit refuses the first kind and
 /// prints a note for the second, so an example should type neither.
 ///
@@ -519,7 +516,12 @@ fn flagged_view_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<
     [ViewFlag::Fields, ViewFlag::Long, ViewFlag::Full]
         .into_iter()
         .filter(|flag| typed(flag.name().trim_start_matches('-')))
-        .map(|flag| (flag, leaf.adds_nothing(flag, json)))
+        .map(|flag| {
+            let adds_nothing = leaf
+                .get_document()
+                .is_some_and(|document| document.adds_nothing(flag, json));
+            (flag, adds_nothing)
+        })
         .filter(|(flag, adds_nothing)| *adds_nothing || !leaf.offers(*flag))
         .collect()
 }

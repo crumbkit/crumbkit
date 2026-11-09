@@ -234,10 +234,10 @@ fn a_leaf_holds_the_help_text_of_its_row_type_and_the_text_that_help_prints() {
             "one line for each application, or one folded line when every application is stopped."
         )
     );
-    assert_eq!(workspaces.children_text().as_deref(), help);
+    assert_eq!(workspaces.children().map(Children::text).as_deref(), help);
     assert_eq!(services.children().and_then(Children::get_help), None);
     assert_eq!(
-        services.children_text().as_deref(),
+        services.children().map(Children::text).as_deref(),
         Some("one indented line under each row for each of its components.")
     );
 }

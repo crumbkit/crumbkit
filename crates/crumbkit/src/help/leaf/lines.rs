@@ -24,7 +24,7 @@ impl Leaf {
     /// every row.`, or `None` otherwise (ADR-0138, ADR-0140). The line
     /// names `--long` and `--fields` only when the command offers them.
     pub(crate) fn rows_line(&self) -> Option<String> {
-        if !self.get_document()?.document.lists_only_problems() {
+        if !self.get_document()?.document().lists_only_problems() {
             return None;
         }
         let offered: Vec<&str> = [ViewFlag::Long, ViewFlag::Fields]
@@ -47,7 +47,7 @@ impl Leaf {
     /// `Long note: --long prints a note on standard error.`, or `None`
     /// otherwise (ADR-0139). A leaf that does not offer `--long` has none.
     pub(crate) fn long_note_line(&self) -> Option<&'static str> {
-        (self.get_document()?.document.has_long_note() && self.offers(ViewFlag::Long))
+        (self.get_document()?.document().has_long_note() && self.offers(ViewFlag::Long))
             .then_some("Long note: --long prints a note on standard error.")
     }
 }

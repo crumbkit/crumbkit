@@ -173,9 +173,7 @@ impl Tool {
                 .map(|(words, about)| Example::new(leak_words(words), about.leak()))
                 .collect();
             let mut joined_leaf = Leaf::new(leak_words(leaf.path)).examples(examples.leak());
-            if let Some(document) = leaf.document {
-                joined_leaf = joined_leaf.with_document(Some(document));
-            }
+            joined_leaf = joined_leaf.with_document(leaf.document);
             if let Some(effects) = leaf.effects {
                 joined_leaf = joined_leaf.effects(effects);
             }

@@ -3,12 +3,12 @@
 //! printed, and checks that the tool keeps crumbkit's contract for a result
 //! that does not fit (ADR-0046, ADR-0062).
 
-use crumbkit::help::LeafDocument;
 use std::path::Path;
 use std::time::Duration;
 
 use clap::Command;
 use crumbkit::Tool;
+use crumbkit::help::LeafDocument;
 
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};

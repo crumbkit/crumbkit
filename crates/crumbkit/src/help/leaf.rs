@@ -3,9 +3,8 @@
 
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
-use schemars::Schema;
 
-use super::view::{self, Kind, Unoffered, ViewFlag};
+use super::view::{self, Unoffered, ViewFlag};
 use super::{Effects, write_line};
 use crate::pick::Choices;
 use crate::{Call, Document, Row, Rows, Shape, Stream};
@@ -233,14 +232,9 @@ impl Leaf {
     pub(crate) const fn output_line(&self) -> Option<&'static str> {
         match self.document {
             None if self.no_result => Some(no_result::NO_RESULT_LINE),
-            Some(LeafDocument {
-                kind: Kind::Stream, ..
-            }) => Some(STREAM_LINE),
-            Some(LeafDocument {
-                kind: Kind::Document(Shape::Bytes),
-                ..
-            }) => Some(BYTES_LINE),
-            Some(columns) if columns.document.is_headed() => Some(HEADED_LINE),
+            Some(document) if document.is_stream() => Some(STREAM_LINE),
+            Some(document) if matches!(document.shape(), Some(Shape::Bytes)) => Some(BYTES_LINE),
+            Some(document) if document.document().is_headed() => Some(HEADED_LINE),
             _ => None,
         }
     }
@@ -268,32 +262,9 @@ impl Leaf {
     /// it offers it, as [`Leaf::offers`] describes.
     pub(crate) const fn unoffered(&self, flag: ViewFlag) -> Option<Unoffered> {
         match self.document {
-            Some(columns) => view::unoffered(&columns.printed(), flag),
+            Some(document) => view::unoffered(&document.printed(), flag),
             None if self.no_result => Some(Unoffered::NoResult),
             None => None,
-        }
-    }
-
-    /// Reports whether `flag`, passed with `--json` when `json` is true, adds
-    /// nothing to the JSON of the leaf's command, or `false` when the leaf
-    /// has no document (ADR-0149).
-    ///
-    /// `--long` and `--full` add nothing when the JSON already holds the
-    /// whole result: for prose and bytes, for a document or stream without
-    /// crumbkit's envelope, for a headed document and for rows whose type
-    /// sets [`Row::WHOLE`]. `parse`, `finish` and `stream` then accept the
-    /// flag with `--json`, also when [`Leaf::offers`] reports that the leaf
-    /// does not offer it, print what `--json` alone prints and write a note
-    /// that the flag adds nothing. `--fields` never adds nothing.
-    ///
-    /// crumbkit-test's `check_help` reads it, so it is public and hidden
-    /// from the documentation.
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn adds_nothing(&self, flag: ViewFlag, json: bool) -> bool {
-        match self.document {
-            Some(columns) => view::adds_nothing(&columns.printed(), flag, json),
-            None => false,
         }
     }
 
@@ -304,29 +275,6 @@ impl Leaf {
     #[must_use]
     pub const fn get_document(&self) -> Option<&LeafDocument> {
         self.document.as_ref()
-    }
-
-    /// Returns the JSON Schema of the row type of the leaf's document, or
-    /// `None` when the leaf has no document. It builds the schema on each
-    /// call.
-    pub(crate) fn row_schema(&self) -> Option<Schema> {
-        self.document.map(|columns| (columns.schema)())
-    }
-
-    /// Reports whether the leaf has a document whose row type has columns,
-    /// which its `--help` lists. A prose document has none. A headed
-    /// document always has some, because its `--help` lists `text` and
-    /// `base64` among the JSON fields also when its row type names no
-    /// column.
-    pub(crate) const fn has_columns(&self) -> bool {
-        match self.document {
-            Some(columns) => {
-                columns.document.is_headed()
-                    || !columns.compact.is_empty()
-                    || !columns.long.is_empty()
-            }
-            None => false,
-        }
     }
 }
 
@@ -348,7 +296,7 @@ pub(crate) fn columns(leaf: &Leaf, header: Style, literal: Style) -> Vec<String>
         .map_or_else(Vec::new, LeafDocument::column_descriptions);
     let mut sections = Vec::new();
     let compact = match leaf.document {
-        Some(columns) if columns.document.is_headed() => "JSON fields that --fields selects:",
+        Some(document) if document.document().is_headed() => "JSON fields that --fields selects:",
         _ => "Columns:",
     };
     for (heading, long) in [(compact, false), ("Columns that --long adds:", true)] {

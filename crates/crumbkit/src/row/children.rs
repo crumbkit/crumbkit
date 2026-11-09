@@ -123,8 +123,13 @@ impl Children {
         self.help
     }
 
-    /// Returns the text that help prints after `Children: `.
-    pub(crate) fn text(self) -> String {
+    /// Returns the text that help prints after `Children: `: the text that
+    /// [`Children::help`] set, and otherwise crumbkit's sentence, such as
+    /// `one indented line under each row for each of its components.`, which
+    /// leaves out `indented` when [`Children::indent`] set 0. `commands list`
+    /// writes it as `children_help`.
+    #[must_use]
+    pub fn text(self) -> String {
         self.help.map_or_else(|| self.sentence(), str::to_owned)
     }
 

@@ -214,7 +214,9 @@ impl CommandRow {
             children: document
                 .and_then(LeafDocument::children)
                 .map(Children::get_field),
-            children_help: document.and_then(LeafDocument::children_text),
+            children_help: document
+                .and_then(LeafDocument::children)
+                .map(Children::text),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
             writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),

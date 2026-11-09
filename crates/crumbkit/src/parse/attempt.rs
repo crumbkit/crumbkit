@@ -79,7 +79,7 @@ pub(super) fn deepest<'a>(
 /// It first refuses the first view flag, in the order `--fields`, `--long`,
 /// `--full`, that the leaf of `tool` at `path` does not offer (ADR-0016),
 /// unless the flag adds nothing to the leaf's JSON, as
-/// [`Leaf::adds_nothing`] decides (ADR-0149). `finish` and `stream` print
+/// `LeafDocument::adds_nothing` decides (ADR-0149). `finish` and `stream` print
 /// the note for such a flag. `path` names `node`, the deepest command that
 /// the caller typed, and `level` holds its matches. On a leaf whose
 /// document is headed, it then refuses `--fields` without `--json`, as
@@ -119,8 +119,10 @@ pub(super) fn refusal(
     let unoffered = leaf.and_then(|leaf| {
         ViewFlag::ALL.into_iter().find_map(|flag| {
             let reason = leaf.unoffered(flag)?;
-            (typed(flag.id()) && !leaf.adds_nothing(flag, json))
-                .then(|| view::refusal(flag, reason))
+            let adds_nothing = leaf
+                .get_document()
+                .is_some_and(|document| document.adds_nothing(flag, json));
+            (typed(flag.id()) && !adds_nothing).then(|| view::refusal(flag, reason))
         })
     });
     if let Some(refusal) = unoffered {
@@ -150,5 +152,5 @@ fn unknown_field(view: &View, leaf: &Leaf) -> Option<Refusal> {
     // The names are read first, so a leaf's row schema is built only when
     // the caller passed `--fields`.
     let names = view.names()?;
-    fields::unknown_field_in(&leaf.row_schema()?, names)
+    fields::unknown_field_in(&leaf.get_document()?.row_schema(), names)
 }

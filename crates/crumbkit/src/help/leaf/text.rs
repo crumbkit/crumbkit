@@ -33,7 +33,7 @@ impl Leaf {
     pub(crate) fn text_help_line(&self) -> Option<String> {
         let document = self.get_document()?;
         let form = document.line()?;
-        if document.document.is_headed() {
+        if document.document().is_headed() {
             return None;
         }
         Some(text_line(

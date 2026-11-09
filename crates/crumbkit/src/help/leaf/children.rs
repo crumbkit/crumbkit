@@ -8,7 +8,7 @@ mod tests;
 
 /// Returns the `Children:` line that prints `text`, the description of the
 /// child lines that
-/// [`LeafDocument::children_text`](super::LeafDocument::children_text) returns, such as `Children: one
+/// [`Children::text`](crate::Children::text) returns, such as `Children: one
 /// indented line under each row for each of its components.`. Help prints
 /// this line, and crumbkit-markdown prints it with the `children_help` text
 /// of `commands list`, so both print the same label.
@@ -25,10 +25,10 @@ impl Leaf {
     /// its text prints each row's bytes.
     pub(crate) fn children_help_line(&self) -> Option<String> {
         let document = self.get_document()?;
-        let text = document.children_text()?;
-        if document.document.is_headed() {
+        let children = document.children()?;
+        if document.document().is_headed() {
             return None;
         }
-        Some(children_line(&text))
+        Some(children_line(&children.text()))
     }
 }

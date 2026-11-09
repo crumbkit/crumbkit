@@ -4,8 +4,7 @@
 
 use clap::Command;
 use crumbkit::codes::CLI_USAGE;
-use crumbkit::help::Leaf;
-use crumbkit::help::LeafDocument;
+use crumbkit::help::{Leaf, LeafDocument};
 use crumbkit::tool::Rename;
 use crumbkit::{Code, Spelling, Tool};
 use serde::Serialize;
@@ -198,10 +197,9 @@ fn leaf_declarations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<
             reason: None,
         });
     }
-    if let Some((field_of, children)) =
-        printed.and_then(|document| Some((document.children()?, document.children_text()?)))
-    {
+    if let Some(field_of) = printed.and_then(LeafDocument::children) {
         let field = field_of.get_field();
+        let children = field_of.text();
         // crumbkit's own sentence reads as what the text prints, and a row
         // type's own text is quoted after the field it describes.
         let declares = match field_of.get_help() {
