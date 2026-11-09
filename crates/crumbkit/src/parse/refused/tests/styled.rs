@@ -4,9 +4,11 @@
 use super::refused;
 #[cfg(feature = "color")]
 use super::{refused_by, tree};
+use crate::Sink;
+#[cfg(feature = "color")]
+use crate::Tool;
 #[cfg(feature = "color")]
 use crate::tool::Output;
-use crate::{Sink, Tool};
 
 /// Prints the refusal of `tool planets show mars --srt name` with
 /// `print_to` into a sink whose error writer wants styles when `styled` is
