@@ -11,7 +11,7 @@ A tool adds crumbkit-test as a dev-dependency:
 
 ```toml
 [dev-dependencies]
-crumbkit-test = "0.1"
+crumbkit-test = "0.2"
 ```
 
 ## Every check at once

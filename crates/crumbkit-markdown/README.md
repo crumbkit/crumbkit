@@ -15,7 +15,7 @@ reference. A program that renders the reference itself adds the crate:
 
 ```toml
 [dependencies]
-crumbkit-markdown = "0.1"
+crumbkit-markdown = "0.2"
 ```
 
 ## Example

@@ -22,7 +22,7 @@ jobs:
   publish:
     if: github.repository == 'crumbkit/crumbkit' && vars.RELEASE_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     # crates.io trusted publishing accepts a token request only from this
     # repository, this workflow file and this environment.
     environment: crates-io
