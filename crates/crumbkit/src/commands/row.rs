@@ -1,6 +1,7 @@
 //! The row that `commands list` prints for each command of a branch, and
 //! how it is read from the runtime command tree and the tool record.
 
+use clap::builder::ValueHint;
 use clap::{Arg, ArgAction, Command};
 use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
@@ -66,6 +67,7 @@ struct Argument {
     many: bool,
     defaults: Vec<String>,
     possible_values: Vec<String>,
+    value_hint: Option<String>,
     help: Option<String>,
     long_help: Option<String>,
     global: bool,
@@ -290,6 +292,7 @@ impl Argument {
                 || matches!(arg.get_action(), ArgAction::Append),
             defaults,
             possible_values,
+            value_hint: value_hint(arg.get_value_hint()),
             help: arg
                 .get_help()
                 .or_else(|| arg.get_long_help())
@@ -299,6 +302,33 @@ impl Argument {
             one_of: one_of(arg, command),
         }
     }
+}
+
+/// Returns the kebab-case name of `hint`, such as `any-path`, or `None` for
+/// `ValueHint::Unknown`, which is clap's report that an argument has no hint.
+///
+/// clap reports `AnyPath` for an argument that parses to a `PathBuf` and has
+/// no hint of its own, so such an argument needs no attribute to be known as
+/// a path.
+//
+// RUST-10: this reads the name from `ValueHint`'s `Debug` output, because
+// the enum is `#[non_exhaustive]` and has no method that returns its name. A
+// `match` would need a wildcard arm that reports a hint from a later clap as
+// no hint. `Debug` output is not a promise from clap, so the tests list the
+// name of every hint and fail if it changes. A name method on `ValueHint`
+// replaces it.
+fn value_hint(hint: ValueHint) -> Option<String> {
+    if hint == ValueHint::Unknown {
+        return None;
+    }
+    let mut name = String::new();
+    for letter in format!("{hint:?}").chars() {
+        if letter.is_ascii_uppercase() && !name.is_empty() {
+            name.push('-');
+        }
+        name.push(letter.to_ascii_lowercase());
+    }
+    Some(name)
 }
 
 /// Returns the name of `arg` as help writes it: `--all` for an argument with
@@ -439,7 +469,7 @@ impl Serialize for CommandRow {
 
 impl Serialize for Argument {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut argument = serializer.serialize_struct("Argument", 11)?;
+        let mut argument = serializer.serialize_struct("Argument", 12)?;
         argument.serialize_field("name", &self.name)?;
         argument.serialize_field("short", &self.short)?;
         argument.serialize_field("value_names", &self.value_names)?;
@@ -447,6 +477,7 @@ impl Serialize for Argument {
         argument.serialize_field("many", &self.many)?;
         argument.serialize_field("defaults", &self.defaults)?;
         argument.serialize_field("possible_values", &self.possible_values)?;
+        argument.serialize_field("value_hint", &self.value_hint)?;
         argument.serialize_field("help", &self.help)?;
         argument.serialize_field("long_help", &self.long_help)?;
         argument.serialize_field("global", &self.global)?;

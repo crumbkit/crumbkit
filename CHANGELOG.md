@@ -8,6 +8,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit: each argument of a `commands list` row has `value_hint`, the
+  kebab-case name of clap's `ValueHint`, which is `any-path` for a `PathBuf`
+  argument and `null` when clap reports none
+  ([behaviour/help/commands-list]).
 - crumbkit-process: `RunOptions::around_spawn` runs a hook around the start
   of a run's child, which can fail after the start and have the child stopped
   ([behaviour/processes]).
