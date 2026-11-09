@@ -2,6 +2,7 @@
 //! limits and a deadline, stop it when needed, and reap it.
 
 use std::fmt;
+use std::fs::File;
 use std::io;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -30,7 +31,7 @@ pub use self::spawn::{Spawn, Spawned};
 pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
 
 /// What the child reads on its standard input.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub enum Input {
     /// The null device, so the child reads the end of its input at once.
@@ -43,6 +44,13 @@ pub enum Input {
     /// that reads a terminal is stopped by SIGTTIN, so a terminal suits
     /// only [`Scope::Child`].
     Inherit,
+    /// A file or the read end of a pipe, which a pipe becomes with
+    /// `File::from(OwnedFd::from(reader))` on Unix and
+    /// `File::from(OwnedHandle::from(reader))` on Windows. The child gets a duplicate that
+    /// shares the file's position, so it reads from the current position
+    /// and moves the position that the caller and any later run see. The
+    /// caller's `File` stays open.
+    File(Arc<File>),
 }
 
 /// The settings of one [`run`]: the child's input, what it keeps of each
@@ -256,8 +264,8 @@ impl ChildFinished {
 #[non_exhaustive]
 pub enum RunError {
     /// The program does not exist or cannot be started, or the hook of
-    /// [`RunOptions::around_spawn`] returned this error. No child is left
-    /// running.
+    /// [`RunOptions::around_spawn`] returned this error, or an
+    /// [`Input::File`] could not be duplicated. No child is left running.
     Start(io::Error),
     /// Waiting for the child, reaping it, reading its output or starting a
     /// thread failed after it started. The child was stopped and reaped.
@@ -313,8 +321,9 @@ impl std::error::Error for RunError {
 ///
 /// # Errors
 ///
-/// Returns [`RunError::Start`] when the program cannot be started or a hook
-/// of [`RunOptions::around_spawn`] fails, and
+/// Returns [`RunError::Start`] when the program cannot be started, a hook
+/// of [`RunOptions::around_spawn`] fails, or an [`Input::File`] cannot be
+/// duplicated, and
 /// [`RunError::Run`] when waiting for, reaping or reading the child fails.
 /// The child is stopped and reaped on every path.
 pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, RunError> {
@@ -332,6 +341,7 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
         Input::Null => Stdio::null(),
         Input::Inherit => Stdio::inherit(),
         Input::Bytes(_) => Stdio::piped(),
+        Input::File(file) => Stdio::from(file.try_clone().map_err(RunError::Start)?),
     };
     command
         .stdin(input)

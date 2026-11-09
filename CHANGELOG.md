@@ -20,6 +20,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: breaking: `Capture::Lines` has the fields `long` and
   `end`, so a run can skip a line over its limit with `LongLine::Skip` and
   split on a byte other than a newline ([behaviour/processes]).
+- crumbkit-process: breaking: `Input` has the variant `File`, which gives the
+  child a file or the read end of a pipe, and no longer implements
+  `PartialEq` ([behaviour/processes]).
 
 ## [0.2.0] - 2026-11-09
 
