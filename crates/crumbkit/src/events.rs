@@ -96,7 +96,7 @@ pub trait Observer: Sync {
 
     /// clap refused the command line, the refusal printed, and the run
     /// ends, as [`RefusalEvent`] describes. A refusal that
-    /// [`try_parse`](crate::try_parse) returns reports this when
+    /// [`try_parse_to`](crate::try_parse_to) returns reports this when
     /// [`crate::Refused::print`] prints it, and a refusal that the tool
     /// never prints reports nothing.
     fn refused(&self, refused: &RefusalEvent<'_>) {

@@ -31,7 +31,7 @@ mod tests;
 pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
 
 /// Parses the process's command line, runs the command and returns the
-/// process's exit code. `crumbkit::parse_from` takes shelf's tool record, which
+/// process's exit code. `crumbkit::try_parse_to` takes shelf's tool record, which
 /// gives its help goal headings and help topics. It prints help, the version or
 /// a refused command line and returns the exit code. `crumbkit::finish` prints
 /// the result or the failure in the format that the output flags choose and
@@ -41,7 +41,7 @@ pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
 /// the first word with its words from shelf's aliases file, so clap,
 /// help and every output see only real commands.
 ///
-/// `crumbkit::parse_from` returns the parsed `Cli` and an `Output`. The
+/// `crumbkit::try_parse_to` returns the parsed `Cli` and an `Output`. The
 /// output holds the command with crumbkit's help lines and the words that
 /// the caller typed, which `books remove` repeats with `--yes` when no
 /// person can confirm it. `finish` renders the
@@ -69,7 +69,11 @@ where
     let command = Cli::command();
     let file = crumbkit_aliases::file(command.get_name());
     let args = crumbkit_aliases::expand(&command, args, file.as_deref());
-    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &TOOL, args) {
+    // The aliases needed the tree, so the parse takes that tree and the run
+    // builds it once.
+    let parsed =
+        crumbkit::try_parse_to::<Cli>(&mut crumbkit::Sink::standard(), command, &TOOL, args);
+    let (cli, mut output) = match parsed.map_err(crumbkit::Unparsed::print) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };

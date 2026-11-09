@@ -21,7 +21,7 @@
 //! ```
 //! use std::process::ExitCode;
 //!
-//! use clap::{CommandFactory, Parser, Subcommand};
+//! use clap::{Parser, Subcommand};
 //! use crumbkit::Tool;
 //! use crumbkit::help::{Help, Leaf};
 //! use crumbkit::schemas::{self, SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
@@ -60,7 +60,7 @@
 //! ]));
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &TOOL, args);
+//!     let parsed = crumbkit::parse_from::<Cli>(&TOOL, args);
 //!     let (cli, mut output) = match parsed {
 //!         Ok(parsed) => parsed,
 //!         Err(stop) => return stop.exit_code(),

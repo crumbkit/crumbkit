@@ -2,10 +2,10 @@
 //! tool's type and an `Output` that holds the view flags, the command and
 //! the words, and for a run that it ended, a `Stop` that says what printed.
 
+use crate::parse::tests::parse_tree_to;
 use clap::{Arg, ArgAction, Command};
 
 use super::{Flags, admits, tree};
-use crate::parse::parse_to;
 use crate::view::{Table, View};
 use crate::{Printed, Sink, Tool};
 
@@ -13,7 +13,7 @@ use crate::{Printed, Sink, Tool};
 fn a_command_line_that_parses_returns_the_parsed_type_and_an_output_that_holds_the_command() {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<Flags, _, _, _, _>(
+    let result = parse_tree_to::<Flags>(
         &mut Sink::new(&mut out, &mut err),
         tree(),
         &Tool::new(),
@@ -49,9 +49,8 @@ fn parse_reads_the_view_flags_that_a_tool_flattens_before_the_tool_s_type_takes_
     }
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<Viewed, _, _, _, _>(
+    let result = crate::parse_to::<Viewed>(
         &mut Sink::new(&mut out, &mut err),
-        <Viewed as clap::CommandFactory>::command(),
         &Tool::new(),
         ["tool", "list", "--json", "--fields", "name,moons"],
     );
@@ -71,7 +70,7 @@ fn parse_reads_the_view_flags_that_a_tool_flattens_before_the_tool_s_type_takes_
 fn a_tool_without_view_flags_parses_with_every_view_flag_off() {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = parse_tree_to::<()>(
         &mut Sink::new(&mut out, &mut err),
         Command::new("tool").arg(Arg::new("json").long("json").action(ArgAction::SetTrue)),
         &Tool::new(),
@@ -91,7 +90,7 @@ fn the_output_of_a_stopped_run_has_the_tool_s_output_budget() {
         Tool::new().output(crate::tool::Output::new().budget(1024, "the test sets it"));
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<Flags, _, _, _, _>(
+    let result = parse_tree_to::<Flags>(
         &mut Sink::new(&mut out, &mut err),
         tree(),
         &TOOL,
@@ -125,8 +124,7 @@ enum Removes {
 /// Parses `args` as the removing tool, and returns its `Output`.
 fn removing(args: &[&str]) -> crate::Output {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let command = <Removing as clap::CommandFactory>::command();
-    let (_, output) = parse_to::<Removing, _, _, _, _>(&mut sink, command, &Tool::new(), args)
+    let (_, output) = crate::parse_to::<Removing>(&mut sink, &Tool::new(), args)
         .unwrap_or_else(|_| panic!("the command line did not parse"));
     output
 }
@@ -155,7 +153,7 @@ fn a_dry_run_confirms_without_asking() {
 #[track_caller]
 fn printed_by(command: Command, args: &[&str]) -> Printed {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    match parse_to::<(), _, _, _, _>(&mut sink, command, &Tool::new(), args) {
+    match parse_tree_to::<()>(&mut sink, command, &Tool::new(), args) {
         Err(stop) => stop.printed(),
         Ok(_) => panic!("{args:?} parsed"),
     }

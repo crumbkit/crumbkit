@@ -12,7 +12,7 @@ use crate::entry::{wins, words};
 mod tests;
 
 /// Returns the process arguments `args` with a personal alias replaced by
-/// its words, for the tool to pass to `crumbkit::parse_from`.
+/// its words, for the tool to pass to `crumbkit::try_parse_to`.
 ///
 /// `command` is the tool's command tree before parsing, and `file` is the
 /// path that [`file`](crate::file) returns. Only the first word after the

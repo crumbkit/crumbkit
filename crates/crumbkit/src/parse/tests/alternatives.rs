@@ -2,6 +2,7 @@
 //! function for a leaf that sets none, returns for a refusal of a command
 //! line that names the leaf.
 
+use crate::parse::tests::parse_tree_to;
 use std::process::ExitCode;
 
 use clap::{Arg, Args as _, Command};
@@ -10,7 +11,7 @@ use serde_json::{Value, json};
 use super::{Parsed, Stop, admits, tree};
 use crate::help::{Help, Leaf};
 use crate::tool::{Failures, RefusalContext};
-use crate::{Call, Page, Sink, Tool, parse_to};
+use crate::{Call, Page, Sink, Tool};
 
 /// The planets that `tool planets orbit` knows.
 const KNOWN: &[&str] = &["mars", "venus"];
@@ -103,8 +104,7 @@ fn parse(args: &[&str]) -> Parsed {
 fn parse_with_tool(tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), bounded(), tool, args);
+    let result = parse_tree_to::<()>(&mut Sink::new(&mut out, &mut err), bounded(), tool, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),

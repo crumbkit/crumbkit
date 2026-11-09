@@ -65,11 +65,18 @@ pub struct Sink<O, E, I = Empty> {
     /// error are both terminals, and no coding agent runs the tool.
     interactive: bool,
     /// Whether the result is written with clap's styles, as a terminal
-    /// shows them.
-    styled: bool,
+    /// shows them, or `None` when the caller has not said. A sink says no
+    /// styles while it is `None`, and a parse over the standard streams may
+    /// decide for itself.
+    styled: Option<bool>,
     /// Whether a refusal and its group page are written to the error
     /// writer with clap's styles (ADR-0131).
     styled_errors: bool,
+    /// Whether the writers are the process's standard streams, which only
+    /// `Sink::standard` sets. Help for a styled sink then prints
+    /// through clap's `Error::print`, and a picker uses the process's
+    /// streams.
+    standard: bool,
     /// The number of columns that a text table in the result fits, or
     /// `None` when it prints unfitted (ADR-0121).
     width: Option<usize>,
@@ -87,8 +94,9 @@ impl<O: Write, E: Write> Sink<O, E> {
             err,
             input: io::empty(),
             interactive: false,
-            styled: false,
+            styled: None,
             styled_errors: false,
+            standard: false,
             width: None,
             result_bytes: 0,
         }
@@ -113,8 +121,9 @@ impl<O: Write, E: Write, I: BufRead> Sink<O, E, I> {
             err,
             input,
             interactive,
-            styled: false,
+            styled: None,
             styled_errors: false,
+            standard: false,
             width: None,
             result_bytes: 0,
         }
@@ -145,12 +154,15 @@ impl<O, E, I> Sink<O, E, I> {
     /// cells of a text table. crumbkit writes those escape codes itself,
     /// with or without the `color` feature (ADR-0150).
     ///
-    /// [`parse`](crate::parse) and [`parse_from`](crate::parse_from) build a
-    /// sink over the process's standard streams that asks for styles when
-    /// standard output is a terminal and the tool record keeps terminal
-    /// detection on. [`finish`](crate::finish) asks for cell styles under the
-    /// rule that [`Sink::styled_errors`] describes for `parse`, applied to
-    /// standard output.
+    /// [`parse`](crate::parse), [`parse_from`](crate::parse_from),
+    /// [`parse_to`](crate::parse_to) and
+    /// [`try_parse_to`](crate::try_parse_to) with a sink from
+    /// [`Sink::standard`] style help for that one parse when standard output
+    /// is a terminal and the tool record keeps terminal detection on, unless
+    /// the caller has called this setter, so `Sink::standard().styled(false)`
+    /// keeps help plain. [`finish`](crate::finish) asks for cell styles under
+    /// the rule that [`Sink::styled_errors`] describes for `parse`, applied
+    /// to standard output.
     ///
     /// ```
     /// let sink = crumbkit::Sink::new(Vec::new(), Vec::new()).styled(true);
@@ -158,7 +170,7 @@ impl<O, E, I> Sink<O, E, I> {
     /// ```
     #[must_use]
     pub const fn styled(mut self, styled: bool) -> Self {
-        self.styled = styled;
+        self.styled = Some(styled);
         self
     }
 
@@ -166,7 +178,7 @@ impl<O, E, I> Sink<O, E, I> {
     /// table's cells, which [`Sink::styled`] sets. A new sink asks for none.
     #[must_use]
     pub const fn is_styled(&self) -> bool {
-        self.styled
+        matches!(self.styled, Some(true))
     }
 
     /// Sets whether the error writer wants clap's styles for a refusal and
@@ -256,6 +268,30 @@ impl<O, E, I> Sink<O, E, I> {
         self.result_bytes
     }
 
+    /// Reports whether the sink is over the process's standard streams, as
+    /// `Sink::standard` makes it.
+    pub(crate) const fn is_standard(&self) -> bool {
+        self.standard
+    }
+
+    /// Runs `body` with the styles that `detects` decides, when the sink is
+    /// over the process's standard streams and the caller has not called
+    /// [`Sink::styled`], and leaves the sink as it was afterwards. Any other
+    /// sink keeps what the caller set.
+    pub(crate) fn following_terminal<T>(
+        &mut self,
+        detects: impl FnOnce() -> bool,
+        body: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        if !self.standard || self.styled.is_some() {
+            return body(self);
+        }
+        self.styled = Some(detects());
+        let result = body(self);
+        self.styled = None;
+        result
+    }
+
     /// Reports whether a person can answer a question through the sink.
     pub(crate) const fn is_interactive(&self) -> bool {
         self.interactive
@@ -271,6 +307,7 @@ impl<O, E, I> Sink<O, E, I> {
             interactive: false,
             styled: self.styled,
             styled_errors: self.styled_errors,
+            standard: false,
             width: self.width,
             result_bytes: 0,
         }
@@ -290,6 +327,7 @@ impl<O, E, I> Sink<O, E, I> {
             interactive: false,
             styled: self.styled,
             styled_errors: self.styled_errors,
+            standard: false,
             width: self.width,
             result_bytes: 0,
         }
@@ -352,7 +390,7 @@ impl<O: Write, E: Write, I> Deliver for Sink<O, E, I> {
 
     fn styles(&self, role: Role) -> bool {
         match role {
-            Role::Result => self.styled,
+            Role::Result => self.is_styled(),
             // A refusal and its group page carry clap's styles when the
             // error writer wants them (ADR-0131). Every other message prints
             // plain text.
@@ -396,9 +434,10 @@ impl Sink<StdoutLock<'static>, Stderr> {
     /// (RUST-4). A crate that prints a response without `finish`, such as
     /// crumbkit-child, prints through it, so it opens no stream itself.
     ///
-    /// The sink asks for no styles, so the caller decides with
-    /// [`Sink::styled`], as [`parse_from`](crate::parse_from) does from
-    /// terminal detection.
+    /// The sink asks for no styles. [`try_parse_to`](crate::try_parse_to)
+    /// styles help for one parse when standard output is a terminal and the
+    /// tool record keeps terminal detection on, and leaves the sink unstyled
+    /// afterwards. [`Sink::styled`] decides the styles in place of that rule.
     #[must_use]
     pub fn standard() -> Self {
         #[expect(
@@ -411,7 +450,9 @@ impl Sink<StdoutLock<'static>, Stderr> {
             reason = "the sink owns standard error, where crumbkit prints a failure and reports a failed write or a bad flag"
         )]
         let err = io::stderr();
-        Self::new(out, err)
+        let mut sink = Self::new(out, err);
+        sink.standard = true;
+        sink
     }
 }
 
@@ -437,7 +478,7 @@ impl Sink<StdoutLock<'static>, Stderr, StdinLock<'static>> {
 }
 
 /// Reports whether the process's standard output is a terminal, which
-/// [`try_parse_from`](crate::try_parse_from) reads to decide whether help
+/// [`try_parse_to`](crate::try_parse_to) reads for a standard sink to decide whether help
 /// and the version are styled.
 pub(crate) fn stdout_is_terminal() -> bool {
     #[expect(

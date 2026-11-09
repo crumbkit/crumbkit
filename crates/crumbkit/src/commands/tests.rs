@@ -434,9 +434,9 @@ fn a_command_without_a_leaf_has_no_examples_and_no_columns() {
 #[test]
 fn the_rows_are_the_same_from_the_command_that_parse_returns_after_it_added_help_lines() {
     let words = ["shelf", "books", "list"];
-    let ((), mut from_parse) = crate::parse_from::<(), _, _>(tree(), &TOOL, words)
-        .ok()
-        .unwrap();
+    let mut sink = Sink::new(Vec::new(), Vec::new());
+    let parsed = crate::parse::tests::parse_tree_to::<()>(&mut sink, tree(), &TOOL, words);
+    let ((), mut from_parse) = parsed.ok().unwrap();
 
     let rows = list(&mut from_parse, &TOOL, &args(&[])).unwrap();
 

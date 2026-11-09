@@ -53,7 +53,7 @@ fn print(listing: Listing<ListSummary>, flags: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let parsed = crumbkit::parse_to::<Parsed, _, _, _, _>(
+    let parsed = crumbkit::try_parse_to::<Parsed>(
         &mut sink,
         crate::command(&lists),
         &crate::tool(&lists),

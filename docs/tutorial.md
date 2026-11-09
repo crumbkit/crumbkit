@@ -103,7 +103,7 @@ the result through that `Output` and returns the exit code:
 
 ```rust
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Tool::new());
+    let parsed = crumbkit::parse::<Cli>(&Tool::new());
     let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
@@ -201,7 +201,7 @@ const TOOL: Tool = Tool::new().help(
 `main` passes the tool record to `parse` in place of `Tool::new()`:
 
 ```rust
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &TOOL);
+    let parsed = crumbkit::parse::<Cli>(&TOOL);
 ```
 
 `pantry jars list -h` now lists the examples and the line

@@ -402,3 +402,31 @@ impl io::Write for Short {
         Ok(())
     }
 }
+
+/// Runs one parse's terminal decision on `sink`, which says the result reaches
+/// a terminal, and returns whether the result was styled during it.
+fn styled_at_a_terminal<O, E, I>(sink: &mut Sink<O, E, I>) -> bool {
+    sink.following_terminal(|| true, |sink| sink.is_styled())
+}
+
+#[test]
+fn a_standard_sink_is_styled_at_a_terminal_for_one_parse_only() {
+    let mut sink = Sink::standard();
+
+    assert!(styled_at_a_terminal(&mut sink));
+    assert!(!sink.is_styled());
+}
+
+#[test]
+fn a_standard_sink_that_the_caller_kept_plain_stays_plain_at_a_terminal() {
+    let mut sink = Sink::standard().styled(false);
+
+    assert!(!styled_at_a_terminal(&mut sink));
+}
+
+#[test]
+fn a_sink_over_other_writers_ignores_the_terminal() {
+    let mut sink = Sink::new(Vec::new(), Vec::new());
+
+    assert!(!styled_at_a_terminal(&mut sink));
+}

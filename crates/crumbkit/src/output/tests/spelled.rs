@@ -68,12 +68,7 @@ enum Command {
 fn parse(tool: &Tool, args: &[&str]) -> Result<Output, String> {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let parsed = parse_to::<Cli, _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        Cli::command(),
-        tool,
-        args,
-    );
+    let parsed = parse_to::<Cli>(&mut Sink::new(&mut out, &mut err), tool, args);
     parsed
         .map(|(_, output)| output)
         .map_err(|_| String::from_utf8(err).unwrap())

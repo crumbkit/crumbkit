@@ -1,6 +1,7 @@
 //! Tests for picking a missing argument: what `parse_to` asks the tool record's
 //! picker, what it adds to the command line, and when it refuses instead.
 
+use crate::parse::tests::parse_tree_to;
 use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 
@@ -9,7 +10,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, FromArgMatches};
 use crate::help::{Help, Leaf};
 use crate::pick::{Answer, Choice, Choices, Picker, Question};
 use crate::twins::assert_one_word_apart;
-use crate::{Error, Sink, Stop, Tool, parse_to};
+use crate::{Error, Sink, Stop, Tool};
 
 /// A tool whose `show` takes a required `--list` and an optional `--sort`,
 /// whose `get` takes a required positional `NAME` with possible values,
@@ -189,7 +190,7 @@ fn run(tool: &Tool, words: &[&str], answer: &str, interactive: bool) -> Run {
     let mut err = Vec::new();
     let mut sink = Sink::with_input(&mut out, &mut err, answer.as_bytes(), interactive);
     let args = std::iter::once("tool").chain(words.iter().copied());
-    let result = parse_to::<Matches, _, _, _, _>(&mut sink, tree(), tool, args);
+    let result = parse_tree_to::<Matches>(&mut sink, tree(), tool, args);
     Run {
         result,
         out: String::from_utf8(out).unwrap(),

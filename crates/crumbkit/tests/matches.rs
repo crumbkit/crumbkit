@@ -63,7 +63,7 @@ impl FromArgMatches for WithMatches {
 fn a_tool_keeps_the_matches_by_cloning_them_before_its_type_takes_the_values() {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let parsed = crumbkit::try_parse_to::<WithMatches, _, _, _, _>(
+    let parsed = crumbkit::try_parse_to::<WithMatches>(
         &mut Sink::new(&mut out, &mut err),
         Cli::command(),
         &Tool::new(),

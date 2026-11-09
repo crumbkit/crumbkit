@@ -46,8 +46,7 @@ fn confirm(words: &[&str], input: &str, interactive: bool) -> Confirmed {
 fn confirm_with(tool: &Tool, words: &[&str], input: &str, interactive: bool) -> Confirmed {
     let args = std::iter::once("tool").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let (tool_name, mut output) =
-        crate::parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), tool, args).unwrap();
+    let (tool_name, mut output) = crate::parse_to::<Cli>(&mut sink, tool, args).unwrap();
     let Commands::Remove { yes, .. } = tool_name.command;
     let mut err = Vec::new();
     let mut sink = Sink::with_input(Vec::new(), &mut err, input.as_bytes(), interactive);

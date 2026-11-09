@@ -6,7 +6,7 @@
 use std::fmt;
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -89,7 +89,7 @@ fn fail_in<T: Rows>(args: &[&str], document: Document<T>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let parsed = parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &TOOL, args);
+    let parsed = parse_to::<Cli>(&mut sink, &TOOL, args);
     let code = match parsed {
         Ok((_, output)) => {
             let result: Result<T, NoConfig> = Err(NoConfig);
@@ -157,12 +157,7 @@ fn a_view_flag_that_the_leaf_s_document_cannot_use_is_still_refused_before_the_h
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
 
-    let parsed = parse_to::<Cli, _, _, _, _>(
-        &mut sink,
-        Cli::command(),
-        &PROSE_TOOL,
-        ["tool", "list", "--long"],
-    );
+    let parsed = parse_to::<Cli>(&mut sink, &PROSE_TOOL, ["tool", "list", "--long"]);
 
     assert_eq!(parsed.err().map(|stop| stop.exit()), Some(2));
     assert_eq!(
