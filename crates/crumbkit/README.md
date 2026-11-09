@@ -11,7 +11,7 @@ A tool adds these dependencies:
 ```toml
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-crumbkit = "0.1"
+crumbkit = "0.2"
 schemars = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 ```

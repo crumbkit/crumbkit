@@ -13,7 +13,7 @@ nothing and parses no command line.
 
 ```toml
 [dependencies]
-crumbkit-process = "0.1"
+crumbkit-process = "0.2"
 ```
 
 ## Example

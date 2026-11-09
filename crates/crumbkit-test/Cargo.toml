@@ -52,8 +52,10 @@ proptest = { workspace = true, features = ["std"] }
 # The recovery check's tests compare its list of the add-on crates' codes with
 # the codes that crumbkit-child and crumbkit-aliases declare, so the list
 # follows them (ADR-0079).
-crumbkit-child = { workspace = true }
-crumbkit-aliases = { workspace = true }
+# Paths with no version, because `cargo publish` then leaves these out and
+# the crates need no publish order among their dev-dependencies (ADR-0012).
+crumbkit-child = { path = "../crumbkit-child" }
+crumbkit-aliases = { path = "../crumbkit-aliases" }
 
 [lints]
 workspace = true

@@ -6,6 +6,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
 ### Added
 
 - crumbkit-test: [`Suite`] holds the inputs of every convention check, and
@@ -56,15 +58,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `complete`, `complete_with`, `complete_with_words`,
   `complete_to` and `command_path` no longer take the tool record
   ([behaviour/parsing]).
-- crumbkit-test: breaking: `check_codes`, `Check::Codes` and `Suite::codes` are
-  removed, because every code that `Code::new` accepts passes their rules
-  ([behaviour/checks]).
+- crumbkit-test: breaking: `check_codes` is removed, because every code that
+  `Code::new` accepts passes its rules ([behaviour/checks]).
 - crumbkit-test: breaking: the opt-outs report no longer lists code renames, a
   code spelling or dashed forms ([behaviour/adoption/declarations]).
-- crumbkit-test: `Suite::skip` panics on `Check::OptOuts`, because that check
-  lists every skip ([behaviour/checks]).
-- crumbkit-usage: the usage report refuses a code that holds `.` or `/`,
-  because every code now prints with `::` ([behaviour/usage-log]).
+- crumbkit-usage: breaking: the usage report leaves out and counts a log line
+  whose code holds `.` or `/`, because every code now prints with `::`
+  ([behaviour/usage-log]).
 - crumbkit-process: breaking: `Outcome::Code` and `Outcome::Signal` are
   `Outcome::Ended(Status)`, and `Stop` is `StopReason`
   ([behaviour/processes]).
@@ -74,8 +74,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `help::STREAM_LINE`, `BYTES_LINE`, `HEADED_LINE`, `text_line`,
   `children_line`, `Effects::line` and `Effects::writes_line` left the public
   documentation. They still compile, for crumbkit-markdown.
-- crumbkit-test: breaking: `crumbkit_test::Tool` is removed; use
-  `crumbkit::Tool`.
+- crumbkit-test: breaking: the hidden re-export `crumbkit_test::Guide` is
+  removed; use `crumbkit::Tool`.
 - crumbkit: breaking: `Leaf::get_document` returns `Option<&LeafDocument>`.
   Reading that record replaces `Leaf`'s getters for the printed document, such
   as `is_stream`, `shape`, `problem` and `column_descriptions`
@@ -125,7 +125,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the
   new `Segment` enum, whose `Display` gives the same words as the old
   string.
-- crumbkit: breaking: `form::Step` is now `form::RecoveryStep`, so it no
+- crumbkit: breaking: `form::Step` is now `crumbkit::RecoveryStep`, so it no
   longer shares a name with the listing's `Step`.
 - crumbkit-test: breaking: [`check_twins`] requires a twin and a declaration,
   and [`check_recoveries`] requires a declared start code, for a code in the
@@ -1451,8 +1451,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flags. The word `help` reported a `help` flag before
   ([behaviour/parsing]).
 
-[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...v0.1.1
+[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...v0.2.0
+[0.1.1]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...a85fa49c767a4313bbfa3261b84c4f6b4cbc73c1
 [0.1.0]: https://github.com/crumbkit/crumbkit/releases/tag/v0.1.0
 
 <!-- Each label below points at the source file that holds the item's

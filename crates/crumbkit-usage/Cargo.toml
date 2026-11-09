@@ -51,7 +51,9 @@ getrandom = { workspace = true }
 
 [dev-dependencies]
 # The process tests hand the terminal to a child with crumbkit-child.
-crumbkit-child = { workspace = true }
+# A path with no version, because `cargo publish` then leaves this out and
+# the crates need no publish order among their dev-dependencies (ADR-0012).
+crumbkit-child = { path = "../crumbkit-child" }
 # The report's property tests generate runs of the log (ADR-0006).
 proptest = { workspace = true, features = ["std"] }
 # The schema tests check a record's id against the pattern of the checked-in
@@ -61,7 +63,8 @@ regex-lite = { workspace = true }
 # The signal tests run the log beside crumbkit-process's `forward` feature,
 # which exists on Unix only.
 [target.'cfg(unix)'.dev-dependencies]
-crumbkit-process = { workspace = true, features = ["forward"] }
+# A path with no version, for the same reason as crumbkit-child above.
+crumbkit-process = { path = "../crumbkit-process", features = ["forward"] }
 
 [lints]
 workspace = true
