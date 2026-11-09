@@ -6,6 +6,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
 ### Added
 
 - crumbkit-test: [`Suite`] holds the inputs of every convention check, and
@@ -1451,7 +1453,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flags. The word `help` reported a `help` flag before
   ([behaviour/parsing]).
 
-[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/crumbkit/crumbkit/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/crumbkit/crumbkit/releases/tag/v0.1.0
 
