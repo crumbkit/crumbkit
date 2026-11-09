@@ -3,9 +3,8 @@
 use clap::Command;
 use schemars::Schema;
 
-use crate::help::Guide;
 use crate::output::failure;
-use crate::{Document, ToolName};
+use crate::{Document, Tool, ToolName};
 
 /// One document that the schema commands serve: its id, its description,
 /// its kind, the command lines that print it, and how to build its JSON
@@ -18,14 +17,14 @@ pub struct Served {
     /// command prints it without the envelope, or no command prints it.
     kind: Kind,
     /// The command lines of the visible leaves that print the document,
-    /// such as `shelf books list`, in guide order.
+    /// such as `shelf books list`, in declared order.
     commands: Vec<String>,
     /// Whether the leaves that print the document print it as a stream,
     /// one line for each row.
     stream: bool,
     /// Builds the document's JSON Schema from its id and description: the
     /// failure document's schema, a file format's schema, or the schema of
-    /// the first leaf in guide order that declares the document.
+    /// the first leaf in declared order that declares the document.
     schema: fn(Document<()>) -> Schema,
     /// The tool whose name the ids in the document's schema take in place
     /// of `crumbkit` (ADR-0079).
@@ -57,7 +56,7 @@ impl Served {
     }
 
     /// Returns the command lines that print the document, such as
-    /// `shelf books list`, in guide order. The failure document has none,
+    /// `shelf books list`, in declared order. The failure document has none,
     /// because every command prints it when it fails with `--json`, and a
     /// file format has none, because no command prints it.
     #[must_use]
@@ -99,8 +98,8 @@ impl Served {
 
 /// Returns the documents that the tool whose built command tree is
 /// `command` serves: the failure document first, then the document of
-/// each leaf of `guide` in guide order, and then each file format of
-/// `guide` in the order that `Guide::file_formats` set (ADR-0035).
+/// each leaf of `tool` in declared order, and then each file format of
+/// `tool` in the order that `Help::file_formats` set (ADR-0035).
 ///
 /// The failure document is `<tool>/failure/v1`, and it names no command,
 /// because every command prints it when it fails.
@@ -118,19 +117,19 @@ impl Served {
 /// another document also has.
 ///
 /// It builds no JSON Schema, and its work grows with the number of leaves
-/// and file formats in `guide` and the depth of the leaves' paths.
+/// and file formats in `tool` and the depth of the leaves' paths.
 #[must_use]
-pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
-    let tool = guide.tool_name(command);
+pub fn documents(command: &Command, tool: &Tool) -> Vec<Served> {
+    let tool_name = tool.tool_name(command);
     let mut served = vec![Served {
         document: failure::DOCUMENT,
         kind: Kind::Output,
         commands: Vec::new(),
         stream: false,
         schema: |_| failure::document_schema(),
-        tool,
+        tool: tool_name,
     }];
-    for leaf in guide.get_leaves() {
+    for leaf in tool.get_help().get_leaves() {
         let Some((document, schema)) = leaf.get_document().zip(leaf.envelope()) else {
             continue;
         };
@@ -141,7 +140,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             .chain(leaf.path().iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
-        let id = tool.document(document).to_string();
+        let id = tool_name.document(document).to_string();
         match served.iter_mut().find(|entry| entry.id() == id) {
             Some(entry) => entry.commands.push(line),
             None => served.push(Served {
@@ -154,18 +153,23 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
                 commands: vec![line],
                 stream: leaf.is_stream(),
                 schema,
-                tool,
+                tool: tool_name,
             }),
         }
     }
-    served.extend(guide.get_file_formats().iter().map(|format| Served {
-        document: format.document(),
-        kind: Kind::File,
-        commands: Vec::new(),
-        stream: false,
-        schema: format.schema_fn(),
-        tool,
-    }));
+    served.extend(
+        tool.get_help()
+            .get_file_formats()
+            .iter()
+            .map(|format| Served {
+                document: format.document(),
+                kind: Kind::File,
+                commands: Vec::new(),
+                stream: false,
+                schema: format.schema_fn(),
+                tool: tool_name,
+            }),
+    );
     served
 }
 

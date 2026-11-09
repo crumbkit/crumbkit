@@ -7,11 +7,11 @@ use clap::{Arg, ArgAction, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::help::{Effects, Example, Guide, Leaf, STREAM_LINE, children_line};
-use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Stream, parse_to};
+use crate::help::{Effects, Example, Help, Leaf, STREAM_LINE, children_line};
+use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Stream, Tool, parse_to};
 
 /// A tool with a global `--json` and one leaf, `tool services list`.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .subcommand_required(true)
         .arg(
@@ -26,14 +26,14 @@ fn tool() -> Command {
         )
 }
 
-/// Runs `parse_to` over `tool()` with `leaves` for `args`, which ask for
+/// Runs `parse_to` over `tree()` with `leaves` for `args`, which ask for
 /// help, and returns the page it printed.
 fn help(leaves: &'static [Leaf], args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let guide = Guide::new().leaves(leaves);
+    let tool = Tool::new().help(Help::new().leaves(leaves));
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &guide, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &tool, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }

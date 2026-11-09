@@ -166,7 +166,7 @@ Why: ADR-0087, ADR-0130.
 
 clap refuses a larger value as it parses the command line. The refusal has
 the code `<tool>::cli::usage` and the exit code of a refused command line,
-2 unless the guide renames the code or lists another exit for it
+2 unless the tool record renames the code or lists another exit for it
 ([refused command lines](../../parsing/README.md)). Its fields are `argument`,
 `value` and `most`, the bound as an integer. The refusal's recovery runs the
 caller's own words with `--limit N` replaced by `--all`, so the caller's

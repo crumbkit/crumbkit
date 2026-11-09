@@ -5,8 +5,8 @@ use clap::Parser;
 use serde_json::{Value, json};
 
 use super::{SelfFigures, figures_from};
-use crate::testing::{line, now, tool};
-use crumbkit::help::Guide;
+use crate::testing::{line, now, tree};
+use crumbkit::Tool;
 
 /// A log of a help page of the root, two runs of `books list` and one of
 /// `books show`, in the last hour.
@@ -32,8 +32,8 @@ fn log() -> String {
 /// with at most `limit` rows.
 fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>) {
     let listing = figures_from(
-        &tool(),
-        &Guide::new(),
+        &tree(),
+        &Tool::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(86_400),
         now(),
@@ -79,7 +79,7 @@ fn a_page_shows_the_first_rows_and_counts_every_command_in_its_total() {
 
 /// A tool whose only arguments are `self figures list`'s.
 #[derive(Parser)]
-struct Tool {
+struct Cli {
     #[command(flatten)]
     args: SelfFigures,
 }
@@ -87,7 +87,7 @@ struct Tool {
 #[test]
 fn self_figures_list_takes_the_flags_of_self_usage_and_a_page() {
     let tool =
-        Tool::try_parse_from(["tool", "--since", "1d", "--log", "copy.jsonl", "--all"]).unwrap();
+        Cli::try_parse_from(["tool", "--since", "1d", "--log", "copy.jsonl", "--all"]).unwrap();
 
     assert_eq!(tool.args.usage.since, Duration::from_secs(86_400));
     assert_eq!(tool.args.page.limit(), None);

@@ -8,9 +8,9 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{Tool, built_with, finish_output, finish_with};
-use crate::help::Guide;
-use crate::{Document, Listing, Row};
+use super::{Cli, built_with, finish_output, finish_with};
+use crate::tool::Output;
+use crate::{Document, Listing, Row, Tool};
 
 /// A row with a state that only some books have, a long `series` column
 /// that the row leaves out when it has none, and a problem field.
@@ -134,8 +134,8 @@ fn a_listing_cut_by_the_budget_leaves_out_a_column_that_only_a_row_left_unshown_
         ..book("last")
     });
     let args = ["tool", "list"];
-    let guide = Guide::new().output_budget(1024, "the tests print little");
-    let output = built_with(Tool::command(), &guide, &args);
+    let tool = Tool::new().output(Output::new().budget(1024, "the tests print little"));
+    let output = built_with(Cli::command(), &tool, &args);
 
     let finished = finish_output(output, BOOK_LISTING, Listing::new(rows, 41));
 

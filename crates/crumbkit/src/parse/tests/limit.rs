@@ -6,13 +6,13 @@ use std::process::ExitCode;
 use clap::{Args as _, Command};
 use serde_json::{Value, json};
 
-use super::{admits, parse_tree, tool};
+use super::{admits, parse_tree, tree};
 use crate::Page;
 
-/// Returns `tool()` with the leaf `planets list`, whose page takes at most
+/// Returns `tree()` with the leaf `planets list`, whose page takes at most
 /// 10 rows.
 fn bounded() -> Command {
-    tool().mut_subcommand("planets", |planets| {
+    tree().mut_subcommand("planets", |planets| {
         planets.subcommand(Page::<4, 10>::augment_args(
             Command::new("list").about("List the planets"),
         ))

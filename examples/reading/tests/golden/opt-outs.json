@@ -1,5 +1,5 @@
 {
-  "schema": "reading/opt-outs/v1",
+  "schema": "reading/opt-outs/v2",
   "data": [
     {
       "rule": "examples/run",
@@ -72,7 +72,7 @@
       }
     }
   ],
-  "customisations": [
+  "declarations": [
     {
       "declaration": "root-verbs",
       "applies_to": "reading where",

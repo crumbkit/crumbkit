@@ -10,9 +10,9 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::parse_to;
-use crate::help::{Guide, Leaf};
+use crate::help::{Help, Leaf};
 use crate::twins::assert_one_word_apart;
-use crate::{Document, Listing, Row, Sink};
+use crate::{Document, Listing, Row, Sink, Tool};
 
 /// A check of one package, without long columns.
 #[derive(Serialize, JsonSchema)]
@@ -77,20 +77,21 @@ const CHECKS: Document<Listing<Check>> =
     Document::new("tool", "checks", 1, "The checks.").only_problems();
 const ALL_CHECKS: Document<Listing<Check>> = Document::new("tool", "all", 1, "The checks.");
 const AUDITS: Document<Listing<Audit>> =
-    Document::new("tool", "audits", 1, "The audits.").only_problems();
+    Document::new("tool", "doctor", 1, "The doctor.").only_problems();
 const SHELVES: Document<Listing<Shelf>> = Document::new("tool", "shelves", 1, "The shelves.");
 const BOOKS: Document<Listing<Book>> = Document::new("tool", "books", 1, "The books.");
 
-const GUIDE: Guide = Guide::new().leaves(&[
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["checks"]).document(CHECKS),
     Leaf::new(&["all"]).document(ALL_CHECKS),
     Leaf::new(&["shelves"]).document(SHELVES),
     Leaf::new(&["books"]).document(BOOKS),
     Leaf::new(&["audits"]).document(AUDITS),
-]);
+]));
 
-/// A tool with crumbkit's output flags on its root and the guide's leaves.
-fn tool() -> Command {
+/// A tool with crumbkit's output flags on its root and the tool record's
+/// leaves.
+fn tree() -> Command {
     let leaves = ["checks", "all", "shelves", "books", "audits"]
         .map(|name| Command::new(name).about("A leaf"));
     crate::ViewFlags::augment_args(Command::new("tool"))
@@ -106,12 +107,12 @@ struct Parsed {
     err: String,
 }
 
-/// Runs `parse_to` over `tool()` with the guide's leaves and `args`.
+/// Runs `parse_to` over `tree()` with the tool record's leaves and `args`.
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     Parsed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),
@@ -123,8 +124,8 @@ const ROWS_LINE: &str = "Rows: the default text lists only the rows that report 
 
 #[test]
 fn a_leaf_that_lists_only_problems_offers_long_although_its_rows_have_no_long_columns() {
-    assert!(GUIDE.get_leaves()[0].offers(crate::help::ViewFlag::Long));
-    assert!(!GUIDE.get_leaves()[1].offers(crate::help::ViewFlag::Long));
+    assert!(TOOL.get_help().get_leaves()[0].offers(crate::help::ViewFlag::Long));
+    assert!(!TOOL.get_help().get_leaves()[1].offers(crate::help::ViewFlag::Long));
 
     let parsed = parse(&["tool", "checks", "--long"]);
 
@@ -151,9 +152,9 @@ fn the_help_of_a_leaf_that_lists_only_problems_says_that_long_fields_and_json_li
 
 #[test]
 fn the_rows_line_of_a_leaf_that_offers_neither_long_nor_fields_names_only_json() {
-    let audits = &GUIDE.get_leaves()[4];
-    assert!(!audits.offers(crate::help::ViewFlag::Long));
-    assert!(!audits.offers(crate::help::ViewFlag::Fields));
+    let doctor = &TOOL.get_help().get_leaves()[4];
+    assert!(!doctor.offers(crate::help::ViewFlag::Long));
+    assert!(!doctor.offers(crate::help::ViewFlag::Fields));
     let short = parse(&["tool", "audits", "-h"]);
     let long = parse(&["tool", "audits", "--help"]);
 
@@ -186,7 +187,7 @@ fn long_typed_before_the_command_path_with_json_on_a_whole_row_leaf_is_accepted(
 
 #[test]
 fn full_with_json_on_a_whole_row_leaf_is_accepted() {
-    assert!(!GUIDE.get_leaves()[2].offers(crate::help::ViewFlag::Full));
+    assert!(!TOOL.get_help().get_leaves()[2].offers(crate::help::ViewFlag::Full));
 
     let parsed = parse(&["tool", "shelves", "--json", "--full"]);
 

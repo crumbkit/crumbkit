@@ -6,9 +6,9 @@ use std::process::ExitCode;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{Tool, built_with, finish_output, finish_with};
-use crate::help::Guide;
-use crate::{Batch, Document, Error, Listing, Row};
+use super::{Cli, built_with, finish_output, finish_with};
+use crate::tool::Output;
+use crate::{Batch, Document, Error, Listing, Row, Tool};
 
 /// A service and its components, each of which prints under the service.
 #[derive(Serialize, JsonSchema)]
@@ -233,10 +233,10 @@ fn child_lines_print_under_a_row_s_own_text_line() {
 
 #[test]
 fn a_listing_that_the_budget_cuts_counts_each_row_s_child_lines() {
-    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(1024, "the tests print little"));
     let output = built_with(
-        <Tool as clap::CommandFactory>::command(),
-        &guide,
+        <Cli as clap::CommandFactory>::command(),
+        &tool,
         &["tool", "list"],
     );
     // Each table line is short, and each row's child lines take about 600
@@ -262,10 +262,10 @@ fn answered<R: Row>(rows: Vec<R>, keys: &[&str]) -> Batch<R, Error> {
 
 #[test]
 fn room_counts_each_row_s_child_lines_under_its_table_row() {
-    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(1 << 20, "the tests print little"));
     let output = built_with(
-        <Tool as clap::CommandFactory>::command(),
-        &guide,
+        <Cli as clap::CommandFactory>::command(),
+        &tool,
         &["tool", "list"],
     );
     let batch = answered(api_and_web(), &["api", "web"]);
@@ -282,10 +282,10 @@ fn room_counts_each_row_s_child_lines_under_its_table_row() {
 fn room_counts_each_row_s_child_lines_under_its_own_text_line() {
     const LINED_BATCH: Document<Batch<Lined, Error>> =
         Document::new("ops", "lined-batch", 1, "The test services.");
-    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(1 << 20, "the tests print little"));
     let output = built_with(
-        <Tool as clap::CommandFactory>::command(),
-        &guide,
+        <Cli as clap::CommandFactory>::command(),
+        &tool,
         &["tool", "list"],
     );
     let rows = vec![lined("api", &["database\t1"]), lined("web", &[])];
@@ -301,10 +301,10 @@ fn room_counts_each_row_s_child_lines_under_its_own_text_line() {
 
 #[test]
 fn room_counts_the_children_field_in_compact_json() {
-    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(1 << 20, "the tests print little"));
     let output = built_with(
-        <Tool as clap::CommandFactory>::command(),
-        &guide,
+        <Cli as clap::CommandFactory>::command(),
+        &tool,
         &["tool", "list", "--json"],
     );
     let batch = answered(api_and_web(), &["api", "web"]);
@@ -458,11 +458,11 @@ fn a_row_type_that_sets_no_child_indent_indents_its_child_lines_by_two_spaces() 
 fn room_counts_child_lines_with_the_indent_that_the_row_type_chooses() {
     const DEEP_BATCH: Document<Batch<Deep, Error>> =
         Document::new("ops", "deep-batch", 1, "The test records.");
-    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(1 << 20, "the tests print little"));
     let parse = || {
         built_with(
-            <Tool as clap::CommandFactory>::command(),
-            &guide,
+            <Cli as clap::CommandFactory>::command(),
+            &tool,
             &["tool", "list"],
         )
     };
@@ -504,10 +504,10 @@ impl Row for Job {
 fn room_counts_the_default_child_lines_of_shown_values() {
     const JOB_BATCH: Document<Batch<Job, Error>> =
         Document::new("ops", "job-batch", 1, "The test jobs.");
-    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(1 << 20, "the tests print little"));
     let output = built_with(
-        <Tool as clap::CommandFactory>::command(),
-        &guide,
+        <Cli as clap::CommandFactory>::command(),
+        &tool,
         &["tool", "list"],
     );
     let seconds = |count| crate::Duration::new(std::time::Duration::from_secs(count));

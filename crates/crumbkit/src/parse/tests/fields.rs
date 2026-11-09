@@ -3,7 +3,7 @@
 
 use clap::{Arg, value_parser};
 
-use super::{parse, parse_tree, tool};
+use super::{parse, parse_tree, tree};
 
 /// Returns the `fields` object of the failure document in `out`, or `None`
 /// when the document has none.
@@ -21,7 +21,7 @@ fn a_refused_value_names_the_flag_without_its_value_name_and_the_value() {
         .value_parser(value_parser!(u32));
 
     let parsed = parse_tree(
-        tool().arg(limit),
+        tree().arg(limit),
         &[
             "tool", "planets", "show", "Mars", "--limit", "many", "--json",
         ],

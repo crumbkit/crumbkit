@@ -3,8 +3,9 @@
 
 use std::fs;
 
+use crumbkit::Tool;
 use crumbkit::form::ReadFailure;
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 
 use super::{examples, run};
@@ -12,12 +13,15 @@ use crate::failures::FailureReader;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
-/// The guide of one example that prints `books` on standard output and
+/// The tool record of one example that prints `books` on standard output and
 /// `note` on standard error.
-const NOTED: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-    &["echo books; echo note >&2"],
-    "Print a word and a note",
-)])]);
+const NOTED: Tool =
+    Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+            &["echo books; echo note >&2"],
+            "Print a word and a note",
+        )])]),
+    );
 
 /// The golden files of `NOTED`'s example.
 const NOTED_OUT: &str = "sh-c-echo-books-echo-note-2.txt";
@@ -81,8 +85,10 @@ fn a_standard_error_that_differs_from_its_golden_file_fails_the_check() {
 
 #[test]
 fn a_stderr_golden_file_of_an_example_that_writes_nothing_to_standard_error_is_stale() {
-    const QUIET: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print a word")])]);
+    const QUIET: Tool =
+        Tool::new().help(Help::new().leaves(&[
+            Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print a word")]),
+        ]));
     let dir = TempDir::new("examples-stderr-stale").unwrap();
     run(&QUIET, &examples(&dir), Action::Overwrite);
     dir.write("sh-c-echo-books.stderr", "note\n");
@@ -103,10 +109,13 @@ fn a_stderr_golden_file_of_an_example_that_writes_nothing_to_standard_error_is_s
 
 #[test]
 fn an_example_that_writes_a_crumbkit_warning_fails_the_check_and_overwrite_writes_no_file() {
-    const WARNS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &["echo books; echo 'warning: sh left out a recovery' >&2"],
-        "Warn",
-    )])]);
+    const WARNS: Tool =
+        Tool::new().help(
+            Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+                &["echo books; echo 'warning: sh left out a recovery' >&2"],
+                "Warn",
+            )])]),
+        );
     let dir = TempDir::new("examples-stderr-warning").unwrap();
 
     assert_eq!(
@@ -120,10 +129,13 @@ fn an_example_that_writes_a_crumbkit_warning_fails_the_check_and_overwrite_write
 
 #[test]
 fn an_example_that_writes_the_tools_own_warning_passes_the_check() {
-    const WARNS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &["echo books; echo 'warning: sh cache is stale' >&2"],
-        "Warn",
-    )])]);
+    const WARNS: Tool =
+        Tool::new().help(
+            Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+                &["echo books; echo 'warning: sh cache is stale' >&2"],
+                "Warn",
+            )])]),
+        );
     let dir = TempDir::new("examples-stderr-own-warning").unwrap();
 
     assert_eq!(
@@ -134,10 +146,10 @@ fn an_example_that_writes_the_tools_own_warning_passes_the_check() {
 
 #[test]
 fn an_example_that_fails_names_the_code_and_steps_of_the_failure_document_it_prints() {
-    const FAILS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+    const FAILS: Tool = Tool::new().help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
         &[r#"echo '{"schema":"sh/failure/v1","code":"sh::books::gone","message":"m","recovery":{"kind":"run","call":"sh -c ls"},"alternatives":[{"kind":"retry"}]}'; exit 1"#],
         "Fail",
-    )])]);
+    )])]));
     let dir = TempDir::new("examples-failure-document").unwrap();
 
     let message = panic_message(|| run(&FAILS, &examples(&dir), Action::Overwrite)).unwrap();
@@ -153,10 +165,13 @@ fn an_example_that_fails_names_the_code_and_steps_of_the_failure_document_it_pri
 
 #[test]
 fn an_example_that_fails_in_text_names_the_code_of_its_last_code_line() {
-    const FAILS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &["printf 'error: gone\\n  code:  sh::books::gone\\n' >&2; exit 1"],
-        "Fail",
-    )])]);
+    const FAILS: Tool =
+        Tool::new().help(
+            Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+                &["printf 'error: gone\\n  code:  sh::books::gone\\n' >&2; exit 1"],
+                "Fail",
+            )])]),
+        );
     let dir = TempDir::new("examples-failure-text").unwrap();
 
     let message = panic_message(|| run(&FAILS, &examples(&dir), Action::Overwrite)).unwrap();
@@ -188,10 +203,13 @@ impl FailureReader for LineReader {
 
 #[test]
 fn an_example_that_fails_names_the_code_that_the_failure_reader_reads() {
-    const FAILS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &["echo 'ERR sh::books::gone' >&2; exit 1"],
-        "Fail",
-    )])]);
+    const FAILS: Tool =
+        Tool::new().help(
+            Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+                &["echo 'ERR sh::books::gone' >&2; exit 1"],
+                "Fail",
+            )])]),
+        );
     let dir = TempDir::new("examples-failure-reader").unwrap();
 
     let message = panic_message(|| {

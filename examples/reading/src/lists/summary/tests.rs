@@ -56,7 +56,7 @@ fn print(listing: Listing<ListSummary>, flags: &[&str]) -> String {
     let parsed = crumbkit::parse_to::<Parsed, _, _, _, _>(
         &mut sink,
         crate::command(&lists),
-        &crate::guide(&lists),
+        &crate::tool(&lists),
         args,
     );
     let Ok((_parsed, output)) = parsed else {

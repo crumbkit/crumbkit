@@ -166,7 +166,7 @@ impl JsonSchema for CommandRow {
                     "items": argument_schema(),
                 },
                 "examples": {
-                    "description": "The examples of the guide's leaf for the command, in guide order.",
+                    "description": "The examples of the tool record's leaf for the command, in declared order.",
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -184,7 +184,7 @@ impl JsonSchema for CommandRow {
                     },
                 },
                 "columns": {
-                    "description": "The columns of the result that the command prints, from the document of the guide's leaf for the command. A headed command's text has no columns, so it lists the JSON fields that `--fields` selects, ending with `text` and `base64`.",
+                    "description": "The columns of the result that the command prints, from the document of the tool record's leaf for the command. A headed command's text has no columns, so it lists the JSON fields that `--fields` selects, ending with `text` and `base64`.",
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -206,7 +206,7 @@ impl JsonSchema for CommandRow {
                     },
                 },
                 "form": {
-                    "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
+                    "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the tool record's leaf for the command declares no document.",
                     "enum": ["bytes", "document", "headed", "stream", null],
                 },
                 "line": {
@@ -222,7 +222,7 @@ impl JsonSchema for CommandRow {
                     "type": ["string", "null"],
                 },
                 "exits": {
-                    "description": "The exit codes that the tool declares for the command besides 0, 1 and 2, which apply to every command, in guide order. `<tool> help exit-codes` describes every code.",
+                    "description": "The exit codes that the tool declares for the command besides 0, 1 and 2, which apply to every command, in declared order. `<tool> help exit-codes` describes every code.",
                     "type": "array",
                     "items": exit_schema(),
                 },
@@ -234,7 +234,7 @@ impl JsonSchema for CommandRow {
                     "items": goal_schema(),
                 },
                 "prints_no_result": {
-                    "description": "true when the guide's leaf for the command declares that it prints no result on standard output, so it offers none of --fields, --long and --full and its form is null. Only the row of such a command has this field, which tells it from a command whose leaf declares no document.",
+                    "description": "true when the tool record's leaf for the command declares that it prints no result on standard output, so it offers none of --fields, --long and --full and its form is null. Only the row of such a command has this field, which tells it from a command whose leaf declares no document.",
                     "const": true,
                 },
             },

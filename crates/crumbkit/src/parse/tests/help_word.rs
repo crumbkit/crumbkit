@@ -5,10 +5,9 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{Parsed, admits, parse, parse_tree, tool};
-use crate::Sink;
-use crate::help::Guide;
+use super::{Parsed, admits, parse, parse_tree, tree};
 use crate::parse::{Unparsed, parse_to, try_parse_to};
+use crate::{Sink, Tool};
 
 #[test]
 fn help_with_a_command_path_prints_that_command_s_long_help() {
@@ -64,7 +63,7 @@ fn help_as_the_last_word_after_a_group_prints_that_group_s_long_help() {
 #[test]
 fn help_with_an_unknown_word_is_refused_with_the_root_s_short_help_as_the_recovery() {
     admits(
-        tool(),
+        tree(),
         &["tool", "help", "plants"],
         &["tool", "help", "planets"],
     );
@@ -95,7 +94,7 @@ fn a_root_without_subcommands_reads_help_as_an_ordinary_word() {
     let result = parse_to::<Word, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         Command::new("tool").arg(Arg::new("word").required(true)),
-        &Guide::new(),
+        &Tool::new(),
         ["tool", "help"],
     );
 
@@ -185,7 +184,7 @@ fn help_with_an_unknown_word_and_a_flag_is_refused_with_the_unknown_word_as_the_
     let result = try_parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         leaf_flags(),
-        &Guide::new(),
+        &Tool::new(),
         typed,
     );
 

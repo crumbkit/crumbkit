@@ -8,7 +8,7 @@
 //!
 //! ```ignore
 //! SelfCommand::Figures { verb: FiguresVerb::List(args) } => {
-//!     let result = crumbkit_usage::figures(&mut output, &GUIDE, &args);
+//!     let result = crumbkit_usage::figures(&mut output, &TOOL, &args);
 //!     let result = Ok::<_, crumbkit::Error>(result);
 //!     crumbkit::finish(output, crumbkit_usage::SELF_FIGURES_LIST, result)
 //! }
@@ -38,8 +38,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::self_usage::{CommandFigures, SelfUsage, UsageSummary, open, summarize};
-use crumbkit::help::Guide;
-use crumbkit::{Document, Listing, Output, Page};
+use crumbkit::{Document, Listing, Output, Page, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -103,19 +102,19 @@ impl crumbkit::Row for FiguresRow {
 /// It reads the log that [`findings`](super::findings) reads, in the same
 /// way, and leaves out and counts the same records. The rows follow the
 /// order of the command paths, with the root first under the tool's name.
-/// A command that the log does not name has no row. `guide` is the tool's
-/// guide, whose exit codes give the meaning of each exit from 3.
+/// A command that the log does not name has no row. `tool` is the
+/// tool record, whose exit codes give the meaning of each exit from 3.
 #[must_use]
 pub fn figures(
     output: &mut Output,
-    guide: &Guide,
+    tool: &Tool,
     args: &SelfFigures,
 ) -> Listing<FiguresRow, UsageSummary> {
-    let tool = output.command();
+    let tool_name = output.command();
     figures_from(
+        tool_name,
         tool,
-        guide,
-        open(tool, &args.usage),
+        open(tool_name, &args.usage),
         args.usage.since,
         SystemTime::now(),
         args.page.limit(),
@@ -124,26 +123,26 @@ pub fn figures(
 
 /// Returns the figures in `log` for the runs that ended in the `since`
 /// duration before `now`, checked against `tool`, with at most `limit`
-/// rows, as [`figures`] describes for `guide`.
+/// rows, as [`figures`] describes for `tool`.
 fn figures_from(
-    tool: &Command,
-    guide: &Guide,
+    tool_name: &Command,
+    tool: &Tool,
     log: Option<impl BufRead>,
     since: Duration,
     now: SystemTime,
     limit: Option<usize>,
 ) -> Listing<FiguresRow, UsageSummary> {
-    let (report, summary) = summarize(tool, guide, log, since, now);
+    let (report, summary) = summarize(tool_name, tool, log, since, now);
     let rows = report
         .commands
         .iter()
         .map(|figures| FiguresRow {
             command: if figures.command.is_empty() {
-                tool.get_name().to_owned()
+                tool_name.get_name().to_owned()
             } else {
                 figures.command.clone()
             },
-            figures: CommandFigures::of(figures, guide),
+            figures: CommandFigures::of(figures, tool),
         })
         .collect();
     Listing::from_all(rows, limit)

@@ -5,8 +5,7 @@ use std::fmt;
 use std::process::ExitCode;
 
 use clap::{Args, CommandFactory, Parser, Subcommand};
-use crumbkit::help::Guide;
-use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, ViewFlags};
+use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -136,7 +135,7 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 }
 
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Tool::new());
     let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),

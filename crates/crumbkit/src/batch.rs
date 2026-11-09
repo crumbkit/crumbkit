@@ -169,7 +169,7 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
 
     /// Returns the note that [`Batch::note`] set, or `None` when the tool
     /// set none. The getter has the `get_` prefix because the builder
-    /// takes the plain name, as `Guide` and `Leaf` getters do.
+    /// takes the plain name, as `Tool` and `Leaf` getters do.
     #[must_use]
     pub fn get_note(&self) -> Option<&str> {
         self.note.as_deref()

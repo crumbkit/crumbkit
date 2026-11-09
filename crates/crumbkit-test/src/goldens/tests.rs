@@ -3,7 +3,7 @@
 use std::fs;
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -37,7 +37,7 @@ const FILES: [&str; 6] = [
 fn run(dir: &TempDir, action: Action) {
     check(
         &shelf(),
-        Pages::rendered(&Guide::new()),
+        Pages::rendered(&Tool::new()),
         dir.path(),
         &Assert::new().action(action),
     );
@@ -137,7 +137,7 @@ fn two_pages_with_one_golden_file_name_fail_the_check_naming_both_command_lines(
     assert_eq!(
         panic_message(|| check(
             &twins,
-            Pages::rendered(&Guide::new()),
+            Pages::rendered(&Tool::new()),
             dir.path(),
             &Assert::new().action(Action::Overwrite)
         ))
@@ -152,9 +152,9 @@ fn two_pages_with_one_golden_file_name_fail_the_check_naming_both_command_lines(
 #[test]
 fn a_binary_s_pages_are_compared_with_the_golden_files() {
     let dir = TempDir::new("goldens-binary").unwrap();
-    let tool = TempDir::new("goldens-binary-tool").unwrap();
+    let tool_name = TempDir::new("goldens-binary-tool").unwrap();
     let binary = crate::testing::help_binary(
-        &tool,
+        &tool_name,
         &[
             ("-h", "shelf -h\n"),
             ("--help", "shelf --help\n"),
@@ -165,8 +165,8 @@ fn a_binary_s_pages_are_compared_with_the_golden_files() {
         ],
     );
     let examples = crate::Examples::new(&binary, "");
-    let guide = Guide::new();
-    let pages = Pages::binary(&guide, &examples);
+    let tool = Tool::new();
+    let pages = Pages::binary(&tool, &examples);
 
     check(
         &shelf(),

@@ -4,19 +4,20 @@
 use serde_json::Value;
 
 use super::{args, keys, output, required, row};
+use crate::Tool;
 use crate::commands::{CommandRow, list};
-use crate::help::{Guide, Leaf};
+use crate::help::{Help, Leaf};
 
-/// A guide that declares that `books show` prints no result and gives
+/// A tool record that declares that `books show` prints no result and gives
 /// `books list` a leaf without a document, which offers every view flag.
-const GUIDE: Guide = Guide::new().leaves(&[
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "show"]).prints_no_result(),
     Leaf::new(&["books", "list"]),
-]);
+]));
 
-/// Lists the `books` branch with [`GUIDE`] and returns the rows as JSON.
+/// Lists the `books` branch with [`TOOL`] and returns the rows as JSON.
 fn rows() -> Value {
-    serde_json::to_value(list(&mut output(), &GUIDE, &args(&["books"])).unwrap()).unwrap()
+    serde_json::to_value(list(&mut output(), &TOOL, &args(&["books"])).unwrap()).unwrap()
 }
 
 #[test]

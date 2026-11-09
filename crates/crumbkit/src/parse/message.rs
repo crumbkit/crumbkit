@@ -11,16 +11,16 @@ use clap::{Arg, Command, FromArgMatches};
 use super::declared;
 use super::lines::visible_subcommands;
 use super::suggestion;
-use crate::help::Guide;
+use crate::Tool;
 use crate::refusal::Refusal;
 
 /// Returns the refusal of `words`, a command line that clap refused with
-/// `error` at the command at `path` of `command`, with its message, the
-/// calls and the hint that `guide` declares for it, clap's usage lines, and the page of a
-/// group that the line stops at (ADR-0118).
+/// `error` at the command at `path` of `command`, with its message, the calls
+/// and the hint that `tool` declares for it, clap's usage lines, and the page
+/// of a group that the line stops at (ADR-0118).
 pub(super) fn command_line_refusal<C: FromArgMatches>(
     command: &mut Command,
-    guide: &Guide,
+    tool: &Tool,
     path: &[String],
     error: &clap::Error,
     words: &[OsString],
@@ -29,7 +29,7 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
     let page = group_page(command, path, error);
     let rendered = error.render();
     let usage = usage(&rendered.to_string());
-    let declared = declared::declared::<C>(command, guide, path, error, words);
+    let declared = declared::declared::<C>(command, tool, path, error, words);
     Refusal::command_line(
         message,
         command,

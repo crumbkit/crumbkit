@@ -6,9 +6,8 @@ use std::process::ExitCode;
 use clap::Command;
 
 use super::walked;
-use crate::Output;
-use crate::help::Guide;
 use crate::view::{Selection, Table, View};
+use crate::{Output, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -71,7 +70,7 @@ pub enum Printed {
     /// `--version`.
     Version,
     /// A help topic printed as the result on standard output, for the word
-    /// `help` at the guide's root followed by the topic's name.
+    /// `help` at the tool record's root followed by the topic's name.
     Topic,
     /// A refused command line printed as a message on standard error, or as
     /// the result on standard output in a JSON document when the caller
@@ -87,7 +86,7 @@ pub enum Printed {
 impl Stop {
     /// Returns the stop of a run that ends with `code` after `printed`
     /// printed, in which the walk found `--json` when `json` is true, after
-    /// parsing against `command` with `guide`. `path` names the subcommands
+    /// parsing against `command` with `tool`. `path` names the subcommands
     /// that the walk reached, and `words` are the words that
     /// [`Stop::flags`] and [`Stop::value`] read.
     pub(crate) fn new(
@@ -95,11 +94,11 @@ impl Stop {
         code: u8,
         json: bool,
         command: Command,
-        guide: &Guide,
+        tool: &Tool,
         path: Vec<String>,
         words: Vec<OsString>,
     ) -> Self {
-        let output = stopped(json, command, guide);
+        let output = stopped(json, command, tool);
         Self::with_output(printed, code, output, path, words)
     }
 
@@ -125,26 +124,26 @@ impl Stop {
     }
 
     /// Returns the exit code for `main` to return: 0 after help or the
-    /// version, 2 after a refusal unless the guide lists another code for
+    /// version, 2 after a refusal unless the tool record lists another code for
     /// it, and 1 when the page could not be written.
     ///
     /// ```
     /// use std::process::ExitCode;
     ///
     /// use clap::{CommandFactory as _, Parser};
-    /// use crumbkit::help::Guide;
+    /// use crumbkit::Tool;
     /// use crumbkit::{Sink, ViewFlags};
     ///
     /// #[derive(Parser)]
     /// #[command(name = "tool")]
-    /// struct Tool {
+    /// struct Cli {
     ///     #[command(flatten)]
     ///     view: ViewFlags,
     /// }
     ///
     /// let mut sink = Sink::new(Vec::new(), Vec::new());
     /// let parsed =
-    ///     crumbkit::parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &Guide::new(), ["tool", "--help"]);
+    ///     crumbkit::parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &Tool::new(), ["tool", "--help"]);
     /// let stop = parsed.err().unwrap();
     ///
     /// assert_eq!(stop.exit_code(), ExitCode::SUCCESS);
@@ -155,25 +154,25 @@ impl Stop {
     }
 
     /// Returns the exit code that [`Stop::exit_code`] returns, as a number,
-    /// such as the code that the guide lists for a refused command line. A
-    /// tool that records the exit of a stopped run, or passes it on, reads
-    /// it here, because `ExitCode` cannot be read back as a number.
+    /// such as the code that the tool record lists for a refused command line.
+    /// A tool that records the exit of a stopped run, or passes it on, reads it
+    /// here, because `ExitCode` cannot be read back as a number.
     ///
     /// ```
     /// use clap::{CommandFactory as _, Parser};
-    /// use crumbkit::help::Guide;
+    /// use crumbkit::Tool;
     /// use crumbkit::{Sink, ViewFlags};
     ///
     /// #[derive(Parser)]
     /// #[command(name = "tool")]
-    /// struct Tool {
+    /// struct Cli {
     ///     #[command(flatten)]
     ///     view: ViewFlags,
     /// }
     ///
     /// let mut sink = Sink::new(Vec::new(), Vec::new());
     /// let parsed =
-    ///     crumbkit::parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &Guide::new(), ["tool", "--srot"]);
+    ///     crumbkit::parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &Tool::new(), ["tool", "--srot"]);
     ///
     /// assert_eq!(parsed.err().map(|stop| stop.exit()), Some(2));
     /// ```
@@ -208,7 +207,7 @@ impl Stop {
     /// deepest command that the walk of the words reached, such as
     /// `planets` for `tool planets --help`. The path is empty when the walk
     /// reached no subcommand, as for the version and for a topic, which
-    /// prints only at the guide's root. A tool that prints a note after a
+    /// prints only at the tool record's root. A tool that prints a note after a
     /// help page names the command of the page from it.
     #[must_use]
     pub fn path(&self) -> &[String] {
@@ -254,10 +253,10 @@ impl Stop {
 }
 
 /// Returns the output of a run that `parse` ended after parsing against
-/// `command` with `guide`, in which the walk found `--json` when `json` is
+/// `command` with `tool`, in which the walk found `--json` when `json` is
 /// true. Its `--long`, `--full` and `--fields` are off.
-pub(crate) fn stopped(json: bool, command: Command, guide: &Guide) -> Output {
-    Output::stopped(view(json), command, guide)
+pub(crate) fn stopped(json: bool, command: Command, tool: &Tool) -> Output {
+    Output::stopped(view(json), command, tool)
 }
 
 /// Returns the view of a run that `parse` ended: JSON when `json` is true

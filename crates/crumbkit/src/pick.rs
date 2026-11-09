@@ -1,7 +1,7 @@
 //! Pickers, which let a person pick the value of a missing argument from a
 //! list when a command line leaves out a required argument (ADR-0043).
 //!
-//! A tool sets its picker with [`Guide::picker`](crate::help::Guide::picker)
+//! A tool sets its picker with [`Tool::picker`](crate::Tool::picker)
 //! and names where each argument's values come from with
 //! [`Leaf::choices`](crate::help::Leaf::choices). An argument with possible
 //! values needs no source, because clap already knows its values.
@@ -56,7 +56,7 @@ pub trait Picker {
     ) -> io::Result<Answer>;
 }
 
-/// Prints `Picker`, so a [`Guide`](crate::help::Guide) that holds a picker
+/// Prints `Picker`, so a [`Tool`](crate::Tool) that holds a picker
 /// can derive `Debug`.
 impl fmt::Debug for dyn Picker + '_ {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

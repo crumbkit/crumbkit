@@ -1,12 +1,12 @@
-//! Tests for the guide check of the columns that `Row::UNCUT_COLUMNS`
+//! Tests for the tool record check of the columns that `Row::UNCUT_COLUMNS`
 //! names (ADR-0121).
 
-use crumbkit::help::Guide;
-use crumbkit::{Document, Row};
+use crumbkit::help::Help;
+use crumbkit::{Document, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{check_guide, leaf, panic_message, shelf};
+use super::{check_help, leaf, panic_message, shelf};
 
 /// A book whose id and long ISBN are never cut at a terminal.
 #[derive(Serialize, JsonSchema)]
@@ -41,7 +41,7 @@ impl Row for MisspeltBook {
 
 #[test]
 fn uncut_columns_that_are_compact_or_long_columns_pass() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(Document::<Vec<KeptBook>>::new(
             "shelf",
             "books-list",
@@ -50,14 +50,14 @@ fn uncut_columns_that_are_compact_or_long_columns_pass() {
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 #[test]
-fn check_guide_fails_on_an_uncut_column_that_is_not_a_column_of_the_row_type() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+fn check_tool_fails_on_an_uncut_column_that_is_not_a_column_of_the_row_type() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(Document::<Vec<MisspeltBook>>::new(
             "shelf",
             "books-list",
@@ -66,11 +66,11 @@ fn check_guide_fails_on_an_uncut_column_that_is_not_a_column_of_the_row_type() {
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type's UNCUT_COLUMNS names `ids`, which is in neither COLUMNS nor LONG_COLUMNS, so the name keeps no column of the table whole; name a column from COLUMNS or LONG_COLUMNS, or remove the name"
     );
 }

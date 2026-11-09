@@ -7,6 +7,26 @@ promises of crumbkit's public API. The other pages in this directory cover
 stated reason, and [declarations](declarations.md), with which a tool keeps
 its own names.
 
+## The tool record
+
+A tool states what it declares to crumbkit once, as a `const`
+[`Tool`](../../../crates/crumbkit/src/tool.rs), and passes it to `parse`,
+`Output::new` and crumbkit-test's checks. `Tool` composes three records and
+holds two settings of its own. A record that a tool leaves out keeps
+crumbkit's behaviour.
+
+| Record | Path | What it declares |
+| --- | --- | --- |
+| `Help` | `crumbkit::help::Help` | Groups, leaves, topics, file formats, the root, root verbs and personal aliases. |
+| `Failures` | `crumbkit::tool::Failures` | The spelling and renames of codes, exit codes, the refusal alternatives and the refusal hint. |
+| `Output` | `crumbkit::tool::Output` | The output budget, the JSON layout and terminal detection. |
+
+`Tool::picker` and `Tool::dashed_forms` sit on `Tool`. `crumbkit::Output` is
+the handle of one run, so the record of what a run prints has the path
+`crumbkit::tool::Output`.
+
+Why: ADR-0180.
+
 ## Parts a tool takes one at a time
 
 A tool keeps its own clap derive types and its own `main`, and each part of
@@ -63,7 +83,7 @@ crumbkit-usage both depend on crumbkit.
 - The trace context and the `tracing` feature need no wiring beyond that and
   a subscriber the tool installs
   ([trace context](../usage-log/trace-context.md)).
-- A tool lets a person pick missing values with one `Guide::picker` line, a
+- A tool lets a person pick missing values with one `Tool::picker` line, a
   `Leaf::choices` line for each argument whose values come from a source, and
   `NoInput` flattened at its root ([pickers](../effects/pickers.md)).
 - A tool with personal aliases passes its arguments through

@@ -7,8 +7,8 @@ use std::path::Path;
 
 use clap::{Arg, Command};
 
+use crate::Tool;
 use crate::dashed;
-use crate::help::Guide;
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +17,7 @@ mod tests;
 pub(super) struct HelpWord {
     /// The position of the word in the arguments.
     pub(super) position: usize,
-    /// Whether the word comes directly after the guide's root, where it
+    /// Whether the word comes directly after the tool record's root, where it
     /// can also print the tool's topics.
     pub(super) at_root: bool,
 }
@@ -113,8 +113,8 @@ pub(super) fn given<'c, 'w, T: AsRef<OsStr>>(
 /// Returns the real names of the subcommands from the root `command` down
 /// to the deepest command that `words`, the words after the program name,
 /// name, such as `["books", "list"]` for `--json books ls` when `ls` is an
-/// alias of `list`. An empty path names the root. When `guide` declares
-/// [`Guide::dashed_forms`], a word that is a subcommand's
+/// alias of `list`. An empty path names the root. When `tool` declares
+/// [`Tool::dashed_forms`], a word that is a subcommand's
 /// [`dashed_form`](crate::dashed_form) names that subcommand, as it does
 /// for [`parse`](crate::parse()).
 ///
@@ -130,22 +130,22 @@ pub(super) fn given<'c, 'w, T: AsRef<OsStr>>(
 ///
 /// ```
 /// use clap::{Arg, Command};
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 ///
-/// let guide = Guide::new();
-/// let tool = Command::new("shelf")
+/// let tool = Tool::new();
+/// let tree = Command::new("shelf")
 ///     .arg(Arg::new("dir").short('C').global(true))
 ///     .subcommand(Command::new("books").subcommand(Command::new("list").alias("ls")));
 ///
 /// assert_eq!(
-///     crumbkit::command_path(&tool, &guide, &["-C", "books", "books", "ls"]),
+///     crumbkit::command_path(&tree, &tool, &["-C", "books", "books", "ls"]),
 ///     ["books", "list"]
 /// );
-/// assert_eq!(crumbkit::command_path(&tool, &guide, &["books", "lst"]), ["books"]);
+/// assert_eq!(crumbkit::command_path(&tree, &tool, &["books", "lst"]), ["books"]);
 /// ```
 #[must_use]
-pub fn command_path<T: AsRef<OsStr>>(command: &Command, guide: &Guide, words: &[T]) -> Vec<String> {
-    given(command, words, guide.get_dashed_forms()).path
+pub fn command_path<T: AsRef<OsStr>>(command: &Command, tool: &Tool, words: &[T]) -> Vec<String> {
+    given(command, words, tool.get_dashed_forms()).path
 }
 
 /// Replaces each word of `args` that reaches a subcommand by its
@@ -154,13 +154,12 @@ pub fn command_path<T: AsRef<OsStr>>(command: &Command, guide: &Guide, words: &[
 /// the tool does. `args` starts with the program name.
 ///
 /// It reads the words as [`given`] does, so an option's value that equals a
-/// dashed form stays as typed. It skips the word `help` where no
-/// subcommand has that name, because crumbkit answers it, so the words
-/// after it in `shelf help reading-lists` change too. It stops at `--` and
-/// at the first other word that names no subcommand, which is a positional
-/// value. A run that types only the tool's own names changes no word, and
-/// without `dashed_forms`, the guide's [`Guide::dashed_forms`] declaration,
-/// no word changes.
+/// dashed form stays as typed. It skips the word `help` where no subcommand has
+/// that name, because crumbkit answers it, so the words after it in `shelf help
+/// reading-lists` change too. It stops at `--` and at the first other word that
+/// names no subcommand, which is a positional value. A run that types only the
+/// tool's own names changes no word, and without `dashed_forms`, the tool
+/// record's [`Tool::dashed_forms`] declaration, no word changes.
 ///
 /// It returns the position in `args` and the typed text of each word that
 /// it replaced, so a refusal can report the words as the caller typed them.
@@ -214,14 +213,14 @@ pub(super) fn typed_words(args: &[OsString], replaced: Vec<(usize, OsString)>) -
 ///
 /// It reads the words as [`walk`] does: it skips the program name, stops at
 /// `--`, skips each flag and each value of an option, and descends into each
-/// word that names a subcommand of the current command, resolving aliases.
-/// It answers `help` when that word comes next below a command with
-/// subcommands, or directly after the words of `root`, the path of the
-/// guide's root, when the tool `has_topics`, and it stops at the first word
-/// that names no subcommand, such as the value of a positional argument.
+/// word that names a subcommand of the current command, resolving aliases. It
+/// answers `help` when that word comes next below a command with subcommands,
+/// or directly after the words of `root`, the path of the tool record's root,
+/// when the tool `has_topics`, and it stops at the first word that names no
+/// subcommand, such as the value of a positional argument.
 ///
 /// A command without subcommands reads `help` as an ordinary word, unless it
-/// is the guide's root of a tool with topics, and a command with its own
+/// is the tool record's root of a tool with topics, and a command with its own
 /// subcommand named or aliased `help` lets clap parse that subcommand.
 pub(super) fn help_word(
     command: &Command,

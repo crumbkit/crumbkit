@@ -2,10 +2,10 @@
 //! It keeps reading lists as text files in a directory, and adds a command
 //! for each list, such as `reading to-read list`.
 //!
-//! The library holds the whole tool, and the `reading` binary calls [`run`].
-//! It exports the functions that build the command tree and the guide from a
-//! directory's lists, so reading's tests can pass the tree and the guide of
-//! their fixture lists to crumbkit-test's checks.
+//! The library holds the whole tool, and the `reading` binary calls [`run`]. It
+//! exports the functions that build the command tree and the tool record from a
+//! directory's lists, so reading's tests can pass the tree and the tool record
+//! of their fixture lists to crumbkit-test's checks.
 
 mod cli;
 mod graft;
@@ -15,10 +15,10 @@ use std::ffi::OsString;
 use std::process::ExitCode;
 use std::time::SystemTime;
 
-pub use crate::cli::{Cli, GUIDE};
+pub use crate::cli::{Cli, TOOL};
 use crate::cli::{CommandsCommand, EntriesCommand, ListsCommand, Resource, SchemasCommand};
 use crate::graft::{ListCommand, Parsed};
-pub use crate::graft::{command, guide};
+pub use crate::graft::{command, tool};
 pub use crate::lists::{List, lists_in};
 pub use crate::lists::{NOT_FOUND, OUT_OF_RANGE, UNREADABLE};
 
@@ -42,7 +42,7 @@ pub fn run() -> ExitCode {
 ///
 /// Before parsing, reading reads the first line of each list in its
 /// directory and adds a command for each list to its tree, and a leaf with
-/// the command's examples to its guide. It passes the same guide to
+/// the command's examples to its tool record. It passes the same tool record to
 /// `commands list` and `schemas`, so they describe the commands it added.
 #[must_use]
 pub fn run_from<I, T>(args: I) -> ExitCode
@@ -52,9 +52,9 @@ where
 {
     let dir = lists::dir();
     let lists = dir.as_deref().map(lists_in).unwrap_or_default();
-    let guide = guide(&lists);
+    let tool = tool(&lists);
     let (parsed, mut output) =
-        match crumbkit::parse_from::<Parsed, _, _>(command(&lists), &guide, args) {
+        match crumbkit::parse_from::<Parsed, _, _>(command(&lists), &tool, args) {
             Ok(parsed) => parsed,
             Err(stop) => return stop.exit_code(),
         };
@@ -121,7 +121,7 @@ where
                 Resource::Commands {
                     command: CommandsCommand::List(args),
                 } => {
-                    let result = crumbkit::commands::list(&mut output, &guide, &args);
+                    let result = crumbkit::commands::list(&mut output, &tool, &args);
                     let document = crumbkit::commands::COMMANDS_LIST;
                     crumbkit::finish(output, document, result)
                 }
@@ -134,12 +134,12 @@ where
                 }
                 Resource::Schemas { command } => match command {
                     SchemasCommand::List(args) => {
-                        let result = crumbkit::schemas::list(&mut output, &guide, &args);
+                        let result = crumbkit::schemas::list(&mut output, &tool, &args);
                         let document = crumbkit::schemas::SCHEMAS_LIST;
                         crumbkit::finish(output, document, result)
                     }
                     SchemasCommand::Show(args) => {
-                        let result = crumbkit::schemas::show(&mut output, &guide, &args);
+                        let result = crumbkit::schemas::show(&mut output, &tool, &args);
                         let document = crumbkit::schemas::SCHEMAS_SHOW;
                         crumbkit::finish(output, document, result)
                     }

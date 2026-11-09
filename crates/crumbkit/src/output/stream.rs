@@ -35,16 +35,15 @@ use self::open::open;
 ///
 /// # Errors
 ///
-/// It returns `Err` with the exit code of a refused command line, 2 unless
-/// the guide lists another, after it prints the refusal of a view flag that
-/// the stream cannot use. `--fields` names only fields of `R`, `--long`
-/// needs long columns in `R`. When the stream has no envelope or `R` sets
+/// It returns `Err` with the exit code of a refused command line, 2 unless the
+/// tool record lists another, after it prints the refusal of a view flag that
+/// the stream cannot use. `--fields` names only fields of `R`, `--long` needs
+/// long columns in `R`. When the stream has no envelope or `R` sets
 /// `Row::WHOLE`, `--long` and `--full` with `--json` are accepted, print the
 /// lines that `--json` alone prints, and end with a note that the flag adds
-/// nothing (ADR-0149). The pairs that cannot work
-/// together, `--full` without `--json` and `--fields` with `--long` or
-/// `--full`, were refused when the `Output` was built (ADR-0093). `main`
-/// returns that code.
+/// nothing (ADR-0149). The pairs that cannot work together, `--full` without
+/// `--json` and `--fields` with `--long` or `--full`, were refused when the
+/// `Output` was built (ADR-0093). `main` returns that code.
 pub fn stream<R: Row>(
     output: Output,
     document: Document<Stream<R>>,
@@ -87,11 +86,11 @@ pub fn stream<R: Row>(
 /// The stream prints within [`Output::budget`] bytes on the output writer.
 /// Its first item always prints. A later item whose line would
 /// pass the budget does not print: the stream prints the failure
-/// `<tool>::output::over_budget`, or the guide's rename of it, in its
-/// place, stops, and ends with exit code 1 unless the guide lists another
+/// `<tool>::output::over_budget`, or the tool record's rename of it, in its
+/// place, stops, and ends with exit code 1 unless the tool record lists another
 /// for the code (ADR-0046). A tool whose
 /// stream runs for a long time sets a larger budget with
-/// [`Guide::output_budget`](crate::help::Guide::output_budget).
+/// [`tool::Output::budget`](crate::tool::Output::budget).
 ///
 /// `stream` and `stream_to` take `output` by value, because a stream is
 /// the last thing a run prints, and the [`Streaming`] holds the view and
@@ -114,7 +113,7 @@ pub fn stream<R: Row>(
 ///     crumbkit::ViewFlags::new(),
 ///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
-///     &crumbkit::help::Guide::new(),
+///     &crumbkit::Tool::new(),
 ///     ["reading"],
 /// )
 /// .unwrap();
@@ -139,7 +138,7 @@ pub fn stream<R: Row>(
 ///     crumbkit::ViewFlags::new(),
 ///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
-///     &crumbkit::help::Guide::new(),
+///     &crumbkit::Tool::new(),
 ///     ["reading"],
 /// )
 /// .unwrap();
@@ -163,7 +162,7 @@ pub fn stream<R: Row>(
 /// # Errors
 ///
 /// It returns `Err` with the exit code of a refused command line, 2 unless
-/// the guide lists another, for a view flag that [`stream`] refuses. The
+/// the tool record lists another, for a view flag that [`stream`] refuses. The
 /// refusal prints as [`finish_to`](crate::finish_to) prints it, and nothing
 /// of the stream prints.
 pub fn stream_to<R: Row, O: Write, W: Write>(
@@ -182,7 +181,7 @@ pub fn stream_to<R: Row, O: Write, W: Write>(
 /// without `end` has printed every line that it was given, and records no
 /// exit code.
 ///
-/// A stream ends with exit code 0, 1, or the code that the tool's guide
+/// A stream ends with exit code 0, 1, or the code that the tool record
 /// declares for its first failure, as [`Streaming::end`] describes.
 #[derive(Debug)]
 pub struct Streaming<R, O, W> {
@@ -211,7 +210,7 @@ pub struct Streaming<R, O, W> {
     document: Document<Stream<R>>,
     /// Whether the stream printed a failure.
     failed: bool,
-    /// What the tool's guide decides about failures: the layout, the exit
+    /// What the tool record decides about failures: the layout, the exit
     /// codes (ADR-0037) and the renames of crumbkit's codes (ADR-0056).
     printing: Printing,
     /// The exit code of the stream's first failure, which is 1 until a
@@ -328,9 +327,9 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     ///
     /// The exit code is 0 when every item printed, and also when the reader
     /// closed the pipe early. When the stream printed a failure or `result`
-    /// is an `Err`, the exit code is the one that the tool's guide declares
+    /// is an `Err`, the exit code is the one that the tool record declares
     /// for the code of the stream's first failure with
-    /// [`Exit::failures`](crate::help::Exit::failures), or 1 when it
+    /// [`Exit::failures`](crate::tool::Exit::failures), or 1 when it
     /// declares none, as [`finish_to`](crate::finish_to) exits (ADR-0037).
     /// It is 1 when a write failed for a reason other than a closed pipe,
     /// and when the stream stopped at the output budget, unless an earlier
@@ -447,13 +446,13 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     }
 
     /// Refuses the stream with `refusal`, and returns the exit code of the
-    /// usage code, which is 2 unless the guide lists another.
+    /// usage code, which is 2 unless the tool record lists another.
     fn refuse(mut self, refusal: &crate::refusal::Refusal) -> ExitCode {
         #[cfg(feature = "tracing")]
         let span = self.span.clone();
         #[cfg(feature = "tracing")]
         let _entered = span.enter();
-        // A stream writes each document on one line, whatever the guide's
+        // A stream writes each document on one line, whatever the tool record's
         // layout.
         let printing = Printing {
             layout: JsonLayout::OneLine,

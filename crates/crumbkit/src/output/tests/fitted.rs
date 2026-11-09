@@ -7,9 +7,8 @@ use serde::Serialize;
 
 use std::process::ExitCode;
 
-use super::{Finished, Tool, built_with};
-use crate::help::Guide;
-use crate::{Document, Error, Listing, Output, Row, Rows, Sink, finish_to};
+use super::{Cli, Finished, built_with};
+use crate::{Document, Error, Listing, Output, Row, Rows, Sink, Tool, finish_to};
 
 /// A book whose `isbn` is an identifier that a person copies, so the fit
 /// never cuts it.
@@ -49,10 +48,10 @@ fn books() -> Vec<Book> {
     ]
 }
 
-/// Returns the output of `tool list` with `flags` and `guide`.
-fn built(guide: &Guide, flags: &[&str]) -> Output {
+/// Returns the output of `tool list` with `flags` and `tool`.
+fn built(tool: &Tool, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    built_with(Tool::command(), guide, &args)
+    built_with(Cli::command(), tool, &args)
 }
 
 /// Finishes `value` with `output` into a sink that gives the result
@@ -77,7 +76,7 @@ fn finish_at<T: Rows>(
 
 /// Finishes the two books with `flags` at a terminal `width` columns wide.
 fn finish_books(flags: &[&str], width: Option<usize>) -> Finished {
-    finish_at(built(&Guide::new(), flags), BOOKS, books(), width)
+    finish_at(built(&Tool::new(), flags), BOOKS, books(), width)
 }
 
 #[test]
@@ -132,7 +131,8 @@ fn json_at_a_narrow_terminal_prints_the_same_bytes_as_without_a_terminal() {
 
 #[test]
 fn the_output_budget_shows_the_same_rows_with_and_without_a_terminal_width() {
-    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let tool =
+        Tool::new().output(crate::tool::Output::new().budget(1024, "the tests print little"));
     let listing = || {
         let rows: Vec<Book> = (0..30)
             .map(|number| Book {
@@ -144,8 +144,8 @@ fn the_output_budget_shows_the_same_rows_with_and_without_a_terminal_width() {
         Listing::new(rows, 30).described("books")
     };
 
-    let narrow = finish_at(built(&guide, &[]), BOOK_LISTING, listing(), Some(40));
-    let piped = finish_at(built(&guide, &[]), BOOK_LISTING, listing(), None);
+    let narrow = finish_at(built(&tool, &[]), BOOK_LISTING, listing(), Some(40));
+    let piped = finish_at(built(&tool, &[]), BOOK_LISTING, listing(), None);
 
     assert_ne!(narrow.out, piped.out, "the narrow table was not fitted");
     assert_eq!(narrow.out.lines().count(), piped.out.lines().count());

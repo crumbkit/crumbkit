@@ -2,8 +2,8 @@
 //! gives `--dry-run`, `--yes` and `--no-input` one meaning in every tool.
 
 use clap::{Arg, Command};
-use crumbkit::Shape;
-use crumbkit::help::{Effects, Guide, Items, Leaf};
+use crumbkit::help::{Effects, Items, Leaf};
+use crumbkit::{Shape, Tool};
 
 use crate::allow::{Allow, Allowances, Rule, words};
 use crate::filters::accepts_many;
@@ -34,12 +34,12 @@ const CRUMBKIT_NO_INPUT: &str = "crumbkit_no_input";
 const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 
 /// Checks that every leaf in the tree of `command` declares its effects in
-/// `guide`, and that `--dry-run`, `--yes` and `--no-input` sit where crumbkit's
+/// `tool`, and that `--dry-run`, `--yes` and `--no-input` sit where crumbkit's
 /// conventions put them, and panics, as a failed test assertion does,
 /// naming every problem it finds.
 ///
 /// A leaf is a command without subcommands, the root included when it has
-/// none, and its effects are those of the first [`Leaf`] in `guide` with
+/// none, and its effects are those of the first [`Leaf`] in `tool` with
 /// its path, which [`Leaf::effects`] sets. The check finds:
 ///
 /// - a visible leaf without effects, unless an opt-out from
@@ -56,7 +56,7 @@ const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 ///   unless an opt-out from [`Rule::Yes`] covers it, because
 ///   `Output::confirm` fails without a terminal unless the caller passes
 ///   `--yes`;
-/// - a tool that can ask a question, because `guide` has a picker or a
+/// - a tool that can ask a question, because `tool` has a picker or a
 ///   command has an argument with the long name `--yes`, without the
 ///   `--no-input` of `crumbkit::NoInput` at the root, unless an opt-out
 ///   from [`Rule::NoInput`] names the root, because a script or an agent
@@ -86,12 +86,13 @@ const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 ///
 /// ```
 /// use clap::{Arg, ArgAction, Command};
-/// use crumbkit::help::{Effects, Guide, Leaf};
+/// use crumbkit::Tool;
+/// use crumbkit::help::{Effects, Help, Leaf};
 ///
-/// const GUIDE: Guide = Guide::new().leaves(&[
+/// const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
 ///     Leaf::new(&["books", "list"]).effects(Effects::read_only()),
 ///     Leaf::new(&["books", "remove"]).effects(Effects::destructive().idempotent()),
-/// ]);
+/// ]));
 ///
 /// let no_input = Arg::new("crumbkit_no_input").long("no-input").global(true).action(ArgAction::SetTrue);
 /// let shelf = Command::new("shelf").arg(no_input).subcommand(
@@ -102,7 +103,7 @@ const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 ///         ),
 /// );
 ///
-/// crumbkit_test::check_effects(&shelf, &GUIDE, &[]);
+/// crumbkit_test::check_effects(&shelf, &TOOL, &[]);
 /// ```
 ///
 /// # Panics
@@ -116,10 +117,10 @@ const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 /// [`Effects::replacing`]: crumbkit::help::Effects::replacing
 /// [`Effects::all_or_none`]: crumbkit::help::Effects::all_or_none
 /// [`Effects::per_item`]: crumbkit::help::Effects::per_item
-pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
+pub fn check_effects(command: &Command, tool: &Tool, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &RULES);
     let mut problems = Vec::new();
-    let mut asks = guide.get_picker().is_some();
+    let mut asks = tool.get_picker().is_some();
     for visit in tree::walk(command) {
         let path = visit.path();
         let below = visit.below();
@@ -127,7 +128,7 @@ pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
         let leaf = if node.has_subcommands() {
             None
         } else {
-            leaf_of(guide, below)
+            leaf_of(tool, below)
         };
         let effects = leaf.and_then(Leaf::get_effects);
         if !node.has_subcommands()
@@ -184,10 +185,10 @@ pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
     allowances.report(command, "effects rules", problems);
 }
 
-/// Returns the first leaf of `guide` whose path is `below`, a command's
+/// Returns the first leaf of `tool` whose path is `below`, a command's
 /// names below the root joined by single spaces.
-fn leaf_of<'a>(guide: &'a Guide, below: &str) -> Option<&'a Leaf> {
-    guide
+fn leaf_of<'a>(tool: &'a Tool, below: &str) -> Option<&'a Leaf> {
+    tool.get_help()
         .get_leaves()
         .iter()
         .find(|leaf| leaf.path().iter().copied().eq(words(below)))
@@ -233,7 +234,7 @@ fn check_expect(
 }
 
 /// Adds to `problems` each rule about many items that `node`, at `path`,
-/// breaks with `leaf`, the leaf of `guide` for the command.
+/// breaks with `leaf`, the leaf of `tool` for the command.
 fn check_items(
     node: &Command,
     path: &str,

@@ -1,6 +1,6 @@
 //! A refusal: a command line that clap refused, or a flag value that crumbkit
 //! refused, printed as a failure with crumbkit's usage code, or the tool's
-//! rename of it, and exit code 2 unless the guide lists another.
+//! rename of it, and exit code 2 unless the tool record lists another.
 
 use std::ffi::OsString;
 use std::fmt;
@@ -180,7 +180,7 @@ impl Refusal {
     /// Prints the refusal to `sink` as `finish` prints a failure, as text or
     /// with `json` as one JSON document, as `printing` decides, and returns
     /// the exit code that `printing` gives the usage code: 2 unless the
-    /// guide lists another (ADR-0002). The recovery renders against
+    /// tool record lists another (ADR-0002). The recovery renders against
     /// `command`.
     ///
     /// The text form prints clap's usage lines under the message. A refusal

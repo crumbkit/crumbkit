@@ -2,8 +2,7 @@
 //! a leaf prints to the leaf's path.
 
 use clap::Command;
-use crumbkit::Document;
-use crumbkit::help::Guide;
+use crumbkit::{Document, Tool};
 
 use crate::allow::{Allow, Allowances, Rule};
 use crate::schemas::command_line;
@@ -25,8 +24,8 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
     ("aliases-list", &["aliases", "list"]),
 ];
 
-/// Checks the documents that the leaves of `guide` declare, and panics, as a failed test assertion
-/// does, naming every problem it finds.
+/// Checks the documents that the leaves of `tool` declare, and panics, as a
+/// failed test assertion does, naming every problem it finds.
 ///
 /// The check fails on a leaf whose document has no envelope, because
 /// the tool chose [`Envelope::Without`](crumbkit::Envelope::Without),
@@ -47,13 +46,13 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// `shelf/books-list/v1` is for `shelf books list`, is a declaration. The
 /// check accepts it without an opt-out, and
 /// [`check_opt_outs`](crate::check_opt_outs) lists it under the
-/// customisations (ADR-0056).
+/// declarations (ADR-0056).
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 ///
-/// crumbkit_test::check_document_ids(&Command::new("shelf"), &Guide::new(), &[]);
+/// crumbkit_test::check_document_ids(&Command::new("shelf"), &Tool::new(), &[]);
 /// ```
 ///
 /// # Panics
@@ -63,10 +62,10 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// command line, the id, and the name the rule gives.
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
-pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
+pub fn check_document_ids(command: &Command, tool: &Tool, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::Envelope, Rule::RowsWhole]);
     let mut problems = Vec::new();
-    for leaf in guide.get_leaves() {
+    for leaf in tool.get_help().get_leaves() {
         let Some(document) = leaf.get_document() else {
             continue;
         };
@@ -113,7 +112,7 @@ pub(crate) fn declared_name(
     (document.name() != expected).then_some(expected)
 }
 
-/// Checks that each leaf of `guide` that declares the document of one of
+/// Checks that each leaf of `tool` that declares the document of one of
 /// crumbkit's commands sits at that command's fixed path below the tool,
 /// and panics, as a failed test assertion does, naming every leaf at
 /// another path (ADR-0015).
@@ -129,9 +128,9 @@ pub(crate) fn declared_name(
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 ///
-/// crumbkit_test::check_mounts(&Command::new("shelf"), &Guide::new());
+/// crumbkit_test::check_mounts(&Command::new("shelf"), &Tool::new());
 /// ```
 ///
 /// # Panics
@@ -139,9 +138,9 @@ pub(crate) fn declared_name(
 /// Panics when a leaf breaks the rule. Each problem in the message starts
 /// on a new line and names the leaf's command line, the document, and the
 /// command line the tool mounts the command at.
-pub fn check_mounts(command: &Command, guide: &Guide) {
+pub fn check_mounts(command: &Command, tool: &Tool) {
     let mut problems = Vec::new();
-    for leaf in guide.get_leaves() {
+    for leaf in tool.get_help().get_leaves() {
         let Some(document) = leaf.get_document() else {
             continue;
         };

@@ -2,7 +2,7 @@
 
 use snapbox::assert::Action;
 
-use super::{FILES, GUIDE, examples, run};
+use super::{FILES, TOOL, examples, run};
 use crate::allow::Allow;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
@@ -16,7 +16,7 @@ fn an_example_opt_out_skips_only_that_example() {
     )];
     let dir = TempDir::new("examples-one-opt-out").unwrap();
 
-    run(&GUIDE, &examples(&dir).allow(ALLOW), Action::Overwrite);
+    run(&TOOL, &examples(&dir).allow(ALLOW), Action::Overwrite);
 
     assert_eq!(dir.names(), [FILES[0], FILES[2]]);
 }
@@ -31,7 +31,7 @@ fn an_example_opt_out_that_names_no_example_of_its_leaf_fails_the_check() {
     let dir = TempDir::new("examples-one-opt-out-stale").unwrap();
 
     assert_eq!(
-        panic_message(|| run(&GUIDE, &examples(&dir).allow(ALLOW), Action::Overwrite)).unwrap(),
+        panic_message(|| run(&TOOL, &examples(&dir).allow(ALLOW), Action::Overwrite)).unwrap(),
         "the command tree breaks crumbkit's example rules:\n\
          the opt-out from `examples/run` for `sh -c 'echo titles'` names no example that the check runs, so it is stale"
     );

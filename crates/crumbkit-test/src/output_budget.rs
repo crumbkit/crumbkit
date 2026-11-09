@@ -1,17 +1,17 @@
-//! The output budget check, which runs each `--json` example of a tool's
-//! guide, and each text example of a headed leaf, again with half the bytes
-//! it printed, and checks that the tool keeps crumbkit's contract for a
-//! result that does not fit (ADR-0046, ADR-0062).
+//! The output budget check, which runs each `--json` example of a tool's tool
+//! record, and each text example of a headed leaf, again with half the bytes it
+//! printed, and checks that the tool keeps crumbkit's contract for a result
+//! that does not fit (ADR-0046, ADR-0062).
 
 use std::path::Path;
 use std::time::Duration;
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
@@ -23,7 +23,7 @@ mod tests;
 /// `SHELF_OUTPUT_BUDGET` (ADR-0079).
 const VARIABLE: &str = "OUTPUT_BUDGET";
 
-/// Checks that each `--json` example in `guide` keeps the output budget's
+/// Checks that each `--json` example in `tool` keeps the output budget's
 /// contract when its budget is half the bytes it prints, and panics, as a
 /// failed test assertion does, naming every example that breaks it.
 ///
@@ -39,8 +39,8 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 /// - it exits with code 0, its document always prints its first answer,
 ///   and it prints one document whose `data` is one object, or an array of
 ///   one row, which a batch of one answer prints;
-/// - it exits with the code that the guide gives the over-budget failure,
-///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
+/// - it exits with the code that the tool record gives the over-budget failure,
+///   which is 1 unless an [`Exit`](crumbkit::tool::Exit) lists the code,
 ///   and its last JSON document, on one line or
 ///   indented, is a failure document, or a document whose last entry of
 ///   `failures` is one, with the field `budget` set to the budget, or, for
@@ -48,7 +48,7 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 ///
 /// The check also runs each example without `--json` of a leaf whose
 /// document is headed (ADR-0062). Such a run keeps the contract when it
-/// exits with the code that the guide gives the over-budget failure and
+/// exits with the code that the tool record gives the over-budget failure and
 /// names the budget on standard error, and prints within the budget unless
 /// its document always prints its first answer. It also keeps the contract
 /// when it exits with code 0 and prints one answer past the budget, with at
@@ -67,11 +67,17 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::help::{Example, Guide, Leaf};
+/// use crumbkit::Tool;
+/// use crumbkit::help::{Example, Help, Leaf};
 /// use crumbkit_test::Examples;
 ///
-/// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
-///     .examples(&[Example::new(&["--all", "--json"], "Print every book as JSON")])]);
+/// const TOOL: Tool =
+///     Tool::new().help(
+///         Help::new().leaves(&[Leaf::new(&["books", "list"]).examples(&[Example::new(
+///             &["--all", "--json"],
+///             "Print every book as JSON",
+///         )])]),
+///     );
 ///
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
@@ -79,7 +85,7 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 /// let shelf = Command::new("shelf")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 ///
-/// crumbkit_test::check_output_budget(&shelf, &GUIDE, &EXAMPLES);
+/// crumbkit_test::check_output_budget(&shelf, &TOOL, &EXAMPLES);
 /// ```
 ///
 /// # Panics
@@ -88,8 +94,8 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 /// cannot create a run's XDG directories. The message lists each problem
 /// on its own line under the line `these examples break the output budget's
 /// contract:`.
-pub fn check_output_budget(command: &Command, guide: &Guide, examples: &Examples<'_>) {
-    let problems = check(command, guide, examples, TIMEOUT);
+pub fn check_output_budget(command: &Command, tool: &Tool, examples: &Examples<'_>) {
+    let problems = check(command, tool, examples, TIMEOUT);
     tree::report(
         "these examples break the output budget's contract",
         &problems,
@@ -100,11 +106,11 @@ pub fn check_output_budget(command: &Command, guide: &Guide, examples: &Examples
 /// its problems.
 fn check(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     examples: &Examples<'_>,
     timeout: Duration,
 ) -> Vec<String> {
-    let names = guide.tool_name(command);
+    let names = tool.tool_name(command);
     let variable = names.variable(VARIABLE);
     let mut problems = Vec::new();
     if let Some(problem) = setup_problem(examples) {
@@ -113,10 +119,10 @@ fn check(
     }
     let mut allowances = Allowances::new(examples.opt_outs(), &[Rule::Examples]);
     let visits = tree::walk(command);
-    for leaf in guide.get_leaves() {
+    for leaf in tool.get_help().get_leaves() {
         let path = leaf.path();
         let below = path.join(" ");
-        let failed = guide.failure_exit(path, &crumbkit::codes::OUTPUT_OVER_BUDGET);
+        let failed = tool.failure_exit(path, &crumbkit::codes::OUTPUT_OVER_BUDGET);
         if !visits.iter().any(|visit| visit.below() == below)
             || allowances.excuses(Rule::Examples, &below)
         {

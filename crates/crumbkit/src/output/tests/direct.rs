@@ -8,16 +8,18 @@ use std::process::ExitCode;
 use clap::{CommandFactory as _, Parser};
 
 use super::PLANETS;
-use crate::help::{Exit, Guide};
+use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
-use crate::{Code, Failure, Output, Recovery, Sink};
+use crate::{Code, Failure, Output, Recovery, Sink, Tool};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
-/// A guide that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
-const GUIDE: Guide = Guide::new()
-    .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]);
+/// A tool record that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
+const TOOL: Tool = Tool::new().failures(
+    Failures::new()
+        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]),
+);
 
 /// A failure with the code it was given.
 #[derive(Debug)]
@@ -44,22 +46,22 @@ impl Failure for Failed {
 /// A tool with the output flags and nothing else.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(flatten)]
     view: crate::ViewFlags,
 }
 
-/// Parses `tool` followed by `flags`, and builds the output with `GUIDE`,
+/// Parses `tool` followed by `flags`, and builds the output with `TOOL`,
 /// as a tool that parses with clap alone builds it.
-fn guided(flags: &[&str]) -> Output {
-    let view = Tool::try_parse_from(["tool"].iter().chain(flags))
+fn output_of(flags: &[&str]) -> Output {
+    let view = Cli::try_parse_from(["tool"].iter().chain(flags))
         .unwrap()
         .view;
     Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &GUIDE,
+        Cli::command(),
+        &TOOL,
         ["tool"].iter().chain(flags),
     )
     .unwrap()
@@ -85,15 +87,15 @@ fn printed<R>(print: impl FnOnce(&mut Sink<&mut Vec<u8>, &mut Vec<u8>>) -> R) ->
 }
 
 #[test]
-fn listed_exit_gives_the_exit_that_the_guide_lists_and_none_for_an_unlisted_code() {
-    let output = guided(&[]);
+fn listed_exit_gives_the_exit_that_the_tool_lists_and_none_for_an_unlisted_code() {
+    let output = output_of(&[]);
     assert_eq!(output.listed_exit(&TIMED_OUT), Some(124));
     assert_eq!(output.listed_exit(&NOT_FOUND), None);
 }
 
 #[test]
 fn failure_exit_gives_the_listed_exit_or_crumbkit_s_default() {
-    let output = guided(&[]);
+    let output = output_of(&[]);
     assert_eq!(output.failure_exit(&TIMED_OUT), 124);
     assert_eq!(output.failure_exit(&NOT_FOUND), 1);
     assert_eq!(output.failure_exit(&crate::codes::CLI_USAGE), 2);
@@ -101,7 +103,7 @@ fn failure_exit_gives_the_listed_exit_or_crumbkit_s_default() {
 
 #[test]
 fn print_failure_prints_a_failure_as_finish_prints_it() {
-    let mut output = guided(&[]);
+    let mut output = output_of(&[]);
     let printed = printed(|sink| {
         output.print_failure(sink, &Failed(&NOT_FOUND));
     });
@@ -118,12 +120,12 @@ fn refuse_view_refuses_a_field_that_the_document_lacks_with_the_refusal_s_exit()
         &["--json", "--fields", "rings"],
         &["--json", "--fields", "name"],
     );
-    let mut admitted = guided(&["--json", "--fields", "name"]);
+    let mut admitted = output_of(&["--json", "--fields", "name"]);
     let admitted = printed(|sink| admitted.refuse_view(sink, PLANETS));
     assert_eq!(admitted.returned, None);
     assert_eq!(format!("{}{}", admitted.out, admitted.err), "");
 
-    let mut refused = guided(&["--json", "--fields", "rings"]);
+    let mut refused = output_of(&["--json", "--fields", "rings"]);
     let refused = printed(|sink| refused.refuse_view(sink, PLANETS));
     assert_eq!(refused.returned, Some(ExitCode::from(2)));
     let document: serde_json::Value = serde_json::from_str(&refused.out).unwrap();
@@ -133,11 +135,11 @@ fn refuse_view_refuses_a_field_that_the_document_lacks_with_the_refusal_s_exit()
 #[test]
 fn refuse_fields_for_text_refuses_fields_with_the_caller_s_reason() {
     assert_one_word_apart(&["--fields=name"], &["--long"]);
-    let mut admitted = guided(&["--long"]);
+    let mut admitted = output_of(&["--long"]);
     let admitted = printed(|sink| admitted.refuse_fields_for_text(sink, "it prints prose"));
     assert_eq!(admitted.returned, None);
 
-    let mut refused = guided(&["--fields=name"]);
+    let mut refused = output_of(&["--fields=name"]);
     let refused = printed(|sink| refused.refuse_fields_for_text(sink, "it prints prose"));
     assert_eq!(refused.returned, Some(ExitCode::from(2)));
     let expected = "\

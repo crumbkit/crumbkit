@@ -18,15 +18,19 @@ use tracing_core::span::Current;
 use crate::answered::answered;
 use crate::events::TraceIds;
 use crate::events::testing::give_trace_ids;
-use crate::help::{Exit, Guide};
-use crate::{Code, Document, Error, Failure, Output, Recovery, Row, Sink, finish_to, parse_to};
+use crate::tool::{Exit, Failures};
+use crate::{
+    Code, Document, Error, Failure, Output, Recovery, Row, Sink, Tool, finish_to, parse_to,
+};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 
-/// A guide that maps `TIMED_OUT` to 124 (ADR-0037).
-const GUIDE: Guide = Guide::new()
-    .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]);
+/// A tool record that maps `TIMED_OUT` to 124 (ADR-0037).
+const TOOL: Tool = Tool::new().failures(
+    Failures::new()
+        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]),
+);
 
 /// A word that no span may hold, because the caller typed it.
 const PLANTED: &str = "s3cr3t";
@@ -241,7 +245,7 @@ impl Failure for Missing {
 /// A tool with a `show` command that takes many names.
 #[derive(Parser)]
 #[command(name = "solar", version = "1.2.3")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -267,10 +271,10 @@ enum Planets {
 /// Parses `args` into memory, and returns the parsed tool's output flags
 /// with the tool's command, or the exit code of a run that parsing ended.
 fn parse(args: &[&str]) -> Result<Output, ExitCode> {
-    let (_, output) = parse_to::<Tool, _, _, _, _>(
+    let (_, output) = parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(Vec::new(), Vec::new()),
-        Tool::command(),
-        &GUIDE,
+        Cli::command(),
+        &TOOL,
         args,
     )?;
     Ok(output)
@@ -474,7 +478,7 @@ fn a_subscriber_that_disables_crumbkit_s_spans_sees_no_crumbkit_field_on_the_too
     assert_eq!(seen.fields("solar"), []);
 }
 
-/// A failure whose code the guide maps to 124.
+/// A failure whose code the tool record maps to 124.
 #[derive(Debug)]
 struct TimedOut;
 
@@ -497,7 +501,7 @@ impl Failure for TimedOut {
 }
 
 #[test]
-fn a_failure_that_the_guide_maps_records_its_declared_exit_code_on_the_finish_span() {
+fn a_failure_that_the_tool_maps_records_its_declared_exit_code_on_the_finish_span() {
     let finished = watch(|| {
         run(
             &["solar", "planets", "show", "Saturn"],

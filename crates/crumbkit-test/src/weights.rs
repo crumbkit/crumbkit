@@ -8,10 +8,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 
 use crate::budget::{Budget, Departure, Limit};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::pages::Pages;
 use crate::sizes::{find, names_nothing};
 use crate::tree::{self, Visit};
@@ -42,7 +42,7 @@ const PATH: u64 = 8_000;
 ///     .nodes(&[Budget::new("books list", 9_000, "The listing's example prints many rows.")]);
 /// ```
 ///
-/// A tool without a guide, whose pages come from [`Pages::clap`], has no
+/// A tool without a tool record, whose pages come from [`Pages::clap`], has no
 /// examples, and [`PathBudgets::help_only`] budgets its paths by their
 /// `-h` pages alone.
 ///
@@ -74,10 +74,10 @@ impl<'a> PathBudgets<'a> {
     }
 
     /// Returns crumbkit's default budget for every path and no budget for a
-    /// single command, for a tool whose paths are its `-h` pages alone,
-    /// with no example golden files, such as a tool whose pages come from
-    /// [`Pages::clap`]. [`check_path_weights`] fails when the guide of its
-    /// pages gives a command examples, because their output would go
+    /// single command, for a tool whose paths are its `-h` pages alone, with no
+    /// example golden files, such as a tool whose pages come from
+    /// [`Pages::clap`]. [`check_path_weights`] fails when the tool record of
+    /// its pages gives a command examples, because their output would go
     /// uncounted.
     #[must_use]
     pub const fn help_only() -> Self {
@@ -148,28 +148,29 @@ impl<'a> PathBudgets<'a> {
 /// fits its budget in `budgets`, and panics, as a failed test assertion
 /// does, naming every problem it finds.
 ///
-/// A path's weight is the sum of the sizes in bytes of the `-h` pages from
-/// the root down to the command, as [`check_help_sizes`](crate::check_help_sizes)
+/// A path's weight is the sum of the sizes in bytes of the `-h` pages from the
+/// root down to the command, as [`check_help_sizes`](crate::check_help_sizes)
 /// reads them, and the command's output weight. The output weight is the
-/// largest size of one example's golden files, standard output and
-/// standard error together, among the examples that the guide of `pages`
-/// gives the command. A command without an example golden file has an
-/// output weight of 0, and so does every command with [`Pages::clap`], which has no
-/// guide, or with [`PathBudgets::help_only`]. `cargo crumbkit weigh` prints the same sums as `path_total`. The
-/// check skips each hidden command and everything below it. It finds:
+/// largest size of one example's golden files, standard output and standard
+/// error together, among the examples that the tool record of `pages` gives the
+/// command. A command without an example golden file has an output weight of 0,
+/// and so does every command with [`Pages::clap`], which has no tool record, or
+/// with [`PathBudgets::help_only`]. `cargo crumbkit weigh` prints the same sums
+/// as `path_total`. The check skips each hidden command and everything below
+/// it. It finds:
 ///
 /// - a path whose weight is over its budget, naming the command, the
 ///   weight, the bytes of its pages and of its output, and the budget;
 /// - a command's budget whose path names no command or a hidden one;
 /// - a golden file whose size cannot be read for a reason other than its
 ///   absence;
-/// - with [`PathBudgets::help_only`], a command that the guide of `pages`
+/// - with [`PathBudgets::help_only`], a command that the tool record of `pages`
 ///   gives examples, whose output the path would leave out;
 /// - a visible command whose `-h` prints no help page.
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit_test::{Pages, PathBudgets};
 ///
 /// let shelf = Command::new("shelf")
@@ -178,7 +179,7 @@ impl<'a> PathBudgets<'a> {
 ///
 /// crumbkit_test::check_path_weights(
 ///     &shelf,
-///     Pages::rendered(&Guide::new()),
+///     Pages::rendered(&Tool::new()),
 ///     &PathBudgets::new("tests/golden/examples"),
 /// );
 /// ```
@@ -189,7 +190,7 @@ impl<'a> PathBudgets<'a> {
 /// message lists each problem on its own line and names each command by its
 /// path from `command`, such as `shelf books list`.
 pub fn check_path_weights(command: &Command, pages: Pages<'_>, budgets: &PathBudgets<'_>) {
-    let guide = pages.guide();
+    let tool = pages.tool();
     let mut problems = Vec::new();
     let pages = crate::pages::pages(command, pages, "-h", &mut problems);
     let visible = tree::walk_visible(command);
@@ -201,7 +202,7 @@ pub fn check_path_weights(command: &Command, pages: Pages<'_>, budgets: &PathBud
     let rows: Vec<(usize, u64, Option<u64>)> = pages
         .iter()
         .map(|(visit, page)| {
-            let lines = guide.map_or_else(Vec::new, |guide| examples(command, guide, visit));
+            let lines = tool.map_or_else(Vec::new, |tool| examples(command, tool, visit));
             let output = match budgets.goldens {
                 Some(dir) => output_weight(Path::new(dir), &lines).unwrap_or_else(|error| {
                     problems.push(format!("{}: {error}", visit.path()));
@@ -210,7 +211,7 @@ pub fn check_path_weights(command: &Command, pages: Pages<'_>, budgets: &PathBud
                 None if lines.is_empty() => None,
                 None => {
                     problems.push(format!(
-                        "{}: the guide gives the command examples, and `PathBudgets::help_only` reads no example golden files, so the path counts no output; `PathBudgets::new` names their directory",
+                        "{}: the tool record gives the command examples, and `PathBudgets::help_only` reads no example golden files, so the path counts no output; `PathBudgets::new` names their directory",
                         visit.path()
                     ));
                     None
@@ -237,11 +238,11 @@ pub fn check_path_weights(command: &Command, pages: Pages<'_>, budgets: &PathBud
     tree::report("path weight rules", &problems);
 }
 
-/// Returns the command lines of the examples that `guide` gives the command
+/// Returns the command lines of the examples that `tool` gives the command
 /// that `visit` reached in `command`, as help prints them.
-fn examples(command: &Command, guide: &Guide, visit: &Visit<'_>) -> Vec<String> {
+fn examples(command: &Command, tool: &Tool, visit: &Visit<'_>) -> Vec<String> {
     let mut lines = Vec::new();
-    for leaf in guide.get_leaves() {
+    for leaf in tool.get_help().get_leaves() {
         if leaf.path().join(" ") != visit.below() || visit.depth() == 0 {
             continue;
         }

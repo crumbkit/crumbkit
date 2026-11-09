@@ -4,11 +4,11 @@
 use std::fs;
 use std::path::Path;
 
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 use snapbox::Redactions;
 
 use super::example_golden_name;
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{WorkDir, Xdg};
 
 /// Returns the name of the file whose bytes are an example's standard
@@ -35,16 +35,16 @@ pub(crate) fn read_stdin(dir: &Path, name: &str) -> Result<Option<Vec<u8>>, Stri
 }
 
 /// Adds a problem to `problems` for each `.stdin` file in `dir` that no
-/// example of `guide` names, whether the check runs that example or an
+/// example of `tool` names, whether the check runs that example or an
 /// opt-out skips it. The check never deletes such a file, because it holds
 /// input that only its author can write again.
-pub(super) fn stale_stdin(tool: &str, guide: &Guide, dir: &Path, problems: &mut Vec<String>) {
+pub(super) fn stale_stdin(tool_name: &str, tool: &Tool, dir: &Path, problems: &mut Vec<String>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
     let mut owners = Vec::new();
-    for leaf in guide.get_leaves() {
-        let text = std::iter::once(tool)
+    for leaf in tool.get_help().get_leaves() {
+        let text = std::iter::once(tool_name)
             .chain(leaf.path().iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
@@ -65,7 +65,7 @@ pub(super) fn stale_stdin(tool: &str, guide: &Guide, dir: &Path, problems: &mut 
     stale.sort();
     for file in stale {
         problems.push(format!(
-            "the input file `{}` belongs to no example in the guide, and the check never deletes it",
+            "the input file `{}` belongs to no example in the tool record, and the check never deletes it",
             file.display()
         ));
     }

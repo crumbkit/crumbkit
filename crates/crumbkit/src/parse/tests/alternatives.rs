@@ -1,4 +1,4 @@
-//! Tests for the alternatives that a leaf's function, or the guide's
+//! Tests for the alternatives that a leaf's function, or the tool record's
 //! function for a leaf that sets none, returns for a refusal of a command
 //! line that names the leaf.
 
@@ -7,18 +7,19 @@ use std::process::ExitCode;
 use clap::{Arg, Args as _, Command};
 use serde_json::{Value, json};
 
-use super::{Parsed, Stop, admits, tool};
-use crate::help::{Guide, Leaf, RefusalContext};
-use crate::{Call, Page, Sink, parse_to};
+use super::{Parsed, Stop, admits, tree};
+use crate::help::{Help, Leaf};
+use crate::tool::{Failures, RefusalContext};
+use crate::{Call, Page, Sink, Tool, parse_to};
 
 /// The planets that `tool planets orbit` knows.
 const KNOWN: &[&str] = &["mars", "venus"];
 
-/// Returns `tool()` with the leaf `planets list`, whose page takes at most
+/// Returns `tree()` with the leaf `planets list`, whose page takes at most
 /// 10 rows, and the leaf `planets orbit`, whose one positional takes the
 /// name of a planet in [`KNOWN`].
 fn bounded() -> Command {
-    tool().mut_subcommand("planets", |planets| {
+    tree().mut_subcommand("planets", |planets| {
         planets
             .subcommand(Page::<4, 10>::augment_args(
                 Command::new("list").about("List the planets"),
@@ -59,13 +60,13 @@ fn without_extension(context: &RefusalContext<'_>) -> Vec<Call> {
     calls
 }
 
-/// A guide whose leaf `planets list` offers `tool planets show Mars`, and
+/// A tool record whose leaf `planets list` offers `tool planets show Mars`, and
 /// whose leaf `planets orbit` offers its refused line with the refused
 /// value corrected.
-const GUIDE: Guide = Guide::new().leaves(&[
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["planets", "list"]).refusal_alternatives(show_mars),
     Leaf::new(&["planets", "orbit"]).refusal_alternatives(without_extension),
-]);
+]));
 
 /// Returns the calls of [`without_extension`] and then `tool planets list`,
 /// for a refusal of any command line.
@@ -75,34 +76,35 @@ fn every_command(context: &RefusalContext<'_>) -> Vec<Call> {
     calls
 }
 
-/// A guide whose function [`every_command`] serves every command line, and
-/// whose leaf `planets list` sets its own function.
-const GUIDE_WIDE: Guide = Guide::new()
-    .refusal_alternatives(every_command)
-    .leaves(&[Leaf::new(&["planets", "list"]).refusal_alternatives(show_mars)]);
+/// A tool record whose function [`every_command`] serves every command line,
+/// and whose leaf `planets list` sets its own function.
+const TOOL_WIDE: Tool = Tool::new()
+    .help(Help::new().leaves(&[Leaf::new(&["planets", "list"]).refusal_alternatives(show_mars)]))
+    .failures(Failures::new().refusal_alternatives(every_command));
 
 /// Returns no call, for any refusal.
 fn nothing(_: &RefusalContext<'_>) -> Vec<Call> {
     Vec::new()
 }
 
-/// A guide whose leaf `planets show` sets a function that returns no call.
-const GUIDE_SILENT: Guide =
-    Guide::new().leaves(&[Leaf::new(&["planets", "show"]).refusal_alternatives(nothing)]);
+/// A tool record whose leaf `planets show` sets a function that returns no
+/// call.
+const TOOL_SILENT: Tool = Tool::new()
+    .help(Help::new().leaves(&[Leaf::new(&["planets", "show"]).refusal_alternatives(nothing)]));
 
-/// Runs `parse_to` over `bounded()` and [`GUIDE`] with `args` into memory,
+/// Runs `parse_to` over `bounded()` and [`TOOL`] with `args` into memory,
 /// for a command line that does not parse.
 fn parse(args: &[&str]) -> Parsed {
-    parse_guided(&GUIDE, args)
+    parse_with_tool(&TOOL, args)
 }
 
-/// Runs `parse_to` over `bounded()` and `guide` with `args` into memory,
+/// Runs `parse_to` over `bounded()` and `tool` with `args` into memory,
 /// for a command line that does not parse.
-fn parse_guided(guide: &Guide, args: &[&str]) -> Parsed {
+fn parse_with_tool(tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), bounded(), guide, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), bounded(), tool, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),
@@ -178,7 +180,7 @@ fn the_refusal_document_names_the_corrected_line_as_the_recovery_and_help_as_the
 fn a_function_that_returns_no_call_leaves_help_as_the_recovery() {
     let refused = ["tool", "planets", "show", "Mars", "--srot", "name"];
 
-    let parsed = parse_guided(&GUIDE_SILENT, &refused);
+    let parsed = parse_with_tool(&TOOL_SILENT, &refused);
 
     let expected = "\
 error: unexpected argument '--srot' found; a similar argument exists: '--sort'
@@ -230,10 +232,10 @@ error: unexpected argument '--srot' found; a similar argument exists: '--sort'
 }
 
 #[test]
-fn a_refusal_of_a_line_whose_command_sets_no_function_recovers_with_the_guides_first_call() {
+fn a_refusal_of_a_line_whose_command_sets_no_function_recovers_with_the_tools_first_call() {
     let refused = ["tool", "planets", "orbit", "mars.json"];
 
-    let parsed = parse_guided(&GUIDE_WIDE, &refused);
+    let parsed = parse_with_tool(&TOOL_WIDE, &refused);
 
     let expected = "\
 error: invalid value 'mars.json' for '<NAME>': no planet is named mars.json
@@ -247,10 +249,10 @@ error: invalid value 'mars.json' for '<NAME>': no planet is named mars.json
 }
 
 #[test]
-fn a_leafs_own_function_replaces_the_guides_function_for_its_command_line() {
+fn a_leafs_own_function_replaces_the_tools_function_for_its_command_line() {
     let refused = ["tool", "planets", "list", "--limit", "11"];
 
-    let parsed = parse_guided(&GUIDE_WIDE, &refused);
+    let parsed = parse_with_tool(&TOOL_WIDE, &refused);
 
     let expected = "\
 error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1 to 10

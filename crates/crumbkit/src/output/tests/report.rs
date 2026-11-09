@@ -6,11 +6,11 @@ use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, miette};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::help::Guide;
-use crate::{Document, Error, Output, Row, Sink, Spelling, ViewFlags, finish_to};
+use crate::tool::Failures;
+use crate::{Document, Error, Output, Row, Sink, Spelling, Tool, ViewFlags, finish_to};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
-/// prints in the spelling that the tool's guide sets, where the colon
+/// prints in the spelling that the tool record sets, where the colon
 /// spelling would join them with `::`.
 const DOTS: Spelling =
     Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
@@ -36,12 +36,12 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     };
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let guide = Guide::new().spelling(DOTS);
+    let tool = Tool::new().failures(Failures::new().spelling(DOTS));
     let output = Output::new(
         ViewFlags::new(),
         crate::DryRun::default(),
         clap::Command::new("shelf"),
-        &guide,
+        &tool,
         ["shelf"],
     )
     .unwrap();

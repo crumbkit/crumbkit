@@ -173,30 +173,29 @@ impl Refused {
 
     /// Returns the code that the refusal prints: crumbkit's
     /// [`CLI_USAGE`](crate::codes::CLI_USAGE), or the tool's own code
-    /// when the guide renames it.
+    /// when the tool record renames it.
     #[must_use]
     pub fn code(&self) -> &'static Code {
         self.inner.output.printing().renames.printed(&CLI_USAGE)
     }
 
-    /// Returns the exit code that the run ends with once the refusal
-    /// prints: 2, unless the guide lists another exit for a refused command
-    /// line.
+    /// Returns the exit code that the run ends with once the refusal prints: 2,
+    /// unless the tool record lists another exit for a refused command line.
     ///
     /// ```
     /// use clap::{CommandFactory as _, Parser};
-    /// use crumbkit::help::Guide;
+    /// use crumbkit::Tool;
     /// use crumbkit::{Unparsed, ViewFlags};
     ///
     /// #[derive(Parser)]
     /// #[command(name = "tool")]
-    /// struct Tool {
+    /// struct Cli {
     ///     #[command(flatten)]
     ///     view: ViewFlags,
     /// }
     ///
     /// let parsed =
-    ///     crumbkit::try_parse_from::<Tool, _, _>(Tool::command(), &Guide::new(), ["tool", "--srot"]);
+    ///     crumbkit::try_parse_from::<Cli, _, _>(Cli::command(), &Tool::new(), ["tool", "--srot"]);
     /// let Err(Unparsed::Refused(refused)) = parsed else {
     ///     panic!("the command line parsed");
     /// };

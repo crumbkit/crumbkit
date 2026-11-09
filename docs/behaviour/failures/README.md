@@ -92,20 +92,20 @@ lists its codes in a `CODES` list for crumbkit-test's `check_codes`.
 
 Each tool chooses how its codes are spelled with one
 [`Spelling`](../../../crates/crumbkit/src/code.rs), which it sets with
-`Guide::spelling`. A guide that sets none spells codes with
-`Spelling::COLONS`. `parse` and `Output::new` carry the guide's spelling in
-the `Output`, so `finish`, `stream` and `hand_over` print in it, and
-`check_codes` reads it from the same guide. `Code` has no `Display`, so every
-printed code goes through the tool's spelling. `check_codes` refuses
-characters that let two different codes look the same, because callers match
-a code exactly.
+`Failures::spelling`. A tool record that sets none spells codes with
+`Spelling::COLONS`. `parse` and `Output::new` carry the tool record's spelling
+in the `Output`, so `finish`, `stream` and `hand_over` print in it, and
+`check_codes` reads it from the same tool record. `Code` has no `Display`, so
+every printed code goes through the tool's spelling. `check_codes` refuses
+characters that let two different codes look the same, because callers match a
+code exactly.
 
 crumbkit's own codes are public constants in `crumbkit::codes`, which
 `codes::ALL` lists, so a tool's tests can name them. A tool may print its own
 code in place of any of crumbkit's, such as its own usage code for
-`<tool>::cli::usage`, with a `Rename` in `Guide::codes`. One command can
+`<tool>::cli::usage`, with a `Rename` in `Failures::codes`. One command can
 print its own code for one of crumbkit's failures with a `Rename` in
-`Leaf::codes`, which its runs read before the guide's. crumbkit still
+`Leaf::codes`, which its runs read before the tool record's. crumbkit still
 decides when the failure happens, its message and its recovery
 ([declarations](../adoption/declarations.md#codes-per-command)).
 
@@ -122,9 +122,9 @@ variable is `SHELF_OUTPUT_BUDGET`. The pages of this tree write the name as
 command reference name neither crumbkit nor its crates.
 
 The name is the clap name of the root command, or the last word of the
-guide's `root` when the tool runs below another program, so
+tool record's `root` when the tool runs below another program, so
 `cargo crumbkit` keeps the name `crumbkit`.
-[`Guide::tool_name`](../../../crates/crumbkit/src/help.rs) derives it, and
+[`Tool::tool_name`](../../../crates/crumbkit/src/tool.rs) derives it, and
 [`ToolName`](../../../crates/crumbkit/src/tool_name.rs) spells it:
 
 - A document id lowercases the name and has `-` in place of each character
@@ -143,7 +143,7 @@ guide's `root` when the tool runs below another program, so
 - A name without an ASCII letter or digit is spelled `tool` in each place.
 
 Only crumbkit's own codes and documents change. A tool's own codes, its
-renames in `Guide::codes` and `Leaf::codes`, and the document of its failure
+renames in `Failures::codes` and `Leaf::codes`, and the document of its failure
 form print as the tool declared them. The Rust constants, such as
 `crumbkit::codes::CLI_USAGE`, and the checked-in schema files keep the
 `crumbkit` component, and the tool's output spells them with the tool's
@@ -163,7 +163,7 @@ past that limit is refused, and the tool reports the failure under a code of
 its own, so a plugin that puts an id in its reason cannot grow memory without
 bound. `Spelling::split` reads a code in `Spelling::COLONS` back into its
 segments, and returns `None` for a custom spelling, so a tool calls
-`guide.get_spelling().split(text)` and passes the segments to
+`tool.get_failures().get_spelling().split(text)` and passes the segments to
 `Code::runtime`. A tool with a custom spelling gets `None` for every code
 from that call, so it splits the text itself before it calls
 `Code::runtime`.
@@ -202,7 +202,7 @@ completion requests, has no `-h` page, so the recovery names the nearest
 command above it with a help flag. When no command on the typed path has a
 help flag, the recovery offers no step, and its reason says that no command
 on the line has a `-h` help page. A refused
-command line exits with 2 unless the guide lists another code
+command line exits with 2 unless the tool record lists another code
 ([exit codes](exit-codes.md)).
 
 A command line that stops at a group with visible subcommands prints the
@@ -235,31 +235,31 @@ names several missing arguments separates them with commas, as in
 
 A leaf may declare a function with `Leaf::refusal_alternatives` that builds
 calls from a refusal of a command line that reaches the leaf, such as the
-refused line with the refused value corrected. A guide may declare one such
-function with `Guide::refusal_alternatives` for every command whose leaf sets
-none, and a leaf's own function replaces it. The refusal keeps each call
+refused line with the refused value corrected. A tool record may declare one
+such function with `Failures::refusal_alternatives` for every command whose leaf
+sets none, and a leaf's own function replaces it. The refusal keeps each call
 that renders and whose line parses, in the order that the function returned
-them. The first kept call becomes the recovery, and the `-h` call becomes
-the first alternative, followed by the other kept calls. A path without a
-help flag has no `-h` call, so the other kept calls follow the recovery
-alone. With no kept call, the `-h` call, or the recovery without a step,
-stays the recovery. A `--limit` above its bound keeps its `--all` recovery
-and offers the kept calls after crumbkit's own alternatives. The refusal leaves out the calls that it does not keep with no
-warning and no trace event, so a function may return a correction that it
-has not checked, and a trace never holds the caller's values.
+them. The first kept call becomes the recovery, and the `-h` call becomes the
+first alternative, followed by the other kept calls. A path without a help flag
+has no `-h` call, so the other kept calls follow the recovery alone. With no
+kept call, the `-h` call, or the recovery without a step, stays the recovery. A
+`--limit` above its bound keeps its `--all` recovery and offers the kept calls
+after crumbkit's own alternatives. The refusal leaves out the calls that it does
+not keep with no warning and no trace event, so a function may return a
+correction that it has not checked, and a trace never holds the caller's values.
 
 A leaf may also declare a function with `Leaf::refusal_hint` that returns a
-sentence for a refusal of a command line that reaches the leaf, and a guide
-may declare one with `Guide::refusal_hint` for every command whose leaf sets
-none. The function reads the leaf's command, the kind of clap's error and the
-words from its `RefusalContext`, so it can tell the caller of a command whose
-last positional takes the words after `--` to put an unknown flag there.
+sentence for a refusal of a command line that reaches the leaf, and a tool
+record may declare one with `Failures::refusal_hint` for every command whose
+leaf sets none. The function reads the leaf's command, the kind of clap's error
+and the words from its `RefusalContext`, so it can tell the caller of a command
+whose last positional takes the words after `--` to put an unknown flag there.
 When it returns a sentence, the sentence becomes the recovery as a hint: the
-first `help:` line in text, and a `hint` in the failure document. The `-h`
-call becomes the first alternative, followed by the kept calls in their
-order. When it returns `None`, the refusal recovers as the paragraph above
-says. A `--limit` above its bound keeps its `--all` recovery and offers the
-sentence after crumbkit's own alternatives and before the kept calls.
+first `help:` line in text, and a `hint` in the failure document. The `-h` call
+becomes the first alternative, followed by the kept calls in their order. When
+it returns `None`, the refusal recovers as the paragraph above says. A `--limit`
+above its bound keeps its `--all` recovery and offers the sentence after
+crumbkit's own alternatives and before the kept calls.
 
 [Parsing](../parsing/README.md) covers when `parse` refuses a command line.
 

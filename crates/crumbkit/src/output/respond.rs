@@ -137,7 +137,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
 /// JSON document holds them in its envelope, and the
 /// failure of the rows that the budget left out, and returns the exit code:
 /// the exit code of the first failure when there is any, which is 1 unless
-/// the guide declares another for its code (ADR-0037), and `code`
+/// the tool record declares another for its code (ADR-0037), and `code`
 /// otherwise.
 fn print_failures<T: Rows>(
     sink: &mut dyn Deliver,

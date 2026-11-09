@@ -3,9 +3,9 @@
 use std::fs;
 
 use clap::Command;
-use crumbkit::help::{FileFormat, Guide, Leaf};
+use crumbkit::help::{FileFormat, Help, Leaf};
 use crumbkit::schemas::{SCHEMAS_LIST, document_schema};
-use crumbkit::{Document, Listing, Row};
+use crumbkit::{Document, Listing, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 use snapbox::Assert;
@@ -40,22 +40,22 @@ impl Row for Author {
 const BOOKS_LIST: Document<Listing<Book>> =
     Document::new("shelf", "books-list", 1, "One page of the books.");
 
-/// A guide with a tool document and one of crumbkit's.
-const GUIDE: Guide = Guide::new().leaves(&[
+/// A tool record with a tool document and one of crumbkit's.
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "list"]).document(BOOKS_LIST),
     Leaf::new(&["schemas", "list"]).document(SCHEMAS_LIST),
-]);
+]));
 
-/// A tool with the leaves of [`GUIDE`].
+/// A tool with the leaves of [`TOOL`].
 fn shelf() -> Command {
     Command::new("shelf")
         .subcommand(Command::new("books").subcommand(Command::new("list")))
         .subcommand(Command::new("schemas").subcommand(Command::new("list")))
 }
 
-/// Runs the check on `shelf()` with `guide` against `dir` with `action`.
-fn run(guide: &Guide, dir: &TempDir, action: Action) {
-    check(&shelf(), guide, dir.path(), &Assert::new().action(action));
+/// Runs the check on `shelf()` with `tool` against `dir` with `action`.
+fn run(tool: &Tool, dir: &TempDir, action: Action) {
+    check(&shelf(), tool, dir.path(), &Assert::new().action(action));
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn overwrite_writes_one_file_for_each_tool_document_and_deletes_a_stale_one() {
     dir.write("shelf-books-gone-v1.json", "{}\n");
     dir.write("notes.md", "Only .json files are schema golden files.\n");
 
-    run(&GUIDE, &dir, Action::Overwrite);
+    run(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(dir.names(), ["notes.md", "shelf-books-list-v1.json"]);
     let written = fs::read_to_string(dir.path().join("shelf-books-list-v1.json")).unwrap();
@@ -77,9 +77,9 @@ fn overwrite_writes_one_file_for_each_tool_document_and_deletes_a_stale_one() {
 #[test]
 fn files_that_match_every_tool_document_pass() {
     let dir = TempDir::new("schemas-pass").unwrap();
-    run(&GUIDE, &dir, Action::Overwrite);
+    run(&TOOL, &dir, Action::Overwrite);
 
-    run(&GUIDE, &dir, Action::Verify);
+    run(&TOOL, &dir, Action::Verify);
 }
 
 #[test]
@@ -87,9 +87,9 @@ fn a_missing_a_differing_and_a_stale_file_each_fail() {
     let dir = TempDir::new("schemas-fail").unwrap();
     dir.write("shelf-books-gone-v1.json", "{}\n");
 
-    let missing = panic_message(|| run(&GUIDE, &dir, Action::Verify)).unwrap();
+    let missing = panic_message(|| run(&TOOL, &dir, Action::Verify)).unwrap();
     dir.write("shelf-books-list-v1.json", "{}\n");
-    let differing = panic_message(|| run(&GUIDE, &dir, Action::Verify)).unwrap();
+    let differing = panic_message(|| run(&TOOL, &dir, Action::Verify)).unwrap();
 
     assert!(
         missing.starts_with(
@@ -116,10 +116,10 @@ fn a_missing_a_differing_and_a_stale_file_each_fail() {
 fn two_leaves_that_declare_one_id_with_different_schemas_fail() {
     const AUTHORS: Document<Vec<Author>> =
         Document::new("shelf", "books-list", 1, "One page of the books.");
-    const TWICE: Guide = Guide::new().leaves(&[
+    const TWICE: Tool = Tool::new().help(Help::new().leaves(&[
         Leaf::new(&["books", "list"]).document(BOOKS_LIST),
         Leaf::new(&["schemas", "list"]).document(AUTHORS),
-    ]);
+    ]));
     let dir = TempDir::new("schemas-twice").unwrap();
 
     let message = panic_message(|| run(&TWICE, &dir, Action::Overwrite)).unwrap();
@@ -135,10 +135,10 @@ fn two_leaves_that_declare_one_id_with_different_schemas_fail() {
 fn two_ids_that_share_a_golden_file_name_fail() {
     const DASHED: Document<Listing<Book>> =
         Document::new("shelf-books", "list", 1, "One page of the books.");
-    const SHARED: Guide = Guide::new().leaves(&[
+    const SHARED: Tool = Tool::new().help(Help::new().leaves(&[
         Leaf::new(&["books", "list"]).document(BOOKS_LIST),
         Leaf::new(&["schemas", "list"]).document(DASHED),
-    ]);
+    ]));
     let dir = TempDir::new("schemas-shared").unwrap();
 
     let message = panic_message(|| run(&SHARED, &dir, Action::Overwrite)).unwrap();
@@ -165,9 +165,11 @@ fn overwrite_writes_a_golden_file_for_a_file_format() {
         1,
         "The settings file that users write.",
     );
-    const FORMATS: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
-        .file_formats(&[FileFormat::new(SETTINGS)]);
+    const FORMATS: Tool = Tool::new().help(
+        Help::new()
+            .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
+            .file_formats(&[FileFormat::new(SETTINGS)]),
+    );
     let dir = TempDir::new("schemas-format").unwrap();
 
     run(&FORMATS, &dir, Action::Overwrite);
@@ -187,9 +189,11 @@ fn a_file_format_with_the_id_of_a_command_s_document_fails() {
         1,
         "The settings file that users write.",
     );
-    const FORMATS: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
-        .file_formats(&[FileFormat::new(CLASH)]);
+    const FORMATS: Tool = Tool::new().help(
+        Help::new()
+            .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
+            .file_formats(&[FileFormat::new(CLASH)]),
+    );
     let dir = TempDir::new("schemas-clash").unwrap();
 
     let message = panic_message(|| run(&FORMATS, &dir, Action::Overwrite)).unwrap();

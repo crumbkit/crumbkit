@@ -6,25 +6,24 @@ what each shape of result prints when it does not fit.
 
 ## The budget
 
-The budget counts the bytes of the result as they print, indented when the
-guide sets `JsonLayout::Pretty` ([JSON layout](../json-layout.md)). It counts the
-result alone, because the lines that describe it, such as the footer and the
+The budget counts the bytes of the result as they print, indented when the tool
+record sets `JsonLayout::Pretty` ([JSON layout](../json-layout.md)). It counts
+the result alone, because the lines that describe it, such as the footer and the
 cut line, print on standard error. The budget is 1 MiB (1048576 bytes) unless
 the tool sets another.
 
-A tool sets its budget with
-[`Guide::output_budget(bytes, reason)`](../../../../crates/crumbkit/src/help/output.rs).
-The budget can be any number of bytes, as small as the one that
-`<TOOL>_OUTPUT_BUDGET` lowers a run to, so a tool's tests can show a cut
-result with a few short rows. A result that the budget refuses prints its
-over-budget failure whatever the failure's size, and a document marked
-with `Document::always_print_first` prints its first answer. The reason says why the tool's results need the bytes.
-crumbkit-test's `check_opt_outs` pins the budget, its reason and its cost in
-the [opt-out report](../../adoption/opt-outs.md) as `output-budget/run`. The
-cost line says how many bytes, and about how many tokens, a run can print
-beyond crumbkit's default. No opt-out removes the
-budget. A tool whose results are larger raises its budget and gives the
-reason.
+A tool sets its budget with [`tool::Output::budget(bytes,
+reason)`](../../../../crates/crumbkit/src/output/declared.rs). The budget can be
+any number of bytes, as small as the one that `<TOOL>_OUTPUT_BUDGET` lowers a
+run to, so a tool's tests can show a cut result with a few short rows. A result
+that the budget refuses prints its over-budget failure whatever the failure's
+size, and a document marked with `Document::always_print_first` prints its first
+answer. The reason says why the tool's results need the bytes. crumbkit-test's
+`check_opt_outs` pins the budget, its reason and its cost in the [opt-out
+report](../../adoption/opt-outs.md) as `output-budget/run`. The cost line says
+how many bytes, and about how many tokens, a run can print beyond crumbkit's
+default. No opt-out removes the budget. A tool whose results are larger raises
+its budget and gives the reason.
 
 The environment variable `<TOOL>_OUTPUT_BUDGET` lowers the budget of one
 run to a whole number of bytes. A value larger than the tool's budget, 0, or
@@ -111,20 +110,19 @@ than the budget, as a single bytes result does.
 
 A batch's handler can stop fetching once its rows fill the budget.
 `Output::room(document)` returns a `Room` before the first fetch, and
-`Room::has_room(&batch)` measures each row pushed since the last call once,
-in the format that the run prints: the JSON document in the guide's layout,
-the text table with each column as wide as its widest cell, or the headers
-and bytes of a headed batch. `has_room` returns false once the rows take the
-bytes that the run can print, and returns true until the batch holds a row,
-because `finish` decides on the first row by that row's own bytes. The count leaves out the batch's failures,
-which only add bytes, so a handler that stops when `has_room` returns false
-never stops before the row at which `finish` cuts the batch. The exception
-is a text table that leaves out a column because every printed row lacks
-it. The count still includes that column, so the handler can stop before
-that row. The keys that
-the handler never fetched follow the keys of the cut rows in `left_out`, and
-a batch with such keys ends with the failure even when its rows fit, so
-every key is either answered or listed.
+`Room::has_room(&batch)` measures each row pushed since the last call once, in
+the format that the run prints: the JSON document in the tool record's layout,
+the text table with each column as wide as its widest cell, or the headers and
+bytes of a headed batch. `has_room` returns false once the rows take the bytes
+that the run can print, and returns true until the batch holds a row, because
+`finish` decides on the first row by that row's own bytes. The count leaves out
+the batch's failures, which only add bytes, so a handler that stops when
+`has_room` returns false never stops before the row at which `finish` cuts the
+batch. The exception is a text table that leaves out a column because every
+printed row lacks it. The count still includes that column, so the handler can
+stop before that row. The keys that the handler never fetched follow the keys of
+the cut rows in `left_out`, and a batch with such keys ends with the failure
+even when its rows fit, so every key is either answered or listed.
 
 The failure's recovery is a `run` step, such as
 `{"kind":"run","call":"shelf books show <ID>... --json","all":"left_out"}`,
@@ -222,7 +220,7 @@ Why: ADR-0046, ADR-0084.
 A stream counts the bytes of each line. The first item always prints. A later
 item whose line would pass the budget does not print, the stream prints the
 over-budget failure, `Streaming::item` returns `Break`, and `Streaming::end`
-exits with code 1 when that failure is the stream's first and the guide
+exits with code 1 when that failure is the stream's first and the tool record
 declares no code for it. The failure line that ends the stream prints after
 the budget is reached, so the stream's output can pass the budget by that one
 line. `Streaming::budget` returns the bytes left, so a tool can stop
@@ -234,10 +232,10 @@ Why: ADR-0046, ADR-0041.
 ## The over-budget code
 
 A tool sets its own over-budget code with a `Rename` of
-`<tool>::output::over_budget` in `Guide::codes`, which `cut` and the
+`<tool>::output::over_budget` in `Failures::codes`, which `cut` and the
 failure report in place of crumbkit's for every document. A `Rename` in
 `Leaf::codes` sets the code for the runs of one command, and
-`check_output_budget` expects the exit that the guide gives that command's
+`check_output_budget` expects the exit that the tool record gives that command's
 code. An `Exit` that
 lists the code gives the failure its own exit code in place of 1
 ([exit codes](../../failures/exit-codes.md)). The failure keeps crumbkit's
@@ -254,14 +252,14 @@ Why: ADR-0046, ADR-0060.
 
 ## The budget check
 
-crumbkit-test's `check_output_budget` runs each `--json` example of the guide
-once, then again with `<TOOL>_OUTPUT_BUDGET` set to half the bytes it
+crumbkit-test's `check_output_budget` runs each `--json` example of the tool
+record once, then again with `<TOOL>_OUTPUT_BUDGET` set to half the bytes it
 printed. The second run must do one of these:
 
 - print a result marked with `cut` or the cut line;
 - exit with code 0 and print one answer past the budget from a document that
   always prints its first answer, as one object or as a batch of one row;
-- exit with the code that the guide gives the over-budget failure, 1 by
+- exit with the code that the tool record gives the over-budget failure, 1 by
   default, and print an over-budget failure that names the budget last.
 
 The check also runs each text example of a leaf whose document is headed in

@@ -1,4 +1,4 @@
-//! Picking, which asks the guide's picker for the values of a required
+//! Picking, which asks the tool record's picker for the values of a required
 //! argument that the command line leaves out, and adds them to the words
 //! (ADR-0043).
 
@@ -9,12 +9,12 @@ use clap::error::ErrorKind;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 
 use super::walk::given;
-use crate::help::{Guide, Leaf, quote};
+use crate::help::{Leaf, quote};
 use crate::output::failure::{self, Printing};
 use crate::pick::no_input::NO_INPUT_ID;
 use crate::pick::{Answer, Choice, Choices, Picker, Question};
 use crate::sink::role::{Deliver, Message, Role};
-use crate::{Sink, Spelling};
+use crate::{Sink, Spelling, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -34,7 +34,7 @@ pub(super) enum Step {
 /// The picking of one run, which asks about each missing argument at most
 /// once.
 pub(super) struct Picking {
-    /// The guide's picker.
+    /// The tool record's picker.
     picker: &'static dyn Picker,
     /// Whether the run reads the process's standard input, as `parse` and
     /// `parse_from` do, instead of the input of the sink that `parse_to`
@@ -59,16 +59,16 @@ impl Picking {
     /// leaf that `words` name in `command`, and adds the picked values to
     /// `words`.
     ///
-    /// It refuses without asking when the words name no leaf, when the
-    /// caller passed `--no-input`, when no person can answer, when any
-    /// missing required argument has neither possible values nor a source
-    /// in the leaf's [`Leaf::choices`], when the picker was already asked
-    /// about the argument, or when the argument has no choices. It refuses
-    /// after asking when the answer is cancelled, names a position outside
-    /// the list, or picks a number of values outside the argument's count.
-    /// A failed source prints its failure with `json` and `spelling`, and
-    /// stops the run with the exit code that the guide gives its code, which
-    /// is 1 unless an [`Exit`](crate::help::Exit) lists it.
+    /// It refuses without asking when the words name no leaf, when the caller
+    /// passed `--no-input`, when no person can answer, when any missing
+    /// required argument has neither possible values nor a source in the leaf's
+    /// [`Leaf::choices`], when the picker was already asked about the argument,
+    /// or when the argument has no choices. It refuses after asking when the
+    /// answer is cancelled, names a position outside the list, or picks a
+    /// number of values outside the argument's count. A failed source prints
+    /// its failure with `json` and `spelling`, and stops the run with the exit
+    /// code that the tool record gives its code, which is 1 unless an
+    /// [`Exit`](crate::tool::Exit) lists it.
     //
     // RUST-10: an argument counts as required only when clap marks it
     // `required`. An argument that `required_unless_present`,
@@ -81,12 +81,12 @@ impl Picking {
         &mut self,
         sink: &mut Sink<O, E, R>,
         command: &mut Command,
-        guide: &Guide,
+        tool: &Tool,
         words: &mut Vec<OsString>,
         json: bool,
         spelling: Spelling,
     ) -> Step {
-        let given = given(command, words, guide.get_dashed_forms());
+        let given = given(command, words, tool.get_dashed_forms());
         if given.ids.iter().any(|id| id == NO_INPUT_ID) {
             return Step::Refuse;
         }
@@ -100,7 +100,8 @@ impl Picking {
         if leaf_command.has_subcommands() {
             return Step::Refuse;
         }
-        let leaf = guide
+        let leaf = tool
+            .get_help()
             .get_leaves()
             .iter()
             .find(|leaf| leaf.path().iter().eq(given.path.iter()));
@@ -124,7 +125,7 @@ impl Picking {
         let choices = match choices(&arg, leaf) {
             Ok(choices) => choices,
             Err(error) => {
-                let printing = Printing::at(guide, leaf);
+                let printing = Printing::at(tool, leaf);
                 let failure = error.failure();
                 failure::print(sink, json, spelling, printing, failure, command);
                 let exit = printing.exit(failure.code());
@@ -165,10 +166,11 @@ impl Picking {
     }
 }
 
-/// Returns the guide's picker, or `None` when it has none or turns terminal
-/// detection off, so a picker never runs without detection (ADR-0049).
-pub(super) fn picker(guide: &Guide) -> Option<&'static dyn Picker> {
-    guide.get_picker().filter(|_| guide.terminal_detection())
+/// Returns the tool record's picker, or `None` when it has none or turns
+/// terminal detection off, so a picker never runs without detection (ADR-0049).
+pub(super) fn picker(tool: &Tool) -> Option<&'static dyn Picker> {
+    tool.get_picker()
+        .filter(|_| tool.get_output().terminal_detection())
 }
 
 /// Reports whether clap refused a command line with `error` because it

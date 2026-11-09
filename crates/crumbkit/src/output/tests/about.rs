@@ -67,7 +67,7 @@ fn a_root_with_a_doc_comment_keeps_it_beside_the_flags_it_flattens() {
         described.view,
         DryRun::default(),
         <Described as clap::CommandFactory>::command(),
-        &crate::help::Guide::new(),
+        &crate::Tool::new(),
         ["tool", "--json"],
     )
     .unwrap();

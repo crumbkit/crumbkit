@@ -7,7 +7,7 @@
 //! its rows as nothing while `total` still counted them. A headed batch is
 //! exempt, because its text prints each row's bytes and its JSON holds
 //! every field. The compiler cannot tell a headed batch from any other
-//! batch, so a batch passes here and crumbkit-test's `check_guide` fails a
+//! batch, so a batch passes here and crumbkit-test's `check_help` fails a
 //! leaf whose batch is not headed and whose row type has no columns. A row
 //! type that sets `Row::WHOLE` and declares `Row::LINE` is also exempt,
 //! because its JSON holds every field and its text prints each row's own
@@ -34,7 +34,7 @@ use crate::{Document, Row, Rows, Shape};
 ///     Document::new("reading", "entries", 1, "The entries of a reading list.");
 ///
 /// let result: Result<Listing<Entry>, Error> = Ok(Listing::new(vec![Entry { position: 1 }], 1));
-/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
+/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::Tool::new(), ["reading"]).unwrap();
 /// crumbkit::finish(output, ENTRIES, result);
 /// ```
 ///
@@ -55,7 +55,7 @@ use crate::{Document, Row, Rows, Shape};
 ///     Document::new("reading", "answers", 1, "The answers of a query.");
 ///
 /// let result: Result<Vec<Answer>, Error> = Ok(vec![Answer(1, 2)]);
-/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
+/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::Tool::new(), ["reading"]).unwrap();
 /// crumbkit::finish(output, ANSWERS, result);
 /// ```
 pub(super) const fn require<T: Rows>() {
@@ -82,7 +82,7 @@ pub(super) const fn require<T: Rows>() {
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
-/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
+/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::Tool::new(), ["reading"]).unwrap();
 /// let _ = crumbkit::stream(output, ENTRIES_STREAM);
 /// ```
 ///
@@ -101,7 +101,7 @@ pub(super) const fn require<T: Rows>() {
 /// const ANSWERS: Document<Stream<Answer>> =
 ///     Document::new("reading", "answers-stream", 1, "Each answer of a query.");
 ///
-/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
+/// # let output = Output::new(crumbkit::ViewFlags::new(), crumbkit::DryRun::default(), clap::Command::new("reading"), &crumbkit::Tool::new(), ["reading"]).unwrap();
 /// let _ = crumbkit::stream(output, ANSWERS);
 /// ```
 pub(super) const fn require_for_stream<R: Row>() {

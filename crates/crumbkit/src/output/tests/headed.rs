@@ -8,10 +8,10 @@ use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::Tool;
-use crate::help::Guide;
+use super::Cli;
+use crate::tool::Output;
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, finish_to};
+use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Tool, finish_to};
 
 mod budget;
 
@@ -99,8 +99,8 @@ fn finish_line(
     document: Document<Batch<Page, Error>>,
     batch: Batch<Page, Error>,
 ) -> Finished {
-    let guide = Guide::new().output_budget(budget, "the tests print little");
-    let output = super::built_with(Tool::command(), &guide, args);
+    let tool = Tool::new().output(Output::new().budget(budget, "the tests print little"));
+    let output = super::built_with(Cli::command(), &tool, args);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(batch);

@@ -3,23 +3,24 @@
 
 use std::fs;
 
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::Tool;
+use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 
 use super::{examples, run};
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
-/// The guide of two examples: the first prints the plugin file of the
+/// The tool record of two examples: the first prints the plugin file of the
 /// fixture and the path of its data directory, then deletes the file, and
 /// the second prints the file again.
-const PLUGIN: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[
+const PLUGIN: Tool = Tool::new().help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[
     Example::new(
         &[r#"cat "$XDG_DATA_HOME/tool/plugin"; echo "$XDG_DATA_HOME"; rm "$XDG_DATA_HOME/tool/plugin""#],
         "Read and remove the plugin",
     ),
     Example::new(&[r#"cat "$XDG_DATA_HOME/tool/plugin""#], "Read the plugin"),
-])]);
+])]));
 
 /// Returns a fixture whose `data` directory holds `tool/plugin`.
 fn fixture(label: &str) -> TempDir {

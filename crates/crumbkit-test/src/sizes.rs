@@ -239,11 +239,11 @@ impl Class {
 /// does, naming every problem it finds.
 ///
 /// A page is the plain text that `crumbkit::parse` prints for the command's
-/// path and `-h` with the guide of `pages`, as a caller reads it on a pipe,
-/// or what the tool's binary prints, as [`Pages`] chooses, and its size is
-/// its number of bytes. `--help` has no budget, because it describes
-/// every flag and column in full. The check skips each hidden command and
-/// everything below it, because help never shows them. It finds:
+/// path and `-h` with the tool record of `pages`, as a caller reads it on a
+/// pipe, or what the tool's binary prints, as [`Pages`] chooses, and its size
+/// is its number of bytes. `--help` has no budget, because it describes every
+/// flag and column in full. The check skips each hidden command and everything
+/// below it, because help never shows them. It finds:
 ///
 /// - a page larger than its budget, naming the command, the page's size and
 ///   the budget;
@@ -253,14 +253,14 @@ impl Class {
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit_test::{Budgets, Pages};
 ///
 /// let shelf = Command::new("shelf")
 ///     .about("Browse a small catalogue")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 ///
-/// crumbkit_test::check_help_sizes(&shelf, Pages::rendered(&Guide::new()), &Budgets::new());
+/// crumbkit_test::check_help_sizes(&shelf, Pages::rendered(&Tool::new()), &Budgets::new());
 /// ```
 ///
 /// # Panics

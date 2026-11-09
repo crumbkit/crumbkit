@@ -1,22 +1,24 @@
-//! Tests that a refusal names the tool, as its root command or its guide's
-//! root names it, in the failure document's id and in crumbkit's codes.
+//! Tests that a refusal names the tool, as its root command or its tool
+//! record's root names it, in the failure document's id and in crumbkit's
+//! codes.
 
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{Parsed, tool};
-use crate::help::{Guide, Rename};
+use super::{Parsed, tree};
+use crate::help::Help;
 use crate::parse::{Stop, parse_to};
-use crate::{Code, Sink, codes};
+use crate::tool::{Failures, Rename};
+use crate::{Code, Sink, Tool, codes};
 
-/// Runs `parse_to` over `command` with `guide` and `args` into memory, for
+/// Runs `parse_to` over `command` with `tool` and `args` into memory, for
 /// a command line that does not parse.
-fn parse(command: Command, guide: &Guide, args: &[&str]) -> Parsed {
+fn parse(command: Command, tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, guide, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),
@@ -42,11 +44,7 @@ fn hyphenated() -> Command {
 
 #[test]
 fn a_refusal_with_json_prints_the_tools_failure_document_and_the_tools_usage_code() {
-    let parsed = parse(
-        tool(),
-        &Guide::new(),
-        &["tool", "planets", "show", "--json"],
-    );
+    let parsed = parse(tree(), &Tool::new(), &["tool", "planets", "show", "--json"]);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert!(
@@ -63,7 +61,7 @@ fn a_tool_whose_name_has_a_hyphen_keeps_it_in_the_schema_id_and_spells_its_code_
 {
     let parsed = parse(
         hyphenated(),
-        &Guide::new(),
+        &Tool::new(),
         &["my-tool", "run", "--srot", "--json"],
     );
 
@@ -80,8 +78,9 @@ fn a_tool_whose_name_has_a_hyphen_keeps_it_in_the_schema_id_and_spells_its_code_
 #[test]
 fn a_tool_that_renames_the_usage_code_prints_its_own_code_in_place_of_the_tools_name() {
     const REFUSED: Code = Code::new("tool", "command_line", "refused");
-    const GUIDE: Guide = Guide::new().codes(&[Rename::new(&codes::CLI_USAGE, &REFUSED)]);
-    let parsed = parse(tool(), &GUIDE, &["tool", "planets", "show"]);
+    const TOOL: Tool =
+        Tool::new().failures(Failures::new().codes(&[Rename::new(&codes::CLI_USAGE, &REFUSED)]));
+    let parsed = parse(tree(), &TOOL, &["tool", "planets", "show"]);
 
     assert!(
         parsed
@@ -93,9 +92,9 @@ fn a_tool_that_renames_the_usage_code_prints_its_own_code_in_place_of_the_tools_
 }
 
 #[test]
-fn a_tool_whose_guide_roots_it_below_another_program_is_named_by_that_root() {
-    const GUIDE: Guide = Guide::new().root(&["planets"]);
-    let parsed = parse(tool(), &GUIDE, &["tool", "planets", "show"]);
+fn a_tool_whose_record_roots_it_below_another_program_is_named_by_that_root() {
+    const TOOL: Tool = Tool::new().help(Help::new().root(&["planets"]));
+    let parsed = parse(tree(), &TOOL, &["tool", "planets", "show"]);
 
     assert!(
         parsed.err.ends_with("  code:  planets::cli::usage\n"),

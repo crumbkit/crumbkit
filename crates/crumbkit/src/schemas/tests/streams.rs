@@ -3,19 +3,19 @@
 
 use serde_json::json;
 
-use super::{Book, args, output, tool};
-use crate::help::{Guide, Leaf};
+use super::{Book, args, output, tree};
+use crate::help::{Help, Leaf};
 use crate::schemas::{SchemasList, documents, list, stream_schema};
-use crate::{Document, Stream};
+use crate::{Document, Stream, Tool};
 
 const BOOKS_WATCH: Document<Stream<Book>> =
     Document::new("shelf", "books-watch", 1, "Each book as it is shelved.");
 
-/// The test guide, with `books list` printing a stream.
-const STREAMS: Guide = Guide::new().leaves(&[
+/// The test tool record, with `books list` printing a stream.
+const STREAMS: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "list"]).stream(BOOKS_WATCH),
     Leaf::new(&["schemas", "list"]).document(crate::schemas::SCHEMAS_LIST),
-]);
+]));
 
 #[test]
 fn a_stream_document_schema_describes_one_line_with_one_item_under_data() {
@@ -29,7 +29,7 @@ fn a_stream_document_schema_describes_one_line_with_one_item_under_data() {
 
 #[test]
 fn a_stream_leaf_serves_its_document_with_the_leaf_s_command_line() {
-    let served = documents(&tool(), &STREAMS);
+    let served = documents(&tree(), &STREAMS);
 
     assert_eq!(served[1].id(), "shelf/books-watch/v1");
     assert_eq!(served[1].commands(), ["shelf books list"]);
@@ -52,8 +52,8 @@ fn list_marks_each_document_with_its_form() {
 
 #[test]
 fn a_leaf_reports_whether_it_declares_a_stream() {
-    let [stream, document] = STREAMS.get_leaves() else {
-        panic!("the guide has two leaves");
+    let [stream, document] = STREAMS.get_help().get_leaves() else {
+        panic!("the tool record has two leaves");
     };
 
     assert!(stream.is_stream());

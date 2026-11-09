@@ -7,14 +7,13 @@ use std::ffi::OsStr;
 use clap::{Arg, Command};
 
 use super::Stop;
-use crate::help::Guide;
 use crate::parse::{Unparsed, try_parse_to};
 use crate::twins::assert_one_word_apart;
-use crate::{DryRun, Output, Sink, ViewFlags};
+use crate::{DryRun, Output, Sink, Tool, ViewFlags};
 
 /// A tool with a version, a global `--format` option and a `planets` group
 /// whose `show` takes names and a `--sort` key.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .version("1.2.3")
         .arg(Arg::new("format").long("format").global(true))
@@ -27,12 +26,12 @@ fn tool() -> Command {
         )
 }
 
-/// Runs `try_parse_to` over `tool()` with `args` into memory and returns
+/// Runs `try_parse_to` over `tree()` with `args` into memory and returns
 /// the `Stop` of the run. A run that parses or is refused fails the test.
 #[track_caller]
 fn stopped(args: &[&str]) -> Stop {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    match try_parse_to::<(), _, _, _, _>(&mut sink, tool(), &Guide::new(), args) {
+    match try_parse_to::<(), _, _, _, _>(&mut sink, tree(), &Tool::new(), args) {
         Err(Unparsed::Stopped(stop)) => stop,
         Err(Unparsed::Refused(refused)) => unreachable!("{args:?} was refused: {refused:?}"),
         Ok(_) => unreachable!("{args:?} parsed"),
@@ -142,7 +141,7 @@ enum Listed {
 fn viewed(args: &[&str]) -> Result<(), Stop> {
     let command = <Viewed as clap::CommandFactory>::command();
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    match try_parse_to::<(), _, _, _, _>(&mut sink, command, &Guide::new(), args) {
+    match try_parse_to::<(), _, _, _, _>(&mut sink, command, &Tool::new(), args) {
         Ok(_) => Ok(()),
         Err(unparsed) => Err(unparsed.print_to(&mut sink)),
     }
@@ -175,7 +174,7 @@ fn built(view: ViewFlags, args: &[&str]) -> Result<Output, Stop> {
         view,
         DryRun::default(),
         command,
-        &Guide::new(),
+        &Tool::new(),
         args,
     )
 }

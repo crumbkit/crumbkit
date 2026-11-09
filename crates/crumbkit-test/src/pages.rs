@@ -6,8 +6,7 @@ use std::process::ExitCode;
 
 use clap::Command;
 use clap::error::ErrorKind;
-use crumbkit::Sink;
-use crumbkit::help::Guide;
+use crumbkit::{Sink, Tool};
 
 use crate::examples::{Examples, setup_problem};
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
@@ -16,7 +15,7 @@ use crate::tree::{self, Visit};
 #[cfg(test)]
 mod tests;
 
-/// Where the help checks read a tool's help pages, and the guide that
+/// Where the help checks read a tool's help pages, and the tool record that
 /// they read with them.
 ///
 /// [`Pages::clap`] renders each page in the test with clap alone, as a tool
@@ -26,22 +25,22 @@ mod tests;
 /// `crumbkit::parse_to`, as a tool built with crumbkit prints it to a pipe.
 /// [`Pages::binary`] runs the tool's binary for each page and reads what it
 /// prints on standard output, which a tool needs when it builds part of its
-/// help at run time, such as from settings it reads at start. The guide
+/// help at run time, such as from settings it reads at start. The tool record
 /// gives rendered pages their goal headings and examples, and
 /// [`check_path_weights`](crate::check_path_weights) reads its examples
 /// with rendered and binary pages.
 ///
 /// ```
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit_test::{Examples, Pages};
 ///
-/// const GUIDE: Guide = Guide::new();
+/// const TOOL: Tool = Tool::new();
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// let clap = Pages::clap();
-/// let rendered = Pages::rendered(&GUIDE);
-/// let binary = Pages::binary(&GUIDE, &EXAMPLES);
+/// let rendered = Pages::rendered(&TOOL);
+/// let binary = Pages::binary(&TOOL, &EXAMPLES);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Pages<'a> {
@@ -52,20 +51,20 @@ pub struct Pages<'a> {
 /// Where [`Pages`] reads each page.
 #[derive(Clone, Copy, Debug)]
 enum Source<'a> {
-    /// clap renders each page in the test, without a guide.
+    /// clap renders each page in the test, without a tool record.
     Clap,
-    /// `crumbkit::parse_to` renders each page in the test with the guide.
-    Rendered(&'a Guide),
-    /// The binary of the examples prints each page, and the guide gives
+    /// `crumbkit::parse_to` renders each page in the test with the tool record.
+    Rendered(&'a Tool),
+    /// The binary of the examples prints each page, and the tool record gives
     /// what a check reads besides the pages.
-    Binary(&'a Guide, &'a Examples<'a>),
+    Binary(&'a Tool, &'a Examples<'a>),
 }
 
 impl<'a> Pages<'a> {
     /// Returns the pages that clap renders in the test for each command's
     /// path and help flag, as a tool that parses with clap alone prints
     /// them to a pipe. The pages have none of crumbkit's lines and no
-    /// guide, so [`check_path_weights`](crate::check_path_weights) counts
+    /// tool record, so [`check_path_weights`](crate::check_path_weights) counts
     /// no output weight with them.
     ///
     /// RUST-10: clap's `wrap_help` feature wraps a page at the width of the
@@ -80,17 +79,17 @@ impl<'a> Pages<'a> {
         }
     }
 
-    /// Returns the pages that `crumbkit::parse_to` renders with `guide` in
+    /// Returns the pages that `crumbkit::parse_to` renders with `tool` in
     /// the test, without the line that names a person's aliases.
     #[must_use]
-    pub const fn rendered(guide: &'a Guide) -> Self {
+    pub const fn rendered(tool: &'a Tool) -> Self {
         Self {
-            source: Source::Rendered(guide),
+            source: Source::Rendered(tool),
         }
     }
 
     /// Returns the pages that the binary of `examples` prints, with
-    /// `guide` for what a check reads besides the pages.
+    /// `tool` for what a check reads besides the pages.
     ///
     /// Each page is a run of the binary with the command's words and the
     /// help flag, such as `books list -h`, in the environment, working
@@ -102,17 +101,17 @@ impl<'a> Pages<'a> {
     /// directory prints none of them, because each run's directories start
     /// empty or as copies of the fixture.
     #[must_use]
-    pub const fn binary(guide: &'a Guide, examples: &'a Examples<'a>) -> Self {
+    pub const fn binary(tool: &'a Tool, examples: &'a Examples<'a>) -> Self {
         Self {
-            source: Source::Binary(guide, examples),
+            source: Source::Binary(tool, examples),
         }
     }
 
-    /// Returns the guide, or `None` for clap's pages.
-    pub(crate) const fn guide(self) -> Option<&'a Guide> {
+    /// Returns the tool record, or `None` for clap's pages.
+    pub(crate) const fn tool(self) -> Option<&'a Tool> {
         match self.source {
             Source::Clap => None,
-            Source::Rendered(guide) | Source::Binary(guide, _) => Some(guide),
+            Source::Rendered(tool) | Source::Binary(tool, _) => Some(tool),
         }
     }
 }
@@ -123,18 +122,18 @@ impl<'a> Pages<'a> {
 /// below it, as help does.
 ///
 /// With [`Pages::clap`], each page is the help that clap's
-/// `Command::try_get_matches_from` returns for the command's path and
-/// `flag`, such as `shelf books list -h`, as plain text without styles,
-/// which is what clap prints to a pipe. Each page parses a clone of
-/// `command`. With [`Pages::binary`], each page is what the binary prints on standard
-/// output for the command's words and `flag`. With [`Pages::rendered`],
-/// each page is what `crumbkit::parse_to` prints for the command's path and
-/// `flag`, such as `shelf books list -h`, with the guide: the plain text that
-/// a caller reads on a pipe, with the guide's goal headings, the leaf's
-/// examples and columns, and crumbkit's lines. `parse_to` builds the tree
-/// that it parses, so each page parses a clone of `command`. The pages
-/// leave out the line that names a person's aliases, because those names
-/// differ between machines (ADR-0027).
+/// `Command::try_get_matches_from` returns for the command's path and `flag`,
+/// such as `shelf books list -h`, as plain text without styles, which is what
+/// clap prints to a pipe. Each page parses a clone of `command`. With
+/// [`Pages::binary`], each page is what the binary prints on standard output
+/// for the command's words and `flag`. With [`Pages::rendered`], each page is
+/// what `crumbkit::parse_to` prints for the command's path and `flag`, such as
+/// `shelf books list -h`, with the tool record: the plain text that a caller
+/// reads on a pipe, with the tool record's goal headings, the leaf's examples
+/// and columns, and crumbkit's lines. `parse_to` builds the tree that it
+/// parses, so each page parses a clone of `command`. The pages leave out the
+/// line that names a person's aliases, because those names differ between
+/// machines (ADR-0027).
 ///
 /// A command line that prints no help page, such as `-h` on a command that
 /// turned its help flag off, adds a problem to `problems`, and the command
@@ -147,10 +146,10 @@ pub(crate) fn pages<'a>(
     flag: &str,
     problems: &mut Vec<String>,
 ) -> Vec<(Visit<'a>, String)> {
-    let guide = match pages.source {
+    let tool = match pages.source {
         Source::Clap => return clap_pages(command, flag, problems),
         Source::Binary(_, examples) => return binary_pages(command, examples, flag, problems),
-        Source::Rendered(guide) => guide.without_personal_aliases(),
+        Source::Rendered(tool) => tool.help(tool.get_help().without_personal_aliases()),
     };
     let mut pages = Vec::new();
     for visit in tree::walk_visible(command) {
@@ -160,7 +159,7 @@ pub(crate) fn pages<'a>(
         let result = crumbkit::parse_to::<(), _, _, _, _>(
             &mut Sink::new(&mut out, Vec::new()),
             command.clone(),
-            &guide,
+            &tool,
             line.split(' '),
         );
         if result.err().map(ExitCode::from) == Some(ExitCode::SUCCESS) {

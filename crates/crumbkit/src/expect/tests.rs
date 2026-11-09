@@ -5,9 +5,8 @@ use std::process::ExitCode;
 use clap::{CommandFactory as _, Parser};
 
 use super::Expect;
-use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Call, Error, Field, Recovery, Sink, Spelling};
+use crate::{Call, Error, Field, Recovery, Sink, Spelling, Tool};
 
 /// A command that sets a planet's name and takes `--expect`.
 #[derive(Parser)]
@@ -23,7 +22,7 @@ struct Rename {
 fn expect(words: &[&str]) -> Result<Expect, ExitCode> {
     let args = std::iter::once("rename").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    crate::parse_to::<Rename, _, _, _, _>(&mut sink, Rename::command(), &Guide::new(), args)
+    crate::parse_to::<Rename, _, _, _, _>(&mut sink, Rename::command(), &Tool::new(), args)
         .map(|(rename, _)| rename.expect)
         .map_err(ExitCode::from)
 }

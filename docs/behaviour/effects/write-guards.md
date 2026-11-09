@@ -48,13 +48,13 @@ value as a refused command line.
 
 The handler passes the target's current version, or `None` when it does not
 exist, to `Expect::check` before it changes anything. A mismatch fails with
-`<tool>::version::conflict`, or the tool's rename of it. The failure exits
-with code 1 unless the guide lists the code for another, names the `expected`
-and `current` versions as fields, and recovers by running the command that
-the tool passes as the read call. A tool that compares versions in its own
-way calls `Expect::conflict` directly. The check runs before
-`Output::confirm`, so a conflict comes before the question, and a replacing
-command still takes `--yes` because it is destructive.
+`<tool>::version::conflict`, or the tool's rename of it. The failure exits with
+code 1 unless the tool record lists the code for another, names the `expected`
+and `current` versions as fields, and recovers by running the command that the
+tool passes as the read call. A tool that compares versions in its own way calls
+`Expect::conflict` directly. The check runs before `Output::confirm`, so a
+conflict comes before the question, and a replacing command still takes `--yes`
+because it is destructive.
 
 Help and `commands list` read whether a command takes `--expect` from the
 clap tree by the id `crumbkit_expect`, so a leaf declares nothing more for it.

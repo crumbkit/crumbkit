@@ -1,35 +1,20 @@
 //! The tool's own codes for crumbkit's failures, and the exit code that a
 //! failure ends a run with (ADR-0056).
 
-use crate::Code;
-use crate::help::{Exit, Guide, Leaf};
+use crate::help::Leaf;
+use crate::tool::Exit;
+use crate::{Code, Tool};
 
 #[cfg(test)]
 mod tests;
 
-impl Guide {
-    /// Sets the tool's own codes for crumbkit's failures. A run prints the
-    /// tool's code of each [`Rename`] in place of crumbkit's, and the usage
-    /// log, the trace and crumbkit-test's checks read the same code. A
-    /// tool that renames nothing prints crumbkit's codes (ADR-0056).
-    #[must_use]
-    pub const fn codes(mut self, renames: &'static [Rename]) -> Self {
-        self.codes = renames;
-        self
-    }
-
-    /// Returns the renames that [`Guide::codes`] set. The name has clap's
-    /// `get_` prefix, because `codes` is the builder method.
-    #[must_use]
-    pub const fn get_codes(&self) -> &'static [Rename] {
-        self.codes
-    }
-
-    /// Returns the code that a run of the command at `path`, the real names
-    /// of its subcommands from the root, prints for a failure with `code`.
-    /// It is the tool's code when the guide's leaf at `path` renames `code`
-    /// with [`Leaf::codes`], then the tool's code when [`Guide::codes`]
-    /// renames it, and `code` otherwise (ADR-0060).
+impl Tool {
+    /// Returns the code that a run of the command at `path`, the real names of
+    /// its subcommands from the root, prints for a failure with `code`. It is
+    /// the tool's code when the tool record's leaf at `path` renames `code`
+    /// with [`Leaf::codes`], then the tool's code when
+    /// [`Failures::codes`](crate::tool::Failures::codes) renames it, and `code`
+    /// otherwise (ADR-0060).
     #[must_use]
     pub fn printed<'code>(&self, path: &[&str], code: &'code Code) -> &'code Code {
         Renames::at(self, path).printed(code)
@@ -38,14 +23,18 @@ impl Guide {
     /// Returns the exit code of a run of the command at `path` whose first
     /// failure has `code`. It is the code of the first [`Exit`] that lists
     /// the failure's printed code or a crumbkit code that the run prints as
-    /// it, where [`Guide::printed`] decides the printed code for `path`. A
+    /// it, where [`Tool::printed`] decides the printed code for `path`. A
     /// failure that no exit lists exits with crumbkit's default: 2 for a
     /// refused command line and 1 for every other failure (ADR-0002). The
     /// failures that a range of codes lists count as unlisted, because a
     /// range names no single code to exit with (ADR-0103).
     #[must_use]
     pub fn failure_exit(&self, path: &[&str], code: &'static Code) -> u8 {
-        failure_exit(self.exits, Renames::at(self, path), code)
+        failure_exit(
+            self.get_failures().get_exits(),
+            Renames::at(self, path),
+            code,
+        )
     }
 }
 
@@ -53,27 +42,30 @@ impl Guide {
 /// prints in its place, such as `ledger::cli::usage` for
 /// `<tool>::cli::usage`.
 ///
-/// A tool lists its renames in its [`Guide`] with [`Guide::codes`], and
-/// the renames of one command in its leaf with [`Leaf::codes`], which a run
-/// of that command reads before the guide's. crumbkit still decides when each
-/// of its failures happens, with its message, its recovery and its
-/// alternatives, and the rename changes only the code that a run prints,
-/// the code that the usage log and the trace record, and the exit that an
-/// [`Exit`] lists for it:
+/// A tool lists its renames in its [`Tool`] with
+/// [`Failures::codes`](crate::tool::Failures::codes), and the renames of one
+/// command in its leaf with [`Leaf::codes`], which a run of that command reads
+/// before the tool record's. crumbkit still decides when each of its failures
+/// happens, with its message, its recovery and its alternatives, and the rename
+/// changes only the code that a run prints, the code that the usage log and the
+/// trace record, and the exit that an [`Exit`] lists for it:
 ///
 /// ```
 /// use crumbkit::Code;
 /// use crumbkit::codes::CLI_USAGE;
-/// use crumbkit::help::{Exit, Guide, Rename};
+/// use crumbkit::Tool;
+/// use crumbkit::tool::{Exit, Failures, Rename};
 ///
 /// const USAGE: Code = Code::new("ledger", "cli", "usage");
 ///
-/// const GUIDE: Guide = Guide::new()
-///     .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
-///     .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])]);
+/// const TOOL: Tool = Tool::new().failures(
+///     Failures::new()
+///         .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
+///         .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])]),
+/// );
 ///
-/// assert_eq!(GUIDE.printed(&[], &CLI_USAGE), &USAGE);
-/// assert_eq!(GUIDE.failure_exit(&[], &CLI_USAGE), 64);
+/// assert_eq!(TOOL.printed(&[], &CLI_USAGE), &USAGE);
+/// assert_eq!(TOOL.failure_exit(&[], &CLI_USAGE), 64);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rename {
@@ -94,7 +86,7 @@ impl Rename {
     ///
     /// ```compile_fail
     /// use crumbkit::Code;
-    /// use crumbkit::help::Rename;
+    /// use crumbkit::tool::Rename;
     ///
     /// const MINE: Code = Code::new("ledger", "rows", "stale");
     /// const BACKWARDS: Rename = Rename::new(&MINE, &crumbkit::codes::VERSION_CONFLICT);
@@ -144,51 +136,55 @@ pub(crate) const fn same_text(left: &str, right: &str) -> bool {
 }
 
 /// The renames that one run reads: the renames of the leaf of the run's
-/// command, which come first, and the guide's (ADR-0060).
+/// command, which come first, and the tool record's (ADR-0060).
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Renames {
     /// The renames that [`Leaf::codes`] set on the leaf of the run's
     /// command, or none.
     leaf: &'static [Rename],
-    /// The renames that [`Guide::codes`] set.
-    guide: &'static [Rename],
+    /// The renames that [`Failures::codes`](crate::tool::Failures::codes) set.
+    tool: &'static [Rename],
 }
 
 impl Renames {
-    /// Returns the renames of `guide` alone, which a run reads before it
+    /// Returns the renames of `tool` alone, which a run reads before it
     /// knows its command, such as for a refused command line.
-    pub(crate) const fn of(guide: &Guide) -> Self {
+    pub(crate) const fn of(tool: &Tool) -> Self {
         Self {
             leaf: &[],
-            guide: guide.get_codes(),
+            tool: tool.get_failures().get_codes(),
         }
     }
 
-    /// Returns the renames of `leaf`, or none, and of `guide`.
-    pub(crate) const fn with_leaf(guide: &Guide, leaf: Option<&Leaf>) -> Self {
+    /// Returns the renames of `leaf`, or none, and of `tool`.
+    pub(crate) const fn with_leaf(tool: &Tool, leaf: Option<&Leaf>) -> Self {
         let leaf = match leaf {
             Some(leaf) => leaf.get_codes(),
             None => &[],
         };
         Self {
             leaf,
-            guide: guide.get_codes(),
+            tool: tool.get_failures().get_codes(),
         }
     }
 
     /// Returns the renames that a run of the command at `path` reads.
-    pub(crate) fn at(guide: &Guide, path: &[&str]) -> Self {
-        let leaf = guide.get_leaves().iter().find(|leaf| leaf.path() == path);
-        Self::with_leaf(guide, leaf)
+    pub(crate) fn at(tool: &Tool, path: &[&str]) -> Self {
+        let leaf = tool
+            .get_help()
+            .get_leaves()
+            .iter()
+            .find(|leaf| leaf.path() == path);
+        Self::with_leaf(tool, leaf)
     }
 
-    /// Returns the code that a run prints for a failure with `code`: the
-    /// tool's code of the leaf's rename of `code`, then of the guide's, and
+    /// Returns the code that a run prints for a failure with `code`: the tool's
+    /// code of the leaf's rename of `code`, then of the tool record's, and
     /// `code` when neither renames it.
     pub(crate) fn printed(self, code: &Code) -> &Code {
         self.leaf
             .iter()
-            .chain(self.guide)
+            .chain(self.tool)
             .find(|rename| rename.crumbkit == code)
             .map_or(code, |rename| rename.tool)
     }
@@ -203,7 +199,7 @@ pub(crate) fn failure_exit(exits: &[Exit], renames: Renames, code: &'static Code
     if let Some(exit) = listed_exit(exits, renames, code) {
         return exit;
     }
-    // A leaf cannot rename `crumbkit::cli::usage`, so the guide's renames
+    // A leaf cannot rename `crumbkit::cli::usage`, so the tool record's renames
     // decide the refusal's printed code for every command.
     if renames.printed(code) == renames.printed(&crate::codes::CLI_USAGE) {
         return 2;

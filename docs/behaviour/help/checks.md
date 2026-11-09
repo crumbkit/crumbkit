@@ -81,7 +81,7 @@ Why: ADR-0025, ADR-0033.
 through snapbox ([golden files](../checks/golden-files.md)). It fails on a
 stale file, so its directory holds only help golden files. The help checks
 print help without a person's aliases, through
-`Guide::without_personal_aliases`, so the golden files are the same on every
+`Help::without_personal_aliases`, so the golden files are the same on every
 machine.
 
 Why: ADR-0025, ADR-0004, ADR-0027.
@@ -91,7 +91,7 @@ Why: ADR-0025, ADR-0004, ADR-0027.
 crumbkit-test has no bundled check that runs every check. A tool calls each
 check from its own `#[test]`, so a failure names the rule that broke.
 
-- `check_guide` holds the leaf rules, and takes opt-outs of its example
+- `check_help` holds the leaf rules, and takes opt-outs of its example
   rule and its document rule alone
   ([leaf checks](examples.md#checks-of-leaves)).
 - [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) checks the

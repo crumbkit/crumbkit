@@ -1,6 +1,6 @@
 # Leaf examples and columns
 
-This page covers the leaves of a tool's guide: the examples that a leaf's
+This page covers the leaves of a tool record: the examples that a leaf's
 help lists and the descriptions of the columns that its `--help` prints.
 The rustdoc of [`Leaf`](../../../crates/crumbkit/src/help/leaf.rs) and
 [`parse_to`](../../../crates/crumbkit/src/parse.rs) states each item's
@@ -8,7 +8,7 @@ contract.
 
 ## Leaves
 
-A tool declares its leaves in its `Guide`. Each `Leaf` names a command by the
+A tool declares its leaves in its `Tool`. Each `Leaf` names a command by the
 real names of its subcommands from the root, as `Group` does, and holds its
 examples and the `Document` it prints. A command that the tool adds at run
 time has a [`RuntimeLeaf`](README.md#runtime-leaves), which holds examples
@@ -16,7 +16,7 @@ and the document the command prints, as `Leaf` does.
 
 `Leaf::document` keeps the document's id and description, the row type's
 columns, and function pointers that build the row's JSON Schema and the
-whole document's. `Leaf` therefore has no type parameter, and one guide
+whole document's. `Leaf` therefore has no type parameter, and one tool record
 holds leaves whose rows have different types. The
 [schema commands](../schemas/commands.md) and crumbkit-test's document
 checks read the document through `Leaf::get_document` and
@@ -41,7 +41,7 @@ Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041, ADR-0080.
   under `JSON fields that --fields selects:`, and its `-h` ends with a
   `Next:` line that says `--help` explains each JSON field, also when its
   row type names no column. crumbkit-test's
-  `check_guide` fails a headed leaf whose row has no top-level `text` or
+  `check_help` fails a headed leaf whose row has no top-level `text` or
   `base64` field, because its `Bytes` field is not marked
   `#[serde(flatten)]`.
 - `parse` applies a leaf only to the deepest command on the walked path.
@@ -53,7 +53,7 @@ Why: ADR-0024, ADR-0062.
 
 A column's description is the doc comment of the row type's field, which
 schemars puts into the JSON Schema, so the doc comment is the only place a
-column is described. `--help` and crumbkit-test's `check_guide` both read
+column is described. `--help` and crumbkit-test's `check_help` both read
 the columns through `Leaf::column_descriptions`, so the check sees what the
 page prints. `parse` builds the schema only when the typed words ask for
 `--help`, so a run that prints no long help never builds it.
@@ -71,7 +71,7 @@ Why: ADR-0024, ADR-0003.
 
 ## Checks of leaves
 
-crumbkit-test's [`check_guide`](../../../crates/crumbkit-test/src/guide.rs)
+crumbkit-test's [`check_help`](../../../crates/crumbkit-test/src/help.rs)
 checks the leaves. It parses each example with clap and refuses an example
 that asks for `--help` or `--version`. It requires an example for every
 visible command without subcommands, a description for every column, a
@@ -86,10 +86,10 @@ schema has no fields
 ([rows printed whole](../output/shapes/README.md#rows-printed-whole)). Its rustdoc
 lists every rule.
 
-The example rule takes an opt-out of `guide/examples`, which covers the
+The example rule takes an opt-out of `help/examples`, which covers the
 command it names and every command below it, so a tool can adopt goal
 headings and leaves before every command has an example. The document rule
-takes an opt-out of `guide/document`, which covers commands in the same
+takes an opt-out of `help/document`, which covers commands in the same
 way, so a tool that prints its own output can declare the effects of a
 leaf that changes something. crumbkit then cannot
 refuse a view flag that the output cannot use before the change happens,

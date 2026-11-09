@@ -10,7 +10,7 @@ use serde::Serialize;
 use clap::CommandFactory as _;
 
 use super::{
-    PLANET, PLANET_LISTING, PLANETS, Planet, Tool, finish_with, mercury, parse_against, saturn,
+    Cli, PLANET, PLANET_LISTING, PLANETS, Planet, finish_with, mercury, parse_against, saturn,
 };
 use crate::Envelope;
 use crate::answered::answered;
@@ -182,7 +182,7 @@ fn json_prints_the_value_of_an_unwrapped_prose_result_and_its_failures_on_standa
 
 #[test]
 fn a_failed_unwrapped_command_prints_the_failure_document_with_json() {
-    let output = parse_against(Tool::command(), &["--json"]);
+    let output = parse_against(Cli::command(), &["--json"]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, Error> = Err(Missing("Vulcan").into());

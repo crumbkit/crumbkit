@@ -8,8 +8,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::{finish_output, finish_with};
-use crate::help::Guide;
-use crate::{Document, Listing, Row};
+use crate::tool::Output;
+use crate::{Document, Listing, Row, Tool};
 
 /// A link from a pointer to its target. A link without a target has no
 /// text line of its own.
@@ -131,10 +131,10 @@ fn a_listing_of_rows_with_their_own_text_line_keeps_its_footer_on_standard_error
 
 #[test]
 fn a_listing_of_rows_with_their_own_text_line_over_the_budget_prints_the_lines_that_fit() {
-    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(1024, "the tests print little"));
     let output = super::built_with(
-        <super::Tool as clap::CommandFactory>::command(),
-        &guide,
+        <super::Cli as clap::CommandFactory>::command(),
+        &tool,
         &["tool", "list"],
     );
     // Each line is 1,000 bytes, so only the first fits in 1,024 bytes.

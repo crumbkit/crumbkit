@@ -10,9 +10,9 @@ use clap::CommandFactory as _;
 use serde_json::{Value, json};
 
 use super::{Finished, PAGES, Page, batch, finish, page};
-use crate::help::Guide;
-use crate::output::tests::{Tool, built_with};
-use crate::{Batch, Document, Error, Sink, finish_to};
+use crate::output::tests::{Cli, built_with};
+use crate::tool::Output;
+use crate::{Batch, Document, Error, Sink, Tool, finish_to};
 
 /// The keys of the batch, in the order the caller gave them.
 const KEYS: [&str; 3] = ["A", "B", "C"];
@@ -24,7 +24,7 @@ fn answer() -> Vec<u8> {
     bytes
 }
 
-/// The budgets that each test runs at in text: 0, which a guide may set,
+/// The budgets that each test runs at in text: 0, which a tool record may set,
 /// 1, a budget between one header and one answer, and a budget that fits
 /// the first answer alone, with its header.
 const TEXT_BUDGETS: [usize; 4] = [0, 1, 50, 150];
@@ -49,9 +49,9 @@ fn fetched(
     document: Document<Batch<Page, Error>>,
     through_room: bool,
 ) -> Finished {
-    let guide = Guide::new().output_budget(budget, "the tests print little");
+    let tool = Tool::new().output(Output::new().budget(budget, "the tests print little"));
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    let output = built_with(Tool::command(), &guide, &args);
+    let output = built_with(Cli::command(), &tool, &args);
     let mut room = output.room(document);
     let mut answers = Batch::new(&["show"], "names", &KEYS);
     for key in KEYS {

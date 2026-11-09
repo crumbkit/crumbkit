@@ -37,7 +37,7 @@ exception that the [failure model](../failures/README.md) allows.
 A failure from a run that writes crumbkit's warning about a recovery that
 does not render is not reported again as a dead end. A code that the tool
 does not declare and crumbkit does not own ends its chain, and the report
-counts such codes. crumbkit owns its own codes, the codes that the guide
+counts such codes. crumbkit owns its own codes, the codes that the tool record
 prints in place of them, and the codes of its add-on crates, such as crumbkit-child's
 `<tool>::child::not_found` and crumbkit-aliases's
 `<tool>::aliases::unreadable`. The tool's output names the tool in each of

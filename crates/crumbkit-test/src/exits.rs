@@ -1,11 +1,11 @@
 //! The exit code check, which a tool's test runs over the exit codes that
-//! its guide declares.
+//! its tool record declares.
 
 use std::process::ExitStatus;
 
 use clap::Command;
-use crumbkit::help::{Exit, Guide, Rename};
-use crumbkit::{Code, Spelling};
+use crumbkit::tool::{Exit, Rename};
+use crumbkit::{Code, Spelling, Tool};
 
 use crate::allow::{Allow, Allowances, Rule, command_line};
 use crate::tree;
@@ -13,9 +13,9 @@ use crate::tree;
 #[cfg(test)]
 mod tests;
 
-/// Checks the exit codes that `guide` declares with
-/// [`Guide::exits`](crumbkit::help::Guide::exits) and the renames it
-/// declares with [`Guide::codes`](crumbkit::help::Guide::codes) and
+/// Checks the exit codes that `tool` declares with
+/// [`Failures::exits`](crumbkit::tool::Failures::exits) and the renames it
+/// declares with [`Failures::codes`](crumbkit::tool::Failures::codes) and
 /// [`Leaf::codes`](crumbkit::help::Leaf::codes), and
 /// panics, as a failed test assertion does, naming every problem it finds
 /// (ADR-0002).
@@ -31,29 +31,30 @@ mod tests;
 ///   A code from 129 to 159 passes, because a shell reports a run that a
 ///   signal ended as 128 plus the signal's number, such as 130 after
 ///   Ctrl-C, and a tool that catches the signal exits with the same code;
-/// - a range from [`Exit::range`](crumbkit::help::Exit::range) that starts
+/// - a range from [`Exit::range`](crumbkit::tool::Exit::range) that starts
 ///   below 3, because 0, 1 and 2 keep their meanings, or that ends before
 ///   it starts. A range may run up to 255, because its codes come from
 ///   another program;
 /// - a range that lists failure codes, because a range names no single
 ///   code for a run that fails with one to exit with;
-/// - a code that the guide declares more than once, and a range that
+/// - a code that the tool record declares more than once, and a range that
 ///   holds a code that another declaration holds;
 /// - a meaning that is empty, only whitespace or more than one line;
 /// - a command path of a code that names no command below `command`;
-/// - a failure code that [`Exit::failures`](crumbkit::help::Exit::failures) lists for two codes, where one
-///   of crumbkit's codes counts as the tool's code that the guide prints in
-///   its place, or that a leaf's [`Leaf::codes`](crumbkit::help::Leaf::codes)
-///   prints in its place in a run of that leaf's command;
-/// - one of crumbkit's codes that the guide or one leaf renames twice, and
-///   a code of the tool that renames of two different crumbkit codes print,
-///   in the guide or in any of its leaves.
+/// - a failure code that [`Exit::failures`](crumbkit::tool::Exit::failures)
+///   lists for two codes, where one of crumbkit's codes counts as the tool's
+///   code that the tool record prints in its place, or that a leaf's
+///   [`Leaf::codes`](crumbkit::help::Leaf::codes) prints in its place in a run
+///   of that leaf's command;
+/// - one of crumbkit's codes that the tool record or one leaf renames twice,
+///   and a code of the tool that renames of two different crumbkit codes print,
+///   in the tool record or in any of its leaves.
 ///
-/// The problems spell failure codes in the guide's spelling with the tool's
-/// name in crumbkit's own codes, as the tool prints them. An exit may
+/// The problems spell failure codes in the tool record's spelling with the
+/// tool's name in crumbkit's own codes, as the tool prints them. An exit may
 /// list one of crumbkit's failure codes, such as
-/// [`CLI_USAGE`](crumbkit::codes::CLI_USAGE), to give that failure the
-/// tool's own exit code.
+/// [`CLI_USAGE`](crumbkit::codes::CLI_USAGE), to give that failure the tool's
+/// own exit code.
 ///
 /// A tool can opt out of the rule for single codes from 126 with an
 /// [`Allow`] of [`Rule::ShellExitCode`], and of the rule for 1 and 2 with an [`Allow`] of
@@ -69,11 +70,13 @@ mod tests;
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::{Exit, Guide};
+/// use crumbkit::Tool;
+/// use crumbkit::tool::{Exit, Failures};
 ///
-/// const GUIDE: Guide = Guide::new().exits(&[Exit::new(3, "The catalogue was locked.")]);
+/// const TOOL: Tool = Tool::new()
+///     .failures(Failures::new().exits(&[Exit::new(3, "The catalogue was locked.")]));
 ///
-/// crumbkit_test::check_exit_codes(&Command::new("shelf"), &GUIDE, &[]);
+/// crumbkit_test::check_exit_codes(&Command::new("shelf"), &TOOL, &[]);
 /// ```
 ///
 /// # Panics
@@ -82,11 +85,14 @@ mod tests;
 /// problem in the message starts on a new line and names the code.
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
-pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
+pub fn check_exit_codes(command: &Command, tool: &Tool, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::ShellExitCode, Rule::SharedExit]);
     let mut problems = Vec::new();
-    let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
-    let exits = guide.get_exits();
+    let spelling = tool
+        .get_failures()
+        .get_spelling()
+        .for_tool(tool.tool_name(command));
+    let exits = tool.get_failures().get_exits();
     for (index, exit) in exits.iter().enumerate() {
         let code = exit.code();
         let name = name(exit);
@@ -140,7 +146,7 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
             ));
         }
         for &failure in exit.get_failures() {
-            listed(command, guide, spelling, index, failure, &mut problems);
+            listed(command, tool, spelling, index, failure, &mut problems);
         }
         for path in exit.get_commands() {
             if tree::find(command, path.iter().copied()).is_none() {
@@ -151,7 +157,7 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
             }
         }
     }
-    renamed(command, guide, spelling, &mut problems);
+    renamed(command, tool, spelling, &mut problems);
     allowances.report(command, "exit code rules", problems);
 }
 
@@ -220,34 +226,33 @@ fn overlaps(earlier: &[Exit], exit: &Exit, name: &str, problems: &mut Vec<String
     }
 }
 
-/// Pushes a problem when an earlier exit of `guide` than the one at
+/// Pushes a problem when an earlier exit of `tool` than the one at
 /// `index` lists `failure`, or a code that a run prints as the same code.
-/// It reads the guide's renames first, and then the renames of each leaf
+/// It reads the tool record's renames first, and then the renames of each leaf
 /// that sets [`Leaf::codes`](crumbkit::help::Leaf::codes), and it reports
 /// the first collision that it finds, so one pair of exits is one problem.
 /// Only the second exit that lists a code reports it, so a code that three
 /// exits list is one problem. The problem spells the code with `spelling`.
 fn listed(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     spelling: Spelling,
     index: usize,
     failure: &'static Code,
     problems: &mut Vec<String>,
 ) {
-    let code = guide.get_exits()[index].code();
-    if let Some((first, printed)) = earlier_listing(guide, spelling, &[], index, failure) {
+    let code = tool.get_failures().get_exits()[index].code();
+    if let Some((first, printed)) = earlier_listing(tool, spelling, &[], index, failure) {
         problems.push(format!(
             "the exit code {code} lists the failure code {printed}, which the exit code {first} lists already, so a run that fails with it cannot exit with both"
         ));
         return;
     }
-    for leaf in guide.get_leaves() {
+    for leaf in tool.get_help().get_leaves() {
         if leaf.get_codes().is_empty() {
             continue;
         }
-        if let Some((first, printed)) =
-            earlier_listing(guide, spelling, leaf.path(), index, failure)
+        if let Some((first, printed)) = earlier_listing(tool, spelling, leaf.path(), index, failure)
         {
             problems.push(format!(
                 "the exit code {code} lists the failure code {printed}, which the exit code {first} lists already, so a run of `{}` that fails with it cannot exit with both",
@@ -258,24 +263,24 @@ fn listed(
     }
 }
 
-/// Returns the code of the one exit of `guide` before the exit at `index`
+/// Returns the code of the one exit of `tool` before the exit at `index`
 /// that lists a code that a run of the command at `path` prints as it
 /// prints `failure`, and that printed code spelled with `spelling`. It
 /// returns `None` when no earlier exit lists it,
 /// and when two or more do, because the second of them reported it.
 fn earlier_listing(
-    guide: &Guide,
+    tool: &Tool,
     spelling: Spelling,
     path: &[&str],
     index: usize,
     failure: &'static Code,
 ) -> Option<(u8, String)> {
-    let exits = guide.get_exits();
-    let printed = guide.printed(path, failure);
+    let exits = tool.get_failures().get_exits();
+    let printed = tool.printed(path, failure);
     let mut earlier = exits[..index].iter().filter(|exit| {
         exit.get_failures()
             .iter()
-            .any(|&listed| guide.printed(path, listed) == printed)
+            .any(|&listed| tool.printed(path, listed) == printed)
     });
     let first = earlier.next()?;
     earlier
@@ -284,17 +289,20 @@ fn earlier_listing(
         .then(|| (first.code(), spelling.spell(printed)))
 }
 
-/// Pushes a problem for each rename of `guide` or of one of its leaves
-/// whose crumbkit code an earlier rename of the same list names, because a
-/// run prints only the first. It also pushes one for each rename that
-/// prints the code of an earlier rename of another crumbkit code, in the
-/// guide or any leaf, because a caller cannot tell the two failures apart.
-/// The guide's renames come first, and then each leaf's in order. The
-/// problems spell codes with `spelling`.
-fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut Vec<String>) {
+/// Pushes a problem for each rename of `tool` or of one of its leaves whose
+/// crumbkit code an earlier rename of the same list names, because a run prints
+/// only the first. It also pushes one for each rename that prints the code of
+/// an earlier rename of another crumbkit code, in the tool record or any leaf,
+/// because a caller cannot tell the two failures apart. The tool record's
+/// renames come first, and then each leaf's in order. The problems spell codes
+/// with `spelling`.
+fn renamed(command: &Command, tool: &Tool, spelling: Spelling, problems: &mut Vec<String>) {
     // Each list of renames with the words that name its owner in a problem.
-    let mut lists = vec![("the guide".to_owned(), guide.get_codes())];
-    for leaf in guide.get_leaves() {
+    let mut lists = vec![(
+        "the tool record".to_owned(),
+        tool.get_failures().get_codes(),
+    )];
+    for leaf in tool.get_help().get_leaves() {
         if !leaf.get_codes().is_empty() {
             let line = command_line(command, &leaf.path().join(" "));
             lists.push((format!("the leaf `{line}`"), leaf.get_codes()));
@@ -305,7 +313,7 @@ fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut 
             // crumbkit's own codes carry the tool's name, so the problem
             // names them as crumbkit's to tell them from the tool's codes.
             let crumbkit = format!("crumbkit's {}", spelling.spell(rename.crumbkit()));
-            let tool = spelling.spell(rename.tool());
+            let tool_name = spelling.spell(rename.tool());
             let earlier = &renames[..index];
             if let Some(first) = earlier
                 .iter()
@@ -322,7 +330,7 @@ fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut 
             };
             if let Some(first) = earlier.iter().find(clash) {
                 problems.push(format!(
-                    "{owner} renames {crumbkit} to {tool}, which it gives crumbkit's {} already, so a caller cannot tell the two failures apart",
+                    "{owner} renames {crumbkit} to {tool_name}, which it gives crumbkit's {} already, so a caller cannot tell the two failures apart",
                     spelling.spell(first.crumbkit())
                 ));
                 continue;
@@ -332,7 +340,7 @@ fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut 
                 .find_map(|(other, renames)| Some((other, renames.iter().find(clash)?)));
             if let Some((other, first)) = other {
                 problems.push(format!(
-                    "{owner} renames {crumbkit} to {tool}, which {other} gives crumbkit's {} already, so a caller cannot tell the two failures apart",
+                    "{owner} renames {crumbkit} to {tool_name}, which {other} gives crumbkit's {} already, so a caller cannot tell the two failures apart",
                     spelling.spell(first.crumbkit())
                 ));
             }
@@ -345,14 +353,14 @@ fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut 
 /// `status`. The problem starts with a verb, and the caller puts the run's
 /// name before it, such as its command line.
 ///
-/// The run must exit as [`Guide::failure_exit`] decides for its first
+/// The run must exit as [`Tool::failure_exit`] decides for its first
 /// failure in a run of the command at `path` (ADR-0037):
 ///
-/// - with the code of the exit of `guide` that lists the failure's code,
+/// - with the code of the exit of `tool` that lists the failure's code,
 ///   or one of crumbkit's codes that such a run prints as it;
-/// - with the code that the guide gives a refused command line, 2 unless an
-///   exit lists `<tool>::cli::usage`, for `<tool>::cli::usage`;
-/// - with 1 for any other failure, unless the guide's leaf at `path`
+/// - with the code that the tool record gives a refused command line, 2 unless
+///   an exit lists `<tool>::cli::usage`, for `<tool>::cli::usage`;
+/// - with 1 for any other failure, unless the tool record's leaf at `path`
 ///   declares with [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)
 ///   that the command passes on a program's exit code, which may be any
 ///   code but 0.
@@ -361,15 +369,15 @@ fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut 
 /// that lists failures, because a caller reads that code as one of those
 /// failures.
 pub(crate) fn exit_problem(
-    guide: &Guide,
+    tool: &Tool,
     spelling: Spelling,
     path: &[String],
     printed: &str,
     status: ExitStatus,
 ) -> Option<String> {
     let path: Vec<&str> = path.iter().map(String::as_str).collect();
-    let is = |code: &Code| spelling.spell(guide.printed(&path, code)) == printed;
-    let exits = guide.get_exits();
+    let is = |code: &Code| spelling.spell(tool.printed(&path, code)) == printed;
+    let exits = tool.get_failures().get_exits();
     // The failures of a range never decide a run's exit, so they count as
     // unlisted.
     let listed = exits
@@ -379,18 +387,18 @@ pub(crate) fn exit_problem(
         .find(|&code| is(code));
     let code = status.code();
     if let Some(listed) = listed {
-        let expected = guide.failure_exit(&path, listed);
+        let expected = tool.failure_exit(&path, listed);
         return (code != Some(i32::from(expected))).then(|| {
             format!(
-                "fails with {printed}, which the guide's exit code {expected} lists, and it ends with {status}"
+                "fails with {printed}, which the tool record's exit code {expected} lists, and it ends with {status}"
             )
         });
     }
     if is(&crumbkit::codes::CLI_USAGE) {
-        let expected = guide.failure_exit(&path, &crumbkit::codes::CLI_USAGE);
+        let expected = tool.failure_exit(&path, &crumbkit::codes::CLI_USAGE);
         return (code != Some(i32::from(expected))).then(|| {
             format!(
-                "fails with {printed}, which refuses the command line, and it ends with {status}, where the guide gives a refused command line the exit code {expected}"
+                "fails with {printed}, which refuses the command line, and it ends with {status}, where the tool record gives a refused command line the exit code {expected}"
             )
         });
     }
@@ -400,10 +408,11 @@ pub(crate) fn exit_problem(
         })
     {
         return Some(format!(
-            "fails with {printed}, which no exit code of the guide lists, and it exits with {code}, which the guide declares for the failure codes that it lists"
+            "fails with {printed}, which no exit code of the tool record lists, and it exits with {code}, which the tool record declares for the failure codes that it lists"
         ));
     }
-    let passes = guide
+    let passes = tool
+        .get_help()
         .get_leaves()
         .iter()
         .any(|leaf| leaf.path() == path.as_slice() && leaf.get_passes_on_exit().is_some());
@@ -413,7 +422,7 @@ pub(crate) fn exit_problem(
         return None;
     }
     Some(format!(
-        "fails with {printed}, which no exit code of the guide lists, and it ends with {status}, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
+        "fails with {printed}, which no exit code of the tool record lists, and it ends with {status}, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
     ))
 }
 

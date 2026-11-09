@@ -1,8 +1,9 @@
 //! Tests for `check_twins`, which runs every twin of a tool and requires a
 //! twin for each declared code.
 
-use crumbkit::Code;
-use crumbkit::help::{Guide, Leaf, Rename};
+use crumbkit::help::{Help, Leaf};
+use crumbkit::tool::Rename;
+use crumbkit::{Code, Tool};
 
 use super::tree;
 use crate::allow::Allow;
@@ -11,6 +12,7 @@ use crate::recoveries::{Failing, Unprovoked};
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 use crate::twins::{Twin, Twins, check_twins};
+use crumbkit::tool::Failures;
 
 /// The code of a book that does not exist.
 const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
@@ -73,7 +75,7 @@ fn checked_allowing(
     let twins = Twins::new(Examples::new(&path, "").allow(allow), CODES)
         .pairs(pairs)
         .unprovoked(unprovoked);
-    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
+    panic_message(|| check_twins(&tree(), &Tool::new(), &twins))
 }
 
 #[test]
@@ -147,7 +149,7 @@ fn checked_with(script: &str, pairs: &[Twin<'_>]) -> Option<String> {
     dir.write_script("tool", script);
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), &[&[&NOT_FOUND]]).pairs(pairs);
-    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
+    panic_message(|| check_twins(&tree(), &Tool::new(), &twins))
 }
 
 #[test]
@@ -257,17 +259,17 @@ fn an_untwinned_opt_out_whose_line_succeeds_or_fails_with_another_code_fails_the
 }
 
 #[test]
-fn a_declared_code_that_the_guide_prints_in_place_of_one_of_crumbkits_codes_needs_no_twin() {
+fn a_declared_code_that_the_tool_prints_in_place_of_one_of_crumbkits_codes_needs_no_twin() {
     const BAD_LIMIT: Code = Code::new("tool", "books", "bad_limit");
-    const GUIDE: Guide =
-        Guide::new().codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &BAD_LIMIT)]);
+    const TOOL: Tool = Tool::new()
+        .failures(Failures::new().codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &BAD_LIMIT)]));
     const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &BAD_LIMIT]];
     let dir = TempDir::new("twins-renamed").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7]);
 
-    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
+    let problems = panic_message(|| check_twins(&tree(), &TOOL, &twins));
 
     assert_eq!(problems, None);
 }
@@ -275,28 +277,30 @@ fn a_declared_code_that_the_guide_prints_in_place_of_one_of_crumbkits_codes_need
 #[test]
 fn a_declared_code_that_a_leaf_prints_in_place_of_one_of_crumbkits_codes_needs_no_twin() {
     const STALE: Code = Code::new("tool", "books", "stale");
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"])
-        .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &STALE)])]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["books", "show"])
+            .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &STALE)])]),
+    );
     const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &STALE]];
     let dir = TempDir::new("twins-leaf-renamed").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7]);
 
-    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
+    let problems = panic_message(|| check_twins(&tree(), &TOOL, &twins));
 
     assert_eq!(problems, None);
 }
 
-/// A guide that spells codes with their segments joined by `.`.
-const DOTTED: Guide = Guide::new().spelling(crumbkit::Spelling::custom(|code, f| {
-    write!(f, "{}.{}.{}", code.component(), code.area(), code.reason())
-}));
+/// A tool record that spells codes with their segments joined by `.`.
+const DOTTED: Tool = Tool::new().failures(Failures::new().spelling(crumbkit::Spelling::custom(
+    |code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()),
+)));
 
-/// The answers of a tool whose guide sets the dotted spelling: `books show
-/// 7` fails with `NOT_FOUND` in that spelling, `books show 8` fails with
-/// `UNREADABLE` in the colon spelling, and `books show 2` succeeds. Any
-/// other command line fails with code 3.
+/// The answers of a tool whose tool record sets the dotted spelling: `books
+/// show 7` fails with `NOT_FOUND` in that spelling, `books show 8` fails with
+/// `UNREADABLE` in the colon spelling, and `books show 2` succeeds. Any other
+/// command line fails with code 3.
 const DOTTED_SCRIPT: &str = r#"#!/bin/sh
 line="$*"
 case "${line% --json}" in
@@ -308,7 +312,7 @@ esac
 "#;
 
 #[test]
-fn check_twins_passes_a_refused_line_in_the_guides_custom_spelling_and_fails_one_in_colons() {
+fn check_twins_passes_a_refused_line_in_the_tools_custom_spelling_and_fails_one_in_colons() {
     const SHOW_8: Twin<'_> = Twin::new(
         Failing::new(&UNREADABLE, &["books", "show", "8"]),
         &["books", "show", "2"],
@@ -340,7 +344,7 @@ fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() 
         .pairs(&[SHOW_7])
         .unprovoked(&unprovoked);
 
-    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+    let problems = panic_message(|| check_twins(&tree(), &Tool::new(), &twins));
 
     assert_eq!(
         problems.as_deref(),

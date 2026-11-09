@@ -42,25 +42,25 @@ The lines print in this order, each only on the pages named:
    each command on the way. `--help` lists those flags in full.
 4. On the root, a `Topics:` line that names the tool's topics and
    `exit-codes`.
-5. On the clap root, when the guide opts in, a line that names a person's
+5. On the clap root, when the tool record opts in, a line that names a person's
    aliases ([aliases](../parsing/aliases.md)).
 6. A `Next:` line. The help of a command with a visible subcommand ends with
    a `Next:` line that opens one of them. A leaf's `-h` ends with a `Next:`
    line that points to `--help` for its columns.
 
-crumbkit's lines appear on guided and unguided pages alike. Help, the
+crumbkit's lines appear on pages with and without goal headings alike. Help, the
 version and a topic print to standard output with exit code 0.
 
-Help keeps clap's colours only when the [`Sink`](../../../crates/crumbkit/src/sink.rs)
-asks for styles. `parse` asks when standard output is a terminal and the
-guide keeps [terminal detection](../output/terminal.md) on, and then prints
-through clap, which honours `NO_COLOR` and the command's `ColorChoice`.
-`parse_to` writes clap's styles to a sink that `Sink::styled(true)` built,
-whatever its writer is, so a tool that passes its own sink honours
-`NO_COLOR` itself. The styles need crumbkit's `color` feature, which turns on
-clap's `color`. Without it, a styled sink receives plain help. clap renders
-the version without styles, and crumbkit builds topics without styles, so
-those print as plain text to every sink.
+Help keeps clap's colours only when the
+[`Sink`](../../../crates/crumbkit/src/sink.rs) asks for styles. `parse` asks
+when standard output is a terminal and the tool record keeps [terminal
+detection](../output/terminal.md) on, and then prints through clap, which
+honours `NO_COLOR` and the command's `ColorChoice`. `parse_to` writes clap's
+styles to a sink that `Sink::styled(true)` built, whatever its writer is, so a
+tool that passes its own sink honours `NO_COLOR` itself. The styles need
+crumbkit's `color` feature, which turns on clap's `color`. Without it, a styled
+sink receives plain help. clap renders the version without styles, and crumbkit
+builds topics without styles, so those print as plain text to every sink.
 
 Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0064,
 ADR-0065, ADR-0102, ADR-0120, ADR-0143.
@@ -87,23 +87,23 @@ Why: ADR-0021.
 ## Goal headings
 
 A tool may list a group's subcommands under goal headings that it declares
-in its guide, and may list its root verbs under a heading of their own.
+in its tool record, and may list its root verbs under a heading of their own.
 [Goal headings](headings/README.md) covers both.
 
 ## Runtime leaves
 
-A tool that adds commands to its tree at run time, such as one for each file
-a person writes, gives them examples with
+A tool that adds commands to its tree at run time, such as one for each file a
+person writes, gives them examples with
 [`RuntimeLeaf`](../../../crates/crumbkit/src/help/runtime.rs)s.
-`Guide::with_runtime_leaves` joins them after the `const` leaves into a
-guide that every reader takes as it takes a `const` guide. The join leaks
-the runtime leaves for the rest of the process. A runtime leaf takes
-examples, effects, refusal alternatives and the document its command prints.
-`RuntimeLeaf::document` takes a document that the tool declares as a
-constant, such as the one a static command that does the same work prints,
-so the command's help, `commands list` and `schemas list` describe it as
-they describe a `const` leaf with that document. The joined guide keeps the
-guide's renames and every other setting.
+`Tool::with_runtime_leaves` joins them after the `const` leaves into a tool
+record that every reader takes as it takes a `const` tool record. The join leaks
+the runtime leaves for the rest of the process. A runtime leaf takes examples,
+effects, refusal alternatives and the document its command prints.
+`RuntimeLeaf::document` takes a document that the tool declares as a constant,
+such as the one a static command that does the same work prints, so the
+command's help, `commands list` and `schemas list` describe it as they describe
+a `const` leaf with that document. The joined tool record keeps the tool
+record's renames and every other setting.
 
 Why: ADR-0021, ADR-0024, ADR-0080.
 
@@ -149,13 +149,13 @@ Why: ADR-0023, ADR-0100, ADR-0101, ADR-0129.
 
 ## Topics
 
-A tool declares its topics in its `Guide`, each a
+A tool declares its topics in its `Tool`, each a
 [`Topic`](../../../crates/crumbkit/src/help/topic.rs) of a name, a one-line
-summary and plain text. Topic text is a literal or comes from
-`include_str!`. `parse` reads the topics from the guide, so the command tree
-holds no topics. Topics belong to the root, which
-[`Guide::root`](../../../crates/crumbkit/src/help.rs) can move for a tool
-that another program runs with fixed words.
+summary and plain text. Topic text is a literal or comes from `include_str!`.
+`parse` reads the topics from the tool record, so the command tree holds no
+topics. Topics belong to the root, which
+[`Help::root`](../../../crates/crumbkit/src/help.rs) can move for a tool that
+another program runs with fixed words.
 
 crumbkit adds its own topic, `exit-codes`, which lists crumbkit's codes 0, 1
 and 2 and then the codes that the tool declares
@@ -163,7 +163,7 @@ and 2 and then the codes that the tool declares
 `Topics:` line. A root has the topic, and answers `help`,
 when it has subcommands or the tool declares topics, so a root without
 either reads `help` as an ordinary word. A tool's topic named `exit-codes`
-never prints, and `check_guide` rejects one.
+never prints, and `check_help` rejects one.
 
 A topic's text prints as plain text, also on a terminal and when `--json`
 follows its name. The root's help

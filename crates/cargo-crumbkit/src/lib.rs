@@ -24,7 +24,7 @@ use clap::CommandFactory as _;
 // These items exist for the binary in `main.rs` and for the crate's own
 // tests, so they stay out of the documentation.
 #[doc(hidden)]
-pub use crate::cli::{ALLOW, Cli, GUIDE};
+pub use crate::cli::{ALLOW, Cli, TOOL};
 use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand};
 
 #[cfg(test)]
@@ -40,7 +40,7 @@ mod tests;
 /// `Next:` lines and recoveries print starts with `cargo crumbkit`.
 #[must_use]
 pub fn run() -> ExitCode {
-    let (cli, mut output) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE) {
+    let (cli, mut output) = match crumbkit::parse::<Cli>(Cli::command(), &TOOL) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
@@ -54,7 +54,7 @@ pub fn run() -> ExitCode {
                 // `commands list` reads the command tree through
                 // `&mut output`, so it runs before `finish`.
                 CommandsCommand::List(args) => {
-                    let result = crumbkit::commands::list(&mut output, &GUIDE, &args);
+                    let result = crumbkit::commands::list(&mut output, &TOOL, &args);
                     let document = crumbkit::commands::COMMANDS_LIST;
                     crumbkit::finish(output, document, result)
                 }

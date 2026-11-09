@@ -1,11 +1,11 @@
 //! Step 4 of the tutorial: pantry's convention tests, which check its
-//! command tree, guide and codes with crumbkit-test.
+//! command tree, tool record and codes with crumbkit-test.
 
 use clap::CommandFactory;
 use crumbkit::Code;
 use crumbkit_test::{Allow, Pages, Rule};
 
-use super::{Cli, GUIDE, SHELF_NOT_FOUND};
+use super::{Cli, SHELF_NOT_FOUND, TOOL};
 
 /// pantry's opt-outs from crumbkit's conventions, which each check that
 /// takes opt-outs reads.
@@ -20,17 +20,17 @@ const CODES: &[&Code] = &[&SHELF_NOT_FOUND];
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&GUIDE), ALLOW);
+    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&TOOL), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_a_verb() {
-    crumbkit_test::check_grammar(&Cli::command(), Pages::rendered(&GUIDE), &[], ALLOW);
+    crumbkit_test::check_grammar(&Cli::command(), Pages::rendered(&TOOL), &[], ALLOW);
 }
 
 #[test]
 fn every_command_declares_its_effects() {
-    crumbkit_test::check_effects(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_effects(&Cli::command(), &TOOL, ALLOW);
 }
 
 #[test]
@@ -39,11 +39,11 @@ fn every_list_command_pages() {
 }
 
 #[test]
-fn every_command_and_leaf_meets_the_guide_rules() {
-    crumbkit_test::check_guide(&Cli::command(), &GUIDE, ALLOW);
+fn every_command_and_leaf_meets_the_help_rules() {
+    crumbkit_test::check_help(&Cli::command(), &TOOL, ALLOW);
 }
 
 #[test]
 fn every_failure_code_is_distinct_and_printable() {
-    crumbkit_test::check_codes(&GUIDE, &[CODES]);
+    crumbkit_test::check_codes(&TOOL, &[CODES]);
 }

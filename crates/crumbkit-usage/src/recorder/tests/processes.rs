@@ -8,8 +8,8 @@ use serde_json::Value;
 
 use crate::recorder::{listens, start, start_under};
 use crate::testing::TempDir;
-use crumbkit::help::{Exit, Guide};
-use crumbkit::{Code, Document, Output, Sink, Spelling, Stream, ViewFlags, stream_to};
+use crumbkit::tool::{Exit, Failures};
+use crumbkit::{Code, Document, Output, Sink, Spelling, Stream, Tool, ViewFlags, stream_to};
 
 /// Tells the usage log that the tool `command` received `args`, as
 /// crumbkit's `parse` does, so the line has a tool name.
@@ -35,7 +35,7 @@ fn bare_output() -> Output {
         ViewFlags::new(),
         crumbkit::DryRun::default(),
         Command::new("tool"),
-        &Guide::new(),
+        &Tool::new(),
         ["tool"],
     )
     .unwrap()
@@ -98,7 +98,7 @@ fn a_stream_that_ends_with_a_mapped_failure_records_the_declared_exit_and_its_by
 }
 
 /// The code of the failure that the stream-exit test's child ends with,
-/// which its guide maps to 124.
+/// which its tool record maps to 124.
 const TIMED_OUT: Code = Code::new("watching", "watch", "timed_out");
 
 /// A row of the stream-exit test's child.
@@ -134,13 +134,15 @@ impl crumbkit::Failure for TimedOut {
 }
 
 /// Runs only as the child of the stream-exit test, which sets [`CHILD`]. It
-/// starts the log, streams one row with a guide that maps `TIMED_OUT` to
+/// starts the log, streams one row with a tool record that maps `TIMED_OUT` to
 /// 124, ends the stream with that failure, and exits with the code that the
 /// stream returns.
 #[test]
 fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
-    const GUIDE: Guide =
-        Guide::new().exits(&[Exit::new(124, "The watch ran out of time.").failures(&[&TIMED_OUT])]);
+    const TOOL: Tool = Tool::new().failures(
+        Failures::new()
+            .exits(&[Exit::new(124, "The watch ran out of time.").failures(&[&TIMED_OUT])]),
+    );
     const NUMBERS: Document<Stream<Numbered>> =
         Document::new("watching", "numbers", 1, "Each number as it arrives.");
     if !is_child() {
@@ -153,7 +155,7 @@ fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
         ViewFlags::new(),
         crumbkit::DryRun::default(),
         command,
-        &GUIDE,
+        &TOOL,
         ["watching"],
     )
     .unwrap();

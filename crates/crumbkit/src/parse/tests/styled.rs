@@ -5,11 +5,10 @@
 
 use std::process::ExitCode;
 
-use super::{Stop, Unparsed, parse_to, tool, try_parse_to};
-use crate::Sink;
-use crate::help::Guide;
+use super::{Stop, Unparsed, parse_to, tree, try_parse_to};
+use crate::{Sink, Tool};
 
-/// Runs `parse_to` over `tool()` with `args`, which ask for help or the
+/// Runs `parse_to` over `tree()` with `args`, which ask for help or the
 /// version, into a sink that asks for styles when `styled` is set, and
 /// returns what it printed on standard output.
 fn page(args: &[&str], styled: bool) -> String {
@@ -17,8 +16,8 @@ fn page(args: &[&str], styled: bool) -> String {
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err).styled(styled),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         args,
     );
     assert_eq!(
@@ -74,7 +73,7 @@ fn a_styled_sink_receives_short_and_long_help_with_clap_s_styles() {
 #[cfg(feature = "color")]
 #[test]
 fn a_styled_sink_receives_the_bytes_that_clap_s_error_print_writes_at_a_terminal() {
-    let error = tool()
+    let error = tree()
         .disable_help_subcommand(true)
         .try_get_matches_from(["tool", "planets", "show", "-h"])
         .unwrap_err();
@@ -122,7 +121,7 @@ fn a_styled_sink_receives_the_help_word_as_it_receives_the_help_flag() {
     );
 }
 
-/// Runs `parse_to` over `tool()` with `args`, which clap refuses, into a
+/// Runs `parse_to` over `tree()` with `args`, which clap refuses, into a
 /// sink whose error writer wants styles when `styled` is set, and returns
 /// what it printed on standard error. It checks that nothing went to
 /// standard output.
@@ -139,8 +138,8 @@ fn refusal_streams(args: &[&str], styled: bool) -> (String, String) {
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err).styled_errors(styled),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         args,
     );
     assert_eq!(
@@ -154,7 +153,7 @@ fn refusal_streams(args: &[&str], styled: bool) -> (String, String) {
     )
 }
 
-/// Command lines that `tool()` refuses: a missing argument, an unknown
+/// Command lines that `tree()` refuses: a missing argument, an unknown
 /// flag, a flag without its value, a mistyped subcommand, and a group
 /// without its subcommand, which prints the group's page.
 const REFUSED: [&[&str]; 5] = [
@@ -210,8 +209,8 @@ fn a_refusal_is_plain_on_a_sink_from_sink_new_even_when_its_result_is_styled() {
         let mut err = Vec::new();
         let _stop = parse_to::<(), _, _, _, _>(
             &mut Sink::new(&mut out, &mut err).styled(true),
-            tool(),
-            &Guide::new(),
+            tree(),
+            &Tool::new(),
             args,
         );
 
@@ -246,8 +245,8 @@ fn a_refusal_that_try_parse_returns_prints_nothing_and_holds_no_escape_codes() {
     let mut err = Vec::new();
     let unparsed = try_parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err).styled_errors(true),
-        tool(),
-        &Guide::new(),
+        tree(),
+        &Tool::new(),
         ["tool", "planets", "show", "mars", "--srt", "name"],
     );
 

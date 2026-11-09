@@ -9,9 +9,9 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::parse_to;
-use crate::help::{Guide, Leaf, ViewFlag};
+use crate::help::{Help, Leaf, ViewFlag};
 use crate::twins::assert_one_word_apart;
-use crate::{Document, Listing, Row, Sink};
+use crate::{Document, Listing, Row, Sink, Tool};
 
 /// The disk space that one directory takes, without long columns.
 #[derive(Serialize, JsonSchema)]
@@ -31,13 +31,14 @@ const NOTED: Document<Listing<Usage>> =
 const PLAIN: Document<Listing<Usage>> =
     Document::new("du", "plain", 1, "The space of each directory.");
 
-const GUIDE: Guide = Guide::new().leaves(&[
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["noted"]).document(NOTED),
     Leaf::new(&["plain"]).document(PLAIN),
-]);
+]));
 
-/// A tool with crumbkit's output flags on its root and the guide's leaves.
-fn tool() -> Command {
+/// A tool with crumbkit's output flags on its root and the tool record's
+/// leaves.
+fn tree() -> Command {
     let leaves = ["noted", "plain"].map(|name| Command::new(name).about("A leaf"));
     crate::ViewFlags::augment_args(Command::new("du"))
         .subcommand_required(true)
@@ -52,12 +53,12 @@ struct Parsed {
     err: String,
 }
 
-/// Runs `parse_to` over `tool()` with the guide's leaves and `args`.
+/// Runs `parse_to` over `tree()` with the tool record's leaves and `args`.
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, args);
     Parsed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),
@@ -69,8 +70,8 @@ const LONG_NOTE_LINE: &str = "Long note: --long prints a note on standard error.
 
 #[test]
 fn a_leaf_whose_document_declares_a_long_note_offers_long_although_its_rows_have_no_long_columns() {
-    assert!(GUIDE.get_leaves()[0].offers(ViewFlag::Long));
-    assert!(!GUIDE.get_leaves()[1].offers(ViewFlag::Long));
+    assert!(TOOL.get_help().get_leaves()[0].offers(ViewFlag::Long));
+    assert!(!TOOL.get_help().get_leaves()[1].offers(ViewFlag::Long));
 
     let parsed = parse(&["du", "noted", "--long"]);
 

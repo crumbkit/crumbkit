@@ -3,8 +3,7 @@
 use std::fs;
 
 use clap::Command;
-use crumbkit::JsonLayout;
-use crumbkit::help::Guide;
+use crumbkit::{JsonLayout, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -13,7 +12,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 use crate::{Allow, Budget, Budgets, Failing, PathBudgets, Rule};
 
-mod customisations;
+mod declarations;
 mod root_verbs;
 
 /// The opt-outs of the test tool.
@@ -43,12 +42,12 @@ fn run(allow: &[Allow], dir: &TempDir, action: Action) {
     run_with(allow, &Budgets::new(), None, dir, action);
 }
 
-/// Runs the check on `shelf()` with `guide` and no opt-outs against `dir`
+/// Runs the check on `shelf()` with `tool` and no opt-outs against `dir`
 /// with `action`.
-fn run_guided(guide: &Guide, dir: &TempDir, action: Action) {
+fn run_with_tool(tool: &Tool, dir: &TempDir, action: Action) {
     check(
         &shelf(),
-        guide,
+        tool,
         &[],
         &Budgets::new(),
         None,
@@ -68,7 +67,7 @@ fn run_with(
 ) {
     check(
         &shelf(),
-        &Guide::new(),
+        &Tool::new(),
         allow,
         budgets,
         paths,
@@ -113,7 +112,7 @@ fn overwrite_writes_each_opt_out_as_json() {
     assert_eq!(
         read(&dir, "opt-outs.json"),
         r#"{
-  "schema": "shelf/opt-outs/v1",
+  "schema": "shelf/opt-outs/v2",
   "data": [
     {
       "rule": "listings/show-ids",
@@ -142,7 +141,7 @@ fn a_tool_without_opt_outs_reports_that_it_has_none() {
     );
     assert_eq!(
         read(&dir, "opt-outs.json"),
-        "{\n  \"schema\": \"shelf/opt-outs/v1\",\n  \"data\": []\n}\n"
+        "{\n  \"schema\": \"shelf/opt-outs/v2\",\n  \"data\": []\n}\n"
     );
 }
 
@@ -212,14 +211,15 @@ fn the_report_lists_each_budget_that_differs_from_crumbkit_s_default() {
 }
 
 #[test]
-fn the_first_line_counts_the_opt_outs_and_the_budgets_of_a_guide_with_both_separately() {
+fn the_first_line_counts_the_opt_outs_and_the_budgets_of_a_tool_with_both_separately() {
     const BUDGETS: Budgets = Budgets::new().leaf(1_500, "Leaves show long examples.");
-    const GUIDE: Guide = Guide::new().output_budget(2_097_152, "Exports print every book.");
+    const TOOL: Tool = Tool::new()
+        .output(crumbkit::tool::Output::new().budget(2_097_152, "Exports print every book."));
     let dir = TempDir::new("opt-outs-first-line").unwrap();
 
     check(
         &shelf(),
-        &GUIDE,
+        &TOOL,
         ALLOW,
         &BUDGETS,
         None,
@@ -266,7 +266,7 @@ fn the_json_report_gives_a_raised_budget_its_extra_bytes_and_tokens() {
     assert_eq!(
         read(&dir, "opt-outs.json"),
         r#"{
-  "schema": "shelf/opt-outs/v1",
+  "schema": "shelf/opt-outs/v2",
   "data": [
     {
       "rule": "path-budget/command",
@@ -289,11 +289,12 @@ fn the_json_report_gives_a_raised_budget_its_extra_bytes_and_tokens() {
 }
 
 #[test]
-fn the_report_lists_the_output_budget_that_the_guide_sets_beside_crumbkit_s_default() {
-    const GUIDE: Guide = Guide::new().output_budget(2_097_152, "Exports print every book.");
+fn the_report_lists_the_output_budget_that_the_tool_sets_beside_crumbkit_s_default() {
+    const TOOL: Tool = Tool::new()
+        .output(crumbkit::tool::Output::new().budget(2_097_152, "Exports print every book."));
     let dir = TempDir::new("opt-outs-output-budget").unwrap();
 
-    run_guided(&GUIDE, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -307,10 +308,10 @@ fn the_report_lists_the_output_budget_that_the_guide_sets_beside_crumbkit_s_defa
 }
 
 #[test]
-fn a_guide_that_keeps_the_default_output_budget_adds_no_entry() {
+fn a_tool_that_keeps_the_default_output_budget_adds_no_entry() {
     let dir = TempDir::new("opt-outs-default-output-budget").unwrap();
 
-    run_guided(&Guide::new(), &dir, Action::Overwrite);
+    run_with_tool(&Tool::new(), &dir, Action::Overwrite);
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
@@ -319,15 +320,17 @@ fn a_guide_that_keeps_the_default_output_budget_adds_no_entry() {
 }
 
 #[test]
-fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
-    const GUIDE: Guide = Guide::new()
-        .output_budget(2_097_152, "Exports print every book.")
-        .json_layout(JsonLayout::Pretty {
-            reason: "Our scripts read indented JSON.",
-        });
+fn the_report_lists_the_json_layout_that_the_tool_sets_with_its_cost() {
+    const TOOL: Tool = Tool::new().output(
+        crumbkit::tool::Output::new()
+            .budget(2_097_152, "Exports print every book.")
+            .json_layout(JsonLayout::Pretty {
+                reason: "Our scripts read indented JSON.",
+            }),
+    );
     let dir = TempDir::new("opt-outs-json-layout").unwrap();
 
-    run_guided(&GUIDE, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     let text = read(&dir, "opt-outs.txt");
     assert!(
@@ -347,12 +350,14 @@ fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
 }
 
 #[test]
-fn the_report_lists_a_guide_without_terminal_detection_with_its_reason_and_costs() {
-    const GUIDE: Guide =
-        Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
+fn the_report_lists_a_tool_without_terminal_detection_with_its_reason_and_costs() {
+    const TOOL: Tool = Tool::new().output(
+        crumbkit::tool::Output::new()
+            .without_terminal_detection("Our CI runs in a pseudo-terminal."),
+    );
     let dir = TempDir::new("opt-outs-terminal-detection").unwrap();
 
-    run_guided(&GUIDE, &dir, Action::Overwrite);
+    run_with_tool(&TOOL, &dir, Action::Overwrite);
 
     let text = read(&dir, "opt-outs.txt");
     assert_eq!(

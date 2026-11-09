@@ -1,19 +1,20 @@
-//! Tests for the root verbs that a tool declares on its guide or with
+//! Tests for the root verbs that a tool declares on its tool record or with
 //! `Allow::root_verbs`, which pass the root-leaf rule without an opt-out.
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 
 use crate::Pages;
 use crate::allow::{Allow, Rule};
 use crate::grammar::check_grammar;
 use crate::testing::panic_message;
+use crumbkit::help::Help;
 
 /// The reason that the tests give for their root verbs.
 const REASON: &str = "People and scripts type `start` and `stop` every day.";
 
-/// A guide that declares `start` and `stop` as root verbs.
-const GUIDE: Guide = Guide::new().root_verbs(&["start", "stop"], REASON);
+/// A tool record that declares `start` and `stop` as root verbs.
+const TOOL: Tool = Tool::new().help(Help::new().root_verbs(&["start", "stop"], REASON));
 
 /// The opt-outs that declare `start` and `stop` as root verbs at test time.
 const ALLOW: &[Allow] = &[Allow::root_verbs(&["start", "stop"], REASON)];
@@ -28,8 +29,8 @@ fn server() -> Command {
 }
 
 #[test]
-fn root_verbs_that_the_guide_declares_pass_the_root_leaf_rule_without_an_opt_out() {
-    check_grammar(&server(), Pages::rendered(&GUIDE), &[], &[]);
+fn root_verbs_that_the_tool_declares_pass_the_root_leaf_rule_without_an_opt_out() {
+    check_grammar(&server(), Pages::rendered(&TOOL), &[], &[]);
 }
 
 #[test]
@@ -39,7 +40,7 @@ fn root_verbs_declared_with_allow_root_verbs_pass_the_root_leaf_rule_without_an_
 
 #[test]
 fn a_root_leaf_that_is_not_declared_still_needs_an_opt_out() {
-    const ONE: Guide = Guide::new().root_verbs(&["start"], REASON);
+    const ONE: Tool = Tool::new().help(Help::new().root_verbs(&["start"], REASON));
 
     assert_eq!(
         panic_message(|| check_grammar(&server(), Pages::rendered(&ONE), &[], &[])).unwrap(),
@@ -64,7 +65,7 @@ fn a_resource_with_the_name_or_an_alias_of_a_root_verb_fails_without_an_opt_out(
         );
 
     assert_eq!(
-        panic_message(|| check_grammar(&server, Pages::rendered(&GUIDE), &[], RESOURCE_NAME))
+        panic_message(|| check_grammar(&server, Pages::rendered(&TOOL), &[], RESOURCE_NAME))
             .unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          server jobs start: the resource answers to `start`, which the root verb `start` also answers to\n\
@@ -75,7 +76,8 @@ fn a_resource_with_the_name_or_an_alias_of_a_root_verb_fails_without_an_opt_out(
 
 #[test]
 fn a_declared_root_verb_that_names_no_root_leaf_fails_as_a_stale_opt_out_does() {
-    const STALE: Guide = Guide::new().root_verbs(&["start", "stop", "logs", "restart"], REASON);
+    const STALE: Tool =
+        Tool::new().help(Help::new().root_verbs(&["start", "stop", "logs", "restart"], REASON));
 
     assert_eq!(
         panic_message(|| check_grammar(&server(), Pages::rendered(&STALE), &[], &[])).unwrap(),
@@ -99,11 +101,11 @@ fn a_declaration_without_root_verbs_fails_as_a_stale_opt_out_does() {
 }
 
 #[test]
-fn root_verbs_declared_on_the_guide_and_with_allow_root_verbs_fail_the_check() {
+fn root_verbs_declared_on_the_tool_and_with_allow_root_verbs_fail_the_check() {
     assert_eq!(
-        panic_message(|| check_grammar(&server(), Pages::rendered(&GUIDE), &[], ALLOW)).unwrap(),
+        panic_message(|| check_grammar(&server(), Pages::rendered(&TOOL), &[], ALLOW)).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
-         the tool declares root verbs more than once, and a tool declares them once, on its guide or with `Allow::root_verbs`"
+         the tool declares root verbs more than once, and a tool declares them once, on its tool record or with `Allow::root_verbs`"
     );
 }
 
@@ -112,7 +114,7 @@ fn an_opt_out_from_the_root_leaf_rule_for_a_declared_root_verb_is_stale() {
     const OPT_OUT: &[Allow] = &[Allow::new(Rule::RootLeaf, "start", "Old habit.")];
 
     assert_eq!(
-        panic_message(|| check_grammar(&server(), Pages::rendered(&GUIDE), &[], OPT_OUT)).unwrap(),
+        panic_message(|| check_grammar(&server(), Pages::rendered(&TOOL), &[], OPT_OUT)).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          the opt-out from `grammar/root-leaf` for `server start` excuses no problem, so it is stale"
     );
@@ -120,7 +122,8 @@ fn an_opt_out_from_the_root_leaf_rule_for_a_declared_root_verb_is_stale() {
 
 #[test]
 fn a_root_verb_that_one_declaration_names_twice_fails_the_check() {
-    const TWICE: Guide = Guide::new().root_verbs(&["start", "stop", "start"], REASON);
+    const TWICE: Tool =
+        Tool::new().help(Help::new().root_verbs(&["start", "stop", "start"], REASON));
 
     assert_eq!(
         panic_message(|| check_grammar(&server(), Pages::rendered(&TWICE), &[], &[])).unwrap(),

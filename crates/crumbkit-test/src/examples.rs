@@ -1,4 +1,4 @@
-//! The example check, which runs every example in a tool's guide against the
+//! The example check, which runs every example in a tool record against the
 //! tool's built binary and pins each run's standard output in a golden file.
 
 use std::fmt::Write as _;
@@ -7,15 +7,15 @@ use std::process::Output;
 use std::time::Duration;
 
 use clap::Command;
-use crumbkit::ToolName;
-use crumbkit::help::{Example, Guide};
+use crumbkit::help::Example;
+use crumbkit::{Tool, ToolName};
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, Redactions};
 
 use crate::allow::{Allowances, Rule};
 use crate::failures::{self, Reader};
 use crate::goldens::{compare, remove_stale};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
@@ -32,20 +32,20 @@ mod settings;
 #[cfg(test)]
 mod tests;
 
-/// Runs every example in the leaves of `guide` against the binary that
+/// Runs every example in the leaves of `tool` against the binary that
 /// `examples` names and checks that each run succeeds and prints the
 /// standard output and standard error in its golden files, and panics, as a
 /// failed test assertion does, naming every problem it finds.
 ///
 /// A tool calls the check from an integration test of the binary's own
 /// package, so that package needs a library target that exports the clap
-/// command and the guide (see [`Examples`]).
+/// command and the tool record (see [`Examples`]).
 ///
 /// The check walks the leaves in declared order and each leaf's examples in
 /// order. It runs the binary once for each example, one run at a time, with
 /// the leaf's path and the example's words as separate arguments and no
 /// shell. It skips a leaf whose path names no command, which
-/// [`check_guide`](crate::check_guide) reports, the leaves of each
+/// [`check_help`](crate::check_help) reports, the leaves of each
 /// command that an opt-out of `examples` covers, and each example that an
 /// [`Allow::example`](crate::Allow::example) names. It runs
 /// the examples of a hidden command, because that command's own help lists
@@ -128,7 +128,7 @@ mod tests;
 ///   object whose `schema` is the document's id, or that prints a number of
 ///   lines other than one when the leaf declares a document of one result.
 ///   A leaf that declares a stream with `Leaf::stream` may print any number
-///   of lines (ADR-0041). When the guide sets
+///   of lines (ADR-0041). When the tool record sets
 ///   [`JsonLayout::Pretty`](crumbkit::JsonLayout::Pretty), a leaf of one
 ///   result must instead print exactly one such object, indented by two
 ///   spaces, and a stream keeps one object per line (ADR-0052);
@@ -140,7 +140,7 @@ mod tests;
 /// - a directory of [`Examples::current_dir`] or a fixture of
 ///   [`Examples::fresh_dir`] that does not exist;
 /// - an input file that cannot be read, and an input file that names no
-///   example of the guide, which the check never deletes, even with
+///   example of the tool record, which the check never deletes, even with
 ///   `SNAPSHOTS=overwrite`, because only its author can write it again. An
 ///   example that an opt-out skips keeps its input file;
 ///
@@ -157,11 +157,15 @@ mod tests;
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::help::{Example, Guide, Leaf};
+/// use crumbkit::Tool;
+/// use crumbkit::help::{Example, Help, Leaf};
 /// use crumbkit_test::Examples;
 ///
-/// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
-///     .examples(&[Example::new(&["--all"], "Print every book")])]);
+/// const TOOL: Tool =
+///     Tool::new().help(
+///         Help::new().leaves(&[Leaf::new(&["books", "list"])
+///             .examples(&[Example::new(&["--all"], "Print every book")])]),
+///     );
 ///
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
@@ -169,7 +173,7 @@ mod tests;
 /// let shelf = Command::new("shelf")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 ///
-/// crumbkit_test::check_examples(&shelf, &GUIDE, &EXAMPLES);
+/// crumbkit_test::check_examples(&shelf, &TOOL, &EXAMPLES);
 /// ```
 ///
 /// # Panics
@@ -187,9 +191,9 @@ mod tests;
 /// command line as help prints it, with each word that a POSIX shell would
 /// split or expand between single quotes, such as
 /// `shelf books list --author 'Jane Austen'`.
-pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples<'_>) {
+pub fn check_examples(command: &Command, tool: &Tool, examples: &Examples<'_>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    let skipped = check(command, guide, examples, &assert, TIMEOUT);
+    let skipped = check(command, tool, examples, &assert, TIMEOUT);
     for note in skipped {
         // The test harness captures what `eprintln!` writes, and shows it
         // with `--nocapture` or when the test fails.
@@ -210,15 +214,15 @@ pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples<'_>)
 /// run does not provide one of its preconditions.
 fn check(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     examples: &Examples<'_>,
     assert: &Assert,
     timeout: Duration,
 ) -> Vec<String> {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let dir = Path::new(examples.goldens());
-    let layout = guide.get_json_layout();
-    let tool_name = guide.tool_name(command);
+    let layout = tool.get_output().get_json_layout();
+    let tool_name = tool.tool_name(command);
     let mut problems = Vec::new();
     // The problems of runs that fail, which the message lists under a
     // heading of their own, because the tool's binary breaks them and the
@@ -239,7 +243,7 @@ fn check(
     // The name of each golden file of standard error.
     let mut stderr_names: Vec<String> = Vec::new();
     let mut skipped = Vec::new();
-    for leaf in guide.get_leaves() {
+    for leaf in tool.get_help().get_leaves() {
         let path = leaf.path();
         let below = path.join(" ");
         if !visits.iter().any(|visit| visit.below() == below) {
@@ -306,7 +310,7 @@ fn check(
         }
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
-    inputs::stale_stdin(command.get_name(), guide, dir, &mut problems);
+    inputs::stale_stdin(command.get_name(), tool, dir, &mut problems);
     remove_stale(
         dir,
         &names,

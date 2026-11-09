@@ -25,8 +25,8 @@ pub(crate) use fields::{can_be_empty, properties};
 /// field that only some variants have. A name that is not a field is
 /// missing in every row, so the text table leaves its column out, and JSON
 /// holds `null` for it. crumbkit-test's
-/// `check_guide` fails on such a name in the row type of each leaf that the
-/// tool's guide gives a document, and on a column whose field has no doc
+/// `check_help` fails on such a name in the row type of each leaf that the
+/// tool record gives a document, and on a column whose field has no doc
 /// comment, because a leaf's `--help` describes each column with it.
 ///
 /// ```
@@ -59,7 +59,7 @@ pub trait Row: Serialize + JsonSchema {
     /// fails to compile for such a row type. A batch compiles, because the
     /// text of a headed batch prints each row's bytes and its JSON holds
     /// every field, so a headed row type may name no column. crumbkit-test's
-    /// `check_guide` fails a leaf whose batch is not headed and whose row
+    /// `check_help` fails a leaf whose batch is not headed and whose row
     /// type has an empty list (ADR-0063). A row type that sets
     /// [`WHOLE`](Row::WHOLE) and declares [`LINE`](Row::LINE) may also name
     /// no column (ADR-0072).
@@ -82,7 +82,7 @@ pub trait Row: Serialize + JsonSchema {
     /// other columns instead. When these columns and the headers of the
     /// others are wider than that width on their own, the table prints
     /// unfitted, so every cell is whole and a line is wider than the width.
-    /// crumbkit-test's `check_guide` fails a name here that is in neither
+    /// crumbkit-test's `check_help` fails a name here that is in neither
     /// `COLUMNS` nor `LONG_COLUMNS`.
     const UNCUT_COLUMNS: &'static [&'static str] = &[];
 
@@ -113,7 +113,7 @@ pub trait Row: Serialize + JsonSchema {
     /// this field serializes to a value other than `null`, `false` or an
     /// empty string, and a missing field reports none. The leaf's help
     /// prints a `Problems:` line that names the field. crumbkit-test's
-    /// `check_guide` fails when the field is not one of `COLUMNS`, or when
+    /// `check_help` fails when the field is not one of `COLUMNS`, or when
     /// its type is not a string, a boolean or a value that can be null.
     const PROBLEM: Option<&'static str> = None;
 
@@ -131,7 +131,7 @@ pub trait Row: Serialize + JsonSchema {
     /// from other fields, such as a state enum, overrides it in place of a
     /// second column that repeats the state as a flag, and leaves `PROBLEM`
     /// as `None` (ADR-0096). Its help then prints no `Problems:` line, and
-    /// `check_guide` checks no problem field, so the type shows the state in
+    /// `check_help` checks no problem field, so the type shows the state in
     /// one of `COLUMNS` itself.
     ///
     /// ```
@@ -229,7 +229,7 @@ pub trait Row: Serialize + JsonSchema {
     /// [`Row::text_line`] in place of the table, without a header. `--long`
     /// and `--fields` still print the table, because they name columns, and
     /// `--json` is unchanged. The leaf's help prints the form on a `Text:`
-    /// line. crumbkit-test's `check_guide` fails a form that is not one
+    /// line. crumbkit-test's `check_help` fails a form that is not one
     /// non-empty line, and a headed leaf whose row type sets it, because a
     /// headed batch's text prints each row's bytes.
     const LINE: Option<&'static str> = None;
@@ -260,7 +260,7 @@ pub trait Row: Serialize + JsonSchema {
     /// JSON without `--full` holds the field after the columns, so `--json`
     /// carries the children with each row. The leaf's help describes the
     /// child lines on a `Children:` line, with [`Row::CHILDREN_HELP`] or a
-    /// sentence that names the field. crumbkit-test's `check_guide` fails a
+    /// sentence that names the field. crumbkit-test's `check_help` fails a
     /// field that is not a field of the row type or has no doc comment, a
     /// field that is also a column, and a headed leaf whose row type sets
     /// it, because a headed batch's text prints each row's bytes.
@@ -300,7 +300,7 @@ pub trait Row: Serialize + JsonSchema {
     /// own text, such as `one line for each application, or one folded
     /// line when every application is stopped.`. `-h`, `--help`, the
     /// `children_help` field of `commands list` and crumbkit-markdown's
-    /// reference print the same text. crumbkit-test's `check_guide` fails
+    /// reference print the same text. crumbkit-test's `check_help` fails
     /// a text that is empty, holds a control character or does not end
     /// with a full stop, and a text on a row type without
     /// [`Row::CHILDREN`], whose help prints no `Children:` line.
@@ -437,8 +437,8 @@ pub trait Row: Serialize + JsonSchema {
     /// returns `None`, and crumbkit refuses `--fields`, and `--long`
     /// without `--json`.
     /// `crumbkit::finish` and `crumbkit::stream` fail to compile for such a
-    /// row type without a `LINE`, and crumbkit-test's `check_guide` fails a
-    /// batch of it. `check_guide` also fails a row type without columns
+    /// row type without a `LINE`, and crumbkit-test's `check_help` fails a
+    /// batch of it. `check_help` also fails a row type without columns
     /// whose schema has properties, which could be columns.
     ///
     /// crumbkit-test's `check_document_ids` fails a leaf whose row type sets

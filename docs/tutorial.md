@@ -103,7 +103,7 @@ the result through that `Output` and returns the exit code:
 
 ```rust
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Tool::new());
     let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
@@ -174,39 +174,40 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 }
 ```
 
-`pantry jars list --shelf middle` exits with 1 and prints the error, a
-`help:` line that tells the caller to run `pantry jars list`, and the code
-`pantry::shelves::not_found`. The code joins its segments with `::` because
-the guide sets no other spelling. With `--json`, it prints the failure as a
-JSON document. [ADR-0001] says why every failure carries a code and a next
-step.
+`pantry jars list --shelf middle` exits with 1 and prints the error, a `help:`
+line that tells the caller to run `pantry jars list`, and the code
+`pantry::shelves::not_found`. The code joins its segments with `::` because the
+tool record sets no other spelling. With `--json`, it prints the failure as a
+JSON document. [ADR-0001] says why every failure carries a code and a next step.
 
-## 3. A guide
+## 3. A tool record
 
 In [`step_3/main.rs`](../examples/tutorial/src/bin/step_3/main.rs), a
-`Guide` gives `jars list` a leaf: examples for its help page, its effects,
+`Tool` gives `jars list` a leaf: examples for its help page, its effects,
 and the document it prints:
 
 ```rust
-const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["jars", "list"])
-    .examples(&[
-        Example::new(&[], "Print the first page of jars"),
-        Example::new(&["--shelf", "top"], "Print the jars on the top shelf"),
-    ])
-    .effects(Effects::read_only())
-    .document(JARS_LIST)]);
+const TOOL: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["jars", "list"])
+        .examples(&[
+            Example::new(&[], "Print the first page of jars"),
+            Example::new(&["--shelf", "top"], "Print the jars on the top shelf"),
+        ])
+        .effects(Effects::read_only())
+        .document(JARS_LIST)]),
+);
 ```
 
-`main` passes the guide to `parse` in place of `Guide::new()`:
+`main` passes the tool record to `parse` in place of `Tool::new()`:
 
 ```rust
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &GUIDE);
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &TOOL);
 ```
 
 `pantry jars list -h` now lists the examples and the line
 `Effects: read-only, closed-world.`, and `--help` describes each column
 with its field's doc comment. The [examples docs] cover examples and
-columns, and the [effects docs] cover effects. A guide also takes goal
+columns, and the [effects docs] cover effects. A tool record also takes goal
 headings and help topics ([help docs]).
 
 ## 4. Convention tests
@@ -220,22 +221,22 @@ mod tests;
 
 [`step_3/tests.rs`](../examples/tutorial/src/bin/step_3/tests.rs) calls
 crumbkit-test's checks from ordinary tests. Each check walks the command
-tree and fails with every problem it finds. `Pages::rendered(&GUIDE)` gives
-the names and grammar checks pantry's guide:
+tree and fails with every problem it finds. `Pages::rendered(&TOOL)` gives
+the names and grammar checks pantry's tool record:
 
 ```rust
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&GUIDE), ALLOW);
+    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&TOOL), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_a_verb() {
-    crumbkit_test::check_grammar(&Cli::command(), Pages::rendered(&GUIDE), &[], ALLOW);
+    crumbkit_test::check_grammar(&Cli::command(), Pages::rendered(&TOOL), &[], ALLOW);
 }
 ```
 
-The file also runs `check_effects`, `check_listings`, `check_guide` and
+The file also runs `check_effects`, `check_listings`, `check_help` and
 `check_codes`. With no opt-outs, `check_names` fails, because help shows the
 visible alias `ls` as a second name for `jars list`. pantry could make the
 alias hidden, which passes the check and keeps `ls` working. pantry keeps it
@@ -255,14 +256,14 @@ away when its command does. `check_opt_outs` writes each opt-out with its
 reason and its cost to an agent into a golden file. The [opt-outs docs]
 describe opt-outs, and [ADR-0025] records why the checks exist.
 
-pantry has no command directly under its root. A command without
-subcommands there, such as `pantry restock`, fails `check_grammar`,
-because every command has the form `pantry <resource> <verb>`. A tool that
-keeps such commands at its root on purpose declares them once, with one
-reason, on its guide: `Guide::new().root_verbs(&["restock"], "...")`.
-`check_grammar` then passes them, and root help lists them under a `Verbs`
-heading. A tool that wants its root help unchanged declares them in its
-opt-outs with `Allow::root_verbs` instead ([root verbs docs]).
+pantry has no command directly under its root. A command without subcommands
+there, such as `pantry restock`, fails `check_grammar`, because every command
+has the form `pantry <resource> <verb>`. A tool that keeps such commands at its
+root on purpose declares them once, with one reason, on its tool record:
+`Tool::new().help(Help::new().root_verbs(&["restock"], "..."))`. `check_grammar`
+then passes them, and root help lists them under a `Verbs` heading. A tool that
+wants its root help unchanged declares them in its opt-outs with
+`Allow::root_verbs` instead ([root verbs docs]).
 
 ## Where to go next
 

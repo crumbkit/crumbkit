@@ -4,22 +4,24 @@
 use std::fs;
 use std::time::Instant;
 
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::Tool;
+use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 
-use super::{FILES, GUIDE, examples, run};
+use super::{FILES, TOOL, examples, run};
 use crate::allow::Allow;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
-/// The guide of one example that prints its standard input.
-const CAT: Guide = Guide::new()
-    .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["cat"], "Echo the input")])]);
+/// The tool record of one example that prints its standard input.
+const CAT: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["cat"], "Echo the input")])]),
+);
 
 #[test]
 fn an_example_runs_in_the_directory_that_current_dir_names() {
-    const LS: Guide =
-        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["ls"], "List")])]);
+    const LS: Tool = Tool::new()
+        .help(Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["ls"], "List")])]));
     let dir = TempDir::new("examples-current-dir").unwrap();
     let work = TempDir::new("examples-current-dir-work").unwrap();
     work.write("marker", "");
@@ -33,10 +35,13 @@ fn an_example_runs_in_the_directory_that_current_dir_names() {
 
 #[test]
 fn a_relative_current_dir_resolves_from_the_test_s_directory() {
-    const FIND: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &["test -f lib.rs && echo found"],
-        "Find a file",
-    )])]);
+    const FIND: Tool =
+        Tool::new().help(
+            Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+                &["test -f lib.rs && echo found"],
+                "Find a file",
+            )])]),
+        );
     let dir = TempDir::new("examples-relative-dir").unwrap();
 
     run(&FIND, &examples(&dir).current_dir("src"), Action::Overwrite);
@@ -51,7 +56,7 @@ fn a_current_dir_that_is_not_a_directory_fails_the_check_once_naming_it() {
 
     assert_eq!(
         panic_message(|| run(
-            &GUIDE,
+            &TOOL,
             &examples(&dir).current_dir("/nonexistent/work"),
             Action::Overwrite
         ))
@@ -76,8 +81,10 @@ fn an_example_reads_the_bytes_of_its_stdin_file_on_standard_input() {
 
 #[test]
 fn an_example_without_a_stdin_file_reads_an_empty_standard_input() {
-    const READS: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["cat; echo end"], "Read")])]);
+    const READS: Tool = Tool::new().help(
+        Help::new()
+            .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["cat; echo end"], "Read")])]),
+    );
     let dir = TempDir::new("examples-no-stdin").unwrap();
     let started = Instant::now();
 
@@ -94,10 +101,10 @@ fn a_stdin_file_that_no_example_names_fails_the_check_and_overwrite_keeps_it() {
     dir.write("sh-c-echo-titles.stdin", "titles\n");
 
     assert_eq!(
-        panic_message(|| run(&GUIDE, &examples(&dir), Action::Overwrite)).unwrap(),
+        panic_message(|| run(&TOOL, &examples(&dir), Action::Overwrite)).unwrap(),
         format!(
             "the command tree breaks crumbkit's example rules:\n\
-             the input file `{}` belongs to no example in the guide, and the check never deletes it",
+             the input file `{}` belongs to no example in the tool record, and the check never deletes it",
             dir.path().join("sh-c-echo-titles.stdin").display()
         )
     );
@@ -114,7 +121,7 @@ fn an_opted_out_example_keeps_its_stdin_file() {
     let dir = TempDir::new("examples-opted-out-stdin").unwrap();
     dir.write("sh-c-echo-books.stdin", "books\n");
 
-    run(&GUIDE, &examples(&dir).allow(ALLOW), Action::Overwrite);
+    run(&TOOL, &examples(&dir).allow(ALLOW), Action::Overwrite);
 
     assert_eq!(dir.names(), [FILES[0], "sh-c-echo-books.stdin", FILES[2]]);
 }

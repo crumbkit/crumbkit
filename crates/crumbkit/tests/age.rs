@@ -7,15 +7,14 @@ use std::process::ExitCode;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{CommandFactory as _, Parser, Subcommand};
-use crumbkit::help::Guide;
-use crumbkit::{Age, Batch, Document, Error, Output, Row, Sink, Stream, ViewFlags};
+use crumbkit::{Age, Batch, Document, Error, Output, Row, Sink, Stream, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
 /// A tool with a `list` command and a `watch` command.
 #[derive(Parser)]
 #[command(name = "files")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -82,10 +81,10 @@ fn parse(args: &[&str]) -> Option<Output> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["files"].iter().chain(args);
-    let parsed = crumbkit::parse_to::<Tool, _, _, _, _>(
+    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         words,
     );
     parsed.ok().map(|(_tool, output)| output)

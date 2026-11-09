@@ -3,9 +3,8 @@
 
 use clap::CommandFactory as _;
 
-use super::{PLANETS, Tool, build_output, finish_output, finish_with, mercury, saturn};
-use crate::help::Guide;
-use crate::{Output, ViewFlags};
+use super::{Cli, PLANETS, build_output, finish_output, finish_with, mercury, saturn};
+use crate::{Output, Tool, ViewFlags};
 
 /// Returns the output of the test tool's `tool list` with `view`, as a
 /// tool's `main` builds it after it parsed with clap alone or built the
@@ -14,8 +13,8 @@ fn built(view: ViewFlags) -> Output {
     Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         ["tool", "list"],
     )
     .unwrap()
@@ -85,8 +84,8 @@ fn output_new_keeps_the_words_after_the_program_name() {
     let output = Output::new(
         ViewFlags::new(),
         crate::DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         ["tool", "show", "Mars"],
     )
     .unwrap();

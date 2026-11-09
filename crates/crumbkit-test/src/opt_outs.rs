@@ -5,8 +5,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::help::Guide;
-use crumbkit::{JsonLayout, Output};
+use crumbkit::{JsonLayout, Output, Tool};
 use serde::Serialize;
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -16,59 +15,56 @@ use crate::budget::Departure;
 use crate::goldens::compare;
 use crate::{Budgets, PathBudgets, tree};
 
-mod customisations;
+mod declarations;
 #[cfg(test)]
 mod tests;
 
-use self::customisations::{Customisation, customisations};
+use self::declarations::{Declaration, declarations};
 
 /// The id of the JSON report's schema, which a reader checks before it
 /// reads the entries. The report names the tool in place of `crumbkit`,
-/// such as `shelf/opt-outs/v1` (ADR-0079).
-const SCHEMA: &str = "crumbkit/opt-outs/v1";
+/// such as `shelf/opt-outs/v2` (ADR-0079).
+const SCHEMA: &str = "crumbkit/opt-outs/v2";
 
 /// Checks that the report of the tool's opt-outs from crumbkit's
 /// conventions matches the golden files `opt-outs.txt` and
 /// `opt-outs.json` in `dir`, and panics, as a failed test assertion does,
 /// naming every problem it finds.
 ///
-/// `command` is the tool's root command, `guide` is the tool's guide, whose
-/// output budget and JSON layout the report lists, `allow` holds every opt-out that
-/// the tool passes to the checks ([opt-outs docs]), `budgets` holds the budgets
-/// that it passes to [`check_help_sizes`](crate::check_help_sizes), and
+/// `command` is the tool's root command, `tool` is the tool record, whose
+/// output budget and JSON layout the report lists, `allow` holds every opt-out
+/// that the tool passes to the checks ([opt-outs docs]), `budgets` holds the
+/// budgets that it passes to [`check_help_sizes`](crate::check_help_sizes), and
 /// `paths` holds the budgets that it passes to
-/// [`check_path_weights`](crate::check_path_weights), or is `None` for a
-/// tool that does not run that check. The report lists each opt-out in the
-/// order of `allow`, with the rule's id, the command line it applies to,
-/// the tool's reason and what skipping the rule costs an agent. Then it
-/// lists each budget that the tool set, with the budget, crumbkit's default
-/// and, for a budget above the default, the extra bytes and tokens at 4
-/// bytes a token that each read can cost. When the guide sets an output
-/// budget, the report ends with it beside crumbkit's default of 1048576
-/// bytes, under the rule `output-budget/run` (ADR-0046). No opt-out removes
-/// the output budget. When the guide sets a
-/// [`JsonLayout`](crumbkit::JsonLayout), the report then lists it under the
-/// rule `json-layout/pretty`, with its reason and its cost (ADR-0052).
-/// When the guide turns terminal detection off with
-/// `Guide::without_terminal_detection`, the report then lists it under the
-/// rule `terminal-detection/off`, with its reason and its costs (ADR-0049).
-/// After the opt-outs, the report lists the tool's customisations: the
-/// declarations that change what a run prints and keep crumbkit's
-/// behaviour, so they have no reason and no cost (ADR-0056). They are each
-/// code rename, each exit that lists one of
-/// crumbkit's codes or its rename, each document whose name is not its
-/// command's path, each leaf that passes on a program's exit code, each
-/// leaf that declares refusal alternatives or a refusal hint, the guide's
-/// refusal alternatives and refusal hint, the guide's
-/// `Guide::dashed_forms` declaration, and with it each command named in
-/// another style that also answers to its dashed form, such as
-/// `reading_lists` for `reading-lists`, each example that needs a
-/// precondition, which a test run may not provide (ADR-0163), and the root
-/// verbs that the tool declares on the guide or with [`Allow::root_verbs`],
-/// with their reason. The report spells codes with colons. The section is
-/// left out when the tool declares nothing.
-/// A reviewer reads a change to a tool's opt-outs as a change to these two
-/// files, and an agent reads `opt-outs.json` to learn where the tool
+/// [`check_path_weights`](crate::check_path_weights), or is `None` for a tool
+/// that does not run that check. The report lists each opt-out in the order of
+/// `allow`, with the rule's id, the command line it applies to, the tool's
+/// reason and what skipping the rule costs an agent. Then it lists each budget
+/// that the tool set, with the budget, crumbkit's default and, for a budget
+/// above the default, the extra bytes and tokens at 4 bytes a token that each
+/// read can cost. When the tool record sets an output budget, the report ends
+/// with it beside crumbkit's default of 1048576 bytes, under the rule
+/// `output-budget/run` (ADR-0046). No opt-out removes the output budget. When
+/// the tool record sets a [`JsonLayout`](crumbkit::JsonLayout), the report then
+/// lists it under the rule `json-layout/pretty`, with its reason and its cost
+/// (ADR-0052). When the tool record turns terminal detection off with
+/// `tool::Output::without_terminal_detection`, the report then lists it under
+/// the rule `terminal-detection/off`, with its reason and its costs (ADR-0049).
+/// After the opt-outs, the report lists the tool's declarations: the
+/// declarations that change what a run prints and keep crumbkit's behaviour, so
+/// they have no reason and no cost (ADR-0056). They are each code rename, each
+/// exit that lists one of crumbkit's codes or its rename, each document whose
+/// name is not its command's path, each leaf that passes on a program's exit
+/// code, each leaf that declares refusal alternatives or a refusal hint, the
+/// tool record's refusal alternatives and refusal hint, the tool record's
+/// `Tool::dashed_forms` declaration, and with it each command named in another
+/// style that also answers to its dashed form, such as `reading_lists` for
+/// `reading-lists`, each example that needs a precondition, which a test run
+/// may not provide (ADR-0163), and the root verbs that the tool declares on the
+/// tool record or with [`Allow::root_verbs`], with their reason. The report
+/// spells codes with colons. The section is left out when the tool declares
+/// nothing. A reviewer reads a change to a tool's opt-outs as a change to these
+/// two files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.
 ///
 /// The text file starts with a line that counts the opt-outs and, when the
@@ -84,13 +80,13 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// ```
 ///
 /// The JSON file holds the same entries under `data`, with the schema id
-/// `<tool>/opt-outs/v1` under `schema`. Each entry has the fields `rule`,
+/// `<tool>/opt-outs/v2` under `schema`. Each entry has the fields `rule`,
 /// `applies_to`, `reason`, `costs` and `budget`, which is `null` for an
 /// opt-out and holds `bytes`, `default`, `extra_bytes` and `extra_tokens`
-/// for a budget. When the tool declares a customisation, the JSON file
-/// also holds a `customisations` array, whose entries have the fields
+/// for a budget. When the tool declares a declaration, the JSON file
+/// also holds a `declarations` array, whose entries have the fields
 /// `declaration`, `applies_to` and `declares`, and `reason` for the root
-/// verbs. The text line that counts the customisations says that they need
+/// verbs. The text line that counts the declarations says that they need
 /// no reason unless the tool declares root verbs.
 ///
 /// The check compares each file with snapbox, as other golden files are
@@ -102,7 +98,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit_test::{Allow, Budgets, Rule};
 ///
 /// const ALLOW: &[Allow] = &[Allow::new(
@@ -113,7 +109,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 ///
 /// let shelf = Command::new("shelf").subcommand(Command::new("version"));
 ///
-/// crumbkit_test::check_opt_outs(&shelf, &Guide::new(), ALLOW, &Budgets::new(), None, "tests/golden");
+/// crumbkit_test::check_opt_outs(&shelf, &Tool::new(), ALLOW, &Budgets::new(), None, "tests/golden");
 /// ```
 ///
 /// # Panics
@@ -126,14 +122,14 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_opt_outs(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     allow: &[Allow],
     budgets: &Budgets,
     paths: Option<&PathBudgets<'_>>,
     dir: impl AsRef<Path>,
 ) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, guide, allow, budgets, paths, dir.as_ref(), &assert);
+    check(command, tool, allow, budgets, paths, dir.as_ref(), &assert);
 }
 
 /// Runs [`check_opt_outs`] with `assert`, whose action decides whether the
@@ -141,7 +137,7 @@ pub fn check_opt_outs(
 /// setting `SNAPSHOTS`.
 fn check(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     allow: &[Allow],
     budgets: &Budgets,
     paths: Option<&PathBudgets<'_>>,
@@ -178,7 +174,7 @@ fn check(
         );
         Entry::of(departure, cost)
     }));
-    if let Some(departure) = output_budget(command, guide) {
+    if let Some(departure) = output_budget(command, tool) {
         let cost = format!(
             "A run can print {} bytes more than the default, about {} tokens.",
             departure.extra_bytes(),
@@ -186,7 +182,7 @@ fn check(
         );
         entries.push(Entry::of(departure, cost));
     }
-    if let JsonLayout::Pretty { reason } = guide.get_json_layout() {
+    if let JsonLayout::Pretty { reason } = tool.get_output().get_json_layout() {
         entries.push(Entry {
             rule: "json-layout/pretty",
             applies_to: format!("every run of {}", command.get_name()),
@@ -195,7 +191,7 @@ fn check(
             budget: None,
         });
     }
-    if let Some(reason) = guide.get_without_terminal_detection() {
+    if let Some(reason) = tool.get_output().get_without_terminal_detection() {
         entries.push(Entry {
             rule: "terminal-detection/off",
             applies_to: format!("every run of {}", command.get_name()),
@@ -207,7 +203,7 @@ fn check(
             budget: None,
         });
     }
-    let declared = customisations(command, guide, allow);
+    let declared = declarations(command, tool, allow);
     let line = command.get_name();
     compare(
         assert,
@@ -222,7 +218,7 @@ fn check(
         line,
         "opt-out report",
         json(
-            &guide.tool_name(command).schema_id(SCHEMA),
+            &tool.tool_name(command).schema_id(SCHEMA),
             &entries,
             &declared,
         ),
@@ -244,10 +240,10 @@ const TERMINAL_DETECTION_COSTS: &[&str] = &[
     "A text table never fits the terminal's width, so the terminal wraps each line of a table that is wider than the terminal.",
 ];
 
-/// Returns the output budget that `guide` sets as the report lists it, or
+/// Returns the output budget that `tool` sets as the report lists it, or
 /// `None` when the tool keeps crumbkit's default.
-fn output_budget(command: &Command, guide: &Guide) -> Option<Departure> {
-    let (bytes, reason) = guide.get_output_budget()?;
+fn output_budget(command: &Command, tool: &Tool) -> Option<Departure> {
+    let (bytes, reason) = tool.get_output().get_budget()?;
     Some(Departure {
         rule: "output-budget/run",
         applies_to: format!("every run of {}", command.get_name()),
@@ -313,18 +309,18 @@ struct BudgetEntry {
 /// The JSON report: the schema id, the entries and the declarations.
 #[derive(Serialize)]
 struct Report<'a> {
-    /// The id of the report's schema, such as `shelf/opt-outs/v1`.
+    /// The id of the report's schema, such as `shelf/opt-outs/v2`.
     schema: &'a str,
     /// The opt-outs and the budgets, in the order the report lists them.
     data: &'a [Entry],
     /// The declarations, which the report leaves out when there are none.
-    #[serde(skip_serializing_if = "<[Customisation]>::is_empty")]
-    customisations: &'a [Customisation],
+    #[serde(skip_serializing_if = "<[Declaration]>::is_empty")]
+    declarations: &'a [Declaration],
 }
 
 /// Returns the text report of `entries` and of the declarations `declared`
 /// for the tool `tool`.
-fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
+fn text(tool: &str, entries: &[Entry], declared: &[Declaration]) -> String {
     let budgets = entries
         .iter()
         .filter(|entry| entry.budget.is_some())
@@ -356,39 +352,36 @@ fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
             let _ = writeln!(text, "  Cost: {cost}");
         }
     }
-    // A customisation with a reason, such as root verbs, makes the line
-    // leave out that customisations need no reason.
+    // A declaration with a reason, such as root verbs, makes the line
+    // leave out that declarations need no reason.
     let reasoned = declared
         .iter()
-        .any(|customisation| customisation.reason.is_some());
+        .any(|declaration| declaration.reason.is_some());
     match (declared.len(), reasoned) {
         (0, _) => {}
         (1, false) => {
-            let _ = writeln!(
-                text,
-                "\n{tool} declares 1 customisation, which needs no reason."
-            );
+            let _ = writeln!(text, "\n{tool} has 1 declaration, which needs no reason.");
         }
         (1, true) => {
-            let _ = writeln!(text, "\n{tool} declares 1 customisation.");
+            let _ = writeln!(text, "\n{tool} has 1 declaration.");
         }
         (count, false) => {
             let _ = writeln!(
                 text,
-                "\n{tool} declares {count} customisations, which need no reason."
+                "\n{tool} has {count} declarations, which need no reason."
             );
         }
         (count, true) => {
-            let _ = writeln!(text, "\n{tool} declares {count} customisations.");
+            let _ = writeln!(text, "\n{tool} has {count} declarations.");
         }
     }
-    for customisation in declared {
+    for declaration in declared {
         let _ = writeln!(
             text,
             "\n{}: {}\n  Declares: {}",
-            customisation.declaration, customisation.applies_to, customisation.declares
+            declaration.kind, declaration.applies_to, declaration.declares
         );
-        if let Some(reason) = customisation.reason {
+        if let Some(reason) = declaration.reason {
             let _ = writeln!(text, "  Reason: {reason}");
         }
     }
@@ -397,11 +390,11 @@ fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
 
 /// Returns the JSON report with the id `schema` of `entries` and of the
 /// declarations `declared`, pretty-printed and ending with a line break.
-fn json(schema: &str, entries: &[Entry], declared: &[Customisation]) -> String {
+fn json(schema: &str, entries: &[Entry], declared: &[Declaration]) -> String {
     let report = Report {
         schema,
         data: entries,
-        customisations: declared,
+        declarations: declared,
     };
     // Serializing strings and lists of strings cannot fail, and an empty
     // text would show as a differing file.

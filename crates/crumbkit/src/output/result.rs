@@ -102,7 +102,7 @@ pub(super) fn write_result<T: Rows>(
     problems: usize,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
-    // The code is the tool's rename when the guide has one, so the cut,
+    // The code is the tool's rename when the tool record has one, so the cut,
     // the failure, the usage log and the trace all carry it.
     let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
     if let Some(bytes) = value.bytes().filter(|_| !output.is_json()) {
@@ -505,7 +505,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
     }
 
     /// Writes `data` with `extras` in the document's envelope, with the
-    /// run's dry-run mark and the guide's JSON layout.
+    /// run's dry-run mark and the tool record's JSON layout.
     fn envelope<D: Serialize, M: Serialize>(
         &self,
         out: &mut impl Write,

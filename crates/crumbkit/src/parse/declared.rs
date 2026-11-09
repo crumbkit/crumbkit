@@ -1,5 +1,5 @@
-//! The alternatives and the hint that a leaf's functions, or else the
-//! guide's, return for a refusal of a command line that names the leaf. The
+//! The alternatives and the hint that a leaf's functions, or else the tool
+//! record's, return for a refusal of a command line that names the leaf. The
 //! alternatives are kept when they render and their line parses (ADR-0056,
 //! ADR-0123).
 
@@ -9,8 +9,8 @@ use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
 use super::attempt;
-use crate::Call;
-use crate::help::{Guide, RefusalContext};
+use crate::tool::RefusalContext;
+use crate::{Call, Tool};
 
 /// What the tool's functions returned for one refused command line.
 #[derive(Debug, Default)]
@@ -22,24 +22,24 @@ pub(super) struct Declared {
     pub(super) hint: Option<String>,
 }
 
-/// Returns the calls and the hint that the functions of the leaf of `guide`
-/// at `path`, or else the guide's functions, return for `error`, with which
-/// clap refused `words`, the caller's words after the program name. It
-/// keeps each call that renders against `command` and whose line
-/// [`parses`], and returns no calls and no hint when no function is set.
+/// Returns the calls and the hint that the functions of the leaf of `tool` at
+/// `path`, or else the tool record's functions, return for `error`, with which
+/// clap refused `words`, the caller's words after the program name. It keeps
+/// each call that renders against `command` and whose line [`parses`], and
+/// returns no calls and no hint when no function is set.
 ///
 /// Only a refused line with a function builds the branch of the tree on
-/// `path` and parses again, so for a guide without a function of its own
-/// other refusals cost two lookups in the guide's leaves.
+/// `path` and parses again, so for a tool record without a function of its own
+/// other refusals cost two lookups in the tool record's leaves.
 pub(super) fn declared<C: FromArgMatches>(
     command: &mut Command,
-    guide: &Guide,
+    tool: &Tool,
     path: &[String],
     error: &clap::Error,
     words: &[OsString],
 ) -> Declared {
-    let alternatives = guide.refusal_function(path);
-    let hint = guide.refusal_hint_function(path);
+    let alternatives = tool.refusal_function(path);
+    let hint = tool.refusal_hint_function(path);
     if alternatives.is_none() && hint.is_none() {
         return Declared::default();
     }
@@ -64,7 +64,7 @@ pub(super) fn declared<C: FromArgMatches>(
     let calls = calls
         .into_iter()
         .filter(|call| {
-            crate::call::render(call, command).is_ok() && parses::<C>(command, call, guide)
+            crate::call::render(call, command).is_ok() && parses::<C>(command, call, tool)
         })
         .collect();
     Declared { calls, hint }
@@ -76,14 +76,14 @@ pub(super) fn declared<C: FromArgMatches>(
 /// flag that its leaf does not offer and no `--fields` name that its
 /// leaf's document lacks. A call that holds a placeholder has
 /// no line to parse and counts as parsing.
-fn parses<C: FromArgMatches>(command: &mut Command, call: &Call, guide: &Guide) -> bool {
+fn parses<C: FromArgMatches>(command: &mut Command, call: &Call, tool: &Tool) -> bool {
     let Some(words) = crate::call::words(call, command) else {
         return true;
     };
     match command.try_get_matches_from_mut(words) {
         Ok(mut matches) => {
             let (path, node, level) = attempt::deepest(command, &matches);
-            attempt::refusal(node, level, &path, guide).is_ok()
+            attempt::refusal(node, level, &path, tool).is_ok()
                 && C::from_arg_matches_mut(&mut matches).is_ok()
         }
         Err(error) => matches!(

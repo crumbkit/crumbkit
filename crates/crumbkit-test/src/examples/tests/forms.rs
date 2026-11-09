@@ -3,8 +3,8 @@
 
 use std::time::Duration;
 
-use crumbkit::help::{Example, Guide, Leaf};
-use crumbkit::{Document, Row, Stream};
+use crumbkit::help::{Example, Help, Leaf};
+use crumbkit::{Document, Row, Stream, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -31,12 +31,12 @@ const WORDS: Document<Stream<Word>> = Document::new("sh", "words", 1, "Each word
 /// A script that prints two lines of `sh/words/v1`.
 const TWO_WORDS: &str = r#"echo '{"schema":"sh/words/v1","data":{"word":"a"}}'; echo '{"schema":"sh/words/v1","data":{"word":"b"}}'"#;
 
-/// Runs the check of `guide` on `sh()` with the golden files in `dir`,
+/// Runs the check of `tool` on `sh()` with the golden files in `dir`,
 /// `action` and a run timeout of `timeout`.
-fn run(guide: &Guide, dir: &TempDir, action: Action, timeout: Duration) {
+fn run(tool: &Tool, dir: &TempDir, action: Action, timeout: Duration) {
     check(
         &sh(),
-        guide,
+        tool,
         &examples(dir),
         &Assert::new().action(action),
         timeout,
@@ -45,8 +45,11 @@ fn run(guide: &Guide, dir: &TempDir, action: Action, timeout: Duration) {
 
 #[test]
 fn a_run_that_does_not_end_within_the_timeout_is_stopped_and_fails_the_check() {
-    const SLOW: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["exec sleep 5"], "Wait")])]);
+    const SLOW: Tool =
+        Tool::new()
+            .help(Help::new().leaves(&[
+                Leaf::new(&["-c"]).examples(&[Example::new(&["exec sleep 5"], "Wait")]),
+            ]));
     let dir = TempDir::new("examples-timeout").unwrap();
 
     let message = panic_message(|| {
@@ -62,9 +65,11 @@ fn a_run_that_does_not_end_within_the_timeout_is_stopped_and_fails_the_check() {
 
 #[test]
 fn a_json_example_of_a_document_that_prints_two_lines_fails_the_check() {
-    const DOCUMENT: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(&[TWO_WORDS, "--json"], "Print two lines")])
-        .document(WORD)]);
+    const DOCUMENT: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(&[TWO_WORDS, "--json"], "Print two lines")])
+            .document(WORD)]),
+    );
     let dir = TempDir::new("examples-document-lines").unwrap();
 
     let message = panic_message(|| {
@@ -82,12 +87,14 @@ fn a_json_example_of_a_document_that_prints_two_lines_fails_the_check() {
 
 #[test]
 fn a_json_example_of_a_stream_may_print_any_number_of_lines() {
-    const STREAM: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[
-            Example::new(&[TWO_WORDS, "--json"], "Print two lines"),
-            Example::new(&["true", "--json"], "Print nothing"),
-        ])
-        .stream(WORDS)]);
+    const STREAM: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[
+                Example::new(&[TWO_WORDS, "--json"], "Print two lines"),
+                Example::new(&["true", "--json"], "Print nothing"),
+            ])
+            .stream(WORDS)]),
+    );
     let dir = TempDir::new("examples-stream-lines").unwrap();
 
     run(&STREAM, &dir, Action::Overwrite, Duration::from_secs(10));
@@ -96,15 +103,17 @@ fn a_json_example_of_a_stream_may_print_any_number_of_lines() {
 
 #[test]
 fn a_json_line_that_is_not_a_document_of_the_leaf_fails_the_check() {
-    const STREAM: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(
-            &[
-                r#"echo '{"schema":"sh/word/v1","data":{}}'; echo plain"#,
-                "--json",
-            ],
-            "Print other lines",
-        )])
-        .stream(WORDS)]);
+    const STREAM: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(
+                &[
+                    r#"echo '{"schema":"sh/word/v1","data":{}}'; echo plain"#,
+                    "--json",
+                ],
+                "Print other lines",
+            )])
+            .stream(WORDS)]),
+    );
     let dir = TempDir::new("examples-stream-schema").unwrap();
 
     let message = panic_message(|| {
@@ -128,12 +137,14 @@ fn a_json_line_that_is_not_a_document_of_the_leaf_fails_the_check() {
 
 #[test]
 fn a_json_example_of_a_document_without_the_envelope_is_not_checked_for_lines() {
-    const UNWRAPPED: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(
-            &["echo a; echo b", "--json"],
-            "Print two lines",
-        )])
-        .document(WORD.envelope(Envelope::Without))]);
+    const UNWRAPPED: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(
+                &["echo a; echo b", "--json"],
+                "Print two lines",
+            )])
+            .document(WORD.envelope(Envelope::Without))]),
+    );
     let dir = TempDir::new("examples-unwrapped-lines").unwrap();
 
     run(&UNWRAPPED, &dir, Action::Overwrite, Duration::from_secs(10));

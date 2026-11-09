@@ -40,7 +40,7 @@ The completion variable stays set for the rest of the run, because removing
 an environment variable needs unsafe code, which RUST-2 forbids. A custom
 completer that runs another clap_complete tool as a child removes the
 variable from the child's environment itself. `complete_with` runs before the
-guide is built, so it records the declared name in a process-wide
+tool record is built, so it records the declared name in a process-wide
 `OnceLock`, and `crumbkit::events::observe` reads the name from there and
 falls back to `COMPLETE`.
 

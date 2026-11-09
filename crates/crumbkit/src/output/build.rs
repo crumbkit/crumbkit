@@ -9,11 +9,10 @@ use clap::{ArgMatches, Args, Command};
 
 use super::failure::Printing;
 use super::{DryRun, Output, budget};
-use crate::Sink;
-use crate::help::Guide;
 use crate::help::rename::Renames;
 use crate::parse::{Printed, Stop};
 use crate::view::View;
+use crate::{Sink, Tool};
 
 /// The flags that choose how a command prints its result: `--json`,
 /// `--fields`, `--long` and `--full`.
@@ -24,7 +23,7 @@ use crate::view::View;
 /// it, and nor does any other argument type of crumbkit, so a command
 /// without a doc comment of its own has none in its help.
 ///
-/// - `--json` prints a JSON document, on one line unless the guide sets
+/// - `--json` prints a JSON document, on one line unless the tool record sets
 ///   [`JsonLayout::Pretty`](crate::JsonLayout::Pretty).
 /// - `--long` adds the row type's [`Row::LONG_COLUMNS`](crate::Row::LONG_COLUMNS).
 /// - `--full` prints every field of every row in declaration order, and needs `--json`.
@@ -175,7 +174,7 @@ impl Output {
     /// Returns the output of a run that parsed `args`, the command line
     /// with the program name first, against `command` with clap alone,
     /// with the view flags `view`, the dry-run flag `dry_run` and the
-    /// tool's `guide`, or the [`Stop`] of a run whose view flags cannot
+    /// tool's `tool`, or the [`Stop`] of a run whose view flags cannot
     /// work together.
     ///
     /// [`parse`](crate::parse()) returns the `Output` of a tool that parses
@@ -184,7 +183,7 @@ impl Output {
     ///
     /// ```
     /// use clap::{CommandFactory, Parser};
-    /// use crumbkit::help::Guide;
+    /// use crumbkit::Tool;
     /// use crumbkit::{DryRun, Output, ViewFlags};
     ///
     /// /// List the books in a small catalogue.
@@ -196,7 +195,7 @@ impl Output {
     ///
     /// let args = ["shelf", "--json"];
     /// let cli = Cli::try_parse_from(args).unwrap();
-    /// let output = Output::new(cli.view, DryRun::default(), Cli::command(), &Guide::new(), args);
+    /// let output = Output::new(cli.view, DryRun::default(), Cli::command(), &Tool::new(), args);
     /// assert!(output.unwrap().is_json());
     /// ```
     ///
@@ -210,13 +209,12 @@ impl Output {
     /// against, and the words of `args` after the program name, which
     /// [`Output::confirm`] repeats with `--yes`. It reads the terminal
     /// detection, output budget, JSON layout, exit codes, code renames and
-    /// [spelling](Guide::spelling) of `guide`, so `finish` and `stream` print
-    /// every code in the guide's spelling with the tool's name in crumbkit's
-    /// own codes (ADR-0086). The renames of the leaf
-    /// that the words name, as [`command_path`](crate::command_path) finds
-    /// it, come before the guide's (ADR-0060), so a tool that parses with
-    /// clap alone prints a leaf's own codes as one that parses with
-    /// crumbkit does (ADR-0076).
+    /// [spelling](crate::tool::Failures::spelling) of `tool`, so `finish` and `stream` print
+    /// every code in the tool record's spelling with the tool's name in
+    /// crumbkit's own codes (ADR-0086). The renames of the leaf that the words
+    /// name, as [`command_path`](crate::command_path) finds it, come before the
+    /// tool record's (ADR-0060), so a tool that parses with clap alone prints a
+    /// leaf's own codes as one that parses with crumbkit does (ADR-0076).
     ///
     /// The `Output` reads no `--no-input` from the words, so
     /// [`Output::confirm`] fails without asking only when no person can
@@ -244,14 +242,14 @@ impl Output {
         view: ViewFlags,
         dry_run: DryRun,
         command: Command,
-        guide: &Guide,
+        tool: &Tool,
         args: I,
     ) -> Result<Self, Stop>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString>,
     {
-        Self::new_to(&mut Sink::standard(), view, dry_run, command, guide, args)
+        Self::new_to(&mut Sink::standard(), view, dry_run, command, tool, args)
     }
 
     /// Returns the output of a run as [`Output::new`] does, and prints the
@@ -267,7 +265,7 @@ impl Output {
         view: ViewFlags,
         dry_run: DryRun,
         command: Command,
-        guide: &Guide,
+        tool: &Tool,
         args: I,
     ) -> Result<Self, Stop>
     where
@@ -280,25 +278,28 @@ impl Output {
         let words: Vec<OsString> = args.into_iter().skip(1).map(Into::into).collect();
         match View::try_from(view) {
             Ok(view) => {
-                let path = crate::command_path(&command, guide, &words);
+                let path = crate::command_path(&command, tool, &words);
                 let dry_run = dry_run.is_on();
                 Ok(Self::parsed(
-                    view, command, words, dry_run, false, guide, &path,
+                    view, command, words, dry_run, false, tool, &path,
                 ))
             }
             Err(refusal) => {
                 let mut command = command;
-                let spelling = guide.get_spelling().for_tool(guide.tool_name(&command));
-                let printing = Printing::of(guide);
+                let spelling = tool
+                    .get_failures()
+                    .get_spelling()
+                    .for_tool(tool.tool_name(&command));
+                let printing = Printing::of(tool);
                 crate::events::exited(printing.exit(&crate::codes::CLI_USAGE));
                 let code = refusal.print(sink, json, spelling, printing, &mut command);
-                let path = crate::command_path(&command, guide, &words);
+                let path = crate::command_path(&command, tool, &words);
                 Err(Stop::new(
                     Printed::Refusal,
                     code,
                     json,
                     command,
-                    guide,
+                    tool,
                     path,
                     words,
                 ))
@@ -307,22 +308,23 @@ impl Output {
     }
 
     /// Returns the output of a run that parsed `words`, the words after the
-    /// program name, against `command`, with the view flags `view`, whether
-    /// the caller passed `--dry-run` and `--no-input`, and the terminal
-    /// detection, output budget, JSON layout, exit codes and renames of
-    /// `guide`. The renames of the guide's leaf at `path`, the real names of
-    /// the parsed command's subcommands from the root, come before the
-    /// guide's (ADR-0060).
+    /// program name, against `command`, with the view flags `view`, whether the
+    /// caller passed `--dry-run` and `--no-input`, and the terminal detection,
+    /// output budget, JSON layout, exit codes and renames of `tool`. The
+    /// renames of the tool record's leaf at `path`, the real names of the
+    /// parsed command's subcommands from the root, come before the tool
+    /// record's (ADR-0060).
     pub(crate) fn parsed(
         view: View,
         command: Command,
         words: Vec<OsString>,
         dry_run: bool,
         no_input: bool,
-        guide: &Guide,
+        tool: &Tool,
         path: &[String],
     ) -> Self {
-        let leaf = guide
+        let leaf = tool
+            .get_help()
             .get_leaves()
             .iter()
             .find(|leaf| leaf.path().iter().eq(path.iter()));
@@ -330,8 +332,8 @@ impl Output {
             words,
             dry_run,
             no_input,
-            renames: Renames::with_leaf(guide, leaf),
-            ..Self::stopped(view, command, guide)
+            renames: Renames::with_leaf(tool, leaf),
+            ..Self::stopped(view, command, tool)
         }
     }
 
@@ -342,11 +344,11 @@ impl Output {
     }
 
     /// Returns the output of a run with the view `view` that parsed against
-    /// `command` with `guide`, without words. `parse` uses it after it
+    /// `command` with `tool`, without words. `parse` uses it after it
     /// printed help, the version or a refusal.
-    pub(crate) fn stopped(view: View, command: Command, guide: &Guide) -> Self {
-        let tool = guide.tool_name(&command);
-        let budget = match guide.get_output_budget() {
+    pub(crate) fn stopped(view: View, command: Command, tool: &Tool) -> Self {
+        let tool_name = tool.tool_name(&command);
+        let budget = match tool.get_output().get_budget() {
             Some((bytes, _)) => bytes,
             None => budget::DEFAULT,
         };
@@ -356,23 +358,23 @@ impl Output {
             words: Vec::new(),
             dry_run: false,
             no_input: false,
-            no_terminal: !guide.terminal_detection(),
-            json_layout: guide.get_json_layout(),
-            budget: budget::from_environment(budget, tool),
-            spelling: guide.get_spelling().for_tool(tool),
-            exits: guide.get_exits(),
-            renames: Renames::of(guide),
+            no_terminal: !tool.get_output().terminal_detection(),
+            json_layout: tool.get_output().get_json_layout(),
+            budget: budget::from_environment(budget, tool_name),
+            spelling: tool.get_failures().get_spelling().for_tool(tool_name),
+            exits: tool.get_failures().get_exits(),
+            renames: Renames::of(tool),
         }
     }
 
     /// Returns the output of a run of `command` without view flags, words
-    /// or a guide, for a test that needs any output.
+    /// or a tool record, for a test that needs any output.
     #[cfg(test)]
     pub(crate) fn of(command: Command) -> Self {
         Self::stopped(
             View::Text(crate::view::Table::Compact),
             command,
-            &Guide::new(),
+            &Tool::new(),
         )
     }
 }

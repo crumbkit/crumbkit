@@ -1,4 +1,4 @@
-//! Tests for the exit code of `finish_to` when the guide maps a failure's
+//! Tests for the exit code of `finish_to` when the tool record maps a failure's
 //! code to one of the tool's exit codes (ADR-0037).
 
 use std::fmt;
@@ -7,15 +7,18 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
-use crate::help::{Exit, Guide, Leaf, Rename};
-use crate::{Batch, Code, Document, Failure, Output, Prose, Recovery, Sink, finish_to};
+use crate::help::{Help, Leaf};
+use crate::tool::{Exit, Failures, Rename};
+use crate::{Batch, Code, Document, Failure, Output, Prose, Recovery, Sink, Tool, finish_to};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
-/// A guide that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
-const GUIDE: Guide = Guide::new()
-    .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]);
+/// A tool record that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
+const TOOL: Tool = Tool::new().failures(
+    Failures::new()
+        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]),
+);
 
 /// A failure with the code it was given.
 #[derive(Debug)]
@@ -42,7 +45,7 @@ impl Failure for Failed {
 /// A tool with a `list` command.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -54,15 +57,15 @@ enum Command {
     List,
 }
 
-/// Parses `tool list` and builds the output with `GUIDE`, as a tool that
+/// Parses `tool list` and builds the output with `TOOL`, as a tool that
 /// parses with clap alone builds it.
-fn guided() -> Output {
-    let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
+fn output_of() -> Output {
+    let view = Cli::try_parse_from(["tool", "list"]).unwrap().view;
     Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &GUIDE,
+        Cli::command(),
+        &TOOL,
         ["tool", "list"],
     )
     .unwrap()
@@ -81,21 +84,20 @@ const PLANETS_SHOW: Document<Batch<Planet, Failed>> =
 
 #[test]
 fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
-    const REFUSALS: Guide =
-        Guide::new()
-            .exits(&[Exit::new(64, "The command line was refused.")
-                .failures(&[&crate::codes::CLI_USAGE])]);
+    const REFUSALS: Tool = Tool::new().failures(Failures::new().exits(&[
+        Exit::new(64, "The command line was refused.").failures(&[&crate::codes::CLI_USAGE]),
+    ]));
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let refused = crate::parse_to::<Tool, _, _, _, _>(
+    let refused = crate::parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        Tool::command(),
+        Cli::command(),
         &REFUSALS,
         ["tool", "lst"],
     );
-    let admitted = crate::parse_to::<Tool, _, _, _, _>(
+    let admitted = crate::parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        Tool::command(),
+        Cli::command(),
         &REFUSALS,
         ["tool", "list"],
     );
@@ -106,24 +108,24 @@ fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
 
 #[test]
 fn a_failure_whose_code_an_exit_lists_ends_finish_with_that_exit() {
-    let code = finish(guided(), PLANETS, Err(Failed(&TIMED_OUT)));
+    let code = finish(output_of(), PLANETS, Err(Failed(&TIMED_OUT)));
     assert_eq!(code, 124);
 }
 
 #[test]
 fn a_failure_whose_code_no_exit_lists_ends_finish_with_code_1() {
-    let code = finish(guided(), PLANETS, Err(Failed(&NOT_FOUND)));
+    let code = finish(output_of(), PLANETS, Err(Failed(&NOT_FOUND)));
     assert_eq!(code, 1);
 }
 
 #[test]
 fn an_output_set_from_a_bare_command_maps_no_failure_and_exits_with_code_1() {
-    let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
+    let view = Cli::try_parse_from(["tool", "list"]).unwrap().view;
     let output = Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         ["tool", "list"],
     )
     .unwrap();
@@ -137,7 +139,7 @@ fn a_batch_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         vec![mercury()],
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
-    let code = finish(guided(), PLANETS_SHOW, Ok(batch));
+    let code = finish(output_of(), PLANETS_SHOW, Ok(batch));
     assert_eq!(code, 124);
 }
 
@@ -147,23 +149,25 @@ fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_
         vec![mercury()],
         vec![Failed(&NOT_FOUND), Failed(&TIMED_OUT)],
     );
-    let code = finish(guided(), PLANETS_SHOW, Ok(batch));
+    let code = finish(output_of(), PLANETS_SHOW, Ok(batch));
     assert_eq!(code, 1);
 }
 
 #[test]
 fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_its_listed_code() {
     const STALE: Code = Code::new("solar", "planets", "stale");
-    const RENAMED: Guide = Guide::new()
-        .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
-        .exits(&[Exit::new(5, "The planet changed since it was read.").failures(&[&STALE])]);
-    let view = Tool::try_parse_from(["tool", "list", "--json"])
+    const RENAMED: Tool = Tool::new().failures(
+        Failures::new()
+            .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
+            .exits(&[Exit::new(5, "The planet changed since it was read.").failures(&[&STALE])]),
+    );
+    let view = Cli::try_parse_from(["tool", "list", "--json"])
         .unwrap()
         .view;
     let output = Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
+        Cli::command(),
         &RENAMED,
         ["tool", "list", "--json"],
     )
@@ -191,18 +195,21 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
 {
     const STALE: Code = Code::new("solar", "planets", "stale");
     const MOVED: Code = Code::new("solar", "planets", "moved");
-    const RENAMED: Guide = Guide::new()
-        .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
-        .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])])
-        .leaves(&[
-            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)])
-        ]);
+    const RENAMED: Tool = Tool::new()
+        .help(Help::new().leaves(&[
+            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)]),
+        ]))
+        .failures(
+            Failures::new()
+                .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
+                .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])]),
+        );
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let (_tool, output) = crate::parse_to::<Tool, _, _, _, _>(
+    let (_tool, output) = crate::parse_to::<Cli, _, _, _, _>(
         &mut sink,
-        Tool::command(),
+        Cli::command(),
         &RENAMED,
         ["tool", "list", "--json"],
     )
@@ -222,17 +229,20 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
 #[test]
 fn a_tool_that_parses_with_clap_alone_gets_the_renames_of_the_leaf_that_its_words_name() {
     const MOVED: Code = Code::new("solar", "planets", "moved");
-    const RENAMED: Guide = Guide::new()
-        .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])])
-        .leaves(&[
-            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)])
-        ]);
+    const RENAMED: Tool = Tool::new()
+        .help(Help::new().leaves(&[
+            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)]),
+        ]))
+        .failures(
+            Failures::new()
+                .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])]),
+        );
     let words = ["tool", "list", "--json"];
-    let tool = Tool::try_parse_from(words).unwrap();
+    let tool = Cli::try_parse_from(words).unwrap();
     let output = Output::new(
         tool.view,
         crate::DryRun::default(),
-        Tool::command(),
+        Cli::command(),
         &RENAMED,
         words,
     )
@@ -259,6 +269,6 @@ fn a_prose_result_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         String::from("Mercury is the closest planet."),
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
-    let code = finish(guided(), SUMMARY, Ok(prose));
+    let code = finish(output_of(), SUMMARY, Ok(prose));
     assert_eq!(code, 124);
 }

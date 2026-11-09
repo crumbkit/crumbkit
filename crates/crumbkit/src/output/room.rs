@@ -18,18 +18,18 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// The bytes that `finish` prints for the rows of a batch, which
 /// [`Output::room`] returns before the handler fetches the first key.
 ///
-/// [`Room::has_room`] measures each row that the handler pushed since the
-/// last call once, in the format that the run prints: the JSON document in
-/// the guide's layout with the columns that the view flags choose, the text
-/// table with each column as wide as its widest cell, each row's own line
-/// for a row type that declares `Row::LINE`, each row's child lines for a
-/// row type that declares `Row::CHILDREN`, or the bytes and the
-/// `==> KEY <==` headers of a headed batch. The count is the bytes that
-/// `finish` prints for those rows when the batch has no failure, because
-/// each failure only adds bytes. A handler that stops when `has_room`
-/// returns false therefore never stops before the row at which `finish`
-/// would cut the batch, except when the text table leaves out a column
-/// that every printed row lacks, which the count still includes.
+/// [`Room::has_room`] measures each row that the handler pushed since the last
+/// call once, in the format that the run prints: the JSON document in the tool
+/// record's layout with the columns that the view flags choose, the text table
+/// with each column as wide as its widest cell, each row's own line for a row
+/// type that declares `Row::LINE`, each row's child lines for a row type that
+/// declares `Row::CHILDREN`, or the bytes and the `==> KEY <==` headers of a
+/// headed batch. The count is the bytes that `finish` prints for those rows
+/// when the batch has no failure, because each failure only adds bytes. A
+/// handler that stops when `has_room` returns false therefore never stops
+/// before the row at which `finish` would cut the batch, except when the text
+/// table leaves out a column that every printed row lacks, which the count
+/// still includes.
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -55,7 +55,7 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// #     crumbkit::ViewFlags::new(),
 /// #     crumbkit::DryRun::default(),
 /// #     clap::Command::new("shelf"),
-/// #     &crumbkit::help::Guide::new(),
+/// #     &crumbkit::Tool::new(),
 /// #     ["shelf"],
 /// # )
 /// # .unwrap();
@@ -90,7 +90,7 @@ pub struct Room<T> {
 enum Form {
     /// The JSON document, whose rows sit `depth` levels deep.
     Json {
-        /// The guide's layout, or `None` for one line.
+        /// The tool record's layout, or `None` for one line.
         layout: JsonLayout,
         /// How deep each row sits in the document.
         depth: usize,

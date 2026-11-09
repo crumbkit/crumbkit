@@ -35,7 +35,7 @@ crumbkit_test::check_help_sizes(&tool, Pages::clap(), &Budgets::new());
 ```
 
 - Names: [`check_names`] and [`check_grammar`], which take
-  [`Pages::clap`] in place of a guide.
+  [`Pages::clap`] in place of a tool record.
 - Arguments: [`check_listings`] and [`check_filters`].
 - Help pages: [`check_help_sizes`] with [`Budgets`], [`check_help_goldens`],
   and [`check_path_weights`] with [`PathBudgets::help_only`], each reading
@@ -47,11 +47,11 @@ with a reason.
 
 ## Checks for tools built with crumbkit
 
-These checks read the tool's guide, failure codes or crumbkit's output:
+These checks read the tool record, failure codes or crumbkit's output:
 
 - Failure codes: [`check_codes`].
 - Effects: [`check_effects`].
-- The guide: [`check_guide`], and [`check_exit_codes`].
+- The tool record: [`check_help`], and [`check_exit_codes`].
 - Help pages: the checks above with [`Pages::rendered`] or
   [`Pages::binary`], and [`PathBudgets`] with the example golden files.
 - Example output: [`check_examples`] with [`Examples`], and
@@ -94,7 +94,7 @@ option.
 [`check_effects`]: src/effects.rs
 [`check_listings`]: src/listings.rs
 [`check_filters`]: src/filters.rs
-[`check_guide`]: src/guide.rs
+[`check_help`]: src/help.rs
 [`check_exit_codes`]: src/exits.rs
 [`check_help_sizes`]: src/sizes.rs
 [`Budgets`]: src/sizes.rs

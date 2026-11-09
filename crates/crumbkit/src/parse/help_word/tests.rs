@@ -8,12 +8,12 @@ use std::process::ExitCode;
 use clap::{Arg, Command};
 
 use super::{ask_for_help, topic_page};
-use crate::help::{Guide, Topic};
-use crate::{Sink, parse_to};
+use crate::help::{Help, Topic};
+use crate::{Sink, Tool, parse_to};
 
 /// A tool with a global option that takes one value, `--units <UNIT>`, and
 /// one group.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .subcommand_required(true)
         .arg(
@@ -26,19 +26,19 @@ fn tool() -> Command {
         .subcommand(Command::new("planets").subcommand(Command::new("show")))
 }
 
-/// A topic of the guide below.
+/// A topic of the tool record below.
 const ORBITS: Topic = Topic::new("orbits", "", "An orbit is one trip around the Sun.\n");
 
-/// A guide with one topic.
-const GUIDE: Guide = Guide::new().topics(&[ORBITS]);
+/// A tool record with one topic.
+const TOOL: Tool = Tool::new().help(Help::new().topics(&[ORBITS]));
 
-/// Runs `parse_to` over `tool()` with `GUIDE`, for `line` that prints a
+/// Runs `parse_to` over `tree()` with `TOOL`, for `line` that prints a
 /// page, and returns the page.
 fn page(line: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, line);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), &TOOL, line);
 
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(String::from_utf8(err).unwrap(), "");
@@ -126,7 +126,7 @@ fn the_words_before_the_help_word_stay_where_they_are() {
 fn help_goes_before_the_separate_value_of_an_option_after_the_command_words() {
     assert_eq!(
         asked(
-            &tool(),
+            &tree(),
             &["tool", "help", "planets", "--units", "metric"],
             1
         ),
@@ -134,7 +134,7 @@ fn help_goes_before_the_separate_value_of_an_option_after_the_command_words() {
     );
     assert_eq!(
         asked(
-            &tool(),
+            &tree(),
             &["tool", "planets", "-u", "metric", "help", "show"],
             4
         ),
@@ -172,7 +172,7 @@ fn a_topic_followed_by_an_option_in_the_name_equals_value_form_prints_the_topic(
 
 #[test]
 fn a_topic_followed_by_a_flag_prints_the_topic_as_text() {
-    let tool = tool().arg(
+    let tool = tree().arg(
         Arg::new("json")
             .long("json")
             .global(true)
@@ -182,7 +182,7 @@ fn a_topic_followed_by_a_flag_prints_the_topic_as_text() {
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, Vec::new()),
         tool,
-        &GUIDE,
+        &TOOL,
         ["tool", "help", "orbits", "--json"],
     );
 
@@ -194,7 +194,7 @@ fn a_topic_followed_by_a_flag_prints_the_topic_as_text() {
 fn a_value_word_that_names_a_topic_after_an_option_is_the_option_s_value_and_names_no_topic() {
     let args = words(&["tool", "help", "--units", "orbits"]);
 
-    assert_eq!(topic_page(&tool(), &GUIDE, &args, 1), None);
+    assert_eq!(topic_page(&tree(), &TOOL, &args, 1), None);
     assert_eq!(
         page(&["tool", "help", "--units", "orbits"]),
         page(&["tool", "--help"])
@@ -213,16 +213,16 @@ fn help_followed_only_by_an_option_and_its_value_prints_the_root_s_help() {
 fn a_word_after_a_double_dash_stays_as_typed_and_names_no_topic() {
     let args = words(&["tool", "help", "--", "orbits"]);
 
-    assert_eq!(topic_page(&tool(), &GUIDE, &args, 1), None);
+    assert_eq!(topic_page(&tree(), &TOOL, &args, 1), None);
     assert_eq!(
-        asked(&tool(), &["tool", "help", "--", "orbits"], 1),
+        asked(&tree(), &["tool", "help", "--", "orbits"], 1),
         words(&["tool", "--help", "--", "orbits"])
     );
 }
 
 #[test]
-fn a_topic_after_the_words_of_a_guide_root_below_the_clap_root_reads_that_root_s_options() {
-    const GUIDE: Guide = Guide::new().root(&["planets"]).topics(&[ORBITS]);
+fn a_topic_after_the_words_of_a_tool_root_below_the_clap_root_reads_that_root_s_options() {
+    const TOOL: Tool = Tool::new().help(Help::new().root(&["planets"]).topics(&[ORBITS]));
     let tool = Command::new("tool").subcommand(
         Command::new("planets")
             .arg(Arg::new("units").long("units").value_name("UNIT"))
@@ -231,7 +231,7 @@ fn a_topic_after_the_words_of_a_guide_root_below_the_clap_root_reads_that_root_s
     let args = words(&["tool", "planets", "help", "orbits", "--units", "metric"]);
 
     assert_eq!(
-        topic_page(&tool, &GUIDE, &args, 2).as_deref(),
+        topic_page(&tool, &TOOL, &args, 2).as_deref(),
         Some(ORBITS.text())
     );
 }

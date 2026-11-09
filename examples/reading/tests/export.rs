@@ -136,7 +136,7 @@ fn entries_export_refuses_fields_and_admits_its_twin_without_them() {
     // refusal (TEST-1).
     let refused = check_twin(
         &reading::command(&reading::lists_in(Path::new(LISTS))),
-        &reading::GUIDE,
+        &reading::TOOL,
         &examples(),
         &Failing::new(
             &codes::CLI_USAGE,
@@ -155,7 +155,7 @@ fn entries_export_refuses_long_and_admits_its_twin_without_it() {
     // refusal (TEST-1).
     let refused = check_twin(
         &reading::command(&reading::lists_in(Path::new(LISTS))),
-        &reading::GUIDE,
+        &reading::TOOL,
         &examples(),
         &Failing::new(
             &codes::CLI_USAGE,

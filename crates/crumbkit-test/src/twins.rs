@@ -5,12 +5,12 @@ use std::path::Path;
 use std::process::Output;
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 
 use crate::examples::Examples;
 use crate::exits;
 use crate::failures;
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::recoveries::Failing;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note};
 
@@ -26,12 +26,12 @@ pub use coverage::{Twin, Twins, check_twins};
 #[cfg(test)]
 mod tests;
 
-/// Runs `refused` and `admitted`, two command lines of the binary of
-/// `examples` that differ by one word, for the tool whose unbuilt command
-/// tree is `command` and whose guide is `guide`, checks that `refused` fails with its
-/// code and that `admitted` exits with code 0, and returns the output of
-/// `refused`, so the test can compare it with its golden files. It panics,
-/// as a failed test assertion does, when a rule is broken.
+/// Runs `refused` and `admitted`, two command lines of the binary of `examples`
+/// that differ by one word, for the tool whose unbuilt command tree is
+/// `command` and whose tool record is `tool`, checks that `refused` fails with
+/// its code and that `admitted` exits with code 0, and returns the output of
+/// `refused`, so the test can compare it with its golden files. It panics, as a
+/// failed test assertion does, when a rule is broken.
 ///
 /// A test of a refusal proves only that the tool fails. Its twin proves
 /// that the one word it changes is the reason, because the admitted line
@@ -56,7 +56,7 @@ mod tests;
 /// [`Examples::current_dir`] when `refused` sets none, or a new copy each
 /// of the fixture of [`Examples::fresh_dir`], and fresh XDG directories of
 /// their own, as [`check_examples`](crate::check_examples) runs an example.
-/// The check reads the refused line's code, spelled as `guide` spells it. When
+/// The check reads the refused line's code, spelled as `tool` spells it. When
 /// `examples` sets a [`FailureReader`](crate::FailureReader), it reads the
 /// code through that reader first. Otherwise, or when the reader reads no
 /// failure, it reads the
@@ -68,9 +68,9 @@ mod tests;
 /// from that run. The rule of the exits below applies to the first run.
 ///
 /// The refused line must exit with the code that
-/// [`Guide::failure_exit`](crumbkit::help::Guide::failure_exit) gives its
-/// failure: the code of the guide's [`Exit`](crumbkit::help::Exit) that
-/// lists its code with [`Exit::failures`](crumbkit::help::Exit::failures),
+/// [`Tool::failure_exit`](crumbkit::Tool::failure_exit) gives its
+/// failure: the code of the tool record's [`Exit`](crumbkit::tool::Exit) that
+/// lists its code with [`Exit::failures`](crumbkit::tool::Exit::failures),
 /// the code of a refused command line for `<tool>::cli::usage`, which is
 /// 2 unless an exit lists it, and 1 for any other code. A command whose
 /// leaf declares [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)
@@ -80,10 +80,10 @@ mod tests;
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit_test::{Examples, Failing};
 ///
-/// const GUIDE: Guide = Guide::new();
+/// const TOOL: Tool = Tool::new();
 /// let command = Command::new("shelf")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
@@ -91,7 +91,7 @@ mod tests;
 ///
 /// let output = crumbkit_test::check_twin(
 ///     &command,
-///     &GUIDE,
+///     &TOOL,
 ///     &EXAMPLES,
 ///     &Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "list", "--limit", "0"]),
 ///     &["books", "list", "--limit", "1"],
@@ -102,24 +102,25 @@ mod tests;
 /// # Panics
 ///
 /// Panics when the two lines differ by more or less than one word added,
-/// removed or replaced, when `admitted` adds a help or version word or
-/// runs another command than `refused`, when neither line runs a command, when `refused` exits with code 0, fails with
-/// another code, exits with a code that breaks the rule of the guide's exits
-/// above or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
-/// run cannot start or does not end within 10 seconds. The message names
-/// each line as help prints it, with the binary's file name first.
+/// removed or replaced, when `admitted` adds a help or version word or runs
+/// another command than `refused`, when neither line runs a command, when
+/// `refused` exits with code 0, fails with another code, exits with a code that
+/// breaks the rule of the tool record's exits above or prints no code that the
+/// check can read, when `admitted` exits with a code other than 0, or when a
+/// run cannot start or does not end within 10 seconds. The message names each
+/// line as help prints it, with the binary's file name first.
 #[expect(
     clippy::must_use_candidate,
     reason = "a test that compares no output with golden files calls the check only for its assertions"
 )]
 pub fn check_twin(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     examples: &Examples<'_>,
     refused: &Failing<'_>,
     admitted: &[&str],
 ) -> Output {
-    match twin(command, guide, examples, refused, Admitted::Words(admitted)) {
+    match twin(command, tool, examples, refused, Admitted::Words(admitted)) {
         Ok(output) => output,
         Err(problem) => {
             #[expect(
@@ -156,19 +157,19 @@ pub(super) enum Admitted<'a> {
 /// `refused`, or the problem when a rule is broken.
 pub(super) fn twin(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     examples: &Examples<'_>,
     refused: &Failing<'_>,
     admitted: Admitted<'_>,
 ) -> Result<Output, String> {
-    let tool = tool_name(examples);
-    let refused_line = named(&tool, refused.words(), refused.own_env());
+    let binary = tool_name(examples);
+    let refused_line = named(&binary, refused.words(), refused.own_env());
     let (words, env, admitted_line) = match admitted {
         Admitted::Words(words) => {
-            let admitted_line = named(&tool, words, refused.own_env());
+            let admitted_line = named(&binary, words, refused.own_env());
             one_word(
                 command,
-                guide,
+                tool,
                 refused.words(),
                 words,
                 &refused_line,
@@ -197,11 +198,11 @@ pub(super) fn twin(
                 || format!(" ({without})"),
                 |note| format!("{note}, {without})"),
             );
-            let line = format!("`{}`{note}", command_line(&tool, refused.words()));
+            let line = format!("`{}`{note}", command_line(&binary, refused.words()));
             (refused.words(), rest, line)
         }
     };
-    let output = refuse(command, guide, examples, refused)?;
+    let output = refuse(command, tool, examples, refused)?;
     let other = run(examples, refused, words, &env, &admitted_line)?;
     if !other.status.success() {
         return Err(format!(
@@ -224,11 +225,11 @@ pub(super) fn named(tool: &str, words: &[&str], env: &[(&str, Option<&str>)]) ->
 /// `admitted_line`, do not differ by one word, whose admitted line adds a
 /// word that skips the command's work, or whose admitted line runs another
 /// command of `command`, the tool's tree, than the refused line, or no
-/// command when the refused line runs none. `guide` is the tool's guide,
+/// command when the refused line runs none. `tool` is the tool record,
 /// whose declarations say which words name a command.
 fn one_word(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     refused: &[&str],
     admitted: &[&str],
     refused_line: &str,
@@ -244,8 +245,8 @@ fn one_word(
             "the admitted line {admitted_line} adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line {refused_line}. A code that no word of a command line causes needs an opt-out made with Allow::untwinned"
         ));
     }
-    let named = words::named(command, guide, refused);
-    let other = words::named(command, guide, admitted);
+    let named = words::named(command, tool, refused);
+    let other = words::named(command, tool, admitted);
     if !named.runs && !other.runs {
         return Err(format!(
             "the refused line {refused_line} runs no command, and the admitted line {admitted_line} runs none either, so the twin proves nothing about a command. A twin of a line that runs no command admits a line that runs one"
@@ -270,21 +271,21 @@ fn one_word(
 /// code or prints no code that the check can read.
 pub(super) fn refuse(
     command: &Command,
-    guide: &Guide,
+    tool: &Tool,
     examples: &Examples<'_>,
     refused: &Failing<'_>,
 ) -> Result<Output, String> {
     let reader = failures::reader(examples);
-    // Codes print in the guide's spelling, and crumbkit's own codes print
+    // Codes print in the tool record's spelling, and crumbkit's own codes print
     // with the tool's name (ADR-0079).
-    let tool = guide.tool_name(command);
-    let spelling = guide.get_spelling().for_tool(tool);
+    let name = tool.tool_name(command);
+    let spelling = tool.get_failures().get_spelling().for_tool(name);
     let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
     // A leaf's renames decide the code that a run of its command prints, so
     // the code is spelled for the command that the refused line names.
-    let path = crumbkit::command_path(command, guide, refused.words());
+    let path = crumbkit::command_path(command, tool, refused.words());
     let leaf_path: Vec<&str> = path.iter().map(String::as_str).collect();
-    let code = spelling.spell(guide.printed(&leaf_path, refused.code()));
+    let code = spelling.spell(tool.printed(&leaf_path, refused.code()));
     let output = run(
         examples,
         refused,
@@ -299,7 +300,7 @@ pub(super) fn refuse(
     }
     // The first failure is the one the refused line fails with.
     let first = |output: &Output| {
-        failures::read_failures(tool, reader, &output.stdout, &output.stderr)
+        failures::read_failures(name, reader, &output.stdout, &output.stderr)
             .first()
             .map(|failure| failure.code().to_owned())
     };
@@ -307,7 +308,7 @@ pub(super) fn refuse(
     // A line that stops at a group prints the group's help page in text,
     // which holds no code, so the check reads the code from the same line
     // run with `--json` (ADR-0118).
-    if printed.is_none() && !words::named(command, guide, refused.words()).runs {
+    if printed.is_none() && !words::named(command, tool, refused.words()).runs {
         let json = runs::with_json(&owned(refused.words()));
         let json: Vec<&str> = json.iter().map(String::as_str).collect();
         let json_line = named(&tool_name(examples), &json, refused.own_env());
@@ -321,7 +322,7 @@ pub(super) fn refuse(
     }
     match printed {
         Some(printed) if printed == code => {
-            match exits::exit_problem(guide, spelling, &path, &printed, output.status) {
+            match exits::exit_problem(tool, spelling, &path, &printed, output.status) {
                 Some(problem) => Err(format!("the refused line {refused_line} {problem}")),
                 None => Ok(output),
             }

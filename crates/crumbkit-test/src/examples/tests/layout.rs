@@ -1,10 +1,10 @@
-//! Tests for the example check's lines of a `--json` example when the guide
-//! sets `JsonLayout::Pretty`.
+//! Tests for the example check's lines of a `--json` example when the tool
+//! record sets `JsonLayout::Pretty`.
 
 use std::time::Duration;
 
-use crumbkit::help::{Example, Guide, Leaf};
-use crumbkit::{Document, JsonLayout, Row, Stream};
+use crumbkit::help::{Example, Help, Leaf};
+use crumbkit::{Document, JsonLayout, Row, Stream, Tool};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -37,15 +37,15 @@ const ONE_LINE: &str = r#"echo '{"schema":"sh/word/v1","data":{"word":"a"}}'"#;
 /// A script that prints two lines of `sh/words/v1`.
 const TWO_WORDS: &str = r#"echo '{"schema":"sh/words/v1","data":{"word":"a"}}'; echo '{"schema":"sh/words/v1","data":{"word":"b"}}'"#;
 
-/// Runs the check of `guide`, with the layout `JsonLayout::Pretty`, on
+/// Runs the check of `tool`, with the layout `JsonLayout::Pretty`, on
 /// `sh()` with the golden files in `dir` and the action `Overwrite`.
-fn run(guide: &Guide, dir: &TempDir) {
-    let guide = (*guide).json_layout(JsonLayout::Pretty {
+fn run(tool: &Tool, dir: &TempDir) {
+    let tool = tool.output(tool.get_output().json_layout(JsonLayout::Pretty {
         reason: "the readers expect it",
-    });
+    }));
     check(
         &sh(),
-        &guide,
+        &tool,
         &examples(dir),
         &Assert::new().action(Action::Overwrite),
         Duration::from_secs(10),
@@ -54,26 +54,30 @@ fn run(guide: &Guide, dir: &TempDir) {
 
 #[test]
 fn a_pretty_layout_lets_a_json_example_of_a_document_print_it_indented() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(&[INDENTED, "--json"], "Print one word")])
-        .document(WORD)]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(&[INDENTED, "--json"], "Print one word")])
+            .document(WORD)]),
+    );
     let dir = TempDir::new("examples-pretty-indented").unwrap();
 
-    run(&GUIDE, &dir);
+    run(&TOOL, &dir);
 }
 
 #[test]
 fn a_pretty_layout_fails_a_json_example_that_prints_its_document_on_one_line() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(&[ONE_LINE, "--json"], "Print one word")])
-        .document(WORD)]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(&[ONE_LINE, "--json"], "Print one word")])
+            .document(WORD)]),
+    );
     let dir = TempDir::new("examples-pretty-one-line").unwrap();
 
-    let message = panic_message(|| run(&GUIDE, &dir)).unwrap();
+    let message = panic_message(|| run(&TOOL, &dir)).unwrap();
 
     assert!(
         message.ends_with(
-            "--json: the guide sets JsonLayout::Pretty, so the --json output must be one document indented by two spaces, and the run printed it on one line"
+            "--json: the tool record sets JsonLayout::Pretty, so the --json output must be one document indented by two spaces, and the run printed it on one line"
         ),
         "{message}"
     );
@@ -81,12 +85,14 @@ fn a_pretty_layout_fails_a_json_example_that_prints_its_document_on_one_line() {
 
 #[test]
 fn a_pretty_layout_fails_a_json_example_that_prints_two_documents() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(&[TWO_WORDS, "--json"], "Print two lines")])
-        .document(WORD)]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(&[TWO_WORDS, "--json"], "Print two lines")])
+            .document(WORD)]),
+    );
     let dir = TempDir::new("examples-pretty-two").unwrap();
 
-    let message = panic_message(|| run(&GUIDE, &dir)).unwrap();
+    let message = panic_message(|| run(&TOOL, &dir)).unwrap();
 
     assert!(
         message.ends_with(
@@ -98,10 +104,12 @@ fn a_pretty_layout_fails_a_json_example_that_prints_two_documents() {
 
 #[test]
 fn a_pretty_layout_keeps_one_line_for_each_document_of_a_stream() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
-        .examples(&[Example::new(&[TWO_WORDS, "--json"], "Print two lines")])
-        .stream(WORDS)]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(&[TWO_WORDS, "--json"], "Print two lines")])
+            .stream(WORDS)]),
+    );
     let dir = TempDir::new("examples-pretty-stream").unwrap();
 
-    run(&GUIDE, &dir);
+    run(&TOOL, &dir);
 }

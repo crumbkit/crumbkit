@@ -40,7 +40,7 @@ the test, in the directories it passes to each check. shelf keeps these:
 | `tests/golden/examples/*.stderr` | `check_examples` | The standard error of an example that writes there. |
 | `tests/golden/examples/*.stdin` | `check_examples` | The standard input of an example, which a person writes and no check rewrites. |
 | `tests/golden/schemas/*.json` | `check_schema_goldens` | The JSON Schema of each document. |
-| `tests/golden/opt-outs.txt`, `opt-outs.json` | `check_opt_outs` | The report of opt-outs, budgets and customisations. |
+| `tests/golden/opt-outs.txt`, `opt-outs.json` | `check_opt_outs` | The report of opt-outs, budgets and declarations. |
 | `tests/golden/recoveries.txt` | `check_recoveries` | The recovery chains, codes and outcomes. |
 | `docs/commands.md` | `check_command_reference` | The Markdown command reference. |
 

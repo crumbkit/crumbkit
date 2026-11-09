@@ -48,26 +48,26 @@ pub const HEADED_LINE: &str = "Output: each answer's bytes unchanged, under a ==
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
 ///
-/// A tool lists its leaves in its [`Guide`](super::Guide):
+/// A tool lists its leaves in its [`Tool`](super::Tool):
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::Document;
-/// use crumbkit::help::{Example, Guide, Leaf};
+/// use crumbkit::{Document, Tool, help::{Example, Help, Leaf}};
 ///
 /// const BOOKS_LIST: Document<Vec<Book>> =
 ///     Document::new("shelf", "books-list", 1, "The books in the catalogue.");
 ///
-/// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
+/// const LEAVES: &[Leaf] = &[Leaf::new(&["books", "list"])
 ///     .examples(&[
 ///         Example::new(&[], "Print the first page of books"),
 ///         Example::new(&["--all"], "Print every book"),
 ///     ])
-///     .document(BOOKS_LIST)]);
+///     .document(BOOKS_LIST)];
+/// const TOOL: Tool = Tool::new().help(Help::new().leaves(LEAVES));
 ///
-/// assert_eq!(GUIDE.get_leaves()[0].path(), ["books", "list"]);
+/// assert_eq!(TOOL.get_help().get_leaves()[0].path(), ["books", "list"]);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Leaf {
@@ -87,7 +87,7 @@ pub struct Leaf {
     /// no result.
     no_result: bool,
     /// The program whose exit code the command passes on, or `None` when
-    /// the command exits as the guide's exits declare.
+    /// the command exits as the tool record's exits declare.
     passes_on_exit: Option<&'static str>,
     /// The function that builds the calls that a refusal of a command line
     /// that names the command offers as its recovery and alternatives.
@@ -97,7 +97,7 @@ pub struct Leaf {
     refusal_hint: Option<fn(&RefusalContext<'_>) -> Option<String>>,
     /// The tool's own codes for crumbkit's failures in the command's runs
     /// (ADR-0060).
-    codes: &'static [super::Rename],
+    codes: &'static [crate::tool::Rename],
 }
 
 impl Leaf {
@@ -147,7 +147,7 @@ impl Leaf {
     /// A leaf without effects prints no such line, and `commands list`
     /// writes `null`, which a caller reads as a command that may destroy
     /// data. crumbkit-test's `check_effects` fails on a visible leaf without
-    /// effects unless the tool opts out with a reason, and its `check_guide`
+    /// effects unless the tool opts out with a reason, and its `check_help`
     /// fails on a leaf whose effects change something and that has no
     /// document, unless the leaf passes on a program's exit code or prints
     /// no result.
@@ -166,10 +166,10 @@ impl Leaf {
     }
 
     /// Sets the sources of the values of the command's arguments, which the
-    /// guide's [`Guide::picker`](super::Guide::picker) offers when the
+    /// tool record's [`Tool::picker`](super::Tool::picker) offers when the
     /// caller leaves a required argument out (ADR-0043). An argument with
     /// possible values offers them and never calls its source.
-    /// crumbkit-test's `check_guide` fails on a source whose argument id
+    /// crumbkit-test's `check_help` fails on a source whose argument id
     /// names no argument of the command.
     #[must_use]
     pub const fn choices(mut self, choices: &'static [Choices]) -> Self {
@@ -191,11 +191,11 @@ impl Leaf {
     /// [`Prose`](crate::Prose) document has no columns, so its leaf's help
     /// lists none and its `-h` points at none.
     ///
-    /// The leaf keeps the document's id and description, the row type's
-    /// column lists, and functions that build the JSON Schemas of the row
-    /// type and of the whole document, so one guide holds leaves whose rows
-    /// have different types. [`schemas`](crate::schemas) serves each
-    /// leaf's document from them.
+    /// The leaf keeps the document's id and description, the row type's column
+    /// lists, and functions that build the JSON Schemas of the row type and of
+    /// the whole document, so one tool record holds leaves whose rows have
+    /// different types. [`schemas`](crate::schemas) serves each leaf's document
+    /// from them.
     #[must_use]
     pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
         self.columns = Some(Columns {
@@ -219,7 +219,7 @@ impl Leaf {
     /// Returns the leaf with the document and columns of `other`, which
     /// [`Leaf::document`] or [`Leaf::stream`] set, or without a document
     /// when `other` has none. A runtime leaf's document reaches its leaf in
-    /// the joined guide this way.
+    /// the joined tool record this way.
     pub(crate) const fn with_document_of(mut self, other: &Self) -> Self {
         self.columns = other.columns;
         self
@@ -339,7 +339,7 @@ impl Leaf {
     /// does not offer it, print what `--json` alone prints and write a note
     /// that the flag adds nothing. `--fields` never adds nothing.
     ///
-    /// crumbkit-test's `check_guide` reads it, so it is public and hidden
+    /// crumbkit-test's `check_help` reads it, so it is public and hidden
     /// from the documentation.
     #[doc(hidden)]
     #[must_use]
@@ -374,7 +374,7 @@ impl Leaf {
 
     /// Returns the columns whose cells a text table at a terminal never
     /// cuts, the row type's [`Row::UNCUT_COLUMNS`], or no column when the
-    /// leaf has no document. crumbkit-test's `check_guide` reads it to fail
+    /// leaf has no document. crumbkit-test's `check_help` reads it to fail
     /// a name that is not one of the row type's columns.
     #[must_use]
     pub const fn uncut_columns(&self) -> &'static [&'static str] {
@@ -417,7 +417,7 @@ impl Leaf {
     /// Reports whether the row type of the leaf's document has any field, as
     /// [`Row`] describes the fields of a row type, or `false` when the leaf
     /// has no document. It builds the row type's JSON Schema on each call.
-    /// crumbkit-test's `check_guide` reads it to fail on a row type that
+    /// crumbkit-test's `check_help` reads it to fail on a row type that
     /// sets [`Row::WHOLE`], names no columns and has fields that could be
     /// columns.
     #[must_use]
@@ -470,13 +470,13 @@ impl Leaf {
     /// from the field's doc comment. The properties are those that
     /// [`Row`] describes as the fields of a row type, so a column of an
     /// enum's variant has a property too. crumbkit's `--help` and
-    /// crumbkit-test's `check_guide` both read the columns through this
+    /// crumbkit-test's `check_help` both read the columns through this
     /// method.
     //
     // RUST-10: the description comes only from the property itself. A
     // column whose name is not a property, and a field without a doc
     // comment, whose type's doc comment schemars keeps under `$defs`, have
-    // no description. crumbkit-test's `check_guide` fails on each such
+    // no description. crumbkit-test's `check_help` fails on each such
     // column, so a tool finds them in a test. A reader that follows a
     // property's `$ref` into `$defs` replaces this when a tool needs those
     // descriptions.

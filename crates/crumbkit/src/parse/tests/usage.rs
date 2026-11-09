@@ -6,13 +6,13 @@ use std::process::ExitCode;
 use clap::{Arg, Command};
 
 use super::super::message::usage;
-use super::{admits, parse, parse_tree, tool};
+use super::{admits, parse, parse_tree, tree};
 use crate::ViewFlags;
 
 #[test]
 fn a_missing_argument_s_refusal_prints_clap_s_usage_line_between_the_error_and_the_help_lines() {
     let refused = ["tool", "planets", "show"];
-    admits(tool(), &refused, &["tool", "planets", "show", "Mars"]);
+    admits(tree(), &refused, &["tool", "planets", "show", "Mars"]);
     let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
@@ -74,7 +74,7 @@ error: unexpected argument '--bogus' found; to pass '--bogus' as a value, use '-
 fn the_usage_line_names_the_tool_by_its_file_name_as_help_does_when_the_program_is_a_path() {
     let refused = ["/usr/local/bin/tool", "planets", "show"];
     admits(
-        tool(),
+        tree(),
         &refused,
         &["/usr/local/bin/tool", "planets", "show", "Mars"],
     );

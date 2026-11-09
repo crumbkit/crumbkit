@@ -1,4 +1,4 @@
-//! The guide check of the field that `Row::CHILDREN` names (ADR-0120) and
+//! The tool record check of the field that `Row::CHILDREN` names (ADR-0120) and
 //! of the text that `Row::CHILDREN_HELP` sets (ADR-0137).
 
 use crumbkit::help::Leaf;

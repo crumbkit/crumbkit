@@ -1,5 +1,5 @@
 {
-  "schema": "shelf/opt-outs/v1",
+  "schema": "shelf/opt-outs/v2",
   "data": [
     {
       "rule": "examples/run",
@@ -47,7 +47,7 @@
       }
     }
   ],
-  "customisations": [
+  "declarations": [
     {
       "declaration": "refusal-alternatives",
       "applies_to": "shelf books show",

@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use clap::{Arg, Command, CommandFactory as _, Parser};
 
 use super::{
-    PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse_against, saturn,
+    Cli, PLANET_LISTING, Planet, finish_output, finish_with, mercury, parse_against, saturn,
 };
 use crate::{Call, Listing, Page};
 
@@ -358,7 +358,7 @@ fn a_next_step_into_a_branch_the_run_did_not_parse_names_a_global_flag_of_the_ro
         .num_args(1..)
         .value_name("NAME");
     let moons = Command::new("moons").subcommand(Command::new("show").arg(names));
-    let output = parse_against(Tool::command().subcommand(moons), &[]);
+    let output = parse_against(Cli::command().subcommand(moons), &[]);
     let call = Call::new(&["moons", "show"]).arg("names").arg("json");
     let listing = two_of(2).next(call, "shows moons as JSON.");
 

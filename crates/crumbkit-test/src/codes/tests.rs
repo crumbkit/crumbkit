@@ -2,11 +2,11 @@
 
 use std::fmt;
 
-use crumbkit::help::Guide;
-use crumbkit::{Code, Spelling};
+use crumbkit::{Code, Spelling, Tool};
 
 use super::check_codes;
 use crate::testing::panic_message;
+use crumbkit::tool::Failures;
 
 const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
@@ -45,23 +45,23 @@ fn arrows(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 
 #[test]
-fn distinct_codes_in_the_colon_spelling_of_a_guide_without_a_spelling_pass() {
+fn distinct_codes_in_the_colon_spelling_of_a_tool_without_a_spelling_pass() {
     check_codes(
-        &Guide::new(),
+        &Tool::new(),
         &[&[&NOT_FOUND, &TIMED_OUT], &[&AUTHOR_NOT_FOUND]],
     );
 }
 
 #[test]
 fn the_same_code_listed_by_two_error_types_passes() {
-    check_codes(&Guide::new(), &[&[&NOT_FOUND], &[&NOT_FOUND, &TIMED_OUT]]);
+    check_codes(&Tool::new(), &[&[&NOT_FOUND], &[&NOT_FOUND, &TIMED_OUT]]);
 }
 
 #[test]
 fn two_codes_that_spell_the_same_fail_and_both_are_named() {
     let message = panic_message(|| {
         check_codes(
-            &Guide::new().spelling(Spelling::custom(without_area)),
+            &Tool::new().failures(Failures::new().spelling(Spelling::custom(without_area))),
             &[&[&NOT_FOUND], &[&AUTHOR_NOT_FOUND]],
         );
     })
@@ -79,7 +79,7 @@ fn two_codes_that_spell_the_same_fail_and_both_are_named() {
 fn a_code_that_spells_as_an_empty_string_fails() {
     let message = panic_message(|| {
         check_codes(
-            &Guide::new().spelling(Spelling::custom(empty)),
+            &Tool::new().failures(Failures::new().spelling(Spelling::custom(empty))),
             &[&[&NOT_FOUND]],
         );
     })
@@ -95,7 +95,7 @@ fn a_code_that_spells_as_an_empty_string_fails() {
 fn a_code_that_spells_with_a_space_fails() {
     let message = panic_message(|| {
         check_codes(
-            &Guide::new().spelling(Spelling::custom(spaced)),
+            &Tool::new().failures(Failures::new().spelling(Spelling::custom(spaced))),
             &[&[&NOT_FOUND]],
         );
     })
@@ -113,7 +113,7 @@ fn a_code_that_spells_with_a_space_fails() {
 fn a_code_that_spells_with_a_control_character_fails() {
     let message = panic_message(|| {
         check_codes(
-            &Guide::new().spelling(Spelling::custom(with_delete)),
+            &Tool::new().failures(Failures::new().spelling(Spelling::custom(with_delete))),
             &[&[&NOT_FOUND]],
         );
     })
@@ -131,7 +131,7 @@ fn a_code_that_spells_with_a_control_character_fails() {
 fn a_code_that_spells_with_a_character_outside_ascii_fails() {
     let message = panic_message(|| {
         check_codes(
-            &Guide::new().spelling(Spelling::custom(arrows)),
+            &Tool::new().failures(Failures::new().spelling(Spelling::custom(arrows))),
             &[&[&NOT_FOUND]],
         );
     })
@@ -149,7 +149,7 @@ fn a_code_that_spells_with_a_character_outside_ascii_fails() {
 fn one_failed_check_names_every_problem() {
     let message = panic_message(|| {
         check_codes(
-            &Guide::new().spelling(Spelling::custom(empty)),
+            &Tool::new().failures(Failures::new().spelling(Spelling::custom(empty))),
             &[&[&NOT_FOUND, &TIMED_OUT]],
         );
     })
@@ -170,7 +170,7 @@ fn one_failed_check_names_every_problem() {
 fn the_codes_check_reports_its_problems_as_the_tree_checks_do() {
     let message = panic_message(|| {
         check_codes(
-            &Guide::new().spelling(Spelling::custom(empty)),
+            &Tool::new().failures(Failures::new().spelling(Spelling::custom(empty))),
             &[&[&NOT_FOUND]],
         );
     })

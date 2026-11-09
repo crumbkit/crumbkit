@@ -6,11 +6,11 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
-use super::{Book, Shelved, args, output, tool};
+use super::{Book, Shelved, args, output, tree};
 use crate::Envelope;
-use crate::help::{FileFormat, Guide, Leaf};
+use crate::help::{FileFormat, Help, Leaf};
 use crate::schemas::{SchemasList, SchemasShow, document_schema, documents, list, show};
-use crate::{Document, Listing, Prose};
+use crate::{Document, Listing, Prose, Tool};
 
 /// The settings file of the test tool, which users write.
 #[derive(Serialize, JsonSchema)]
@@ -29,14 +29,16 @@ const LEGACY: Document<Listing<Book>> =
     Document::new("shelf", "books-list", 3, "The books as scripts read them.")
         .envelope(Envelope::Without);
 
-/// The test guide's leaves, with `books list` printing [`LEGACY`], and the
-/// settings file registered as a file format.
-const FORMATS: Guide = Guide::new()
-    .leaves(&[
-        Leaf::new(&["books", "list"]).document(LEGACY),
-        Leaf::new(&["schemas", "list"]).document(crate::schemas::SCHEMAS_LIST),
-    ])
-    .file_formats(&[FileFormat::new(SETTINGS)]);
+/// The test tool record's leaves, with `books list` printing [`LEGACY`], and
+/// the settings file registered as a file format.
+const FORMATS: Tool = Tool::new().help(
+    Help::new()
+        .leaves(&[
+            Leaf::new(&["books", "list"]).document(LEGACY),
+            Leaf::new(&["schemas", "list"]).document(crate::schemas::SCHEMAS_LIST),
+        ])
+        .file_formats(&[FileFormat::new(SETTINGS)]),
+);
 
 #[test]
 fn an_unwrapped_document_schema_is_the_schema_of_data_at_the_top() {
@@ -80,7 +82,7 @@ fn a_file_format_schema_is_the_schema_of_its_type_with_the_id_as_its_title() {
 
 #[test]
 fn file_formats_come_after_the_leaf_documents_and_name_no_command() {
-    let served = documents(&tool(), &FORMATS);
+    let served = documents(&tree(), &FORMATS);
 
     let ids: Vec<String> = served.iter().map(super::super::Served::id).collect();
     assert_eq!(

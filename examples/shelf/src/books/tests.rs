@@ -1,8 +1,7 @@
 //! Tests for the catalogue, its failures and the calls that shelf prints.
 
 use clap::CommandFactory as _;
-use crumbkit::help::Guide;
-use crumbkit::{Batch, Failure as _, Output, Recovery, RenderCall as _, Room, ViewFlags};
+use crumbkit::{Batch, Failure as _, Output, Recovery, RenderCall as _, Room, Tool, ViewFlags};
 
 use super::{
     BOOKS_SHOW, Book, BooksError, IdsFileProblem, MOST_IDS, parse_ids, show, show_call, summarize,
@@ -15,7 +14,7 @@ fn roomy() -> Room<Batch<Book, BooksError>> {
         ViewFlags::new(),
         crumbkit::DryRun::default(),
         Cli::command(),
-        &Guide::new(),
+        &Tool::new(),
         ["shelf"],
     )
     .unwrap()
@@ -92,9 +91,9 @@ fn show_stops_looking_up_ids_once_its_books_fill_the_budget() {
         ids: vec![1; MOST_IDS],
         from: None,
     };
-    let guide = Guide::new().output_budget(1024, "the test fills it");
+    let tool = Tool::new().output(crumbkit::tool::Output::new().budget(1024, "the test fills it"));
     let words = ["shelf", "books", "show", "1"];
-    let (_, output) = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &guide, words).unwrap();
+    let (_, output) = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &tool, words).unwrap();
 
     let batch = show(&args, None, output.room(BOOKS_SHOW)).unwrap();
 

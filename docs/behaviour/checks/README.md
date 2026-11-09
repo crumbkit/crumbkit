@@ -30,13 +30,13 @@ no arguments on a command that the tool gives to `Command::defer`.
 | [`check_effects`](../../../crates/crumbkit-test/src/effects.rs) | Every visible leaf declares its effects, and `--dry-run`, `--yes`, `--no-input` and `--expect` sit where crumbkit puts them. |
 | [`check_listings`](../../../crates/crumbkit-test/src/listings.rs) | Every `list` command has `--limit` and `--all`, and every `show` command takes 1 to 100 ids. |
 | [`check_filters`](../../../crates/crumbkit-test/src/filters.rs) | An option that takes many values accepts them both repeated and separated by commas, with one value per use. |
-| [`check_guide`](../../../crates/crumbkit-test/src/guide.rs) | The guide's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
-| [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The guide's declared exit codes avoid 0, 1 and 2, keep single codes to 3 to 125 or 129 to 159, never overlap, and declare each code and rename once. |
+| [`check_help`](../../../crates/crumbkit-test/src/help.rs) | The tool record's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
+| [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The tool record's declared exit codes avoid 0, 1 and 2, keep single codes to 3 to 125 or 129 to 159, never overlap, and declare each code and rename once. |
 | [`check_codes`](../../../crates/crumbkit-test/src/codes.rs) | No two failure codes spell the same text, and each code is printable ASCII without spaces. |
 | [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has crumbkit's envelope. |
 | [`check_mounts`](../../../crates/crumbkit-test/src/documents.rs) | Each of crumbkit's own commands that a tool mounts sits at its fixed path. |
 | [`check_schema_goldens`](../../../crates/crumbkit-test/src/schemas.rs) | The JSON Schema of each document the tool prints matches its golden file. |
-| [`check_opt_outs`](../../../crates/crumbkit-test/src/opt_outs.rs) | The report of the tool's opt-outs, budgets and customisations matches `opt-outs.txt` and `opt-outs.json`. |
+| [`check_opt_outs`](../../../crates/crumbkit-test/src/opt_outs.rs) | The report of the tool's opt-outs, budgets and declarations matches `opt-outs.txt` and `opt-outs.json`. |
 
 The help page checks, `check_help_sizes`, `check_help_goldens` and
 `check_path_weights`, are described in [Help checks](../help/checks.md).
@@ -47,14 +47,14 @@ its `--help` and `--version` flags. Every function that takes a
 `clap::Command` works on any node of the tree, so a crate or a team can
 apply the checks to its own subtree.
 
-`check_guide` takes opt-outs for its example rule and its document rule
+`check_help` takes opt-outs for its example rule and its document rule
 alone, so a tool can adopt goal headings and leaves before every command
 has an example, and before every leaf that changes something prints one of
 crumbkit's documents. A leaf that declares `Leaf::prints_no_result` needs
 no opt-out from the document rule
 ([result shapes](../output/shapes/README.md#a-command-that-prints-no-result)).
 A tool that wants clap's list for a command leaves
-that command out of its guide, so the other rules of `check_guide` take no
+that command out of its tool record, so the other rules of `check_help` take no
 opt-out. The help checks take no opt-outs either, because they take
 budgets. Each other tree check takes the tool's opt-outs.
 
@@ -90,25 +90,25 @@ Why: ADR-0015, ADR-0165.
 
 ## Trying the checks with clap alone
 
-`check_listings`, `check_filters`, and `check_names`, `check_grammar` and
-the help checks with `Pages::clap` run on a tool that parses with clap
-alone, so a tool can try crumbkit-test before it adopts crumbkit's runtime.
-Such a tool needs no crumbkit dependency of its own. `check_names` and
-`check_grammar` read the tool's guide from the `Pages` they take, and
-`Pages::clap` carries no guide, so a guided tool passes `Pages::rendered` or
-`Pages::binary` with its guide.
+`check_listings`, `check_filters`, and `check_names`, `check_grammar` and the
+help checks with `Pages::clap` run on a tool that parses with clap alone, so a
+tool can try crumbkit-test before it adopts crumbkit's runtime. Such a tool
+needs no crumbkit dependency of its own. `check_names` and `check_grammar` read
+the tool record from the `Pages` they take, and `Pages::clap` carries no tool
+record, so a tool with a tool record passes `Pages::rendered` or `Pages::binary`
+with its tool record.
 
-[`Pages::clap`](../../../crates/crumbkit-test/src/pages.rs) renders each
-help page in memory as clap prints it to a pipe, without crumbkit's lines
-and without a guide. clap's `wrap_help` wraps such a page at the test's
-terminal width unless the tool fixes `term_width`, and clap has no public
-getter for that width, so crumbkit-test cannot fix it for the tool.
-`Pages::rendered` also renders in memory and shares this limit.
-`Pages::binary` runs the binary with a cleared environment and its output
-on a pipe, so clap wraps its pages at its fixed width of 100 columns. A tool
-without examples budgets its paths with `PathBudgets::help_only`, which
-reads no golden files, and `check_path_weights` fails when the guide of its
-pages gives a command examples, because their output would go uncounted.
+[`Pages::clap`](../../../crates/crumbkit-test/src/pages.rs) renders each help
+page in memory as clap prints it to a pipe, without crumbkit's lines and without
+a tool record. clap's `wrap_help` wraps such a page at the test's terminal width
+unless the tool fixes `term_width`, and clap has no public getter for that
+width, so crumbkit-test cannot fix it for the tool. `Pages::rendered` also
+renders in memory and shares this limit. `Pages::binary` runs the binary with a
+cleared environment and its output on a pipe, so clap wraps its pages at its
+fixed width of 100 columns. A tool without examples budgets its paths with
+`PathBudgets::help_only`, which reads no golden files, and `check_path_weights`
+fails when the tool record of its pages gives a command examples, because their
+output would go uncounted.
 
 crumbkit-test is one crate that depends on crumbkit. The dependency reaches
 only the tool's tests, and a feature that left crumbkit out would need
@@ -124,7 +124,7 @@ checks](end-to-end.md) describes how each run is isolated and timed.
 
 | Check | What it enforces |
 | --- | --- |
-| [`check_examples`](../../../crates/crumbkit-test/src/examples.rs) | Every example in the guide's leaves exits with code 0 and prints the output in its golden files. |
+| [`check_examples`](../../../crates/crumbkit-test/src/examples.rs) | Every example in the tool record's leaves exits with code 0 and prints the output in its golden files. |
 | [`check_output_budget`](../../../crates/crumbkit-test/src/output_budget.rs) | Each `--json` example, and each text example of a headed leaf, keeps the output budget's contract when its budget is half the bytes it prints. |
 | [`check_command_reference`](../../../crates/crumbkit-test/src/reference.rs) | The checked-in Markdown command reference matches the one written from the binary's `commands list`. |
 | [`check_twin`](../../../crates/crumbkit-test/src/twins.rs) | A refused command line fails with its code, and a line that differs from it by one word succeeds. |

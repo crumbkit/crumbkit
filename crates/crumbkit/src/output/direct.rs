@@ -10,9 +10,9 @@ use crate::refusal::Refusal;
 use crate::{Code, Document, Failure, Rows, Sink};
 
 impl Output {
-    /// Prints `failure` to `sink` as `finish` prints a failure, in the
-    /// format that the flags choose and with the code that the guide prints
-    /// for it, in the guide's spelling, with a `Run` recovery rendered
+    /// Prints `failure` to `sink` as `finish` prints a failure, in the format
+    /// that the flags choose and with the code that the tool record prints for
+    /// it, in the tool record's spelling, with a `Run` recovery rendered
     /// against the command that the output holds.
     ///
     /// It returns no exit code. The caller returns
@@ -42,7 +42,7 @@ impl Output {
     ///
     /// A command that does slow work before it calls `finish` calls it
     /// first, so the caller learns of a mistyped flag before the work
-    /// starts. The exit code is 2 unless the guide lists another for
+    /// starts. The exit code is 2 unless the tool record lists another for
     /// `<tool>::cli::usage`, and it is reported to the observer.
     pub fn refuse_view<T: Rows, O: Write, W: Write>(
         &mut self,
@@ -57,10 +57,10 @@ impl Output {
     /// no columns, and returns the refusal's exit code, or returns `None`
     /// when the caller passed no `--fields`.
     ///
-    /// The message is `--fields selects the columns of a table, and`
-    /// followed by `reason`, such as `this command hands the terminal to
-    /// another program`. The exit code is 2 unless the guide lists another
-    /// for `<tool>::cli::usage`, and it is reported to the observer.
+    /// The message is `--fields selects the columns of a table, and` followed
+    /// by `reason`, such as `this command hands the terminal to another
+    /// program`. The exit code is 2 unless the tool record lists another for
+    /// `<tool>::cli::usage`, and it is reported to the observer.
     pub fn refuse_fields_for_text<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
@@ -78,8 +78,8 @@ impl Output {
 
     /// Prints `refusal`, a command line or a view flag that `parse`
     /// refused, to `sink` as `parse` prints it, in the view's format and
-    /// with what the guide decides about failures, and returns the exit
-    /// code that the guide gives a refused command line.
+    /// with what the tool record decides about failures, and returns the exit
+    /// code that the tool record gives a refused command line.
     pub(crate) fn print_parse_refusal<O: Write, E: Write, R>(
         &mut self,
         sink: &mut Sink<O, E, R>,
@@ -95,7 +95,7 @@ impl Output {
     }
 
     /// Prints `refusal`, reports its exit code to the observer, and
-    /// returns it. The exit code is 2 unless the guide lists another for
+    /// returns it. The exit code is 2 unless the tool record lists another for
     /// the usage code.
     fn print_refusal<O: Write, W: Write>(
         &mut self,
@@ -114,8 +114,8 @@ impl Output {
     }
 
     /// Returns the exit code of a run whose first failure has `code`, as
-    /// [`Guide::failure_exit`](crate::help::Guide::failure_exit) decides
-    /// for the guide that the output copied: the exit that
+    /// [`Tool::failure_exit`](crate::Tool::failure_exit) decides
+    /// for the tool record that the output copied: the exit that
     /// lists the code, or crumbkit's default of 2 for a refused command
     /// line and 1 for every other failure.
     #[must_use]
@@ -123,8 +123,8 @@ impl Output {
         self.printing().exit(code)
     }
 
-    /// Returns the exit code of the guide's exit that lists `code`, or a
-    /// crumbkit code that the guide prints as `code`, and `None` when no
+    /// Returns the exit code of the tool record's exit that lists `code`, or a
+    /// crumbkit code that the tool record prints as `code`, and `None` when no
     /// single code lists it, as when only a range of codes lists it. A
     /// caller whose failure has a default other than crumbkit's reads it,
     /// and uses its own default for `None`.

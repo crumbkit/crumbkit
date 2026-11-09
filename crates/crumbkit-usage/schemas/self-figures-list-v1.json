@@ -163,7 +163,7 @@
           "minimum": 0
         },
         "meaning": {
-          "description": "What the tool's guide says the code means for the command, or null\nwhen the guide declares no such code for it.",
+          "description": "What the tool record says the code means for the command, or null\nwhen the tool record declares no such code for it.",
           "type": [
             "string",
             "null"

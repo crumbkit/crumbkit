@@ -1,7 +1,8 @@
 //! Tests for the help pages that the help checks read.
 
 use clap::{Arg, ArgAction, Command};
-use crumbkit::help::{Example, Goal, Group, Guide, Leaf};
+use crumbkit::Tool;
+use crumbkit::help::{Example, Goal, Group, Help, Leaf};
 
 use super::{Pages, pages};
 #[cfg(unix)]
@@ -11,8 +12,9 @@ use crate::temp::TempDir;
 #[cfg(unix)]
 use crate::testing::help_binary;
 
-/// A tool with a global flag, a guided root and one leaf with examples.
-fn tool() -> Command {
+/// A tool with a global flag, a root with goal headings and one leaf with
+/// examples.
+fn tree() -> Command {
     Command::new("tool")
         .arg(
             Arg::new("json")
@@ -26,20 +28,22 @@ fn tool() -> Command {
         ))
 }
 
-/// The guide of `tool()`.
-const GUIDE: Guide = Guide::new()
-    .groups(&[Group::new(&[], &[Goal::new("Read", &["books"])])])
-    .leaves(&[
-        Leaf::new(&["books", "list"]).examples(&[Example::new(&["--all"], "Print every book")])
-    ]);
+/// The tool record of `tree()`.
+const TOOL: Tool = Tool::new().help(
+    Help::new()
+        .groups(&[Group::new(&[], &[Goal::new("Read", &["books"])])])
+        .leaves(&[
+            Leaf::new(&["books", "list"]).examples(&[Example::new(&["--all"], "Print every book")])
+        ]),
+);
 
 #[test]
-fn each_visible_command_has_the_page_that_crumbkit_prints_for_the_flag_with_the_guide() {
-    let tool = tool();
+fn each_visible_command_has_the_page_that_crumbkit_prints_for_the_flag_with_the_tool() {
+    let tool = tree();
     let mut problems = Vec::new();
 
-    let short = pages(&tool, Pages::rendered(&GUIDE), "-h", &mut problems);
-    let long = pages(&tool, Pages::rendered(&GUIDE), "--help", &mut problems);
+    let short = pages(&tool, Pages::rendered(&TOOL), "-h", &mut problems);
+    let long = pages(&tool, Pages::rendered(&TOOL), "--help", &mut problems);
 
     let paths: Vec<&str> = short.iter().map(|(visit, _)| visit.path()).collect();
     assert_eq!(paths, ["tool", "tool books", "tool books list"]);
@@ -66,7 +70,7 @@ fn a_command_line_that_prints_no_help_page_is_a_problem() {
     let tool = Command::new("tool").subcommand(Command::new("list").disable_help_flag(true));
     let mut problems = Vec::new();
 
-    let pages = pages(&tool, Pages::rendered(&Guide::new()), "-h", &mut problems);
+    let pages = pages(&tool, Pages::rendered(&Tool::new()), "-h", &mut problems);
 
     let paths: Vec<&str> = pages.iter().map(|(visit, _)| visit.path()).collect();
     assert_eq!(paths, ["tool"]);
@@ -96,7 +100,7 @@ fn clap_page(tool: &Command, path: &[&str], long: bool) -> String {
 fn a_clap_page_is_the_page_that_clap_renders_for_the_command_and_flag() {
     // clap prints `--help` in the long layout only when some help is long,
     // so the global flag gets a long description on every command.
-    let tool = tool().mut_arg("json", |arg| arg.long_help("Print the result as JSON"));
+    let tool = tree().mut_arg("json", |arg| arg.long_help("Print the result as JSON"));
     let mut problems = Vec::new();
 
     let short = pages(&tool, Pages::clap(), "-h", &mut problems);
@@ -127,25 +131,25 @@ fn a_command_without_a_help_flag_has_no_clap_page_and_one_problem() {
     );
 }
 
-/// Fails the test, for a guide whose personal aliases no page may read.
+/// Fails the test, for a tool record whose personal aliases no page may read.
 fn unread(_: &Command) -> Vec<String> {
     panic!("a help page read the personal aliases");
 }
 
 #[test]
 fn the_pages_leave_out_the_personal_aliases_so_they_match_on_every_machine() {
-    let tool = tool();
+    let tool = tree();
     let mut problems = Vec::new();
 
-    let guided = pages(
+    let with_aliases = pages(
         &tool,
-        Pages::rendered(&GUIDE.personal_aliases(unread)),
+        Pages::rendered(&TOOL.help(TOOL.get_help().personal_aliases(unread))),
         "-h",
         &mut problems,
     );
-    let plain = pages(&tool, Pages::rendered(&GUIDE), "-h", &mut problems);
+    let plain = pages(&tool, Pages::rendered(&TOOL), "-h", &mut problems);
 
-    assert_eq!(guided[0].1, plain[0].1);
+    assert_eq!(with_aliases[0].1, plain[0].1);
     assert!(problems.is_empty(), "{problems:?}");
 }
 
@@ -163,10 +167,10 @@ fn binary_pages_run_with_the_examples_environment_working_directory_and_fresh_xd
     let examples = Examples::new(&binary, "")
         .env(&[("TOOL_NAME", "tool")])
         .current_dir(&work_path);
-    let tool = tool();
+    let tool = tree();
     let mut problems = Vec::new();
 
-    let pages = pages(&tool, Pages::binary(&GUIDE, &examples), "-h", &mut problems);
+    let pages = pages(&tool, Pages::binary(&TOOL, &examples), "-h", &mut problems);
 
     let real = std::fs::canonicalize(work.path())
         .unwrap()
@@ -201,10 +205,10 @@ fn a_binary_page_that_exits_with_a_failure_is_a_command_line_that_prints_no_help
         &[("-h", "Usage: tool\n"), ("books -h", "Usage: tool books\n")],
     );
     let examples = Examples::new(&binary, "");
-    let tool = tool();
+    let tool = tree();
     let mut problems = Vec::new();
 
-    let pages = pages(&tool, Pages::binary(&GUIDE, &examples), "-h", &mut problems);
+    let pages = pages(&tool, Pages::binary(&TOOL, &examples), "-h", &mut problems);
 
     let paths: Vec<&str> = pages.iter().map(|(visit, _)| visit.path()).collect();
     assert_eq!(paths, ["tool", "tool books"]);

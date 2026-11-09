@@ -17,8 +17,7 @@ use self::message::command_line_refusal;
 use self::page::print_page;
 use self::pick::{Picking, Step};
 use self::walk::{help_word, own_names, program_stem, typed_words, walk};
-use crate::help::Guide;
-use crate::{Output, Sink, Spelling};
+use crate::{Output, Sink, Spelling, Tool};
 
 mod attempt;
 mod declared;
@@ -36,9 +35,9 @@ pub(crate) mod walk;
 mod walked;
 
 /// Parses the process's command line against `command` with the tool's
-/// `guide`, and returns the tool's parsed type and an [`Output`], which
+/// `tool`, and returns the tool's parsed type and an [`Output`], which
 /// holds the view flags, the command that it parsed against, the words
-/// that the caller typed and what `guide` decides about printing.
+/// that the caller typed and what `tool` decides about printing.
 ///
 /// A tool's `main` calls it in place of clap's `Cli::parse`, and passes the
 /// returned `Output` to [`finish`](crate::finish()) with the handler's
@@ -47,13 +46,13 @@ mod walked;
 /// takes them, and reads [`DryRun`](crate::DryRun)'s `--dry-run` from the
 /// deepest command in the same way, which
 /// [`Output::is_dry_run`](crate::Output::is_dry_run) reports. A tool
-/// without goal headings or topics passes `&Guide::new()`:
+/// without goal headings or topics passes `&Tool::new()`:
 ///
 /// ```no_run
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit::ViewFlags;
 ///
 /// /// List the books in a small catalogue.
@@ -65,7 +64,7 @@ mod walked;
 /// }
 ///
 /// fn main() -> ExitCode {
-///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
+///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Tool::new());
 ///     let (_cli, _output) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.exit_code(),
@@ -77,11 +76,11 @@ mod walked;
 ///
 /// It behaves as [`parse_to`] does with a sink over the process's standard
 /// streams. Help keeps clap's colours when standard output is a terminal and
-/// the guide detects terminals ([`Sink::styled`]), unless `NO_COLOR` or the
-/// command's `ColorChoice` turns them off. A refusal and its group page keep
-/// them on standard error by the rule of [`Sink::styled_errors`] (ADR-0131,
-/// ADR-0133).
-/// Both need crumbkit's `color` feature, which turns on clap's.
+/// the tool record detects terminals ([`Sink::styled`]), unless `NO_COLOR` or
+/// the command's `ColorChoice` turns them off. A refusal and its group page
+/// keep them on standard error by the rule of [`Sink::styled_errors`]
+/// (ADR-0131, ADR-0133). Both need crumbkit's `color` feature, which turns on
+/// clap's.
 ///
 /// `parse` is [`try_parse`] followed by printing the refusal. A tool that
 /// reads a refused command line before anything prints, such as a tool
@@ -93,8 +92,8 @@ mod walked;
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
 /// refusal. It holds the exit code for `main` to return, and whether the
 /// caller asked for JSON.
-pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, Output), Stop> {
-    parse_from(command, guide, std::env::args_os())
+pub fn parse<C: FromArgMatches>(command: Command, tool: &Tool) -> Result<(C, Output), Stop> {
+    parse_from(command, tool, std::env::args_os())
 }
 
 /// Parses the process's command line as [`parse`] does, and returns a
@@ -107,7 +106,7 @@ pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, O
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
 /// use crumbkit::{Unparsed, ViewFlags};
 ///
 /// /// List the books in a small catalogue.
@@ -119,7 +118,7 @@ pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, O
 /// }
 ///
 /// fn main() -> ExitCode {
-///     let parsed = crumbkit::try_parse::<Cli>(Cli::command(), &Guide::new());
+///     let parsed = crumbkit::try_parse::<Cli>(Cli::command(), &Tool::new());
 ///     let (_cli, _output) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(Unparsed::Refused(refused)) => {
@@ -149,9 +148,9 @@ pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, O
 /// [keep-matches]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/parsing/README.md#reading-claps-matches-after-parsing
 pub fn try_parse<C: FromArgMatches>(
     command: Command,
-    guide: &Guide,
+    tool: &Tool,
 ) -> Result<(C, Output), Unparsed> {
-    try_parse_from(command, guide, std::env::args_os())
+    try_parse_from(command, tool, std::env::args_os())
 }
 
 /// Parses `args` against `command` as [`parse`] parses the process's command
@@ -162,13 +161,13 @@ pub fn try_parse<C: FromArgMatches>(
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
 /// refusal. It holds the exit code for `main` to return, and whether the
 /// caller asked for JSON.
-pub fn parse_from<C, I, T>(command: Command, guide: &Guide, args: I) -> Result<(C, Output), Stop>
+pub fn parse_from<C, I, T>(command: Command, tool: &Tool, args: I) -> Result<(C, Output), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
-    try_parse_from(command, guide, args).map_err(Unparsed::print)
+    try_parse_from(command, tool, args).map_err(Unparsed::print)
 }
 
 /// Parses `args` against `command` as [`try_parse`] parses the process's
@@ -181,7 +180,7 @@ where
 /// which nothing has printed.
 pub fn try_parse_from<C, I, T>(
     command: Command,
-    guide: &Guide,
+    tool: &Tool,
     args: I,
 ) -> Result<(C, Output), Unparsed>
 where
@@ -189,11 +188,11 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
-    let styled = guide.detects(crate::sink::stdout_is_terminal);
+    let styled = tool.get_output().detects(crate::sink::stdout_is_terminal);
     run(
         &mut Sink::standard().styled(styled),
         command,
-        guide,
+        tool,
         args,
         true,
     )
@@ -215,7 +214,7 @@ where
 /// parser does, from the option's `Arg`, so an option's value that equals a
 /// subcommand name, as in `shelf --fields books`, names no command.
 ///
-/// When `guide` declares [`Guide::dashed_forms`], a command that the tool
+/// When `tool` declares [`Tool::dashed_forms`], a command that the tool
 /// named in another style, such as `reading_lists` or `ReadingLists`, also
 /// answers to its [`dashed_form`](crate::dashed_form), such as
 /// `reading-lists`. Before anything else reads the words, crumbkit replaces each
@@ -224,7 +223,7 @@ where
 /// [`Output`] name the command as the tool does. An option's value that
 /// equals a dashed form stays as typed.
 ///
-/// A command that `guide` gives goals lists its subcommands under their
+/// A command that `tool` gives goals lists its subcommands under their
 /// headings, as [`help::extend`](crate::help::extend) describes, below the
 /// command's own `before_help` or `before_long_help`. crumbkit adds its
 /// lines after the command's own `after_help` and `after_long_help`:
@@ -234,21 +233,22 @@ where
 ///   flags: --json, --fields <FIELD>, --long, --full. `shelf books list
 ///   --help` describes them.`` crumbkit hides those flags from `-h`, so `-h`
 ///   stays short and `--help` lists them in full.
-/// - The root's help names the guide's topics and crumbkit's `exit-codes`
+/// - The root's help names the tool record's topics and crumbkit's `exit-codes`
 ///   topic on one line, such as ``Topics: catalogue, exit-codes. `shelf
 ///   help <TOPIC>` prints one.``, in `-h` and in `--help`. A root without
 ///   subcommands and without topics of the tool's own has no such line.
-/// - When `guide` has [`Guide::personal_aliases`], the clap root's `-h` and
-///   `--help` name the person's aliases on one line, such as ``Personal
-///   aliases: firsts, mine. `shelf aliases list` shows what each runs.``
-///   Only a run that prints the clap root's help calls the guide's
-///   function.
+/// - When `tool` has
+///   [`Help::personal_aliases`](crate::help::Help::personal_aliases), the clap
+///   root's `-h` and `--help` name the person's aliases on one line, such as
+///   ``Personal aliases: firsts, mine. `shelf aliases list` shows what each
+///   runs.`` Only a run that prints the clap root's help calls the tool
+///   record's function.
 /// - The help of a command with a visible subcommand ends with a line that
 ///   opens one of them, such as `Next: shelf books <COMMAND> -h`, in `-h`
 ///   and in `--help`.
 ///
 /// When the deepest command typed has a [`Leaf`](crate::help::Leaf) in
-/// `guide`, its help gains the leaf's sections after the options and before
+/// `tool`, its help gains the leaf's sections after the options and before
 /// crumbkit's lines:
 ///
 /// - `-h` and `--help` list the leaf's examples under `Examples:`, each as
@@ -278,7 +278,7 @@ where
 /// crumbkit answers the word `help` in place of clap, whose generated
 /// `help` subcommand it turns off. It answers `help` as the next word below
 /// any command with subcommands, and directly after the program name when
-/// the root has subcommands or the guide has topics:
+/// the root has subcommands or the tool record has topics:
 ///
 /// - `shelf help` prints what `shelf --help` prints, whose `Topics:` line
 ///   names each topic.
@@ -291,11 +291,11 @@ where
 ///   value after the topic's name, as in `shelf help catalogue --fields
 ///   title`, still prints the topic, and the value of an option names no
 ///   topic.
-/// - `shelf help exit-codes` lists crumbkit's exit codes 0, 1 and 2 and
-///   then the [`Exit`](crate::help::Exit) codes of the guide, each with its
-///   meaning. It leaves out 2 when the guide lists another exit for a
-///   refused command line. A topic of the tool's own named `exit-codes` never prints,
-///   because crumbkit's topic has the name.
+/// - `shelf help exit-codes` lists crumbkit's exit codes 0, 1 and 2 and then
+///   the [`Exit`](crate::tool::Exit) codes of the tool record, each with its
+///   meaning. It leaves out 2 when the tool record lists another exit for a
+///   refused command line. A topic of the tool's own named `exit-codes` never
+///   prints, because crumbkit's topic has the name.
 /// - Any other `help` command line drops the word `help` and asks for
 ///   `--help`. crumbkit puts `--help` directly after the last word after
 ///   `help` that names something, which is a word before any `--` that does
@@ -319,24 +319,23 @@ where
 /// [`Refused::print_to`] prints it as the paragraphs below describe.
 ///
 /// A command line that clap refuses prints as a failure with the code
-/// `<tool>::cli::usage` in the guide's spelling, and the exit code is 2.
-/// The message is clap's error on one line, and the recovery runs the `-h`
-/// of the deepest typed command that has a help flag, so a refusal at a
-/// command that turned its help flag off names the help of the nearest
-/// command above it that has one. When no command on the typed path has a
-/// help flag, the recovery offers no step and gives that as its reason. In
-/// text, clap's usage prints under the message as one `usage:` line for
-/// each form. When the tool's refusal function returns a call that renders
-/// and whose line parses, the first such call is the recovery and the `-h`
-/// call, when there is one, is the first alternative, as shelf's golden
-/// file
-/// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows. When the
-/// tool's hint function from [`Leaf::refusal_hint`](crate::help::Leaf::refusal_hint)
-/// or [`Guide::refusal_hint`] returns a sentence, the sentence is the
-/// recovery as a hint, and the `-h` call, when there is one, and then the
-/// kept calls are the alternatives. A `--limit` above its bound keeps its
-/// `--all` recovery and offers the hint and the calls after crumbkit's own
-/// alternatives.
+/// `<tool>::cli::usage` in the tool record's spelling, and the exit code is 2.
+/// The message is clap's error on one line, and the recovery runs the `-h` of
+/// the deepest typed command that has a help flag, so a refusal at a command
+/// that turned its help flag off names the help of the nearest command above it
+/// that has one. When no command on the typed path has a help flag, the
+/// recovery offers no step and gives that as its reason. In text, clap's usage
+/// prints under the message as one `usage:` line for each form. When the tool's
+/// refusal function returns a call that renders and whose line parses, the
+/// first such call is the recovery and the `-h` call, when there is one, is the
+/// first alternative, as shelf's golden file
+/// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows. When the tool's
+/// hint function from [`Leaf::refusal_hint`](crate::help::Leaf::refusal_hint)
+/// or [`Failures::refusal_hint`](crate::tool::Failures::refusal_hint) returns a
+/// sentence, the sentence is the recovery as a hint, and the `-h` call, when
+/// there is one, and then the kept calls are the alternatives. A `--limit`
+/// above its bound keeps its `--all` recovery and offers the hint and the calls
+/// after crumbkit's own alternatives.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When
 /// it suggests a hidden alias, such as `--max` of `--limit`, the message
@@ -363,7 +362,7 @@ where
 pub fn parse_to<C, I, T, O, E>(
     sink: &mut Sink<O, E, impl BufRead>,
     command: Command,
-    guide: &Guide,
+    tool: &Tool,
     args: I,
 ) -> Result<(C, Output), Stop>
 where
@@ -373,7 +372,7 @@ where
     O: Write,
     E: Write,
 {
-    try_parse_to(sink, command, guide, args).map_err(|unparsed| unparsed.print_to(sink))
+    try_parse_to(sink, command, tool, args).map_err(|unparsed| unparsed.print_to(sink))
 }
 
 /// Parses `args` against `command` as [`parse_to`] does, and prints help,
@@ -394,7 +393,7 @@ where
 pub fn try_parse_to<C, I, T, O, E>(
     sink: &mut Sink<O, E, impl BufRead>,
     command: Command,
-    guide: &Guide,
+    tool: &Tool,
     args: I,
 ) -> Result<(C, Output), Unparsed>
 where
@@ -404,7 +403,7 @@ where
     O: Write,
     E: Write,
 {
-    run(sink, command, guide, args, false)
+    run(sink, command, tool, args, false)
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes, without
@@ -415,7 +414,7 @@ where
 fn run<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
     command: Command,
-    guide: &Guide,
+    tool: &Tool,
     args: I,
     standard: bool,
 ) -> Result<(C, Output), Unparsed>
@@ -431,10 +430,13 @@ where
     let span = crate::trace::spans::parse();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    // Codes print in the guide's spelling, and crumbkit's own codes print
+    // Codes print in the tool record's spelling, and crumbkit's own codes print
     // with the tool's name in place of `crumbkit` (ADR-0079).
-    let spelling = guide.get_spelling().for_tool(guide.tool_name(&command));
-    let parsed = read(sink, command, guide, spelling, args, standard);
+    let spelling = tool
+        .get_failures()
+        .get_spelling()
+        .for_tool(tool.tool_name(&command));
+    let parsed = read(sink, command, tool, spelling, args, standard);
     #[cfg(feature = "tracing")]
     if let Err(Unparsed::Stopped(stop)) = &parsed {
         crate::trace::spans::exited(&span, stop.exit());
@@ -445,14 +447,14 @@ where
 /// Parses `args` against `command` as [`parse_to`] describes, and returns a
 /// refusal unprinted. `standard` says that `sink` is over the process's
 /// standard streams, as in [`parse_from`]: help for a styled sink then
-/// prints through clap's `Error::print`, and the guide's picker reads the
+/// prints through clap's `Error::print`, and the tool record's picker reads the
 /// process's standard input and writes to its standard error. Otherwise
 /// help goes to the sink's output writer, and the picker uses the sink's
 /// input and error writer.
 fn read<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
     mut command: Command,
-    guide: &Guide,
+    tool: &Tool,
     spelling: Spelling,
     args: I,
     standard: bool,
@@ -469,7 +471,7 @@ where
     if cfg!(windows) {
         program_stem(&mut args);
     }
-    let replaced = own_names(&command, guide.get_dashed_forms(), &mut args);
+    let replaced = own_names(&command, tool.get_dashed_forms(), &mut args);
     // A refusal reports the words as the caller typed them. Only a run
     // that changes a word keeps a copy, so a run that types the tool's own
     // names and no `help` allocates no copy.
@@ -482,18 +484,18 @@ where
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.
     command = command.disable_help_subcommand(true);
-    // The guide's root, which is the clap root unless `Guide::root` names
+    // The tool record's root, which is the clap root unless `Help::root` names
     // a subcommand, answers `help` with topics when it has subcommands or
     // the tool declares topics, and then it also has crumbkit's
     // `exit-codes` topic. A command named or aliased `help` below the root
     // takes the word, so no topic can print.
-    let root = guide.root_in(&command);
-    let has_topics = has_topics(&command, root, guide);
+    let root = tool.get_help().root_in(&command);
+    let has_topics = has_topics(&command, root, tool);
     if let Some(help) = help_word(&command, root, has_topics, &args) {
         if help.at_root
-            && let Some(page) = topic_page(&command, guide, &args, help.position)
+            && let Some(page) = topic_page(&command, tool, &args, help.position)
         {
-            let stop = print_topic(sink, command, guide, &args, help.position, &page);
+            let stop = print_topic(sink, command, tool, &args, help.position, &page);
             return Err(Unparsed::Stopped(stop));
         }
         typed.get_or_insert_with(|| args.get(1..).unwrap_or_default().to_vec());
@@ -509,20 +511,20 @@ where
     let (path, long_help, json) = (walked.path, walked.long_help, walked.json);
     // Only a run that prints the clap root's help reads a person's aliases.
     let aliases = if walked.help && path.is_empty() {
-        guide.get_personal_aliases()
+        tool.get_help().get_personal_aliases()
     } else {
         None
     };
     #[cfg(feature = "tracing")]
     crate::trace::spans::command(&path);
-    add_help_lines(&mut command, guide, has_topics, aliases, &path, long_help);
+    add_help_lines(&mut command, tool, has_topics, aliases, &path, long_help);
 
     // `Output::confirm` repeats the typed words, so they outlive parsing.
     let mut words = args.get(1..).unwrap_or_default().to_vec();
-    let mut parsed = attempt::<C>(&mut command, args, guide);
+    let mut parsed = attempt::<C>(&mut command, args, tool);
     // A command line that leaves out a required argument can have it
     // picked, one argument at a time, and parses again after each pick.
-    if let Some(picker) = pick::picker(guide) {
+    if let Some(picker) = pick::picker(tool) {
         let mut picking = Picking::new(picker, standard);
         let mut picked = 0;
         while let Err(error) = &parsed
@@ -530,17 +532,17 @@ where
         {
             typed.get_or_insert_with(|| words.clone());
             caller.get_or_insert_with(|| words.clone());
-            match picking.pick(sink, &mut command, guide, &mut words, json, spelling) {
+            match picking.pick(sink, &mut command, tool, &mut words, json, spelling) {
                 Step::Picked => picked += 1,
                 Step::Refuse => break,
                 Step::Stop(code) => {
                     let words = caller.unwrap_or(words);
-                    let stop = Stop::new(Printed::Failure, code, json, command, guide, path, words);
+                    let stop = Stop::new(Printed::Failure, code, json, command, tool, path, words);
                     return Err(Unparsed::Stopped(stop));
                 }
             }
             let args = pick::args(&command, &words);
-            parsed = attempt::<C>(&mut command, args, guide);
+            parsed = attempt::<C>(&mut command, args, tool);
         }
         if picked > 0 && parsed.is_ok() {
             pick::echo(sink, &command, &words);
@@ -556,13 +558,13 @@ where
         }) => {
             return Ok((
                 parsed,
-                Output::parsed(view, command, words, dry_run, no_input, guide, &path),
+                Output::parsed(view, command, words, dry_run, no_input, tool, &path),
             ));
         }
         Ok(Attempt {
             view: Err(refusal), ..
         }) => {
-            let output = stop::stopped(json, command, guide);
+            let output = stop::stopped(json, command, tool);
             let refused = Refused::new(*refusal, None, path, output, words, typed, caller);
             return Err(Unparsed::Refused(refused));
         }
@@ -581,11 +583,11 @@ where
             Printed::Version
         };
         let words = caller.unwrap_or(words);
-        let stop = Stop::new(printed, code, json, command, guide, path, words);
+        let stop = Stop::new(printed, code, json, command, tool, path, words);
         return Err(Unparsed::Stopped(stop));
     }
-    let refusal = command_line_refusal::<C>(&mut command, guide, &path, &error, &words);
-    let output = stop::stopped(json, command, guide);
+    let refusal = command_line_refusal::<C>(&mut command, tool, &path, &error, &words);
+    let output = stop::stopped(json, command, tool);
     let refused = Refused::new(refusal, Some(error), path, output, words, typed, caller);
     Err(Unparsed::Refused(refused))
 }

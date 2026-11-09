@@ -9,8 +9,9 @@ use clap::{Arg, ArgAction, Command, value_parser};
 use serde_json::{Value, json};
 
 use super::{Parsed, Stop, admits, parse_tree};
-use crate::help::{Guide, Leaf, RefusalContext};
-use crate::{Call, Sink, parse_to};
+use crate::help::{Help, Leaf};
+use crate::tool::RefusalContext;
+use crate::{Call, Sink, Tool, parse_to};
 
 /// The reason of the recovery of a refusal whose path offers no help page.
 const NO_HELP: &str = "no command that the command line names has a -h help page";
@@ -35,7 +36,7 @@ fn query() -> Command {
 /// Returns a tool whose group `completion` holds the visible leaf `bash`,
 /// the hidden leaf [`query`] and the hidden leaf `debug`, which keeps its
 /// help flag.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool").subcommand(
         Command::new("completion")
             .about("Print shell completions")
@@ -70,13 +71,13 @@ fn bash(_: &RefusalContext<'_>) -> Vec<Call> {
     vec![Call::new(&["bash"])]
 }
 
-/// Runs `parse_to` over `command` and `guide` with `args` into memory, for
+/// Runs `parse_to` over `command` and `tool` with `args` into memory, for
 /// a command line that does not parse.
-fn parse_guided(command: Command, guide: &Guide, args: &[&str]) -> Parsed {
+fn parse_with_tool(command: Command, tool: &Tool, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, guide, args);
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, tool, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),
@@ -104,12 +105,12 @@ fn prints_help(command: Command, words: &[&str]) {
 fn a_refusal_at_a_leaf_without_a_help_flag_names_the_help_of_the_group_above_it() {
     let refused = ["tool", "completion", "query", "--help"];
     admits(
-        tool(),
+        tree(),
         &refused,
         &["tool", "completion", "query", "--", "--help"],
     );
 
-    let parsed = parse_tree(tool(), &refused);
+    let parsed = parse_tree(tree(), &refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert!(
@@ -118,15 +119,15 @@ fn a_refusal_at_a_leaf_without_a_help_flag_names_the_help_of_the_group_above_it(
         parsed.err
     );
     assert!(!parsed.err.contains("query -h"), "{}", parsed.err);
-    prints_help(tool(), &["tool", "completion", "-h"]);
+    prints_help(tree(), &["tool", "completion", "-h"]);
 }
 
 #[test]
 fn a_refusal_at_a_hidden_leaf_with_a_help_flag_names_the_leaf_s_own_help() {
     let refused = ["tool", "completion", "debug", "--bogus"];
-    admits(tool(), &refused, &refused[..3]);
+    admits(tree(), &refused, &refused[..3]);
 
-    let parsed = parse_tree(tool(), &refused);
+    let parsed = parse_tree(tree(), &refused);
 
     assert!(
         parsed
@@ -184,16 +185,18 @@ fn the_refusal_document_of_a_path_without_a_help_flag_has_a_none_recovery_with_i
 
 #[test]
 fn a_tool_s_call_at_a_leaf_without_a_help_flag_offers_the_group_s_help_as_the_first_alternative() {
-    const GUIDE: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["completion", "query"]).refusal_alternatives(completion_bash)]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new()
+            .leaves(&[Leaf::new(&["completion", "query"]).refusal_alternatives(completion_bash)]),
+    );
     let refused = ["tool", "completion", "query", "--help"];
     admits(
-        tool(),
+        tree(),
         &refused,
         &["tool", "completion", "query", "--", "--help"],
     );
 
-    let parsed = parse_guided(tool(), &GUIDE, &refused);
+    let parsed = parse_with_tool(tree(), &TOOL, &refused);
 
     assert!(
         parsed
@@ -206,7 +209,8 @@ fn a_tool_s_call_at_a_leaf_without_a_help_flag_offers_the_group_s_help_as_the_fi
 
 #[test]
 fn a_tool_s_call_on_a_path_without_a_help_flag_is_the_recovery_with_no_help_call_after_it() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["query"]).refusal_alternatives(bash)]);
+    const TOOL: Tool =
+        Tool::new().help(Help::new().leaves(&[Leaf::new(&["query"]).refusal_alternatives(bash)]));
     let refused = ["tool", "query", "--help"];
     admits(
         tool_without_help(),
@@ -214,7 +218,7 @@ fn a_tool_s_call_on_a_path_without_a_help_flag_is_the_recovery_with_no_help_call
         &["tool", "query", "--", "--help"],
     );
 
-    let parsed = parse_guided(tool_without_help(), &GUIDE, &refused);
+    let parsed = parse_with_tool(tool_without_help(), &TOOL, &refused);
 
     assert!(
         parsed.err.contains("  help:  run `tool bash`\n  code:"),

@@ -1,29 +1,31 @@
-//! Tests for the guide check of the view flags that a leaf offers: the
+//! Tests for the tool record check of the view flags that a leaf offers: the
 //! flags that an example types, and the document that a leaf with effects
 //! declares so that `parse` can refuse a flag before the handler runs.
 
 use clap::{Arg, ArgAction, Args as _};
-use crumbkit::help::{Effects, Example, Guide};
-use crumbkit::{Batch, Document, Prose, ViewFlags};
+use crumbkit::help::{Effects, Example, Help};
+use crumbkit::{Batch, Document, Prose, Tool, ViewFlags};
 
-use super::{check_guide, leaf, panic_message, shelf};
+use super::{check_help, leaf, panic_message, shelf};
 
 /// The prose document of `shelf books list` in these tests.
 const COUNT: Document<Prose<String>> = Document::new("shelf", "count", 1, "The count.");
 
 #[test]
-fn check_guide_fails_on_an_example_that_types_a_view_flag_its_leaf_does_not_offer() {
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"])
-            .examples(&[Example::new(&["--long"], "Count the books at length")])
-            .document(COUNT),
-        leaf(&["books", "show"]),
-        leaf(&["authors", "list"]),
-    ]);
+fn check_tool_fails_on_an_example_that_types_a_view_flag_its_leaf_does_not_offer() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"])
+                .examples(&[Example::new(&["--long"], "Count the books at length")])
+                .document(COUNT),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --long` types --long, which the command does not offer, so crumbkit refuses it"
     );
 }
@@ -41,33 +43,37 @@ impl crumbkit::Row for TitledBook {
 }
 
 #[test]
-fn check_guide_fails_on_an_example_that_types_a_view_flag_which_adds_nothing_to_its_json() {
+fn check_tool_fails_on_an_example_that_types_a_view_flag_which_adds_nothing_to_its_json() {
     const WHOLE_BOOKS: Document<Vec<TitledBook>> =
         Document::new("shelf", "whole-books", 1, "The books.");
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"])
-            .examples(&[Example::new(&["--json", "--full"], "Print every book")])
-            .document(WHOLE_BOOKS),
-        leaf(&["books", "show"]),
-        leaf(&["authors", "list"]),
-    ]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"])
+                .examples(&[Example::new(&["--json", "--full"], "Print every book")])
+                .document(WHOLE_BOOKS),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --json --full` types --full, which adds nothing to the command's JSON, so crumbkit prints a note that says so"
     );
 }
 
 #[test]
-fn check_guide_reports_an_unoffered_flag_below_a_command_that_declares_its_own_json() {
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"])
-            .examples(&[Example::new(&["--full"], "Count every book")])
-            .document(COUNT),
-        leaf(&["books", "show"]),
-        leaf(&["authors", "list"]),
-    ]);
+fn check_tool_reports_an_unoffered_flag_below_a_command_that_declares_its_own_json() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"])
+                .examples(&[Example::new(&["--full"], "Count every book")])
+                .document(COUNT),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
     let tool = ViewFlags::augment_args(shelf()).mut_subcommand("books", |books| {
         books.arg(
             Arg::new("json")
@@ -78,8 +84,8 @@ fn check_guide_reports_an_unoffered_flag_below_a_command_that_declares_its_own_j
     });
 
     assert_eq!(
-        panic_message(|| check_guide(&tool, &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&tool, &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --full` types --full, which the command does not offer, so crumbkit refuses it"
     );
 }
@@ -100,21 +106,22 @@ impl crumbkit::Row for LongBook {
 }
 
 #[test]
-fn check_guide_fails_on_an_example_that_types_an_offered_view_flag_which_adds_nothing_to_its_json()
-{
+fn check_tool_fails_on_an_example_that_types_an_offered_view_flag_which_adds_nothing_to_its_json() {
     const LONG_BOOKS: Document<Vec<LongBook>> =
         Document::new("shelf", "long-books", 1, "The books.");
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"])
-            .examples(&[Example::new(&["--json", "--long"], "Print every book")])
-            .document(LONG_BOOKS),
-        leaf(&["books", "show"]),
-        leaf(&["authors", "list"]),
-    ]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"])
+                .examples(&[Example::new(&["--json", "--long"], "Print every book")])
+                .document(LONG_BOOKS),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the example `shelf books list --json --long` types --long, which adds nothing to the command's JSON, so crumbkit prints a note that says so"
     );
 }
@@ -123,54 +130,58 @@ fn check_guide_fails_on_an_example_that_types_an_offered_view_flag_which_adds_no
 fn an_example_that_types_long_without_json_on_whole_rows_with_long_columns_passes() {
     const LONG_BOOKS: Document<Vec<LongBook>> =
         Document::new("shelf", "long-books", 1, "The books.");
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"])
-            .examples(&[Example::new(&["--long"], "List every book with its author")])
-            .document(LONG_BOOKS),
-        leaf(&["books", "show"]),
-        leaf(&["authors", "list"]),
-    ]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"])
+                .examples(&[Example::new(&["--long"], "List every book with its author")])
+                .document(LONG_BOOKS),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
 
-    check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[]);
+    check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[]);
 }
 
 #[test]
-fn check_guide_fails_on_a_leaf_that_declares_a_change_and_no_document() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+fn check_tool_fails_on_a_leaf_that_declares_a_change_and_no_document() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]),
         leaf(&["books", "show"]).effects(Effects::additive()),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&ViewFlags::augment_args(shelf()), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books show: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
     );
 }
 
 #[test]
 fn a_read_only_leaf_without_a_document_passes() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).effects(Effects::read_only()),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 #[test]
 fn a_changing_leaf_that_passes_on_a_programs_exit_code_passes_without_a_document() {
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"]),
-        leaf(&["books", "show"])
-            .effects(Effects::replacing())
-            .passes_on_exit("the editor"),
-        leaf(&["authors", "list"]),
-    ]);
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"]),
+            leaf(&["books", "show"])
+                .effects(Effects::replacing())
+                .passes_on_exit("the editor"),
+            leaf(&["authors", "list"]),
+        ]),
+    );
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 /// A book's file whose bytes sit under `content` in place of the top level
@@ -194,24 +205,26 @@ impl crumbkit::Headed for NestedFile {
 }
 
 #[test]
-fn check_guide_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
-    const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"]).document(
-            Document::<Batch<NestedFile, crumbkit::Error>>::new(
-                "shelf",
-                "books-files",
-                1,
-                "The books' files.",
-            )
-            .headed(),
-        ),
-        leaf(&["books", "show"]),
-        leaf(&["authors", "list"]),
-    ]);
+fn check_tool_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"]).document(
+                Document::<Batch<NestedFile, crumbkit::Error>>::new(
+                    "shelf",
+                    "books-files",
+                    1,
+                    "The books' files.",
+                )
+                .headed(),
+            ),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the field `text` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`\n\
          shelf books list: the field `base64` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`"
     );
@@ -244,29 +257,29 @@ const BARE_FILES: Document<Batch<BareFile, crumbkit::Error>> =
     Document::new("shelf", "books-files", 1, "The books' files.");
 
 #[test]
-fn check_guide_fails_on_a_leaf_whose_batch_is_not_headed_and_whose_row_type_has_no_columns() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+fn check_tool_fails_on_a_leaf_whose_batch_is_not_headed_and_whose_row_type_has_no_columns() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(BARE_FILES),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type has no COLUMNS, so the table and the JSON without --full print nothing of each row; name the fields that identify a row in `Row::COLUMNS`"
     );
 }
 
 #[test]
 fn a_headed_leaf_whose_row_type_has_no_columns_passes() {
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(BARE_FILES.headed()),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 /// A query answer that a tool's readers expect whole and that serializes
@@ -290,18 +303,18 @@ impl crumbkit::Row for UnlinedAnswer {
 }
 
 #[test]
-fn check_guide_fails_on_a_batch_whose_whole_row_type_has_no_columns_and_no_line() {
+fn check_tool_fails_on_a_batch_whose_whole_row_type_has_no_columns_and_no_line() {
     const ANSWERS: Document<Batch<UnlinedAnswer, crumbkit::Error>> =
         Document::new("shelf", "answers", 1, "The answers.");
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(ANSWERS),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type sets Row::WHOLE and has no COLUMNS and no LINE, so its text has no form for a row; declare the row's own text line in `Row::LINE`"
     );
 }
@@ -309,13 +322,13 @@ fn check_guide_fails_on_a_batch_whose_whole_row_type_has_no_columns_and_no_line(
 #[test]
 fn a_leaf_whose_whole_rows_have_no_fields_passes_without_columns() {
     const ANSWERS: Document<Vec<Answer>> = Document::new("shelf", "answers", 1, "The answers.");
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(ANSWERS),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
-    check_guide(&shelf(), &GUIDE, &[]);
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 /// A book that a tool's readers expect whole and whose row type names no
@@ -333,17 +346,17 @@ impl crumbkit::Row for WholeBook {
 }
 
 #[test]
-fn check_guide_fails_on_a_leaf_whose_whole_row_type_has_fields_and_no_columns() {
+fn check_tool_fails_on_a_leaf_whose_whole_row_type_has_fields_and_no_columns() {
     const BOOKS: Document<Vec<WholeBook>> = Document::new("shelf", "books", 1, "The books.");
-    const GUIDE: Guide = Guide::new().leaves(&[
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
         leaf(&["books", "list"]).document(BOOKS),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
-    ]);
+    ]));
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the row type has fields and no COLUMNS, so its text prints each row's own line where a table could show its fields; name the fields that identify a row in `Row::COLUMNS`"
     );
 }

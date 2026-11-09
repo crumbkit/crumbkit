@@ -22,7 +22,7 @@ impl Leaf {
     /// leaves them out. `--json` stays, so a failure prints as the failure
     /// document. The command's `-h` and `--help` print `Output: no result
     /// on standard output, and --json prints a failure as JSON.` after the
-    /// effects. crumbkit-test's `check_guide` accepts such a leaf whose
+    /// effects. crumbkit-test's `check_help` accepts such a leaf whose
     /// effects change something without an opt-out, and fails a leaf that
     /// also declares a document.
     ///
@@ -36,10 +36,12 @@ impl Leaf {
     /// ```no_run
     /// use std::process::ExitCode;
     ///
-    /// use crumbkit::help::{Guide, Leaf};
+    /// use crumbkit::Tool;
+    /// use crumbkit::help::{Help, Leaf};
     /// use crumbkit::{Failure, Output, Sink};
     ///
-    /// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]);
+    /// const TOOL: Tool =
+    ///     Tool::new().help(Help::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]));
     ///
     /// /// Ends a run of `serve` with `failure`, such as the interrupt that
     /// /// stopped the server.

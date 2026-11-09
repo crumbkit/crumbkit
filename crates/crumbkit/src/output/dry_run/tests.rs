@@ -8,8 +8,7 @@ use serde::Serialize;
 
 use super::DryRun;
 use crate::Envelope;
-use crate::help::Guide;
-use crate::{Document, Error, Output, Prose, Row, Sink, ViewFlags, finish_to};
+use crate::{Document, Error, Output, Prose, Row, Sink, Tool, ViewFlags, finish_to};
 
 /// A removed planet.
 #[derive(Serialize, JsonSchema)]
@@ -27,7 +26,7 @@ const REMOVED: Document<Vec<Removed>> =
 /// A tool whose `remove` command takes `--dry-run`.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Commands,
     #[command(flatten)]
@@ -58,9 +57,9 @@ fn finish_with<T: crate::Rows>(
     result: Result<T, Error>,
 ) -> Finished {
     let args = ["tool", "remove"].iter().chain(flags);
-    let tool = Tool::try_parse_from(args.clone()).unwrap();
+    let tool = Cli::try_parse_from(args.clone()).unwrap();
     let Commands::Remove { dry_run } = tool.command;
-    let output = Output::new(tool.view, dry_run, Tool::command(), &Guide::new(), args).unwrap();
+    let output = Output::new(tool.view, dry_run, Cli::command(), &Tool::new(), args).unwrap();
     let dry_run = output.is_dry_run();
     let mut out = Vec::new();
     let mut err = Vec::new();
@@ -86,8 +85,8 @@ fn output_new_records_the_dry_run_flag_it_is_given() {
     let output = Output::new(
         ViewFlags::new(),
         DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         args,
     );
     assert!(!output.unwrap().is_dry_run());
@@ -138,7 +137,7 @@ fn dry_run_is_the_flag_dry_run_with_crumbkit_s_id_and_serializes_as_one_field() 
     assert_eq!(arg.get_id(), "crumbkit_dry_run");
     assert_eq!(arg.get_long(), Some("dry-run"));
 
-    let tool = Tool::try_parse_from(["tool", "remove", "--dry-run"]).unwrap();
+    let tool = Cli::try_parse_from(["tool", "remove", "--dry-run"]).unwrap();
     let Commands::Remove { dry_run } = tool.command;
     assert_eq!(
         serde_json::to_string(&dry_run).unwrap(),
@@ -154,9 +153,9 @@ fn dry_run_is_the_flag_dry_run_with_crumbkit_s_id_and_serializes_as_one_field() 
 fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_on_standard_error()
 {
     let args = ["tool", "remove", "--dry-run", "--json"];
-    let tool = Tool::try_parse_from(args).unwrap();
+    let tool = Cli::try_parse_from(args).unwrap();
     let Commands::Remove { dry_run } = tool.command;
-    let output = Output::new(tool.view, dry_run, Tool::command(), &Guide::new(), args).unwrap();
+    let output = Output::new(tool.view, dry_run, Cli::command(), &Tool::new(), args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(pluto());

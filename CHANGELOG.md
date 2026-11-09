@@ -35,7 +35,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- crumbkit: breaking: `Guide::documents` is now `Guide::file_formats`, a name
+- crumbkit: breaking: `help::Guide` is now `crumbkit::Tool`, composed of the
+  `help::Help`, `tool::Failures` and `tool::Output` records, with the picker
+  and dashed forms on `Tool`. `Guide::output_budget` is `tool::Output::budget`,
+  and each getter is on the record that owns its field ([behaviour/adoption]).
+- crumbkit-test: breaking: every check that took `&Guide` takes `&Tool`, and
+  the `check_opt_outs` report and its JSON array say "declarations" where they
+  said "customisations" ([behaviour/adoption]).
+- crumbkit-test: breaking: the opt-outs report's id is `opt-outs/v2`, because
+  its array is renamed ([behaviour/adoption]).
+- crumbkit-test: breaking: `check_guide` is `check_help`, `Rule::GuideExamples`
+  and `Rule::GuideDocument` are `Rule::HelpExamples` and `Rule::HelpDocument`,
+  and the opt-out ids are `help/examples` and `help/document`
+  ([behaviour/help/checks]).
+- crumbkit: breaking: `Exit`, `Rename` and `RefusalContext` move from
+  `crumbkit::help` to `crumbkit::tool` ([behaviour/adoption]).
+- crumbkit: breaking: `Guide::documents` is now `Help::file_formats`, a name
   that says it registers file formats ([behaviour/schemas/commands]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).

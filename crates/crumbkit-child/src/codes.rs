@@ -3,7 +3,7 @@
 //! Each code is in the `child` area and prints with the tool's component,
 //! such as `<tool>::child::not_found`, as crumbkit's own codes are. A tool
 //! prints its own code in place of either of them with a `Rename` in
-//! `Guide::codes`, as it does for crumbkit's codes. [`ALL`] lists them.
+//! `Failures::codes`, as it does for crumbkit's codes. [`ALL`] lists them.
 
 use crumbkit::Code;
 

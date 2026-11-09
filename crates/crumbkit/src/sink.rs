@@ -145,11 +145,11 @@ impl<O, E, I> Sink<O, E, I> {
     /// cells of a text table. crumbkit writes those escape codes itself,
     /// with or without the `color` feature (ADR-0150).
     ///
-    /// [`parse`](crate::parse) and [`parse_from`](crate::parse_from) build
-    /// a sink over the process's standard streams that asks for styles when
-    /// standard output is a terminal and the guide keeps terminal detection
-    /// on. [`finish`](crate::finish) asks for cell styles under the rule
-    /// that [`Sink::styled_errors`] describes for `parse`, applied to
+    /// [`parse`](crate::parse) and [`parse_from`](crate::parse_from) build a
+    /// sink over the process's standard streams that asks for styles when
+    /// standard output is a terminal and the tool record keeps terminal
+    /// detection on. [`finish`](crate::finish) asks for cell styles under the
+    /// rule that [`Sink::styled_errors`] describes for `parse`, applied to
     /// standard output.
     ///
     /// ```
@@ -193,7 +193,7 @@ impl<O, E, I> Sink<O, E, I> {
     /// `CLICOLOR_FORCE` is set, or when standard error is a terminal whose
     /// `TERM` is not `dumb` and `CLICOLOR` is not `0`. It never asks for
     /// them under `NO_COLOR`, with the command's `ColorChoice` set to
-    /// `Never` or with the guide's terminal detection off (ADR-0133).
+    /// `Never` or with the tool record's terminal detection off (ADR-0133).
     ///
     /// ```
     /// let sink = crumbkit::Sink::new(Vec::new(), Vec::new()).styled_errors(true);
@@ -228,7 +228,7 @@ impl<O, E, I> Sink<O, E, I> {
     /// The setter checks no terminal, as [`Sink::styled`] checks none. A
     /// tool that owns its output stream decides it, for example from the
     /// width of the terminal that standard output is. [`finish`](crate::finish)
-    /// gives its sink that width when the guide keeps terminal detection
+    /// gives its sink that width when the tool record keeps terminal detection
     /// on. A sink from [`Sink::new`] or [`Sink::with_input`] has no width.
     ///
     /// ```

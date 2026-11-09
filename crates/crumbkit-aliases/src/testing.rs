@@ -11,7 +11,7 @@ use crate::AliasesList;
 /// so the built-in aliases sit at two levels. The hidden `admin` branch has
 /// aliases at both levels too, which `aliases list` leaves out. The hidden
 /// `aliases list` command takes [`AliasesList`].
-pub(crate) fn tool() -> Command {
+pub(crate) fn tree() -> Command {
     Command::new("shelf")
         .disable_help_subcommand(true)
         .subcommand(

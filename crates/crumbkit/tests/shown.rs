@@ -7,10 +7,10 @@ use std::fmt;
 use std::time::Duration as Std;
 
 use clap::{CommandFactory as _, Parser, Subcommand};
-use crumbkit::help::Guide;
 use crumbkit::schemars::{JsonSchema, Schema, SchemaGenerator};
 use crumbkit::{
-    Call, Code, Document, Duration, Failure, Field, Output, Recovery, Row, Shown, Sink, ViewFlags,
+    Call, Code, Document, Duration, Failure, Field, Output, Recovery, Row, Shown, Sink, Tool,
+    ViewFlags,
 };
 use serde::{Serialize, Serializer};
 use serde_json::{Value, json};
@@ -18,7 +18,7 @@ use serde_json::{Value, json};
 /// A tool with a `list` command.
 #[derive(Parser)]
 #[command(name = "loans")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -133,10 +133,10 @@ fn parse(flags: &[&str]) -> Option<Output> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["loans", "list"].iter().chain(flags);
-    let parsed = crumbkit::parse_to::<Tool, _, _, _, _>(
+    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         words,
     );
     parsed.ok().map(|(_tool, output)| output)

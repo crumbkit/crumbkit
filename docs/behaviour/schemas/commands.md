@@ -29,7 +29,7 @@ Why: ADR-0035, ADR-0015.
 
 ## `schemas list`
 
-The tool's `Guide` is the source of the documents. Each leaf that declares
+The tool's `Tool` is the source of the documents. Each leaf that declares
 its document with `Leaf::document` or `Leaf::stream` adds that document, and
 crumbkit adds `<tool>/failure/v1` first, because every command prints it
 when it fails with `--json`.
@@ -41,7 +41,7 @@ when it fails with `--json`.
 - A leaf that declares `Leaf::prints_no_result` has no document and adds
   nothing.
 - A tool declares the files that users write for it, such as a settings
-  file, as `FileFormat`s with `Guide::file_formats`. `schemas list` lists them
+  file, as `FileFormat`s with `Help::file_formats`. `schemas list` lists them
   after the leaves' documents with no commands.
 - Each row's `kind` is `output`, `unwrapped` or `file`, so an agent sees
   which documents a command prints. Each row's compact `form` column is
@@ -92,8 +92,8 @@ decides whether it needs a new id.
   document.
 
 `check_opt_outs` lists each document whose name is not its command's path as
-a `document-name` customisation, and leaves out crumbkit's documents at fixed
+a `document-name` declaration, and leaves out crumbkit's documents at fixed
 paths, which `check_mounts` checks
-([declarations](../adoption/declarations.md#the-customisations-section)).
+([declarations](../adoption/declarations.md#the-declarations-section)).
 
 Why: ADR-0035, ADR-0056.

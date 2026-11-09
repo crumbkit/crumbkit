@@ -15,7 +15,7 @@
 //! [`check_effects`]: crate::check_effects
 //! [`check_listings`]: crate::check_listings
 //! [`check_filters`]: crate::check_filters
-//! [`check_guide`]: crate::check_guide
+//! [`check_help`]: crate::check_help
 //! [`check_exit_codes`]: crate::check_exit_codes
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
@@ -61,7 +61,7 @@ mod failures;
 mod filters;
 mod goldens;
 mod grammar;
-mod guide;
+mod help;
 mod listings;
 mod names;
 mod opt_outs;
@@ -90,7 +90,7 @@ pub use crate::failures::FailureReader;
 pub use crate::filters::check_filters;
 pub use crate::goldens::check_help_goldens;
 pub use crate::grammar::check_grammar;
-pub use crate::guide::check_guide;
+pub use crate::help::check_help;
 pub use crate::listings::check_listings;
 pub use crate::names::check_names;
 pub use crate::opt_outs::check_opt_outs;
@@ -109,9 +109,9 @@ pub use crate::weights::{PathBudgets, check_path_weights};
 // tool calls them, so they stay out of the documentation.
 #[doc(hidden)]
 pub use crate::weights::{UnreadableGolden, output_weight, path_totals};
-// crumbkit's guide, which several checks and `Pages::rendered` and
+// crumbkit's tool record, which several checks and `Pages::rendered` and
 // `Pages::binary` take. A tool names it from crumbkit, which it already
 // depends on. The re-export stays for an adopter that imports it from here,
 // out of the documentation, so the type has one documented path.
 #[doc(hidden)]
-pub use crumbkit::help::Guide;
+pub use crumbkit::Tool;

@@ -3,14 +3,15 @@
 //! of which only crumbkit's own codes and its add-on crates' codes have
 //! their recoveries followed, and the warnings that crumbkit prints.
 
-use crumbkit::Code;
-use crumbkit::help::{Guide, Rename};
+use crumbkit::tool::Rename;
+use crumbkit::{Code, Tool};
 use snapbox::assert::Action;
 
 use super::{OTHERS, SHOW_7, Setup, check_in, check_with, failure, problems, recoveries, run};
 use crate::recoveries::Failing;
 use crate::recoveries::chain::known::ADD_ON_CODES;
 use crate::testing::panic_message;
+use crumbkit::tool::Failures;
 
 /// Returns the setup of a chain whose step `tool books list` fails with
 /// `code` and recovers by running `tool books show 2`, which succeeds.
@@ -110,7 +111,8 @@ fn an_undeclared_start_in_the_crumbkit_component_on_neither_built_in_list_fails_
 fn an_undeclared_start_with_a_rename_of_a_code_on_neither_built_in_list_fails_the_check() {
     const UNLISTED: Code = Code::new("crumbkit", "books", "unlisted");
     const RENAMED: Code = Code::new("tool", "books", "renamed");
-    const GUIDE: Guide = Guide::new().codes(&[Rename::new(&UNLISTED, &RENAMED)]);
+    const TOOL: Tool =
+        Tool::new().failures(Failures::new().codes(&[Rename::new(&UNLISTED, &RENAMED)]));
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let renamed = failure("tool::books::renamed", r#"{"kind":"retry"}"#);
     let setup = Setup::new(
@@ -123,7 +125,7 @@ fn an_undeclared_start_with_a_rename_of_a_code_on_neither_built_in_list_fails_th
     let starts = [SHOW_7[0], Failing::new(&RENAMED, &["books", "show", "9"])];
     let settings = recoveries(&setup, &starts, OTHERS);
 
-    let message = panic_message(|| check_in(&setup, &GUIDE, &settings, Action::Overwrite));
+    let message = panic_message(|| check_in(&setup, &TOOL, &settings, Action::Overwrite));
 
     assert_eq!(
         message.as_deref(),

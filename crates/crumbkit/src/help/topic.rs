@@ -1,8 +1,9 @@
-//! Help topics, which [`parse`](crate::parse) reads from the guide it takes
-//! through [`text`] and [`names`]. Each of them adds crumbkit's own
+//! Help topics, which [`parse`](crate::parse) reads from the tool record it
+//! takes through [`text`] and [`names`]. Each of them adds crumbkit's own
 //! `exit-codes` topic after the tool's topics.
 
-use super::{Guide, exit};
+use super::exit;
+use crate::Tool;
 
 #[cfg(test)]
 mod tests;
@@ -12,18 +13,19 @@ mod tests;
 ///
 /// The text is plain text, written as a literal or with `include_str!`.
 /// crumbkit prints it as written and adds a final line break when it lacks
-/// one. A tool lists its topics in its [`Guide`](super::Guide):
+/// one. A tool lists its topics in its [`Tool`](super::Tool):
 ///
 /// ```
-/// use crumbkit::help::{Guide, Topic};
+/// use crumbkit::Tool;
+/// use crumbkit::help::{Help, Topic};
 ///
-/// const GUIDE: Guide = Guide::new().topics(&[Topic::new(
+/// const TOOL: Tool = Tool::new().help(Help::new().topics(&[Topic::new(
 ///     "catalogue",
 ///     "Where the books come from",
 ///     "The catalogue holds six books, built into the binary.\n",
-/// )]);
+/// )]));
 ///
-/// assert_eq!(GUIDE.get_topics()[0].name(), "catalogue");
+/// assert_eq!(TOOL.get_help().get_topics()[0].name(), "catalogue");
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Topic {
@@ -67,7 +69,7 @@ impl Topic {
     }
 }
 
-/// Returns the topics in guide order, leaving out each topic whose name an
+/// Returns the topics in declared order, leaving out each topic whose name an
 /// earlier topic already has, so the first of two topics with one name is
 /// the one that prints, and a topic named `exit-codes`, because crumbkit's
 /// own topic has that name.
@@ -80,14 +82,18 @@ fn distinct(topics: &[Topic]) -> impl Iterator<Item = &Topic> {
     })
 }
 
-/// Returns the text of the topic called `name` in `guide` of the tool
-/// called `tool`, ending with a line break, or `None` when the guide has no
-/// such topic. The name `exit-codes` gives crumbkit's list of exit codes.
-pub(crate) fn text(tool: &str, guide: &Guide, name: &str) -> Option<String> {
+/// Returns the text of the topic called `name` in `tool` of the tool called
+/// `tool`, ending with a line break, or `None` when the tool record has no such
+/// topic. The name `exit-codes` gives crumbkit's list of exit codes.
+pub(crate) fn text(tool_name: &str, tool: &Tool, name: &str) -> Option<String> {
     if name == exit::TOPIC {
-        return Some(exit::text(tool, guide));
+        return Some(exit::text(tool_name, tool));
     }
-    let topic = guide.get_topics().iter().find(|topic| topic.name == name)?;
+    let topic = tool
+        .get_help()
+        .get_topics()
+        .iter()
+        .find(|topic| topic.name == name)?;
     let mut text = topic.text.to_owned();
     if !text.ends_with('\n') {
         text.push('\n');
@@ -95,7 +101,7 @@ pub(crate) fn text(tool: &str, guide: &Guide, name: &str) -> Option<String> {
     Some(text)
 }
 
-/// Returns the names of `topics` in guide order, each once, and then
+/// Returns the names of `topics` in declared order, each once, and then
 /// `exit-codes`.
 pub(crate) fn names(topics: &[Topic]) -> Vec<&str> {
     distinct(topics)

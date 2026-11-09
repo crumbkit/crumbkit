@@ -30,7 +30,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser, Subcommand};
-use crumbkit::help::Guide;
+use crumbkit::Tool;
 use crumbkit::ViewFlags;
 use crumbkit_aliases::AliasesList;
 
@@ -60,7 +60,7 @@ enum AliasesCommand {
     List(AliasesList),
 }
 
-const GUIDE: Guide = Guide::new();
+const TOOL: Tool = Tool::new();
 
 /// Runs shelf with `args` and the aliases file at `file`. shelf's `main`
 /// passes `std::env::args_os()` and
@@ -68,7 +68,7 @@ const GUIDE: Guide = Guide::new();
 fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
     let command = Cli::command();
     let args = crumbkit_aliases::expand(&command, args, file);
-    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, args) {
+    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &TOOL, args) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
@@ -86,7 +86,7 @@ assert_eq!(run(&["shelf", "aliases", "list"], None), ExitCode::SUCCESS);
 ```
 
 A tool that wants a person's aliases on its root's help passes [`names`] to
-`Guide::personal_aliases`, and its tests opt out of `Rule::PersonalAliases`,
+`Help::personal_aliases`, and its tests opt out of `Rule::PersonalAliases`,
 because the root's help then differs between machines ([ADR-0027]).
 
 ## Where to read more

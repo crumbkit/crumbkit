@@ -23,7 +23,7 @@ mod tests;
 /// when the list is empty, as a batch's is. In text, each failure prints on
 /// standard error after the text, as a batch prints its failures. A prose
 /// result with at least one failure exits with the exit code of its first
-/// failure, which is 1 unless the tool's guide lists that failure's code
+/// failure, which is 1 unless the tool record lists that failure's code
 /// under one of its exits (ADR-0037). [`Prose::note`] adds a line that the
 /// text prints on standard error before the failures, as a listing's note
 /// prints.
@@ -119,7 +119,7 @@ impl<T, E> Prose<T, E> {
 
     /// Returns the note that [`Prose::note`] set, or `None` when the tool
     /// set none. The getter has the `get_` prefix because the builder
-    /// takes the plain name, as `Guide` and `Leaf` getters do.
+    /// takes the plain name, as `Tool` and `Leaf` getters do.
     #[must_use]
     pub fn get_note(&self) -> Option<&str> {
         self.note.as_deref()

@@ -1,22 +1,21 @@
 //! Tests for a command named in another style, which also answers to its
-//! dashed form when the guide declares dashed forms.
+//! dashed form when the tool record declares dashed forms.
 
 use std::ffi::OsString;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgMatches, Command, FromArgMatches};
 
-use crate::Sink;
-use crate::help::Guide;
 use crate::parse::parse_to;
 use crate::twins::assert_one_word_apart;
+use crate::{Sink, Tool};
 
-/// A guide that declares dashed forms.
-const DASHED: Guide = Guide::new().dashed_forms();
+/// A tool record that declares dashed forms.
+const DASHED: Tool = Tool::new().dashed_forms();
 
 /// A tool with a global `--fields` option and a `reading_lists` resource
 /// that holds `list`.
-fn tool() -> Command {
+fn tree() -> Command {
     Command::new("tool")
         .arg(Arg::new("fields").long("fields").global(true))
         .subcommand(Command::new("reading_lists").subcommand(Command::new("list")))
@@ -49,12 +48,12 @@ struct Run {
     err: String,
 }
 
-/// Runs `parse_to` over [`tool`] with `guide` and `args` into memory.
-fn run(guide: &Guide, args: &[&str]) -> Run {
+/// Runs `parse_to` over [`tool`] with `tool` and `args` into memory.
+fn run(tool: &Tool, args: &[&str]) -> Run {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result =
-        parse_to::<Matched, _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
+        parse_to::<Matched, _, _, _, _>(&mut Sink::new(&mut out, &mut err), tree(), tool, args);
     Run {
         code: result.err().map(|stop| stop.exit_code()),
         out: String::from_utf8(out).unwrap(),
@@ -67,7 +66,7 @@ fn a_dashed_form_reaches_the_command_and_the_parsed_words_hold_the_tool_s_own_na
     let words = ["--fields", "reading-lists", "reading-lists", "list"];
     let result = parse_to::<Matched, _, _, _, _>(
         &mut Sink::new(Vec::new(), Vec::new()),
-        tool(),
+        tree(),
         &DASHED,
         ["tool"].iter().chain(&words),
     );
@@ -104,9 +103,9 @@ fn a_tool_without_the_dashed_forms_declaration_refuses_a_dashed_form() {
     let admitted = ["tool", "reading_lists", "list"];
     assert_one_word_apart(&refused, &admitted);
 
-    let parsed = run(&Guide::new(), &refused);
+    let parsed = run(&Tool::new(), &refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)), "{}", parsed.err);
     assert!(parsed.err.contains("reading-lists"), "{}", parsed.err);
-    assert_eq!(run(&Guide::new(), &admitted).code, None);
+    assert_eq!(run(&Tool::new(), &admitted).code, None);
 }

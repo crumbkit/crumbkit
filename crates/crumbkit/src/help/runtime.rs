@@ -2,38 +2,40 @@
 //! its command tree at run time, such as one command for each file that a
 //! person writes.
 
-use super::{Effects, Example, Guide, Leaf, RefusalContext};
-use crate::{Call, Document, Rows};
+use super::{Effects, Example, Leaf};
+use crate::tool::RefusalContext;
+use crate::{Call, Document, Rows, Tool};
 
 #[cfg(test)]
 mod tests;
 
 /// A leaf that a tool declares at run time, for a command that it adds to
 /// its command tree at run time. Its help lists the examples, as the help
-/// of a [`Leaf`] in a `const` [`Guide`] does.
+/// of a [`Leaf`] in a `const` [`Tool`] does.
 ///
 /// A tool builds one for each command it adds, from the same data, and
-/// joins them to its guide with [`Guide::with_runtime_leaves`]. It then
-/// passes the joined guide to [`parse`](crate::parse),
+/// joins them to its tool record with [`Tool::with_runtime_leaves`]. It then
+/// passes the joined tool record to [`parse`](crate::parse),
 /// [`commands::list`](crate::commands::list) and crumbkit-test's checks:
 ///
 /// ```
-/// use crumbkit::help::{Guide, RuntimeLeaf};
+/// use crumbkit::Tool;
+/// use crumbkit::help::RuntimeLeaf;
 ///
-/// const GUIDE: Guide = Guide::new();
+/// const TOOL: Tool = Tool::new();
 ///
 /// let name = String::from("classics");
-/// let guide = GUIDE.with_runtime_leaves(vec![
+/// let tool = TOOL.with_runtime_leaves(vec![
 ///     RuntimeLeaf::new(vec![name.clone(), "list".to_owned()])
 ///         .example(Vec::new(), format!("List the entries of {name}")),
 /// ]);
 ///
-/// assert_eq!(guide.get_leaves()[0].path(), ["classics", "list"]);
+/// assert_eq!(tool.get_help().get_leaves()[0].path(), ["classics", "list"]);
 /// ```
 ///
 /// crumbkit's example tool `reading`, in [`examples/reading`], adds a
-/// command for each reading list in a directory and builds its guide this
-/// way. Its tests pass the tree and the guide of a fixture directory to
+/// command for each reading list in a directory and builds its tool record this
+/// way. Its tests pass the tree and the tool record of a fixture directory to
 /// every crumbkit-test check.
 ///
 /// [`examples/reading`]: https://github.com/crumbkit/crumbkit/tree/main/examples/reading
@@ -102,7 +104,7 @@ impl RuntimeLeaf {
     /// The document's name usually follows the path of a static command,
     /// so it differs from the path of the command added at run time.
     /// crumbkit-test's `check_opt_outs` then lists the name among the
-    /// tool's customisations, as it lists a `const` leaf's.
+    /// tool's declarations, as it lists a `const` leaf's.
     #[must_use]
     pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
         self.document = Some(Leaf::new(&[]).document(document));
@@ -137,33 +139,33 @@ impl RuntimeLeaf {
     }
 }
 
-impl Guide {
-    /// Returns a guide with every setting of `self`, and the leaves of
+impl Tool {
+    /// Returns a tool record with every setting of `self`, and the leaves of
     /// `self` followed by `leaves`, each with its path, examples, document,
     /// effects, the program whose exit code it passes on and its refusal
-    /// alternatives. The joined guide keeps the renames that
-    /// [`Guide::codes`] set, so a failure or refusal of a runtime leaf's
-    /// command prints the tool's code in place of crumbkit's, as one of a
-    /// `const` leaf's command does. It also keeps the groups, topics, exit
-    /// codes and every other setting of `self`.
+    /// alternatives. The joined tool record keeps the renames that
+    /// [`Failures::codes`](crate::tool::Failures::codes) set, so a failure or
+    /// refusal of a runtime leaf's command prints the tool's code in place of
+    /// crumbkit's, as one of a `const` leaf's command does. It also keeps the
+    /// groups, topics, exit codes and every other setting of `self`.
     ///
-    /// Every function that reads a guide reads the joined one as it reads a
-    /// `const` guide, and of two leaves with one path only the first
+    /// Every function that reads a tool record reads the joined one as it reads
+    /// a `const` tool record, and of two leaves with one path only the first
     /// applies, so a runtime leaf with the path of a `const` leaf changes
-    /// nothing. crumbkit-test's `check_guide` reports both.
+    /// nothing. crumbkit-test's `check_help` reports both.
     ///
     /// A tool without commands added at run time does not call it, and its
     /// runs do no work for runtime leaves.
     //
-    // RUST-10: the joined guide holds `'static` slices, as a `const` guide
-    // does, so this leaks the runtime leaves' strings and the joined list of
-    // leaves for the rest of the process. A run calls it once, and the leak
-    // is the size of the runtime leaves. A guide that borrows its runtime
-    // leaves, with a lifetime on `Guide`, replaces this if a process needs
-    // to build many guides.
+    // RUST-10: the joined tool record holds `'static` slices, as a `const` tool
+    // record does, so this leaks the runtime leaves' strings and the joined
+    // list of leaves for the rest of the process. A run calls it once, and the
+    // leak is the size of the runtime leaves. A tool record that borrows its
+    // runtime leaves, with a lifetime on `Tool`, replaces this if a process
+    // needs to build many tool records.
     #[must_use]
     pub fn with_runtime_leaves(self, leaves: Vec<RuntimeLeaf>) -> Self {
-        let mut joined: Vec<Leaf> = self.get_leaves().to_vec();
+        let mut joined: Vec<Leaf> = self.get_help().get_leaves().to_vec();
         for leaf in leaves {
             let examples: Vec<Example> = leaf
                 .examples
@@ -185,7 +187,8 @@ impl Guide {
             }
             joined.push(joined_leaf);
         }
-        self.leaves(joined.leak())
+        let help = self.get_help().leaves(joined.leak());
+        self.help(help)
     }
 }
 

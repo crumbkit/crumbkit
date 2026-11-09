@@ -1,9 +1,9 @@
 # Terminal detection
 
-This page covers what changes when a stream is a terminal, how a text table
-fits the terminal's width, how a tool turns detection off, and how crumbkit
-tests runs at a terminal.
-[`Guide::without_terminal_detection`](../../../crates/crumbkit/src/help/terminal.rs)
+This page covers what changes when a stream is a terminal, how a text table fits
+the terminal's width, how a tool turns detection off, and how crumbkit tests
+runs at a terminal.
+[`tool::Output::without_terminal_detection`](../../../crates/crumbkit/src/output/declared.rs)
 describes the setting itself.
 
 ## What detection changes
@@ -39,7 +39,7 @@ Why: ADR-0049, ADR-0102, ADR-0121, ADR-0131, ADR-0133, ADR-0150.
 
 ## The table's width
 
-When standard output is a terminal and the guide keeps detection on,
+When standard output is a terminal and the tool keeps detection on,
 `finish` reads the terminal's number of columns once, with rustix's
 `tcgetwinsize`, and gives it to its sink as the width of the result. A
 tool that prints through its own sink sets the width with `Sink::fitted`,
@@ -59,7 +59,7 @@ it fits:
   table does.
 - A column that the row type names in `Row::UNCUT_COLUMNS`, such as an
   identifier that a person copies, never narrows, also in a `--fields`
-  table. crumbkit-test's `check_guide` fails a name there that is in
+  table. crumbkit-test's `check_help` fails a name there that is in
   neither `COLUMNS` nor `LONG_COLUMNS`.
 - When the uncut columns and the other columns' headers are wider than
   the width on their own, the table prints unfitted. A table without
@@ -79,15 +79,15 @@ Why: ADR-0121, ADR-0128, ADR-0134.
 
 ## Turning detection off
 
-A tool turns detection off with `Guide::without_terminal_detection`, which
-takes the tool's reason. crumbkit-test's `check_opt_outs` lists the setting
-as `terminal-detection/off` with that reason and its costs: a person at a
-terminal is never asked and must type every argument and `--yes`, progress,
-help, refusal and cell colours never show, and a text table never fits the terminal's width
-([opt-outs](../adoption/opt-outs.md)).
-The `Output` that `parse` returns, the `Output` inside a `Stop` and the
-`Output` that `Output::new` builds copy the setting from the guide, as they
-copy the guide's JSON layout and code renames.
+A tool turns detection off with `tool::Output::without_terminal_detection`,
+which takes the tool's reason. crumbkit-test's `check_opt_outs` lists the
+setting as `terminal-detection/off` with that reason and its costs: a person at
+a terminal is never asked and must type every argument and `--yes`, progress,
+help, refusal and cell colours never show, and a text table never fits the
+terminal's width ([opt-outs](../adoption/opt-outs.md)). The `Output` that
+`parse` returns, the `Output` inside a `Stop` and the `Output` that
+`Output::new` builds copy the setting from the tool, as they copy the
+tool's JSON layout and code renames.
 
 The setting belongs to the tool and has no environment variable. A caller
 already turns colour off with `NO_COLOR`, and the colours of help, a refusal

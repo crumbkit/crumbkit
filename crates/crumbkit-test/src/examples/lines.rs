@@ -1,12 +1,12 @@
 //! The example check's rules for the lines of a `--json` example: one
-//! document per line, or one indented document when the guide sets
+//! document per line, or one indented document when the tool record sets
 //! `JsonLayout::Pretty` (ADR-0052).
 
 use crumbkit::help::Leaf;
 use crumbkit::{JsonLayout, ToolName};
 
 /// Adds to `failures` each problem of `stdout`, the output of the `--json`
-/// example `line` of `leaf` from a tool whose guide sets `layout`, as
+/// example `line` of `leaf` from a tool whose tool record sets `layout`, as
 /// [`check_examples`](super::check_examples) describes. A leaf without a document, or whose
 /// document has no envelope, has none. Each document must hold its id
 /// under `schema`. The id of one of crumbkit's own documents names
@@ -52,8 +52,8 @@ pub(super) fn check_lines(
 
 /// Adds to `failures` the problem of `stdout`, the output of the `--json`
 /// example `line` of a leaf that prints one document whose `schema` is `id`,
-/// from a tool whose guide sets `JsonLayout::Pretty`. The output must be one
-/// JSON document indented by two spaces, as crumbkit prints it.
+/// from a tool whose tool record sets `JsonLayout::Pretty`. The output must be
+/// one JSON document indented by two spaces, as crumbkit prints it.
 fn check_indented(id: &str, line: &str, stdout: &str, failures: &mut Vec<String>) {
     let documents: Vec<_> = serde_json::Deserializer::from_str(stdout)
         .into_iter::<serde_json::Value>()
@@ -78,7 +78,7 @@ fn check_indented(id: &str, line: &str, stdout: &str, failures: &mut Vec<String>
             "with another indentation"
         };
         failures.push(format!(
-            "{line}: the guide sets JsonLayout::Pretty, so the --json output must be one document indented by two spaces, and the run printed it {printed}"
+            "{line}: the tool record sets JsonLayout::Pretty, so the --json output must be one document indented by two spaces, and the run printed it {printed}"
         ));
     }
 }

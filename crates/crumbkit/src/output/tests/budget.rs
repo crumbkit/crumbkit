@@ -10,17 +10,17 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::{Finished, Tool, finish_output};
+use super::{Cli, Finished, finish_output};
 use crate::Envelope;
 
 mod batch;
 mod rerun;
 mod room;
-use crate::help::{Exit, Guide, Rename};
+use crate::tool::{Exit, Failures, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{
     AsFailure, Batch, Call, Code, Document, Error, Failure, JsonLayout, Listing, Output, Prose,
-    Recovery, Row,
+    Recovery, Row, Tool,
 };
 
 /// A budget that a few rows pass.
@@ -36,12 +36,15 @@ const CHART: Document<Prose<String, Error>> = Document::new("sky", "chart", 1, "
 
 const TOO_MUCH: Code = Code::new("sky", "stars", "too_much");
 
-/// A guide with the budget of [`BUDGET`] that prints `TOO_MUCH` in place of
-/// crumbkit's over-budget code and lists it under 9.
-const RENAMED: Guide = Guide::new()
-    .output_budget(BUDGET, "the tests print little")
-    .codes(&[Rename::new(&crate::codes::OUTPUT_OVER_BUDGET, &TOO_MUCH)])
-    .exits(&[Exit::new(9, "The answer was too long.").failures(&[&TOO_MUCH])]);
+/// A tool record with the budget of [`BUDGET`] that prints `TOO_MUCH` in place
+/// of crumbkit's over-budget code and lists it under 9.
+const RENAMED: Tool = Tool::new()
+    .failures(
+        Failures::new()
+            .codes(&[Rename::new(&crate::codes::OUTPUT_OVER_BUDGET, &TOO_MUCH)])
+            .exits(&[Exit::new(9, "The answer was too long.").failures(&[&TOO_MUCH])]),
+    )
+    .output(crate::tool::Output::new().budget(BUDGET, "the tests print little"));
 
 /// A row whose `story` column is long, so a few rows pass the budget.
 #[derive(Serialize, JsonSchema)]
@@ -79,20 +82,20 @@ fn keyed<E: AsFailure>(rows: Vec<Star>, failures: Vec<E>) -> Batch<Star, E> {
     batch
 }
 
-/// Returns the output flags for `flags` with a guide whose budget is
+/// Returns the output flags for `flags` with a tool record whose budget is
 /// `budget`, as `Output::new` builds them.
 fn budgeted(budget: usize, flags: &[&str]) -> Output {
-    guided(
-        &Guide::new().output_budget(budget, "the tests print little"),
+    output_of(
+        &Tool::new().output(crate::tool::Output::new().budget(budget, "the tests print little")),
         flags,
     )
 }
 
-/// Returns the output flags for `flags` with `guide`, as `Output::new`
+/// Returns the output flags for `flags` with `tool`, as `Output::new`
 /// builds them.
-fn guided(guide: &Guide, flags: &[&str]) -> Output {
+fn output_of(tool: &Tool, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    super::built_with(Tool::command(), guide, &args)
+    super::built_with(Cli::command(), tool, &args)
 }
 
 /// Finishes `value` with `flags` and a budget of [`BUDGET`].
@@ -107,13 +110,15 @@ fn parsed(out: &str) -> Value {
 #[test]
 fn a_pretty_layout_cuts_a_listing_where_its_indented_bytes_stop_fitting() {
     let listing = || Listing::new(stars(20), 20).described("stars");
-    let guide = Guide::new()
-        .output_budget(BUDGET, "the tests print little")
-        .json_layout(JsonLayout::Pretty {
-            reason: "the readers expect it",
-        });
+    let tool = Tool::new().output(
+        crate::tool::Output::new()
+            .budget(BUDGET, "the tests print little")
+            .json_layout(JsonLayout::Pretty {
+                reason: "the readers expect it",
+            }),
+    );
     let compact = finish_small(&["--json"], STAR_LISTING, listing());
-    let indented = finish_output(guided(&guide, &["--json"]), STAR_LISTING, listing());
+    let indented = finish_output(output_of(&tool, &["--json"]), STAR_LISTING, listing());
 
     assert_eq!(indented.code, ExitCode::SUCCESS);
     assert!(indented.out.len() <= BUDGET, "{}", indented.out.len());
@@ -221,20 +226,20 @@ fn a_full_json_listing_over_the_budget_is_cut_too() {
 }
 
 #[test]
-fn a_guide_that_renames_the_over_budget_code_marks_a_cut_with_the_tool_s_code() {
-    let output = guided(&RENAMED, &["--json"]);
+fn a_tool_that_renames_the_over_budget_code_marks_a_cut_with_the_tool_s_code() {
+    let output = output_of(&RENAMED, &["--json"]);
     let finished = finish_output(output, STAR_LISTING, Listing::new(stars(20), 20));
 
     assert_eq!(parsed(&finished.out)["cut"]["code"], "sky::stars::too_much");
 }
 
 #[test]
-fn a_row_refused_with_a_renamed_over_budget_code_exits_with_the_code_the_guide_lists() {
+fn a_row_refused_with_a_renamed_over_budget_code_exits_with_the_code_the_tool_lists() {
     let star = Star {
         name: "vega".to_owned(),
         story: "a".repeat(2 * BUDGET),
     };
-    let output = guided(&RENAMED, &["--json"]);
+    let output = output_of(&RENAMED, &["--json"]);
     let finished = finish_output(output, STAR, star);
 
     assert_eq!(parsed(&finished.out)["code"], "sky::stars::too_much");
@@ -323,7 +328,7 @@ fn a_prose_result_over_the_budget_is_refused_and_no_flag_makes_it_smaller() {
 }
 
 #[test]
-fn budget_reports_the_guide_s_budget_that_finish_prints_within() {
+fn budget_reports_the_tool_s_budget_that_finish_prints_within() {
     let output = budgeted(BUDGET, &[]);
     assert_eq!(output.budget(), BUDGET);
 
@@ -333,12 +338,12 @@ fn budget_reports_the_guide_s_budget_that_finish_prints_within() {
 }
 
 #[test]
-fn an_output_from_a_guide_without_a_budget_has_crumbkit_s_default_of_one_mebibyte() {
+fn an_output_from_a_tool_without_a_budget_has_crumbkit_s_default_of_one_mebibyte() {
     let output = Output::new(
         crate::ViewFlags::new(),
         crate::DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         ["tool"],
     )
     .unwrap();
@@ -348,7 +353,7 @@ fn an_output_from_a_guide_without_a_budget_has_crumbkit_s_default_of_one_mebibyt
 }
 
 #[test]
-fn a_guide_can_set_an_output_budget_below_one_kibibyte_and_a_listing_fits_in_it() {
+fn a_tool_can_set_an_output_budget_below_one_kibibyte_and_a_listing_fits_in_it() {
     let finished = finish_output(
         budgeted(300, &["--json"]),
         STAR_LISTING,
@@ -361,7 +366,7 @@ fn a_guide_can_set_an_output_budget_below_one_kibibyte_and_a_listing_fits_in_it(
 }
 
 #[test]
-fn a_run_with_a_guide_budget_of_1_byte_prints_the_over_budget_failure() {
+fn a_run_with_a_tool_budget_of_1_byte_prints_the_over_budget_failure() {
     let finished = finish_output(budgeted(1, &["--json"]), STAR, star(1));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
@@ -371,7 +376,7 @@ fn a_run_with_a_guide_budget_of_1_byte_prints_the_over_budget_failure() {
 }
 
 #[test]
-fn a_run_with_a_guide_budget_of_0_bytes_refuses_a_listing_with_the_over_budget_failure() {
+fn a_run_with_a_tool_budget_of_0_bytes_refuses_a_listing_with_the_over_budget_failure() {
     let listing = Listing::new(stars(5), 5).described("stars");
     let finished = finish_output(budgeted(0, &["--json"]), STAR_LISTING, listing);
 
@@ -382,7 +387,7 @@ fn a_run_with_a_guide_budget_of_0_bytes_refuses_a_listing_with_the_over_budget_f
 }
 
 #[test]
-fn a_batch_with_a_guide_budget_of_0_bytes_refuses_its_first_answer_and_names_the_rest_in_the_over_budget_failure()
+fn a_batch_with_a_tool_budget_of_0_bytes_refuses_its_first_answer_and_names_the_rest_in_the_over_budget_failure()
  {
     let batch = keyed::<Error>(stars(3), vec![]);
     let finished = finish_output(budgeted(0, &["--json"]), STAR_BATCH, batch);

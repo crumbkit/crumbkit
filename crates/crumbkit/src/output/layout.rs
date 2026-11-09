@@ -1,5 +1,5 @@
 //! The layout of the JSON that a tool prints: one line by default, or
-//! indented when the tool's guide sets [`JsonLayout::Pretty`] (ADR-0052).
+//! indented when the tool record sets [`JsonLayout::Pretty`] (ADR-0052).
 //! The keys of each object keep the order that the value serializes them
 //! in.
 
@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use serde::Serialize;
 
 /// The layout of a whole JSON document, which a tool sets with
-/// [`Guide::json_layout`](crate::help::Guide::json_layout) (ADR-0052).
+/// [`tool::Output::json_layout`](crate::tool::Output::json_layout) (ADR-0052).
 ///
 /// A stream prints one document per line with any layout, because JSON
 /// Lines needs it.
@@ -18,14 +18,15 @@ use serde::Serialize;
 ///
 /// ```
 /// use crumbkit::JsonLayout;
-/// use crumbkit::help::Guide;
+/// use crumbkit::Tool;
+/// use crumbkit::tool;
 ///
 /// const PRETTY: JsonLayout = JsonLayout::Pretty {
 ///     reason: "Our scripts read indented JSON.",
 /// };
-/// const GUIDE: Guide = Guide::new().json_layout(PRETTY);
-/// assert_eq!(GUIDE.get_json_layout(), PRETTY);
-/// assert_eq!(Guide::new().get_json_layout(), JsonLayout::OneLine);
+/// const TOOL: Tool = Tool::new().output(tool::Output::new().json_layout(PRETTY));
+/// assert_eq!(TOOL.get_output().get_json_layout(), PRETTY);
+/// assert_eq!(Tool::new().get_output().get_json_layout(), JsonLayout::OneLine);
 /// ```
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]

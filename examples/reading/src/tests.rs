@@ -8,6 +8,7 @@ use std::path::Path;
 use clap::Command;
 
 use crate::lists::EntriesError;
+use crumbkit::help::Help;
 
 /// Returns the command tree that reading builds from the lists in its
 /// fixture directory.
@@ -17,7 +18,7 @@ fn fixture_command() -> Command {
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(&crate::cli::GUIDE, &[EntriesError::CODES]);
+    crumbkit_test::check_codes(&crate::cli::TOOL, &[EntriesError::CODES]);
 }
 
 #[test]
@@ -50,20 +51,23 @@ fn fixture_lists() -> Result<Vec<crumbkit::pick::Choice>, crumbkit::Error> {
 
 #[test]
 fn entries_list_without_list_asks_the_menu_and_runs_with_the_picked_list() {
-    use crumbkit::help::{Guide, Leaf};
+    use crumbkit::Tool;
+    use crumbkit::help::Leaf;
     use crumbkit::pick::Choices;
 
     static MENU: crumbkit::pick::Menu = crumbkit::pick::Menu::new();
-    const GUIDE: Guide = Guide::new()
-        .picker(&MENU)
-        .leaves(&[Leaf::new(&["entries", "list"]).choices(&[Choices::new("list", fixture_lists)])]);
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[
+            Leaf::new(&["entries", "list"]).choices(&[Choices::new("list", fixture_lists)]),
+        ]))
+        .picker(&MENU);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = crumbkit::Sink::with_input(&mut out, &mut err, &b"2\n"[..], true);
     let parsed = crumbkit::parse_to::<crate::graft::Parsed, _, _, _, _>(
         &mut sink,
         fixture_command(),
-        &GUIDE,
+        &TOOL,
         ["reading", "entries", "list"],
     );
 

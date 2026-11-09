@@ -11,9 +11,9 @@ use serde_json::Value;
 
 use clap::CommandFactory as _;
 
-use super::{Tool, built_with, finish_output, finish_with};
-use crate::help::Guide;
-use crate::{Document, Listing, Row};
+use super::{Cli, built_with, finish_output, finish_with};
+use crate::tool::Output;
+use crate::{Document, Listing, Row, Tool};
 
 /// A check of one package, with the errors and warnings that it found.
 #[derive(Serialize, JsonSchema)]
@@ -327,8 +327,8 @@ fn the_budget_cut_line_counts_the_printed_problem_rows_against_the_listing_total
     let failing = (0..10).map(|_| check("web", &[(true, "missing licence")]));
     let passing = (0..10).map(|_| check("cli", &[]));
     let listing = tallied(failing.chain(passing).collect());
-    let guide = Guide::new().output_budget(160, "the tests print little");
-    let output = built_with(Tool::command(), &guide, &["tool", "list"]);
+    let tool = Tool::new().output(Output::new().budget(160, "the tests print little"));
+    let output = built_with(Cli::command(), &tool, &["tool", "list"]);
 
     let finished = finish_output(output, CHECKS, listing);
 

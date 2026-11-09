@@ -1,5 +1,5 @@
 //! The exit code of a run that has no failure and whose rows report a
-//! problem. [`Guide::failure_exit`](crate::help::Guide::failure_exit) gives
+//! problem. [`Tool::failure_exit`](crate::Tool::failure_exit) gives
 //! the exit code of a failed run.
 
 /// Returns the exit code of a run that has no failure and whose rows report

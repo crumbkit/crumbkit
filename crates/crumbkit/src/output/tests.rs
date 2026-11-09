@@ -9,10 +9,9 @@ use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
 
 use super::{Output, finish_to};
-use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
 use crate::view::{Selection, View};
-use crate::{Document, Error, Listing, Row, Rows, Sink, Stop, ViewFlags};
+use crate::{Document, Error, Listing, Row, Rows, Sink, Stop, Tool, ViewFlags};
 
 mod about;
 mod adds_nothing;
@@ -95,7 +94,7 @@ fn saturn() -> Planet {
 /// a listing can name the other as its next step.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -115,12 +114,12 @@ enum Command {
 /// output that a tool's `main` builds from the parsed view flags.
 fn parse(flags: &[&str]) -> Result<Output, clap::Error> {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    let tool = Tool::try_parse_from(&args)?;
+    let tool = Cli::try_parse_from(&args)?;
     Ok(Output::new(
         tool.view,
         crate::DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         args,
     )
     .unwrap())
@@ -145,7 +144,7 @@ struct Built {
 /// output into memory as a tool's `main` builds it with `Output::new_to`.
 fn build_to(flags: &[&str]) -> Built {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    let tool = Tool::try_parse_from(&args).unwrap();
+    let tool = Cli::try_parse_from(&args).unwrap();
     build_output(tool.view, &args)
 }
 
@@ -156,14 +155,7 @@ fn build_output(view: ViewFlags, args: &[&str]) -> Built {
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
     let dry_run = crate::DryRun::default();
-    let result = Output::new_to(
-        &mut sink,
-        view,
-        dry_run,
-        Tool::command(),
-        &Guide::new(),
-        args,
-    );
+    let result = Output::new_to(&mut sink, view, dry_run, Cli::command(), &Tool::new(), args);
     Built {
         result,
         out: String::from_utf8(out).unwrap(),
@@ -176,22 +168,22 @@ fn build_output(view: ViewFlags, args: &[&str]) -> Built {
 /// `main` builds it.
 fn parse_against(command: clap::Command, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    built_with(command, &Guide::new(), &args)
+    built_with(command, &Tool::new(), &args)
 }
 
 /// Parses `args` against `command` with clap alone, and returns the output
 /// that a tool's `main` builds from the parsed view flags, `command` and
-/// `guide`.
-fn built_with(mut command: clap::Command, guide: &Guide, args: &[&str]) -> Output {
+/// `tool`.
+fn built_with(mut command: clap::Command, tool: &Tool, args: &[&str]) -> Output {
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    Output::new(view, crate::DryRun::default(), command, guide, args).unwrap()
+    Output::new(view, crate::DryRun::default(), command, tool, args).unwrap()
 }
 
 /// Parses `flags`, builds the output as a tool that parses with clap alone
 /// builds it, and finishes `value` into memory.
 fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
-    let output = parse_against(Tool::command(), flags);
+    let output = parse_against(Cli::command(), flags);
     finish_output(output, document, value)
 }
 
@@ -468,12 +460,12 @@ fn the_valid_fields_of_a_row_type_with_variants_are_each_variants_fields_once_in
 #[test]
 fn the_flags_parse_before_and_after_the_subcommand() {
     let words = ["tool", "--json", "list", "--long"];
-    let view = Tool::try_parse_from(words).unwrap().view;
+    let view = Cli::try_parse_from(words).unwrap().view;
     let before = Output::new(
         view,
         crate::DryRun::default(),
-        Tool::command(),
-        &Guide::new(),
+        Cli::command(),
+        &Tool::new(),
         words,
     )
     .unwrap();
@@ -502,7 +494,7 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
 
     let code = finish_to(
         &mut sink,
-        parse_against(Tool::command(), &[]),
+        parse_against(Cli::command(), &[]),
         PLANETS,
         result,
     );
@@ -522,7 +514,7 @@ fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
 
     let code = finish_to(
         &mut sink,
-        parse_against(Tool::command(), &[]),
+        parse_against(Cli::command(), &[]),
         PLANETS,
         result,
     );

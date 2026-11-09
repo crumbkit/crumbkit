@@ -1,11 +1,11 @@
-//! The guide's function that names a person's aliases on the root's help
+//! The function in [`Help`] that names a person's aliases on the root's help
 //! (ADR-0027).
 
 use clap::Command;
 
-use super::Guide;
+use super::Help;
 
-impl Guide {
+impl Help {
     /// Sets the function that returns the names of a person's aliases, such
     /// as `crumbkit_aliases::names`, so the `-h` and `--help` of the clap
     /// root end with a line such as ``Personal aliases: firsts, mine.
@@ -29,17 +29,19 @@ impl Guide {
         self
     }
 
-    /// Returns the guide without the function that
-    /// [`Guide::personal_aliases`] set, so the root's help is the same on
-    /// every machine, as crumbkit-test's help checks print it.
+    /// Returns this `Help` without the function that
+    /// [`Help::personal_aliases`](crate::help::Help::personal_aliases) set, so
+    /// the root's help is the same on every machine, as crumbkit-test's help
+    /// checks print it.
     #[must_use]
     pub const fn without_personal_aliases(mut self) -> Self {
         self.personal_aliases = None;
         self
     }
 
-    /// Returns the function that [`Guide::personal_aliases`] set, or `None`
-    /// when help names no aliases. The name has clap's `get_` prefix,
+    /// Returns the function that
+    /// [`Help::personal_aliases`](crate::help::Help::personal_aliases) set, or
+    /// `None` when help names no aliases. The name has clap's `get_` prefix,
     /// because `personal_aliases` is the builder method.
     #[must_use]
     pub const fn get_personal_aliases(&self) -> Option<fn(&Command) -> Vec<String>> {

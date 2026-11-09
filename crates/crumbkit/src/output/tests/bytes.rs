@@ -8,12 +8,11 @@ use clap::{CommandFactory as _, Parser};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::Tool;
+use super::Cli;
 use crate::Envelope;
 use crate::answered::answered;
-use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, DryRun, Error, Output, Row, Sink, finish_to};
+use crate::{Batch, Bytes, Document, DryRun, Error, Output, Row, Sink, Tool, finish_to};
 
 const FILE: Document<Bytes> = Document::new("files", "file", 1, "The bytes of one file.");
 
@@ -28,12 +27,13 @@ struct Finished {
     err: String,
 }
 
-/// Parses `tool list` followed by `flags` with a guide whose budget is
+/// Parses `tool list` followed by `flags` with a tool record whose budget is
 /// `budget`, as `Output::new` builds the output.
 fn output_with(budget: usize, flags: &[&str]) -> Output {
-    let guide = Guide::new().output_budget(budget, "the tests print little");
+    let tool =
+        Tool::new().output(crate::tool::Output::new().budget(budget, "the tests print little"));
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    super::built_with(Tool::command(), &guide, &args)
+    super::built_with(Cli::command(), &tool, &args)
 }
 
 /// Finishes `bytes` as `document` with the flags and budget in `output`.
@@ -269,7 +269,7 @@ fn the_dry_run_line_of_bytes_goes_to_standard_error_so_the_bytes_stay_unchanged(
         write.view,
         write.dry_run,
         Write::command(),
-        &Guide::new(),
+        &Tool::new(),
         words,
     );
     let output = output.unwrap();

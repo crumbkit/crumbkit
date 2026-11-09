@@ -181,7 +181,7 @@ pub(crate) fn report(rules: &str, problems: &[String]) {
 }
 
 /// The rule that `crumbkit::is_dashed` checks, as a problem states it. The
-/// grammar check applies the rule to resources and verbs, and the guide
+/// grammar check applies the rule to resources and verbs, and the tool record
 /// check to topic names.
 ///
 /// The rule reads only the name's form. It cannot tell a plural noun from a

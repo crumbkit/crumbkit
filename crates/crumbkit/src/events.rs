@@ -226,8 +226,8 @@ impl<'a> RefusalEvent<'a> {
         self.error
     }
 
-    /// Returns the exit code that `parse` returns, 2 unless the tool's
-    /// guide lists another for the usage code.
+    /// Returns the exit code that `parse` returns, 2 unless the
+    /// tool record lists another for the usage code.
     #[must_use]
     pub fn exit(&self) -> u8 {
         self.exit
@@ -428,7 +428,7 @@ pub fn tolerated(code: &'static Code) {
 /// }
 /// ```
 ///
-/// crumbkit gives 0, 1 and 2 their meanings unless the tool's guide moves a
+/// crumbkit gives 0, 1 and 2 their meanings unless the tool record moves a
 /// failure to another code (ADR-0002), and each observer receives the number
 /// as given. The usage log writes the run's line at once, so a tool that
 /// then exits through its own path, such as `std::process::exit` on another

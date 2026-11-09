@@ -1,5 +1,5 @@
 {
-  "schema": "crumbkit/opt-outs/v1",
+  "schema": "crumbkit/opt-outs/v2",
   "data": [
     {
       "rule": "examples/run",

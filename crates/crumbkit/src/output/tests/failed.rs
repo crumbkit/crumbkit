@@ -11,8 +11,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Finished, PLANETS};
-use crate::help::{Guide, Leaf};
-use crate::{Code, Document, Failure, Prose, Recovery, Row, Rows, Sink, ViewFlags};
+use crate::help::{Help, Leaf};
+use crate::{Code, Document, Failure, Prose, Recovery, Row, Rows, Sink, Tool, ViewFlags};
 use crate::{finish_to, parse_to};
 
 const NO_CONFIG: Code = Code::new("solar", "config", "not_found");
@@ -60,7 +60,7 @@ impl Failure for NoConfig {
 /// A tool with a `list` command and a `show` command.
 #[derive(Parser)]
 #[command(name = "tool")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -73,23 +73,23 @@ enum Command {
     Show,
 }
 
-/// A guide whose `list` leaf declares `PLANETS`, whose rows have a long
+/// A tool record whose `list` leaf declares `PLANETS`, whose rows have a long
 /// column, and whose `show` leaf declares no document.
-const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["list"]).document(PLANETS)]);
+const TOOL: Tool = Tool::new().help(Help::new().leaves(&[Leaf::new(&["list"]).document(PLANETS)]));
 
-/// Parses `args` with `GUIDE`, and finishes the handler's `NoConfig` as
+/// Parses `args` with `TOOL`, and finishes the handler's `NoConfig` as
 /// the tool's early failure, in the `EARLY` document.
 fn fail_early(args: &[&str]) -> Finished {
     fail_in(args, EARLY)
 }
 
-/// Parses `args` with `GUIDE`, and finishes the handler's `NoConfig` as
+/// Parses `args` with `TOOL`, and finishes the handler's `NoConfig` as
 /// the tool's early failure, in `document`.
 fn fail_in<T: Rows>(args: &[&str], document: Document<T>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let parsed = parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, args);
+    let parsed = parse_to::<Cli, _, _, _, _>(&mut sink, Cli::command(), &TOOL, args);
     let code = match parsed {
         Ok((_, output)) => {
             let result: Result<T, NoConfig> = Err(NoConfig);
@@ -151,15 +151,16 @@ fn a_failed_run_on_a_leaf_without_a_document_prints_its_own_failure_for_long() {
 
 #[test]
 fn a_view_flag_that_the_leaf_s_document_cannot_use_is_still_refused_before_the_handler_runs() {
-    const PROSE_GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["list"]).document(EARLY)]);
+    const PROSE_TOOL: Tool =
+        Tool::new().help(Help::new().leaves(&[Leaf::new(&["list"]).document(EARLY)]));
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
 
-    let parsed = parse_to::<Tool, _, _, _, _>(
+    let parsed = parse_to::<Cli, _, _, _, _>(
         &mut sink,
-        Tool::command(),
-        &PROSE_GUIDE,
+        Cli::command(),
+        &PROSE_TOOL,
         ["tool", "list", "--long"],
     );
 

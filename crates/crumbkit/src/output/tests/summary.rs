@@ -7,9 +7,9 @@ use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{Planet, Tool, built_with, finish_output, finish_with, mercury, saturn};
-use crate::help::Guide;
-use crate::{Call, Document, Listing};
+use super::{Cli, Planet, built_with, finish_output, finish_with, mercury, saturn};
+use crate::tool::Output;
+use crate::{Call, Document, Listing, Tool};
 
 /// The summary of a listing of planets.
 #[derive(Serialize, JsonSchema)]
@@ -145,8 +145,8 @@ fn a_summary_that_writes_only_whitespace_still_prints_its_line() {
 #[test]
 fn a_summary_that_writes_no_text_spends_none_of_the_output_budget() {
     let table = "NAME     MOONS\nMercury  0\nSaturn   274\n";
-    let guide = Guide::new().output_budget(table.len(), "the tests print little");
-    let output = built_with(Tool::command(), &guide, &["tool", "list"]);
+    let tool = Tool::new().output(Output::new().budget(table.len(), "the tests print little"));
+    let output = built_with(Cli::command(), &tool, &["tool", "list"]);
 
     let finished = finish_output(output, QUIET, quiet(""));
 
@@ -316,16 +316,16 @@ fn the_json_of_a_summary_that_writes_several_lines_is_unchanged() {
 #[test]
 fn the_output_budget_counts_every_summary_line() {
     let whole = "2 planets.\n1 ringed.\nNAME     MOONS\nMercury  0\nSaturn   274\n";
-    let fits = Guide::new().output_budget(whole.len(), "the tests print little");
-    let short = Guide::new().output_budget(whole.len() - 1, "the tests print little");
+    let fits = Tool::new().output(Output::new().budget(whole.len(), "the tests print little"));
+    let short = Tool::new().output(Output::new().budget(whole.len() - 1, "the tests print little"));
 
     let fitted = finish_output(
-        built_with(Tool::command(), &fits, &["tool", "list"]),
+        built_with(Cli::command(), &fits, &["tool", "list"]),
         QUIET,
         quiet("2 planets.\n1 ringed."),
     );
     let cut = finish_output(
-        built_with(Tool::command(), &short, &["tool", "list"]),
+        built_with(Cli::command(), &short, &["tool", "list"]),
         QUIET,
         quiet("2 planets.\n1 ringed."),
     );

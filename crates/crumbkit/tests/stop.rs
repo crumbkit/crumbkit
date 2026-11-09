@@ -5,18 +5,18 @@
 use std::io::{self, Write};
 
 use clap::{CommandFactory as _, Parser, Subcommand};
-use crumbkit::help::{Exit, Guide};
-use crumbkit::{Sink, ViewFlags};
+use crumbkit::tool::{Exit, Failures};
+use crumbkit::{Sink, Tool, ViewFlags};
 
-/// A guide that lists exit 64 for a refused command line.
-const GUIDE: Guide = Guide::new().exits(&[
-    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE])
-]);
+/// A tool record that lists exit 64 for a refused command line.
+const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
+    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
+]));
 
 /// A tool with a version and a `list` command.
 #[derive(Parser)]
 #[command(name = "tool", version = "1.2.3")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -42,28 +42,28 @@ impl Write for Full {
     }
 }
 
-/// Parses `args` with `GUIDE`, writing to `out` and to a standard error in
+/// Parses `args` with `TOOL`, writing to `out` and to a standard error in
 /// memory, and returns the number of the `Stop` that parsing ended with, or
 /// `None` when the arguments parsed.
 fn number_to(out: impl Write, args: &[&str]) -> Option<u8> {
     let mut err = Vec::new();
-    let parsed = crumbkit::parse_to::<Tool, _, _, _, _>(
+    let parsed = crumbkit::parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(out, &mut err),
-        Tool::command(),
-        &GUIDE,
+        Cli::command(),
+        &TOOL,
         args,
     );
     parsed.err().map(|stop| stop.exit())
 }
 
-/// Parses `args` with `GUIDE` into memory and returns the number of the
+/// Parses `args` with `TOOL` into memory and returns the number of the
 /// `Stop` that parsing ended with, or `None` when the arguments parsed.
 fn number(args: &[&str]) -> Option<u8> {
     number_to(Vec::new(), args)
 }
 
 #[test]
-fn a_stops_number_is_the_exit_code_the_guide_lists_for_a_refused_command_line() {
+fn a_stops_number_is_the_exit_code_the_tool_lists_for_a_refused_command_line() {
     assert_eq!(number(&["tool", "lst"]), Some(64));
 }
 

@@ -130,7 +130,7 @@ fn lists_show_refuses_fields_without_json_and_admits_its_twin_with_json() {
     let examples = Examples::new(env!("CARGO_BIN_EXE_reading"), "").env(&[("READING_DIR", LISTS)]);
     let refused = check_twin(
         &reading::command(&reading::lists_in(Path::new(LISTS))),
-        &reading::GUIDE,
+        &reading::TOOL,
         &examples,
         &Failing::new(
             &codes::CLI_USAGE,

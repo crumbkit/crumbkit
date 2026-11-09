@@ -4,9 +4,8 @@
 use std::fmt::Write as _;
 
 use clap::Command;
-use crumbkit::Spelling;
 use crumbkit::form::{ReadFailure, RecoveryStep};
-use crumbkit::help::Guide;
+use crumbkit::{Spelling, Tool};
 
 use super::words::split;
 use super::{Failing, Recoveries};
@@ -14,7 +13,7 @@ use crate::allow::{self, Allowances, Rule};
 use crate::examples::is_crumbkit_warning;
 use crate::exits;
 use crate::failures::{self, Reader};
-use crate::guide::command_line;
+use crate::help::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note, with_json};
 use fill::{fill_word, path_below, value};
 
@@ -56,9 +55,9 @@ pub(super) struct Walk<'a> {
     pub(super) skipped: usize,
     /// The tool's failure reader, which reads each failed run first.
     pub(super) reader: Option<Reader<'a>>,
-    /// The tool's guide, whose exits and renames give the exit code of a
+    /// The tool record, whose exits and renames give the exit code of a
     /// failed run.
-    pub(super) guide: &'a Guide,
+    pub(super) tool: &'a Tool,
     /// The problem that stopped the walk: a failed run whose failure the
     /// tool's reader does not read, so no later run can be
     /// followed.
@@ -507,7 +506,7 @@ impl Walk<'_> {
     fn run(&mut self, chain: &mut Chain<'_>, label: &str, words: &[String]) -> Option<Outcome> {
         let args = with_json(words);
         let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        let path = crumbkit::command_path(self.command, self.guide, &refs);
+        let path = crumbkit::command_path(self.command, self.tool, &refs);
         let result = runs::run(
             self.recoveries.examples.binary(),
             self.recoveries.examples.variables(),
@@ -537,7 +536,7 @@ impl Walk<'_> {
             }
         };
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let tool = self.guide.tool_name(self.command);
+        let tool = self.tool.tool_name(self.command);
         let mut warned = false;
         for warning in stderr
             .lines()
@@ -574,7 +573,7 @@ impl Walk<'_> {
         let first = failures.first().map(ReadFailure::code);
         if let Some(problem) = first.and_then(|first| {
             let spelling = self.spelling;
-            exits::exit_problem(self.guide, spelling, &path, first, output.status)
+            exits::exit_problem(self.tool, spelling, &path, first, output.status)
         }) {
             self.problems
                 .push(format!("{}: {label} {problem}", chain.start));

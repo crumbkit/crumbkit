@@ -3,20 +3,21 @@
 
 use super::{args, output, paths};
 use crate::commands::{COMMANDS_LIST, list};
-use crate::help::{Exit, Guide};
-use crate::{Sink, finish_to};
+use crate::help::Help;
+use crate::tool::{Exit, Failures};
+use crate::{Sink, Tool, finish_to};
 
-/// A guide with a code that every command returns and a code that only
+/// A tool record with a code that every command returns and a code that only
 /// `books list` returns.
-const GUIDE: Guide = Guide::new().exits(&[
+const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
     Exit::new(3, "The catalogue was locked by another run."),
     Exit::new(124, "The download ran out of time.").commands(&[&["books", "list"]]),
-]);
+]));
 
-/// Returns the exit codes of each row that `words` list with `guide`, in
+/// Returns the exit codes of each row that `words` list with `tool`, in
 /// row order.
-fn codes(guide: &Guide, words: &[&str]) -> Vec<(String, Vec<u64>)> {
-    let rows = serde_json::to_value(list(&mut output(), guide, &args(words)).unwrap()).unwrap();
+fn codes(tool: &Tool, words: &[&str]) -> Vec<(String, Vec<u64>)> {
+    let rows = serde_json::to_value(list(&mut output(), tool, &args(words)).unwrap()).unwrap();
     paths(&rows)
         .into_iter()
         .zip(rows.as_array().unwrap())
@@ -33,10 +34,10 @@ fn codes(guide: &Guide, words: &[&str]) -> Vec<(String, Vec<u64>)> {
 }
 
 /// Returns what `finish_to` prints on the error writer for `commands list`
-/// with `words` and `guide`, in text.
-fn notes(guide: &Guide, words: &[&str]) -> String {
+/// with `words` and `tool`, in text.
+fn notes(tool: &Tool, words: &[&str]) -> String {
     let mut output = output();
-    let result = list(&mut output, guide, &args(words));
+    let result = list(&mut output, tool, &args(words));
     let mut out = Vec::new();
     let mut err = Vec::new();
     let _ = finish_to(
@@ -51,7 +52,7 @@ fn notes(guide: &Guide, words: &[&str]) -> String {
 #[test]
 fn each_row_lists_the_tool_s_exit_codes_that_its_command_can_return() {
     assert_eq!(
-        codes(&GUIDE, &["books"]),
+        codes(&TOOL, &["books"]),
         [
             ("shelf books".to_owned(), vec![3]),
             ("shelf books list".to_owned(), vec![3, 124]),
@@ -63,16 +64,15 @@ fn each_row_lists_the_tool_s_exit_codes_that_its_command_can_return() {
 #[test]
 fn a_row_of_a_tool_without_exit_codes_has_an_empty_list() {
     assert_eq!(
-        codes(&Guide::new(), &["books", "list"]),
+        codes(&Tool::new(), &["books", "list"]),
         [("shelf books list".to_owned(), vec![])]
     );
 }
 
 #[test]
 fn an_exit_code_holds_its_number_and_its_meaning() {
-    let rows =
-        serde_json::to_value(list(&mut output(), &GUIDE, &args(&["books", "list"])).unwrap())
-            .unwrap();
+    let rows = serde_json::to_value(list(&mut output(), &TOOL, &args(&["books", "list"])).unwrap())
+        .unwrap();
 
     assert_eq!(
         rows[0]["exits"][1],
@@ -82,11 +82,11 @@ fn an_exit_code_holds_its_number_and_its_meaning() {
 
 #[test]
 fn a_range_of_exit_codes_holds_its_first_code_and_its_last_code() {
-    const RANGE: Guide = Guide::new().exits(&[Exit::range(
+    const RANGE: Tool = Tool::new().failures(Failures::new().exits(&[Exit::range(
         3,
         125,
         "The test suite ended with its own code.",
-    )]);
+    )]));
 
     let rows =
         serde_json::to_value(list(&mut output(), &RANGE, &args(&["books", "list"])).unwrap())
@@ -100,9 +100,8 @@ fn a_range_of_exit_codes_holds_its_first_code_and_its_last_code() {
 
 #[test]
 fn the_row_schema_describes_each_field_of_an_exit_code_and_requires_it() {
-    let rows =
-        serde_json::to_value(list(&mut output(), &GUIDE, &args(&["books", "list"])).unwrap())
-            .unwrap();
+    let rows = serde_json::to_value(list(&mut output(), &TOOL, &args(&["books", "list"])).unwrap())
+        .unwrap();
     let schema = schemars::schema_for!(crate::commands::CommandRow);
 
     super::assert_fields_match(
@@ -117,7 +116,7 @@ fn the_row_schema_describes_each_field_of_an_exit_code_and_requires_it() {
 
 #[test]
 fn the_text_tables_last_note_on_standard_error_names_the_exit_codes_and_the_topic() {
-    let printed = notes(&GUIDE, &["books", "list"]);
+    let printed = notes(&TOOL, &["books", "list"]);
 
     assert!(
         printed.ends_with(
@@ -128,10 +127,10 @@ fn the_text_tables_last_note_on_standard_error_names_the_exit_codes_and_the_topi
 }
 
 #[test]
-fn the_note_names_the_topic_with_the_command_line_of_the_guide_s_root() {
-    const ROOTED: Guide = Guide::new()
-        .root(&["books"])
-        .exits(&[Exit::new(3, "The catalogue was locked by another run.")]);
+fn the_note_names_the_topic_with_the_command_line_of_the_tool_s_root() {
+    const ROOTED: Tool = Tool::new().help(Help::new().root(&["books"])).failures(
+        Failures::new().exits(&[Exit::new(3, "The catalogue was locked by another run.")]),
+    );
 
     let printed = notes(&ROOTED, &["books", "list"]);
 

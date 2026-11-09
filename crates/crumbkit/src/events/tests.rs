@@ -11,9 +11,9 @@ use serde::Serialize;
 
 use super::testing::{DOTS, give_child_env, watch};
 use super::{Observer, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in};
-use crate::help::{Exit, Guide};
+use crate::tool::{Exit, Failures};
 use crate::{
-    Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Stream, finish_to,
+    Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Stream, Tool, finish_to,
     parse_to, stream_to,
 };
 
@@ -197,21 +197,20 @@ fn the_trace_ids_come_from_the_first_installed_observer_that_gives_them() {
 
 const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
 
-/// A guide that maps `TIMED_OUT` to 124 and refused command lines to 64
+/// A tool record that maps `TIMED_OUT` to 124 and refused command lines to 64
 /// (ADR-0037), with the smallest output budget.
-const GUIDE: Guide = Guide::new()
-    .spelling(DOTS)
-    .output_budget(1024, "the tests print little")
-    .exits(&[
+const TOOL: Tool = Tool::new()
+    .failures(Failures::new().spelling(DOTS).exits(&[
         Exit::new(124, "The catalogue ran out of time.").failures(&[&TIMED_OUT]),
         Exit::new(64, "The command line was refused.").failures(&[&crate::codes::CLI_USAGE]),
-    ]);
+    ]))
+    .output(crate::tool::Output::new().budget(1024, "the tests print little"));
 
 /// A tool with `books list`, which takes `--all`, and `books show`, which
 /// takes ids.
 #[derive(Parser)]
 #[command(name = "shelf", version = "1.2.3")]
-struct Tool {
+struct Cli {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
@@ -242,15 +241,15 @@ enum Books {
     },
 }
 
-/// Parses `args` into memory with [`GUIDE`], which sets the spelling
+/// Parses `args` into memory with [`TOOL`], which sets the spelling
 /// [`DOTS`], and
 /// returns the output flags with the tool's command, or the exit code of a
 /// run that parsing ended.
 fn parse(args: &[&str]) -> Result<Output, ExitCode> {
-    let (_, output) = parse_to::<Tool, _, _, _, _>(
+    let (_, output) = parse_to::<Cli, _, _, _, _>(
         &mut Sink::new(Vec::new(), Vec::new()),
-        Tool::command(),
-        &GUIDE,
+        Cli::command(),
+        &TOOL,
         args,
     )?;
     Ok(output)
@@ -303,7 +302,7 @@ fn parse_reports_the_version_as_an_exit_with_code_0() {
 }
 
 #[test]
-fn a_refusal_reports_the_guide_s_exit_code_and_the_visible_flag_that_clap_suggested() {
+fn a_refusal_reports_the_tool_s_exit_code_and_the_visible_flag_that_clap_suggested() {
     let seen = watch(|| {
         let _ = parse(&["shelf", "books", "list", "--al"]);
     });
@@ -456,7 +455,7 @@ fn finish_reports_a_capped_listing_that_shows_every_row_it_read_as_truncated() {
 }
 
 #[test]
-fn finish_reports_the_failure_s_code_in_the_tool_s_spelling_and_the_guide_s_exit_code() {
+fn finish_reports_the_failure_s_code_in_the_tool_s_spelling_and_the_tool_s_exit_code() {
     let (seen, _) = finished(&["shelf", "books", "list"], BOOKS, Err(TimedOut));
 
     assert_eq!(
