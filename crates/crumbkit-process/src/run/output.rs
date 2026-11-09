@@ -62,7 +62,7 @@ pub enum Capture {
 #[non_exhaustive]
 pub enum OverLimit {
     /// The run stops the child with its escalation and ends as
-    /// [`Stopped(OverLimit)`](crate::Stop::OverLimit).
+    /// [`Stopped(OverLimit)`](crate::StopReason::OverLimit).
     #[default]
     Stop,
     /// The run reads the rest of the stream and drops it, so the child

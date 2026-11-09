@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use super::super::{Cancel, Capture, Limits, Outcome, OverLimit, Stop, run};
+use super::super::{Cancel, Capture, Limits, Outcome, OverLimit, StopReason, run};
 use crate::testing::{cmd, gone, pid_file, pid_in, remove, started_grandchild};
 use crate::{Scope, Status};
 
@@ -19,7 +19,7 @@ fn text(bytes: &[u8]) -> String {
 fn a_child_gives_its_exit_code_and_its_standard_output() {
     let finished = run(cmd("echo out& exit 3"), &Limits::new().stdout(WHOLE)).unwrap();
 
-    assert_eq!(finished.outcome(), Outcome::Code(3));
+    assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(3)));
     assert_eq!(finished.status(), Some(Status::Code(3)));
     assert_eq!(finished.stdout().bytes(), b"out\r\n");
 }
@@ -42,7 +42,7 @@ fn a_cancelled_child_whose_job_was_ended_gives_exit_code_1() {
     .unwrap();
 
     canceller.join().unwrap();
-    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(StopReason::Cancelled));
     assert_eq!(finished.status(), Some(Status::Code(1)));
 }
 
@@ -63,7 +63,7 @@ fn ending_the_job_when_the_child_exits_ends_a_grandchild_that_holds_standard_out
     let took = started.elapsed();
     remove(&file);
     let out = text(finished.stdout().bytes());
-    assert_eq!(finished.outcome(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(0)));
     assert!(out.contains("started"), "{out:?}");
     assert!(!out.contains("woke"), "{out:?}");
     let grandchild = pid_in(finished.stdout().bytes());
@@ -90,7 +90,7 @@ fn in_the_child_scope_the_run_waits_for_a_grandchild_that_holds_standard_output(
     let took = started.elapsed();
     remove(&file);
     let out = text(finished.stdout().bytes());
-    assert_eq!(finished.outcome(), Outcome::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(0)));
     assert!(out.contains("started"), "{out:?}");
     assert!(
         out.contains("woke"),

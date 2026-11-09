@@ -102,9 +102,9 @@ Why: ADR-0171, ADR-0176.
 
 A run ends when the child exits, when its deadline passes, when its
 `Cancel` is cancelled, or when a `Whole` or `Lines` stream with
-`OverLimit::Stop` passes its limit. `Outcome` tells these apart: `Code` and
-`Signal` for the child's own end, `TimedOut`, and `Stopped` with
-`Cancelled` or `OverLimit`.
+`OverLimit::Stop` passes its limit. `Outcome` tells these apart: `Ended` with
+`Status::Code` or `Status::Signal` for the child's own end, `TimedOut`, and
+`Stopped` with `StopReason::Cancelled` or `StopReason::OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
 
 `ChildFinished::status` gives the child's own status as the run reaped it,
@@ -140,7 +140,7 @@ holds the run until it exits. On Windows a reader blocks until its pipe
 closes, so a process outside the job that holds a pipe, as a grandchild of
 a child in `Scope::Child` can, holds the run until it exits.
 
-Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178.
+Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183.
 
 ## Reaping
 

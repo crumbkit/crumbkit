@@ -17,7 +17,6 @@ use serde::Serialize;
 use serde_json::Value;
 
 pub use self::menu::Menu;
-pub use self::no_input::NoInput;
 use crate::output::table::{cell, escape_controls};
 use crate::shown::TextCells;
 use crate::{Error, Row};

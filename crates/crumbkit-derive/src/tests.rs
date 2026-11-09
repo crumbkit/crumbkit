@@ -59,11 +59,11 @@ fn the_expansion_of_the_sample_enum_matches_the_documented_expansion() {
             fn recovery(&self) -> ::crumbkit::Recovery {
                 match self {
                     Self::NotFound { ids } => Recovery::Run(Call::new(&["books", "list"])),
-                    Self::RemovedFile { name, error } => ::crumbkit::Recovery::Hint(
+                    Self::RemovedFile { name, error } => ::crumbkit::Recovery::hint(
                         ::std::format!("make {name} a readable file")
                     ),
-                    Self::NoStateDirectory => ::crumbkit::Recovery::Hint(
-                        ::std::string::String::from("set HOME to a directory")
+                    Self::NoStateDirectory => ::crumbkit::Recovery::hint(
+                        "set HOME to a directory"
                     ),
                     Self::Book(f0) => ::crumbkit::Failure::recovery(f0),
                 }
@@ -247,7 +247,7 @@ fn a_variant_with_both_a_recovery_and_a_hint_is_refused() {
     });
     assert_eq!(
         message,
-        "the variant `NotFound` gives both `recovery` and `hint`, and it may give only one of them"
+        "the variant `NotFound` gives more than one of `recovery`, `hint` and `no_next_step`, and it may give only one of them"
     );
 }
 
@@ -261,7 +261,7 @@ fn a_variant_with_no_recovery_is_refused() {
     });
     assert_eq!(
         message,
-        "the variant `NotFound` needs `recovery = ...` or `hint = \"...\"` in #[failure(...)]"
+        "the variant `NotFound` needs `recovery = ...`, `hint = \"...\"` or `no_next_step = \"...\"` in #[failure(...)]"
     );
 }
 
@@ -387,7 +387,7 @@ fn an_unknown_key_is_refused_with_the_list_of_accepted_keys() {
     });
     assert_eq!(
         message,
-        "#[failure(...)] has no key `colour`. Its keys are `code`, `recovery`, `hint`, `alternative`, `field`, `url`, `diagnostic` and `forward`, and `crate` on the type"
+        "#[failure(...)] has no key `colour`. Its keys are `code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `diagnostic` and `forward`, and `crate` on the type"
     );
 }
 

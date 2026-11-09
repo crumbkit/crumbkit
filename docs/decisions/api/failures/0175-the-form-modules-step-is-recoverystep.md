@@ -1,7 +1,7 @@
 # ADR-0175. The form module's step is RecoveryStep
 
 - Date: 2026-11-08
-- Status: accepted
+- Status: amended by ADR-0183
 - Supersedes: ADR-0088, which it amends
 
 ## Context

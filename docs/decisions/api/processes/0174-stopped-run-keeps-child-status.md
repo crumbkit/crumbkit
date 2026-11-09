@@ -1,7 +1,7 @@
 # ADR-0174. A run that stopped its child keeps the child's status
 
 - Date: 2026-11-06
-- Status: amended by ADR-0178
+- Status: amended by ADR-0178 and ADR-0183
 - Supersedes: ADR-0172, which it amends
 - Missed: ADR-0172 did not decide whether a run that stopped its child reports the status that the child ended with, which a caller needs to report a stopped child's exit.
 

@@ -15,10 +15,12 @@ impl Output {
     /// it, in the tool record's spelling, with a `Run` recovery rendered
     /// against the command that the output holds.
     ///
-    /// It returns no exit code. The caller returns
-    /// [`Output::failure_exit`] of the failure's code, or another code that
-    /// the command passes on, and reports it with
-    /// [`events::ended`](crate::events::ended).
+    /// It returns no exit code, for a command that passes on another code
+    /// or counts the bytes it printed. That caller reports its code and
+    /// count with [`events::ended`](crate::events::ended), and
+    /// [`Output::failure_exit`] gives the failure's own exit code. A command
+    /// that ends with this failure's own exit code and has no count calls
+    /// [`Output::fail`].
     pub fn print_failure<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
@@ -111,6 +113,23 @@ impl Output {
             &mut self.command,
         );
         crate::events::ended(exit, None)
+    }
+
+    /// Prints `failure` as [`Output::print_failure`] does, reports the
+    /// failure's exit code to each observer with
+    /// [`events::ended`](crate::events::ended), and returns it. A command
+    /// that ends without [`finish`](crate::finish) returns this from `main`,
+    /// so the run's end is reported however it ended. It reports the bytes
+    /// of the result as `None`, unknown. A command that counted them calls
+    /// [`Output::print_failure`] and [`events::ended`](crate::events::ended).
+    #[must_use]
+    pub fn fail<O: Write, W: Write>(
+        &mut self,
+        sink: &mut Sink<O, W>,
+        failure: &dyn Failure,
+    ) -> ExitCode {
+        self.print_failure(sink, failure);
+        crate::events::ended(self.failure_exit(failure.code()), None)
     }
 
     /// Returns the exit code of a run whose first failure has `code`, as

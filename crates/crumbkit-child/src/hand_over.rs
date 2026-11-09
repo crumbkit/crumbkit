@@ -40,7 +40,7 @@ use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::process::{Command, ExitCode, ExitStatus, Stdio};
 
-use crumbkit::{Failure as _, Output, Sink};
+use crumbkit::{Output, Sink};
 
 use crate::error::ChildError;
 use crate::signals;
@@ -98,7 +98,7 @@ fn hand_over_to<O: Write, W: Write>(
         let refused = ChildError::JsonRefused {
             program: program(&child),
         };
-        return fail(sink, &mut output, &refused);
+        return output.fail(sink, &refused);
     }
     if let Some(code) = output.refuse_fields_for_text(sink, TEXT_ONLY) {
         return code;
@@ -128,21 +128,8 @@ fn respond_text<O: Write, W: Write>(
             }
             crumbkit::events::ended(exit_number(status), None)
         }
-        Err(error) => fail(sink, output, &ChildError::start(program, error)),
+        Err(error) => output.fail(sink, &ChildError::start(program, error)),
     }
-}
-
-/// Prints `failure` as `finish` prints a failure, reports its exit code to
-/// the observer, and returns it. The exit code is the one that the tool record
-/// gives the failure's code: the exit that lists it, 2 for a refused
-/// command line, and otherwise 1 (ADR-0042).
-fn fail<O: Write, W: Write>(
-    sink: &mut Sink<O, W>,
-    output: &mut Output,
-    failure: &ChildError,
-) -> ExitCode {
-    output.print_failure(sink, failure);
-    crumbkit::events::ended(output.failure_exit(failure.code()), None)
 }
 
 /// Returns the name of the program that `child` runs, for messages.

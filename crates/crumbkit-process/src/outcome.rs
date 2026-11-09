@@ -10,23 +10,20 @@ mod tests;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Outcome {
-    /// The child exited with this code. On Windows a child in a job that
-    /// the crate ended exits with 1.
-    Code(i32),
-    /// A signal, by its number, ended the child, and the run did not send
-    /// it. Only Unix has this exit.
-    Signal(i32),
+    /// The child ended on its own with this status, and the run did not
+    /// stop it.
+    Ended(Status),
     /// The run's deadline passed before the child exited, and the run
     /// stopped the child.
     TimedOut,
     /// The run stopped the child for the reason given.
-    Stopped(Stop),
+    Stopped(StopReason),
 }
 
 /// Why a run stopped its child before its deadline.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum Stop {
+pub enum StopReason {
     /// The run's [`Cancel`](crate::Cancel) was cancelled.
     Cancelled,
     /// An output stream whose [`OverLimit`](crate::OverLimit) is `Stop`
@@ -58,15 +55,6 @@ impl Status {
         match self {
             Self::Code(code) => code,
             Self::Signal(signal) => 128 + signal,
-        }
-    }
-
-    /// Returns the exit of a run whose child ended on its own with this
-    /// status.
-    pub(crate) const fn outcome(self) -> Outcome {
-        match self {
-            Self::Code(code) => Outcome::Code(code),
-            Self::Signal(signal) => Outcome::Signal(signal),
         }
     }
 }

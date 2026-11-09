@@ -1,7 +1,7 @@
 # ADR-0178. The process crate's types have names of their own
 
 - Date: 2026-11-08
-- Status: accepted
+- Status: amended by ADR-0183
 - Supersedes: ADR-0172 and ADR-0174, which it amends
 - Missed: ADR-0172 and ADR-0174 used `Finished` and `Exit` without considering that crumbkit's `events::Finished` and `help::Exit` mean other things to a tool that imports both crates.
 

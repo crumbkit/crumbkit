@@ -3,8 +3,8 @@
 //! Each test writes a `/bin/sh` script that stands in for a tool, as the
 //! recovery check's tests do.
 
+use crate::ReadFailure;
 use clap::{Arg, Command};
-use crumbkit::form::ReadFailure;
 use crumbkit::{Code, Tool};
 
 use super::check_twin;

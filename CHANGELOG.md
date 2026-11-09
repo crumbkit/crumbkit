@@ -8,6 +8,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit: `Output::fail` prints a failure, reports its exit code and returns
+  it, for a command that ends without `finish` ([behaviour/output/shapes]).
+- crumbkit: `Recovery::none` and `Recovery::hint` build a recovery from text,
+  and `#[failure(no_next_step = "...")]` declares a failure with no next step
+  ([behaviour/failures]).
+- crumbkit: `Output::no_input` reports whether the caller passed `--no-input`.
 - crumbkit-process: [`run`] runs a child in a process group or job object
   of its own, reads its output within byte limits and a deadline, stops it
   with an [`Escalation`], and reaps it ([behaviour/processes]).
@@ -35,6 +41,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-process: breaking: `Outcome::Code` and `Outcome::Signal` are
+  `Outcome::Ended(Status)`, and `Stop` is `StopReason`
+  ([behaviour/processes]).
+- crumbkit: breaking: `form::ReadFailure` moved to `crumbkit_test`, and
+  `RecoveryStep` is read from `crumbkit_test` too. The `form` module is gone.
+- crumbkit: breaking: `pick::NoInput` is only `crumbkit::NoInput`.
+- crumbkit: `help::STREAM_LINE`, `BYTES_LINE`, `HEADED_LINE`, `text_line`,
+  `children_line`, `Effects::line` and `Effects::writes_line` left the public
+  documentation. They still compile, for crumbkit-markdown.
+- crumbkit-test: breaking: `crumbkit_test::Tool` is removed; use
+  `crumbkit::Tool`.
 - crumbkit: breaking: `Leaf::get_document` returns `Option<&LeafDocument>`.
   Reading that record replaces `Leaf`'s getters for the printed document, such
   as `is_stream`, `shape`, `problem` and `column_descriptions`
@@ -1515,7 +1532,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`pick::Menu`]: crates/crumbkit/src/pick/menu.rs
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
-[`ReadFailure`]: crates/crumbkit/src/form.rs
+[`ReadFailure`]: crates/crumbkit-test/src/failures.rs
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs

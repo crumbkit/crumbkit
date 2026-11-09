@@ -105,9 +105,7 @@ impl LeafDocument {
     /// reports that the leaf does not offer it, print what `--json` alone
     /// prints and write a note that the flag adds nothing. `--fields` never
     /// adds nothing.
-    ///
-    /// crumbkit-test's `check_help` reads it, so it is public and hidden
-    /// from the documentation.
+    // crumbkit-test's `check_help` reads this.
     #[doc(hidden)]
     #[must_use]
     pub const fn adds_nothing(&self, flag: ViewFlag, json: bool) -> bool {

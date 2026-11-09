@@ -22,6 +22,7 @@ mod tests;
 /// | `code = PATH` | variant or struct | The code that `code()` returns, as a path to a `Code` constant. Every variant that does not forward needs it. |
 /// | `recovery = EXPR` | variant or struct | The `Recovery` that `recovery()` returns. |
 /// | `hint = "..."` | variant or struct | A `Recovery::Hint` with this text, in place of `recovery`. Text that holds `{` goes through `format!`, so `{name}` reads the field `name` or any constant in scope. |
+/// | `no_next_step = "..."` | variant or struct | A `Recovery::None` with this reason, in place of `recovery`. Text that holds `{` goes through `format!`, as `hint` does. |
 /// | `alternative = EXPR` | variant or struct | One `Recovery` that `alternatives()` returns. The key can repeat, and the list keeps the written order. |
 /// | `field(NAME = EXPR, ...)` | variant or struct | One `Field` for each name, in the written order. Each name must be one or more lowercase ASCII letters, digits and underscores. |
 /// | `url = EXPR` | variant or struct | The `&str` that `url()` returns. |
@@ -31,9 +32,10 @@ mod tests;
 /// | `crate = PATH` | type | The path of the crate that holds `Failure`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each variant that does not forward needs `code` and exactly one of
-/// `recovery` and `hint`. A forwarding variant takes no other key except
-/// `diagnostic`, which forwards `diagnostic()` too. A key given twice, an
-/// unknown key and a missing key are compile errors that name the variant.
+/// `recovery`, `hint` and `no_next_step`. A forwarding variant takes no other
+/// key except `diagnostic`, which forwards `diagnostic()` too. A key given
+/// twice, an unknown key and a missing key are compile errors that name the
+/// variant.
 ///
 /// The expressions in `recovery`, `alternative`, `field` and `url` read the
 /// variant's fields by name, and the fields of a tuple variant as `f0`, `f1`
@@ -85,11 +87,11 @@ mod tests;
 ///     fn recovery(&self) -> ::crumbkit::Recovery {
 ///         match self {
 ///             Self::NotFound { ids } => Recovery::Run(Call::new(&["books", "list"])),
-///             Self::RemovedFile { name, error } => ::crumbkit::Recovery::Hint(
+///             Self::RemovedFile { name, error } => ::crumbkit::Recovery::hint(
 ///                 ::std::format!("make {name} a readable file")
 ///             ),
-///             Self::NoStateDirectory => ::crumbkit::Recovery::Hint(
-///                 ::std::string::String::from("set HOME to a directory")
+///             Self::NoStateDirectory => ::crumbkit::Recovery::hint(
+///                 "set HOME to a directory"
 ///             ),
 ///             Self::Book(f0) => ::crumbkit::Failure::recovery(f0),
 ///         }

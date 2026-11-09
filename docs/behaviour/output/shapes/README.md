@@ -267,11 +267,10 @@ failure document. The leaf's `-h` and `--help` print the line `Output: no
 result on standard output, and --json prints a failure as JSON.`
 
 The command never succeeds. It prints its failure, such as the interrupt,
-with `Output::print_failure`, takes its exit code from
-`Output::failure_exit` and returns the code through `events::ended`. The
-leaf has no document, so it publishes no schema and `commands list` gives
-it `form: null` and `prints_no_result: true`. crumbkit-test's
-`check_help` accepts the leaf without an opt-out from `help/document`,
+and returns its exit code with `Output::fail`, which reports the end of the
+run through `events::ended`. The leaf has no document, so it publishes no
+schema and `commands list` gives it `form: null` and
+`prints_no_result: true`. crumbkit-test's `check_help` accepts the leaf without an opt-out from `help/document`,
 and fails a leaf that declares both a document and
 `Leaf::prints_no_result` ([help checks](../../help/checks.md)).
 

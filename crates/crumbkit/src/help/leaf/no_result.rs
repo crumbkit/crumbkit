@@ -27,11 +27,9 @@ impl Leaf {
     /// also declares a document.
     ///
     /// The command never succeeds. It ends with a failure, such as the
-    /// interrupt that stopped the server, which it prints with
-    /// [`Output::print_failure`](crate::Output::print_failure). It takes the
-    /// exit code from [`Output::failure_exit`](crate::Output::failure_exit)
-    /// and returns it through [`events::ended`](crate::events::ended), so
-    /// each observer receives it:
+    /// interrupt that stopped the server, which it prints and returns with
+    /// [`Output::fail`](crate::Output::fail), so each observer receives the
+    /// exit code:
     ///
     /// ```no_run
     /// use std::process::ExitCode;
@@ -46,9 +44,7 @@ impl Leaf {
     /// /// Ends a run of `serve` with `failure`, such as the interrupt that
     /// /// stopped the server.
     /// fn end(output: &mut Output, failure: &dyn Failure) -> ExitCode {
-    ///     output.print_failure(&mut Sink::standard(), failure);
-    ///     let exit = output.failure_exit(failure.code());
-    ///     crumbkit::events::ended(exit, Some(0))
+    ///     output.fail(&mut Sink::standard(), failure)
     /// }
     /// ```
     #[must_use]

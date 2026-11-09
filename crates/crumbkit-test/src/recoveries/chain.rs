@@ -3,8 +3,8 @@
 
 use std::fmt::Write as _;
 
+use crate::{ReadFailure, RecoveryStep};
 use clap::Command;
-use crumbkit::form::{ReadFailure, RecoveryStep};
 use crumbkit::{Spelling, Tool};
 
 use super::words::split;

@@ -7,10 +7,11 @@
 
 ## Children
 
-- [ADR-0181. Parse functions read the command from the type](0181-parse-functions-read-the-command-from-the-type.md)
 - [ADR-0160. Names and visibility before the first release](0160-names-and-visibility-before-the-first-release.md)
 - [ADR-0180. Tool and its records replace Guide](0180-tool-record-replaces-guide.md)
+- [ADR-0181. Parse functions read the command from the type](0181-parse-functions-read-the-command-from-the-type.md)
 - [ADR-0182. A leaf's document and a row's child lines are records](0182-leaf-document-and-children-records.md)
+- [ADR-0183. Small corrections to the public API before 0.2.0](0183-small-public-api-corrections.md)
 
 ## Context
 

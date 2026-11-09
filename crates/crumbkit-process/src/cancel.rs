@@ -9,7 +9,7 @@ use crate::notice::Notice;
 /// A run watches a cancel that [`Limits::cancel`](crate::Limits::cancel)
 /// gave it.
 /// [`Cancel::cancel`] stops each watching run with its escalation, and the
-/// run ends as [`Stopped(Cancelled)`](crate::Stop::Cancelled). A run that
+/// run ends as [`Stopped(Cancelled)`](crate::StopReason::Cancelled). A run that
 /// starts with a cancel that is already cancelled starts no child. Clones
 /// share one state, so any clone cancels, and a cancel stays cancelled.
 #[derive(Clone, Debug, Default)]

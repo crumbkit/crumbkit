@@ -165,3 +165,17 @@ fn the_no_advice_recovery_carries_the_shared_reason() {
         }
     );
 }
+
+#[test]
+fn a_recovery_is_built_from_borrowed_or_owned_text() {
+    assert_eq!(
+        Recovery::hint("run it again"),
+        Recovery::Hint("run it again".to_owned())
+    );
+    assert_eq!(
+        Recovery::none(String::from("the daemon owns this socket")),
+        Recovery::None {
+            reason: "the daemon owns this socket".to_owned()
+        }
+    );
+}

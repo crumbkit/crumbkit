@@ -59,7 +59,6 @@ mod expect;
 mod failure;
 mod fetch;
 mod field;
-pub mod form;
 pub mod help;
 mod listing;
 mod output;
@@ -110,7 +109,10 @@ pub use crate::parse::walk::command_path;
 pub use crate::parse::{
     Printed, Refused, Stop, Unparsed, parse, parse_from, parse_to, try_parse_to,
 };
-pub use crate::pick::NoInput;
+pub use crate::pick::no_input::NoInput;
+// crumbkit-test reads a printed failure's steps through this type.
+#[doc(hidden)]
+pub use crate::output::failure::RecoveryStep;
 pub use crate::prose::Prose;
 pub use crate::row::{Children, Headed, NoRow, Row, Rows, Shape};
 pub use crate::shown::Shown;

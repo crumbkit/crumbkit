@@ -149,3 +149,23 @@ error: --fields selects the columns of a table, and it prints prose
 ";
     assert_eq!(refused.err, expected);
 }
+
+#[test]
+fn fail_prints_the_failure_and_returns_the_exit_that_the_tool_gives_its_code() {
+    let mut output = output_of(&[]);
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+
+    let mut code = None;
+    let seen = crate::events::testing::watch(|| {
+        code = Some(output.fail(&mut Sink::new(&mut out, &mut err), &Failed(&TIMED_OUT)));
+    });
+
+    assert_eq!(code, Some(ExitCode::from(124)));
+    assert_eq!(seen, ["failed solar::charts::timed_out", "ended 124 None"]);
+    assert_eq!(out, Vec::<u8>::new());
+    assert!(
+        String::from_utf8(err)
+            .unwrap()
+            .contains("the star chart failed")
+    );
+}

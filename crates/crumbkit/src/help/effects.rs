@@ -316,6 +316,8 @@ impl Effects {
     ///     "Effects: destructive, idempotent, closed-world."
     /// );
     /// ```
+    // crumbkit-markdown prints this line in a reference.
+    #[doc(hidden)]
     #[must_use]
     pub const fn line(self) -> &'static str {
         match (self.change, self.idempotent, self.open_world) {
@@ -358,6 +360,8 @@ impl Effects {
     ///     Some("Writes: applies all items or none.")
     /// );
     /// ```
+    // crumbkit-markdown prints this line in a reference.
+    #[doc(hidden)]
     #[must_use]
     pub fn writes_line(self, expect: bool) -> Option<String> {
         let writes = self.writes()?;
