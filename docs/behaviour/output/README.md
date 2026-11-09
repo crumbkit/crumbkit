@@ -47,7 +47,7 @@ as its escape, such as `\u{202e}`, so a cell cannot reorder or hide the text
 around it. Cell widths count characters, so a wide character misaligns a
 column. A cell shows `null` or a missing field as `-`, and an array or an
 object as compact JSON. A field of a
-[value type](values/README.md), such as `Age` or `Duration`, shows its
+[value type](values/README.md), such as `Age` or `Elapsed`, shows its
 text form, such as `3h`, and every JSON form holds its JSON form.
 
 The table that `finish` prints leaves out a column whose field is `null` or
@@ -78,7 +78,7 @@ Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0
 ## View flags
 
 The view flags are `--fields`, `--long` and `--full`, and like every
-[`Output`](../../../crates/crumbkit/src/output.rs) flag they are global.
+[`Run`](../../../crates/crumbkit/src/output.rs) flag they are global.
 Each flag's help, and that of `--json`, names what prints without it. A
 leaf with a document offers only the view flags that its document can use:
 
@@ -114,7 +114,7 @@ fields, which never holds two flags that cannot work together. Three checks appl
   `--fields` name that the row type of the leaf's document lacks, in that
   order. It also leaves an unoffered view flag out of the leaf's help. On
   a leaf without a document that prints a result, `parse` refuses only the pairs.
-- `Output::new` refuses the pairs for a tool that parses with clap alone
+- `Run::new` refuses the pairs for a tool that parses with clap alone
   or builds its own `ViewFlags`, before the handler runs. It prints the
   refusal and returns the `Stop` of a refused command line, as `parse`
   does.
@@ -137,7 +137,7 @@ would not suit the command's result.
 A tool that defines the view flags in its own parser cannot also flatten
 `ViewFlags`, because clap refuses two arguments with one name. It builds
 `ViewFlags` with `ViewFlags::new().json(..).fields(..)`, `.long(..)` and
-`.full(..)`, passes them to `Output::new`, which refuses the pairs, and
+`.full(..)`, passes them to `Run::new`, which refuses the pairs, and
 `finish` and `stream` check the built flags against the result as they
 check parsed ones. `parse` reads a view flag
 by its argument id, so the tool's own arguments get the refusals before
@@ -167,12 +167,12 @@ Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105, ADR-0110, ADR-0
 ## Following the caller's format
 
 A tool that prints more than one result through `finish`, such as a child
-process's output, reads `Output::is_json` to follow the caller's format. The
-answer exists on every path, because `parse` returns a `Stop` whose `Output`
+process's output, reads `Run::is_json` to follow the caller's format. The
+answer exists on every path, because `parse` returns a `Stop` whose `Run`
 holds the `--json` that the walk found.
 
 A tool draws progress with a library of its choice, and only when
-`Output::progress_allowed` is true: `--json` is off, the tool keeps
+`Run::progress_allowed` is true: `--json` is off, the tool keeps
 [terminal detection](terminal.md) on and standard error is a terminal. A
 program, an agent, a pipe, a file and crumbkit-test's `check_examples`
 therefore never receive progress lines. crumbkit takes no progress library
@@ -220,11 +220,11 @@ returns the exit code as a `u8`, which a test can compare and a tool can
 record, and `finish` returns the same code as an `ExitCode`. A pipe that the
 reader closed early keeps the exit code of the result.
 
-`finish`, `finish_to`, `stream` and `stream_to` take the `Output` by value,
-because a run prints one result and nothing reads the `Output` after. A
-handler that reads the `Output` with `&mut`, such as `commands::list` or a
+`finish`, `finish_to`, `stream` and `stream_to` take the `Run` by value,
+because a run prints one result and nothing reads the `Run` after. A
+handler that reads the `Run` with `&mut`, such as `commands::list` or a
 command that confirms, runs before `finish`. A second `finish` with the same
-`Output` does not compile.
+`Run` does not compile.
 
 Why: ADR-0050, ADR-0016, ADR-0077, ADR-0094, ADR-0128.
 

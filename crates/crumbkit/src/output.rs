@@ -46,13 +46,13 @@ use crate::{AsFailure, Document, Rows, Sink, Spelling};
 #[cfg(test)]
 mod tests;
 
-/// The output of one run: the view flags that the caller typed, the command
+/// The handle of one run: the view flags that the caller typed, the command
 /// tree that the tool parsed against, the words that the caller typed and
 /// what the tool record decides about printing.
 ///
 /// [`parse`](crate::parse()) returns it beside the tool's parsed type, and
-/// a tool that parses with clap alone builds it with [`Output::new`]. Both
-/// record `--dry-run`, which [`Output::is_dry_run`] reports. A tool's
+/// a tool that parses with clap alone builds it with [`Run::new`]. Both
+/// record `--dry-run`, which [`Run::is_dry_run`] reports. A tool's
 /// `main` passes it by value to [`finish`] or [`stream`] with the handler's
 /// result, as the last call of the run (ADR-0094).
 ///
@@ -61,24 +61,24 @@ mod tests;
 /// `parse` and `finish` refuse it, as
 /// [`help::Leaf::offers`](crate::help::Leaf::offers) describes.
 ///
-/// `parse` and [`Output::new`] refuse `--full` without `--json`, and
+/// `parse` and [`Run::new`] refuse `--full` without `--json`, and
 /// `--fields` with `--long` or `--full`, as a refused command line with the
 /// code `<tool>::cli::usage`, such as `--full prints every field of every
 /// row in JSON, so it needs --json` with the hint `add --json, or drop
 /// --full`. clap parses each of these lines, so a tool that parses with
-/// clap alone gets the refusal from `Output::new`, before its handler
-/// runs. An `Output` holds only a view that every printer accepts
+/// clap alone gets the refusal from `Run::new`, before its handler
+/// runs. A `Run` holds only a view that every printer accepts
 /// (ADR-0093).
 ///
 /// `finish` renders a listing's next step and a failure's recovery against
 /// the command tree, and builds only the branch of the tree that such a
 /// call names.
 ///
-/// `Output` derives `Clone` and `Debug`. It does not derive `PartialEq` or
+/// `Run` derives `Clone` and `Debug`. It does not derive `PartialEq` or
 /// `Eq`, because `clap::Command` implements neither and nothing compares
-/// two `Output` values.
+/// two `Run` values.
 #[derive(Clone, Debug)]
-pub struct Output {
+pub struct Run {
     /// The view that the four view flags selected, which `View::try_from`
     /// built after it refused the pairs that cannot work together.
     view: View,
@@ -93,8 +93,8 @@ pub struct Output {
     words: Vec<OsString>,
 
     /// Whether the run is a dry run: `parse` read `--dry-run` on the
-    /// deepest command, or the tool passed the flag to [`Output::new`].
-    dry_run: bool,
+    /// deepest command, or the tool passed the flag to [`Run::new`].
+    dry_mode: bool,
 
     /// Whether the caller passed `--no-input`.
     no_input: bool,
@@ -123,7 +123,7 @@ pub struct Output {
     spelling: Spelling,
 }
 
-impl Output {
+impl Run {
     /// The output budget of a tool whose tool record sets none: 1 MiB, the most
     /// bytes that one run prints on standard output (ADR-0046).
     pub const DEFAULT_BUDGET: usize = budget::DEFAULT;
@@ -133,7 +133,7 @@ impl Output {
     ///
     /// The budget is the one that the tool's
     /// [`tool::Output::budget`](crate::tool::Output::budget) sets, or
-    /// [`Output::DEFAULT_BUDGET`], lowered by the variable
+    /// [`Run::DEFAULT_BUDGET`], lowered by the variable
     /// `<TOOL>_OUTPUT_BUDGET` when it holds a smaller whole number of
     /// bytes. A handler reads it before `finish` to fetch no more rows than
     /// can print. `finish` prints a result within it, as [`finish_to`]
@@ -164,7 +164,7 @@ impl Output {
     /// It answers on every path of a run. After parsing, it reads the flag
     /// that clap parsed. After [`parse`](crate::parse) printed help, the
     /// version or a refusal, the [`Stop`](crate::Stop) that it returned holds
-    /// an `Output` whose answer comes from the walk of the typed words, which
+    /// a `Run` whose answer comes from the walk of the typed words, which
     /// counts `--json` only where clap reads it as a flag, and never where it
     /// is the value of an option. The walk also leaves out a `--json` that no
     /// command on the typed path declares, because clap refuses such a word
@@ -229,7 +229,7 @@ fn several_keys<T: Rows>(value: &T) -> bool {
     value.key(1).is_some()
 }
 
-/// Prints a command's result in the format that `output` chooses, and
+/// Prints a command's result in the format that `run` chooses, and
 /// returns the process's exit code.
 ///
 /// A tool's `main` calls it last with the handler's `result` and returns its
@@ -241,19 +241,19 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// unfitted table (ADR-0121). `finish_to` fits a table to the width that its
 /// sink has, which [`Sink::fitted`] sets (ADR-0134).
 ///
-/// It takes `output` by value, because a run prints one result, so `main`
-/// cannot call it twice with one `Output` (ADR-0094):
+/// It takes `run` by value, because a run prints one result, so `main`
+/// cannot call it twice with one `Run` (ADR-0094):
 ///
 /// ```compile_fail
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Entry { position: u32 }
 /// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
-/// use crumbkit::{Document, Error, Output};
+/// use crumbkit::{Document, Error, Run};
 ///
 /// const ENTRIES: Document<Vec<Entry>> =
 ///     Document::new("reading", "entries", 1, "The entries of a reading list.");
 ///
-/// let output = Output::new(
+/// let run = Run::new(
 ///     crumbkit::ViewFlags::new(),
 ///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
@@ -263,11 +263,11 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// .unwrap();
 /// let first: Result<Vec<Entry>, Error> = Ok(Vec::new());
 /// let second: Result<Vec<Entry>, Error> = Ok(Vec::new());
-/// crumbkit::finish(output, ENTRIES, first);
-/// crumbkit::finish(output, ENTRIES, second);
+/// crumbkit::finish(run, ENTRIES, first);
+/// crumbkit::finish(run, ENTRIES, second);
 /// ```
 pub fn finish<T: Rows, E: AsFailure>(
-    output: Output,
+    run: Run,
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
@@ -276,12 +276,12 @@ pub fn finish<T: Rows, E: AsFailure>(
     // table's cells when that terminal allows colour (ADR-0121, ADR-0128,
     // ADR-0150).
     let sink = &mut Sink::standard()
-        .fitted(output.read_terminal_width())
-        .styled(output.read_result_styles());
-    ExitCode::from(finish_to(sink, output, document, result))
+        .fitted(run.read_terminal_width())
+        .styled(run.read_result_styles());
+    ExitCode::from(finish_to(sink, run, document, result))
 }
 
-/// Prints a command's result to `sink` in the format that `output` chooses,
+/// Prints a command's result to `sink` in the format that `run` chooses,
 /// and returns the exit code that [`finish`] would return, as a number.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, so they
@@ -326,13 +326,13 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// has a next step, a `Next:` line follows, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
 /// is left out of the text and of `next` when the step's
-/// [`Call`](crate::Call) does not resolve in the command tree that `output`
+/// [`Call`](crate::Call) does not resolve in the command tree that `run`
 /// holds, and the exit code stays 0.
 ///
-/// `finish` takes `output` by value, because it is the last call of a run:
+/// `finish` takes `run` by value, because it is the last call of a run:
 /// it builds the branch of the command tree that a next step's call or a
-/// failure's `Run` call names, and nothing reads the `Output` after it
-/// (ADR-0015, ADR-0094). A handler that reads `output` with `&mut`, such as
+/// failure's `Recovery::Run` call names, and nothing reads the `Run` after it
+/// (ADR-0015, ADR-0094). A handler that reads `run` with `&mut`, such as
 /// [`commands::list`](crate::commands::list), runs before `finish`, and
 /// `main` passes its result in.
 ///
@@ -371,15 +371,15 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
 /// for each error in the failure's `source()` chain, and a `url:` line
 /// follows the `code:` line when the failure has a url. The code prints in
-/// the spelling that `output` took from the tool record. A
+/// the spelling that `run` took from the tool record. A
 /// [`Recovery::Run`](crate::Recovery::Run) call is rendered against the
-/// command tree that `output` holds, and prints as `no next step: the
+/// command tree that `run` holds, and prints as `no next step: the
 /// suggested command is not available` when the call does not resolve. With
 /// `--json`, the failure prints to the output writer as one
 /// `<tool>/failure/v1` document, on one line or in the tool record's layout,
 /// which `--full` and `--fields` do not change.
 ///
-/// The result prints within [`Output::budget`] bytes on the output writer.
+/// The result prints within [`Run::budget`] bytes on the output writer.
 /// `finish` measures it first, and prints a result that fits as described
 /// above. A listing or a `Vec` that does not fit prints the most rows that
 /// fit and exits 0: in text, a line on the error writer such as `Showing
@@ -416,8 +416,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// closed the pipe early (ADR-0037). The printed code is the tool's own code
 /// when the tool record renames one of crumbkit's with
 /// [`Failures::codes`](crate::tool::Failures::codes). The tool record reaches
-/// `finish` through the `Output` that [`parse`](crate::parse()) or
-/// [`Output::new`] returns. The exit code is 1 as well when a write fails for
+/// `finish` through the `Run` that [`parse`](crate::parse()) or
+/// [`Run::new`] returns. The exit code is 1 as well when a write fails for
 /// any other reason, or when the result cannot be serialized, and the cause of
 /// a failed write goes to the sink's error writer before a batch's failures. It
 /// is the exit code of a refused command line, 2 unless the tool record lists
@@ -425,7 +425,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// use a view flag that the caller passed, which are checked before the result
 /// prints. When `result` is a failure, `finish_to` checks no view flag and
 /// prints the failure, because a tool may print an early failure in another
-/// document than the one its leaf declares, and the `Output` already holds only
+/// document than the one its leaf declares, and the `Run` already holds only
 /// a view that every printer accepts (ADR-0093). A prose or bytes result cannot
 /// use `--fields`, `--long` or `--full`, rows without long columns cannot use
 /// `--long` unless the document lists only the rows that report a problem or
@@ -449,14 +449,14 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    mut output: Output,
+    mut run: Run,
     document: Document<T>,
     result: Result<T, E>,
 ) -> u8 {
     columns::require::<T>();
     // crumbkit's own codes and documents print with the tool's name in
     // place of `crumbkit` (ADR-0079).
-    let (spelling, document) = output.named(document);
+    let (spelling, document) = run.named(document);
     // The sink counts the bytes of the result, which `finish` reports to the
     // observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);
@@ -468,7 +468,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     let span = crate::trace::spans::finish();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    let (exit, cut) = respond::respond(sink, &mut output, spelling, document, result);
+    let (exit, cut) = respond::respond(sink, &mut run, spelling, document, result);
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, exit);
     let bytes = sink.result_bytes() - before;

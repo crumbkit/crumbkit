@@ -1,4 +1,5 @@
-//! A failure's recovery ready to print, with a `Run` call rendered as text.
+//! A failure's recovery ready to print, with a `Recovery::Run` call rendered
+//! as text.
 
 use std::borrow::Cow;
 
@@ -10,8 +11,8 @@ use super::UNAVAILABLE;
 use crate::help::quote;
 use crate::{CallArg, CallTarget, FieldValue, Recovery};
 
-/// A [`Recovery`] ready to print: a `Run` call is rendered against the tool's
-/// command, and a call that cannot be rendered becomes `None` with
+/// A [`Recovery`] ready to print: a `Recovery::Run` call is rendered against
+/// the tool's command, and a call that cannot be rendered becomes `None` with
 /// crumbkit's reason.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -38,11 +39,11 @@ pub enum RecoveryStep {
 }
 
 impl RecoveryStep {
-    /// Reads `recovery` into a step, rendering a `Run` call against
+    /// Reads `recovery` into a step, rendering a `Recovery::Run` call against
     /// `command`. It returns `Err` with a `RecoveryStep::None` when the
-    /// recovery offers no step: a `Recovery::None`, or a `Run` call that
-    /// cannot be rendered because the call does not resolve. It adds the
-    /// reason that a `Run` call does not resolve to `unrendered`.
+    /// recovery offers no step: a `Recovery::None`, or a `Recovery::Run` call
+    /// that cannot be rendered because the call does not resolve. It adds the
+    /// reason that a `Recovery::Run` call does not resolve to `unrendered`.
     pub(super) fn offered(
         recovery: Recovery,
         command: &mut Command,

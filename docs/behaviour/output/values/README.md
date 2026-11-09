@@ -33,7 +33,7 @@ Why: ADR-0147.
 - [`Age`](../../../../crates/crumbkit/src/age.rs) holds a time. Text shows
   how long ago it was, such as `3h` or `2w`, and JSON holds the time in RFC
   3339 in UTC with milliseconds.
-- [`Duration`](../../../../crates/crumbkit/src/duration.rs) holds a length
+- [`Elapsed`](../../../../crates/crumbkit/src/elapsed.rs) holds a length
   of time. Text shows `300ms` under a second, seconds with one decimal
   place under a minute, such as `1.9s`, and the two largest units from a
   minute up, such as `4m 10s` or `3d 2h`. JSON holds an ISO 8601 duration
@@ -45,7 +45,7 @@ Why: ADR-0147.
   `#[serde(flatten)]` and serde flattens only an object. A table shows such
   a field as compact JSON.
 
-Why: ADR-0108, ADR-0141, ADR-0147, ADR-0148, ADR-0160.
+Why: ADR-0108, ADR-0141, ADR-0147, ADR-0148, ADR-0160, ADR-0184.
 
 ## Writing your own value type
 

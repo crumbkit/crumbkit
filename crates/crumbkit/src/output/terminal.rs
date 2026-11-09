@@ -1,4 +1,4 @@
-//! `Output::progress_allowed`, which decides whether a tool may draw
+//! `Run::progress_allowed`, which decides whether a tool may draw
 //! progress from `--json`, the tool record's terminal detection and standard
 //! error (ADR-0049), and the width of the terminal that a text table fits
 //! (ADR-0121), and what decides whether a refusal on standard error and a
@@ -6,12 +6,12 @@
 
 use clap::ColorChoice;
 
-use super::Output;
+use super::Run;
 
 #[cfg(test)]
 mod tests;
 
-impl Output {
+impl Run {
     /// Reports whether the tool may draw progress, such as a spinner or a bar,
     /// on standard error. It is true only when `--json` is off, the tool record
     /// keeps terminal detection on

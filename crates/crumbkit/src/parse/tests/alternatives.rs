@@ -108,7 +108,7 @@ fn parse_with_tool(tool: &Tool, args: &[&str]) -> Parsed {
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::exit_code),
-        json: stop.as_ref().map(|stop| stop.output().is_json()),
+        json: stop.as_ref().map(|stop| stop.run().is_json()),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }

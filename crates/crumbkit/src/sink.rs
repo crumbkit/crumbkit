@@ -39,7 +39,7 @@ mod tests;
 /// ```
 ///
 /// A sink from [`Sink::new`] reads no input and is not interactive, so
-/// [`Output::confirm_to`](crate::Output::confirm_to) never asks a question
+/// [`Run::confirm_to`](crate::Run::confirm_to) never asks a question
 /// through it. A test of a question builds the sink with
 /// [`Sink::with_input`].
 ///
@@ -461,7 +461,7 @@ impl Sink<StdoutLock<'static>, Stderr, StdinLock<'static>> {
     /// standard input, which is interactive when standard input and standard
     /// error are both terminals and no coding agent runs the tool (ADR-0043).
     /// Only a question reads standard input, so only
-    /// [`Output::confirm`](crate::Output::confirm) and a picker lock it, and
+    /// [`Run::confirm`](crate::Run::confirm) and a picker lock it, and
     /// a run that asks nothing leaves it unlocked and detects no agent.
     pub(crate) fn standard_with_input() -> Self {
         let Sink { out, err, .. } = Sink::standard();
@@ -490,7 +490,7 @@ pub(crate) fn stdout_is_terminal() -> bool {
 }
 
 /// Reports whether the process's standard error is a terminal, which
-/// [`Output::progress_allowed`](crate::Output::progress_allowed) reads.
+/// [`Run::progress_allowed`](crate::Run::progress_allowed) reads.
 pub(crate) fn stderr_is_terminal() -> bool {
     #[expect(
         clippy::disallowed_methods,

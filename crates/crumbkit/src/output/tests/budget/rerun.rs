@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 use super::{BUDGET, STAR_BATCH, Star, parsed, star, stars};
 use crate::output::tests::{Finished, finish_output};
-use crate::{Batch, Document, Error, Output, Tool, ViewFlags};
+use crate::{Batch, Document, Error, Run, Tool, ViewFlags};
 
 /// A tool with a global option before its subcommands, one subcommand that
 /// takes its keys as a positional argument and one that takes them after a
@@ -68,11 +68,11 @@ fn line(before: &[&str], after: &[&str]) -> Vec<String> {
 
 /// Parses `args` against [`Sky`] with clap alone and returns the output that
 /// a tool's `main` builds from them with a budget of [`BUDGET`].
-fn output(args: &[String]) -> Output {
+fn output(args: &[String]) -> Run {
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    Output::new(view, crate::DryRun::default(), command, &tool(), args).unwrap()
+    Run::new(view, crate::DryRun::default(), command, &tool(), args).unwrap()
 }
 
 /// Returns a tool record with the budget of [`BUDGET`].
@@ -172,7 +172,7 @@ fn a_batch_s_recovery_without_the_caller_s_words_runs_the_batch_s_command_alone(
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(&args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    let output = Output::new(view, crate::DryRun::default(), command, &tool(), ["tool"]).unwrap();
+    let output = Run::new(view, crate::DryRun::default(), command, &tool(), ["tool"]).unwrap();
 
     let finished = finish_output(output, STAR_BATCH, batch(&["show"]));
 

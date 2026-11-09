@@ -10,7 +10,7 @@ use super::walked;
 use super::{Printed, Stop};
 use crate::codes::CLI_USAGE;
 use crate::refusal::Refusal;
-use crate::{Code, Failure as _, Output, Recovery, Sink};
+use crate::{Code, Failure as _, Recovery, Run, Sink};
 
 #[cfg(test)]
 mod tests;
@@ -109,7 +109,7 @@ struct Inner {
     path: Vec<String>,
     /// The output flags as far as the walk of the typed words found them,
     /// with the command tree that crumbkit parsed against.
-    output: Output,
+    output: Run,
     /// The words that the caller typed after the program name.
     typed: Vec<OsString>,
     /// The words after the program name that crumbkit gave clap.
@@ -129,7 +129,7 @@ struct Inner {
 }
 
 impl Refused {
-    /// Returns the refusal `refusal` of a run whose output is `output`.
+    /// Returns the refusal `refusal` of a run whose handle is `output`.
     /// `error` is clap's error, or `None` for a refused view flag, and
     /// `path` names the subcommands that the walk reached. `parsed` are
     /// the words after the program name as crumbkit gave them to clap,
@@ -140,7 +140,7 @@ impl Refused {
         refusal: Refusal,
         error: Option<clap::Error>,
         path: Vec<String>,
-        output: Output,
+        output: Run,
         parsed: Vec<OsString>,
         typed: Option<Vec<OsString>>,
         caller: Option<Vec<OsString>>,
@@ -221,10 +221,11 @@ impl Refused {
         self.inner.refusal.recovery()
     }
 
-    /// Returns the output flags as far as the walk of the typed words found
-    /// them. Its [`Output::is_json`] says whether the caller asked for JSON.
+    /// Returns the handle of the run, with the view flags as far as the walk
+    /// of the typed words found them. Its [`Run::is_json`] says whether the
+    /// caller asked for JSON.
     #[must_use]
-    pub fn output(&self) -> &Output {
+    pub fn run(&self) -> &Run {
         &self.inner.output
     }
 
@@ -332,15 +333,15 @@ impl Refused {
     /// `<tool>/failure/v1` document on the output writer. With `false`, it
     /// prints text on the error writer. Without this call, it prints in the
     /// form that the walk of the words chose, which
-    /// [`Output::is_json`] of [`Refused::output`] reports.
+    /// [`Run::is_json`] of [`Refused::run`] reports.
     ///
     /// A tool whose own flag chooses the form of a failure, such as
     /// `--error-format text`, reads the flag with [`Refused::value`] and
     /// passes the form it resolved here, so `tool --error-format text list
     /// --nosuch --json` prints text on standard error. The call changes
-    /// neither [`Refused::output`], which still reports the words, nor the
+    /// neither [`Refused::run`], which still reports the words, nor the
     /// exit code and the observers' events. The [`Stop`] that printing
-    /// returns holds an [`Output`] whose `is_json` reports the form that
+    /// returns holds a [`Run`] whose `is_json` reports the form that
     /// printed.
     #[must_use]
     pub fn as_json(mut self, json: bool) -> Self {
@@ -369,7 +370,7 @@ impl Refused {
     /// Prints the refusal to `sink` as [`parse_to`](crate::parse_to)
     /// prints it, and returns the `Stop` that ends the run. After
     /// [`Refused::as_json`], it prints in the form that the tool chose, and
-    /// the `Stop`'s [`Output::is_json`] reports that form. The text form
+    /// the `Stop`'s [`Run::is_json`] reports that form. The text form
     /// carries clap's styles when the sink's error writer wants them
     /// ([`Sink::styled_errors`]) and crumbkit's `color` feature is on, and
     /// is plain otherwise (ADR-0131).

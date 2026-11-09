@@ -6,8 +6,8 @@ use crate::notice::Notice;
 
 /// A handle that stops the runs that watch it.
 ///
-/// A run watches a cancel that [`Limits::cancel`](crate::Limits::cancel)
-/// gave it.
+/// A run watches a cancel that
+/// [`RunOptions::cancel`](crate::RunOptions::cancel) gave it.
 /// [`Cancel::cancel`] stops each watching run with its escalation, and the
 /// run ends as [`Stopped(Cancelled)`](crate::StopReason::Cancelled). A run that
 /// starts with a cancel that is already cancelled starts no child. Clones

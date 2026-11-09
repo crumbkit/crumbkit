@@ -34,7 +34,7 @@ its document with `Leaf::document` or `Leaf::stream` adds that document, and
 crumbkit adds `<tool>/failure/v1` first, because every command prints it
 when it fails with `--json`.
 
-- A leaf whose path is hidden in the command tree that the run's `Output`
+- A leaf whose path is hidden in the command tree that the run's `Run`
   holds adds nothing, so the commands list only what help
   shows.
 - Two leaves that declare one id give one row that names both command lines.

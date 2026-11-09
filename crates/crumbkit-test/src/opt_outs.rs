@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::{JsonLayout, Output, Tool};
+use crumbkit::{JsonLayout, Run, Tool};
 use serde::Serialize;
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -278,7 +278,7 @@ const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is
 /// What turning terminal detection off costs, which the report lists
 /// under the rule `terminal-detection/off`.
 const TERMINAL_DETECTION_COSTS: &[&str] = &[
-    "A picker never asks for a missing argument and `Output::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.",
+    "A picker never asks for a missing argument and `Run::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.",
     "Progress never prints, help prints without clap's colours at a terminal, and a table's cells print without their styles.",
     "A text table never fits the terminal's width, so the terminal wraps each line of a table that is wider than the terminal.",
 ];
@@ -292,7 +292,7 @@ fn output_budget(command: &Command, tool: &Tool) -> Option<Departure> {
         applies_to: format!("every run of {}", command.get_name()),
         reason,
         bytes: u64::try_from(bytes).unwrap_or(u64::MAX),
-        default: u64::try_from(Output::DEFAULT_BUDGET).unwrap_or(u64::MAX),
+        default: u64::try_from(Run::DEFAULT_BUDGET).unwrap_or(u64::MAX),
     })
 }
 

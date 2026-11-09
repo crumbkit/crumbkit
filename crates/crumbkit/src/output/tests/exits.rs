@@ -9,7 +9,7 @@ use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
 use crate::help::{Help, Leaf};
 use crate::tool::{Exit, Failures, Rename};
-use crate::{Batch, Code, Document, Failure, Output, Prose, Recovery, Sink, Tool, finish_to};
+use crate::{Batch, Code, Document, Failure, Prose, Recovery, Run, Sink, Tool, finish_to};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -59,9 +59,9 @@ enum Command {
 
 /// Parses `tool list` and builds the output with `TOOL`, as a tool that
 /// parses with clap alone builds it.
-fn output_of() -> Output {
+fn output_of() -> Run {
     let view = Cli::try_parse_from(["tool", "list"]).unwrap().view;
-    Output::new(
+    Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
@@ -73,7 +73,7 @@ fn output_of() -> Output {
 
 /// Finishes `result` into memory with `output`, and returns the exit code
 /// as a number.
-fn finish<T: crate::Rows>(output: Output, document: Document<T>, result: Result<T, Failed>) -> u8 {
+fn finish<T: crate::Rows>(output: Run, document: Document<T>, result: Result<T, Failed>) -> u8 {
     let mut out = Vec::new();
     let mut err = Vec::new();
     finish_to(&mut Sink::new(&mut out, &mut err), output, document, result)
@@ -119,7 +119,7 @@ fn a_failure_whose_code_no_exit_lists_ends_finish_with_code_1() {
 #[test]
 fn an_output_set_from_a_bare_command_maps_no_failure_and_exits_with_code_1() {
     let view = Cli::try_parse_from(["tool", "list"]).unwrap().view;
-    let output = Output::new(
+    let output = Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
@@ -162,7 +162,7 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     let view = Cli::try_parse_from(["tool", "list", "--json"])
         .unwrap()
         .view;
-    let output = Output::new(
+    let output = Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
@@ -232,7 +232,7 @@ fn a_tool_that_parses_with_clap_alone_gets_the_renames_of_the_leaf_that_its_word
         );
     let words = ["tool", "list", "--json"];
     let tool = Cli::try_parse_from(words).unwrap();
-    let output = Output::new(
+    let output = Run::new(
         tool.view,
         crate::DryRun::default(),
         Cli::command(),

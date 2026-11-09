@@ -1,10 +1,10 @@
-//! Tests for `--yes` and `Output::confirm_to`.
+//! Tests for `--yes` and `Run::confirm_to`.
 
 use clap::{Args as _, Command, CommandFactory as _, Parser, Subcommand};
 
 use super::Yes;
 use crate::twins::assert_one_word_apart;
-use crate::{Call, DryRun, Error, NoInput, Output, Recovery, Sink, Spelling, Tool, ViewFlags};
+use crate::{Call, DryRun, Error, NoInput, Recovery, Run, Sink, Spelling, Tool, ViewFlags};
 
 /// A tool whose `remove` command takes `--dry-run` and `--yes`.
 #[derive(Parser)]
@@ -126,7 +126,7 @@ fn without_a_terminal_the_run_fails_with_the_same_command_and_yes_as_its_recover
 fn a_tool_that_parses_with_clap_alone_gets_the_same_command_and_yes_as_its_recovery() {
     let words = ["tool", "remove", "pluto"];
     let tool = Cli::try_parse_from(words).unwrap();
-    let mut output = Output::new(
+    let mut output = Run::new(
         tool.view,
         DryRun::default(),
         Cli::command(),
@@ -212,7 +212,7 @@ fn a_tool_that_parses_with_clap_alone_keeps_the_tools_terminal_detection() {
     const QUIET: Tool = Tool::new().output(
         crate::tool::Output::new().without_terminal_detection("Our CI runs in a pseudo-terminal."),
     );
-    let mut output = Output::new(
+    let mut output = Run::new(
         ViewFlags::new(),
         DryRun::default(),
         Cli::command(),

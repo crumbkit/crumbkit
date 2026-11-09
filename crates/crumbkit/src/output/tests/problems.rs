@@ -14,7 +14,7 @@ use super::{Cli, Failing, finish_output, finish_with};
 use crate::answered::answered;
 use crate::tool::Failures;
 use crate::{
-    Batch, Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Tool, finish_to,
+    Batch, Code, Document, Error, Failure, Listing, Recovery, Row, Run, Sink, Tool, finish_to,
 };
 
 const CHECKS: Document<Listing<Check>> = Document::new("lint", "checks", 1, "The test rows.");
@@ -165,7 +165,7 @@ fn a_listing_with_problem_rows_exits_with_1_after_the_reader_closed_the_pipe() {
 
     let code = finish_to(
         &mut sink,
-        Output::of(clap::Command::new("tool")),
+        Run::of(clap::Command::new("tool")),
         CHECKS,
         result,
     );
@@ -315,9 +315,9 @@ fn a_listing_from_all_rows_without_a_limit_counts_its_problem_rows_as_before() {
     );
 }
 
-/// Returns the output flags for `flags` with `tool`, as `Output::new`
+/// Returns the output flags for `flags` with `tool`, as `Run::new`
 /// builds them.
-fn output_of(tool: &Tool, flags: &[&str]) -> Output {
+fn output_of(tool: &Tool, flags: &[&str]) -> Run {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     super::built_with(Cli::command(), tool, &args)
 }

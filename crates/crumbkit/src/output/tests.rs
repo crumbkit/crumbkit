@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
 
-use super::{Output, finish_to};
+use super::{Run, finish_to};
 use crate::twins::assert_one_word_apart;
 use crate::view::{Selection, View};
 use crate::{Document, Error, Listing, Row, Rows, Sink, Stop, Tool, ViewFlags};
@@ -112,10 +112,10 @@ enum Command {
 
 /// Parses `tool list` followed by `flags` with clap alone, and returns the
 /// output that a tool's `main` builds from the parsed view flags.
-fn parse(flags: &[&str]) -> Result<Output, clap::Error> {
+fn parse(flags: &[&str]) -> Result<Run, clap::Error> {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     let tool = Cli::try_parse_from(&args)?;
-    Ok(Output::new(
+    Ok(Run::new(
         tool.view,
         crate::DryRun::default(),
         Cli::command(),
@@ -132,30 +132,30 @@ struct Finished {
     err: String,
 }
 
-/// What `Output::new_to` returned and wrote: the output of a run whose view
+/// What `Run::new_to` returned and wrote: the handle of a run whose view
 /// flags work together, or the stop of a refused pair.
 struct Built {
-    result: Result<Output, Stop>,
+    result: Result<Run, Stop>,
     out: String,
     err: String,
 }
 
 /// Parses `tool list` followed by `flags` with clap alone, and builds the
-/// output into memory as a tool's `main` builds it with `Output::new_to`.
+/// output into memory as a tool's `main` builds it with `Run::new_to`.
 fn build_to(flags: &[&str]) -> Built {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     let tool = Cli::try_parse_from(&args).unwrap();
     build_output(tool.view, &args)
 }
 
-/// Builds the output of the test tool from `view` and `args` into memory,
-/// as a tool's `main` builds it with `Output::new_to`.
+/// Builds the handle of the test tool from `view` and `args` into memory,
+/// as a tool's `main` builds it with `Run::new_to`.
 fn build_output(view: ViewFlags, args: &[&str]) -> Built {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
     let dry_run = crate::DryRun::default();
-    let result = Output::new_to(&mut sink, view, dry_run, Cli::command(), &Tool::new(), args);
+    let result = Run::new_to(&mut sink, view, dry_run, Cli::command(), &Tool::new(), args);
     Built {
         result,
         out: String::from_utf8(out).unwrap(),
@@ -166,7 +166,7 @@ fn build_output(view: ViewFlags, args: &[&str]) -> Built {
 /// Parses `tool list` followed by `flags` against `command` with clap
 /// alone, and returns the output that holds that command, as a tool's
 /// `main` builds it.
-fn parse_against(command: clap::Command, flags: &[&str]) -> Output {
+fn parse_against(command: clap::Command, flags: &[&str]) -> Run {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     built_with(command, &Tool::new(), &args)
 }
@@ -174,10 +174,10 @@ fn parse_against(command: clap::Command, flags: &[&str]) -> Output {
 /// Parses `args` against `command` with clap alone, and returns the output
 /// that a tool's `main` builds from the parsed view flags, `command` and
 /// `tool`.
-fn built_with(mut command: clap::Command, tool: &Tool, args: &[&str]) -> Output {
+fn built_with(mut command: clap::Command, tool: &Tool, args: &[&str]) -> Run {
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    Output::new(view, crate::DryRun::default(), command, tool, args).unwrap()
+    Run::new(view, crate::DryRun::default(), command, tool, args).unwrap()
 }
 
 /// Parses `flags`, builds the output as a tool that parses with clap alone
@@ -189,7 +189,7 @@ fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Fini
 
 /// Finishes `value` into memory as an `Ok` result with the flags and command
 /// in `output`.
-fn finish_output<T: Rows>(output: Output, document: Document<T>, value: T) -> Finished {
+fn finish_output<T: Rows>(output: Run, document: Document<T>, value: T) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -461,7 +461,7 @@ fn the_valid_fields_of_a_row_type_with_variants_are_each_variants_fields_once_in
 fn the_flags_parse_before_and_after_the_subcommand() {
     let words = ["tool", "--json", "list", "--long"];
     let view = Cli::try_parse_from(words).unwrap().view;
-    let before = Output::new(
+    let before = Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),

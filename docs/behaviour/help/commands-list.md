@@ -20,9 +20,9 @@ Why: ADR-0026.
 
 ## What it lists
 
-`list` reads the command tree that the run's `Output` holds, which is the
+`list` reads the command tree that the run's `Run` holds, which is the
 tree that `parse` returns, so the listing shows the commands the tool kept at
-run time. It builds that whole tree through `Output::command` before it reads
+run time. It builds that whole tree through `Run::command` before it reads
 it, so it also sees each command that a `Command::defer` closure adds.
 
 - A hidden command and everything below it are left out, as help leaves them

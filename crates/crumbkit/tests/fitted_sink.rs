@@ -6,7 +6,7 @@ use std::ops::ControlFlow;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use crumbkit::{Children, Document, Error, Listing, Output, Row, Sink, Stream, Tool, ViewFlags};
+use crumbkit::{Children, Document, Error, Listing, Row, Run, Sink, Stream, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -67,7 +67,7 @@ fn books() -> Vec<Book> {
 
 /// Parses `library` followed by `args` with `tool`, and returns the
 /// output, or `None` when the line does not parse.
-fn parse(tool: &Tool, args: &[&str]) -> Option<Output> {
+fn parse(tool: &Tool, args: &[&str]) -> Option<Run> {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let words = ["library"].iter().chain(args);

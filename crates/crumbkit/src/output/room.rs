@@ -11,12 +11,12 @@ use serde_json::Value;
 use super::budget::{self, Counter};
 use super::envelope::{Extras, Failures, Selected, write_document};
 use super::table::cell;
-use super::{JsonLayout, Output, children, columns, layout, lines, result};
+use super::{JsonLayout, Run, children, columns, layout, lines, result};
 use crate::shown::TextCells;
 use crate::{AsFailure, Batch, Document, Row, Rows};
 
 /// The bytes that `finish` prints for the rows of a batch, which
-/// [`Output::room`] returns before the handler fetches the first key.
+/// [`Run::room`] returns before the handler fetches the first key.
 ///
 /// [`Room::has_room`] measures each row that the handler pushed since the last
 /// call once, in the format that the run prints: the JSON document in the tool
@@ -35,13 +35,13 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::{Batch, Document, Error, Output};
+/// use crumbkit::{Batch, Document, Error, Run};
 ///
 /// const BOOKS_SHOW: Document<Batch<Book, Error>> =
 ///     Document::new("shelf", "books-show", 1, "The books with the given ids.");
 ///
-/// fn show(output: &Output, ids: &[u32]) -> Batch<Book, Error> {
-///     let mut room = output.room(BOOKS_SHOW);
+/// fn show(run: &Run, ids: &[u32]) -> Batch<Book, Error> {
+///     let mut room = run.room(BOOKS_SHOW);
 ///     let mut batch = Batch::new(&["books", "show"], "ids", ids);
 ///     for &id in ids {
 ///         if !room.has_room(&batch) {
@@ -51,7 +51,7 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 ///     }
 ///     batch
 /// }
-/// # let output = Output::new(
+/// # let run = Run::new(
 /// #     crumbkit::ViewFlags::new(),
 /// #     crumbkit::DryRun::default(),
 /// #     clap::Command::new("shelf"),
@@ -59,7 +59,7 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// #     ["shelf"],
 /// # )
 /// # .unwrap();
-/// # let _ = show(&output, &[2, 7, 9]);
+/// # let _ = show(&run, &[2, 7, 9]);
 /// ```
 #[derive(Debug)]
 pub struct Room<T> {
@@ -132,10 +132,10 @@ enum Form {
     },
 }
 
-impl Output {
+impl Run {
     /// Returns the [`Room`] of a batch that prints as `document`, which
     /// counts the bytes that `finish` prints for the batch's rows within the
-    /// bytes of [`Output::budget`] (ADR-0068).
+    /// bytes of [`Run::budget`] (ADR-0068).
     pub fn room<R: Row, E: AsFailure>(&self, document: Document<Batch<R, E>>) -> Room<Batch<R, E>> {
         let columns: Vec<String> = columns::columns(&self.view, document, false)
             .into_iter()
@@ -147,7 +147,7 @@ impl Output {
             } else {
                 1
             };
-            let empty = empty_document(document, self.dry_run, self.json_layout);
+            let empty = empty_document(document, self.dry_mode, self.json_layout);
             Form::Json {
                 layout: self.json_layout,
                 depth,

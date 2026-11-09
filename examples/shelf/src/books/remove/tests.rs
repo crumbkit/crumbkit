@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use clap::{CommandFactory as _, Parser as _};
-use crumbkit::{Output, Tool};
+use crumbkit::{Run, Tool};
 
 use super::{read_removed, remove, removed_file_in};
 use crate::books::{BooksError, list, show};
@@ -11,7 +11,7 @@ use crate::cli::{BooksCommand, BooksList, BooksRemove, BooksShow, Cli, Resource}
 
 /// Parses `shelf books remove` with `words` after `remove`, and returns its
 /// output, which holds the `--dry-run` among the words, and its arguments.
-fn parse(words: &[&str]) -> (Output, BooksRemove) {
+fn parse(words: &[&str]) -> (Run, BooksRemove) {
     let args: Vec<&str> = ["shelf", "books", "remove"]
         .iter()
         .chain(words)
@@ -24,7 +24,7 @@ fn parse(words: &[&str]) -> (Output, BooksRemove) {
     else {
         panic!("the words parse as books remove");
     };
-    let output = Output::new(cli.view, remove.dry_run, Cli::command(), &Tool::new(), args);
+    let output = Run::new(cli.view, remove.dry_run, Cli::command(), &Tool::new(), args);
     (output.unwrap(), remove)
 }
 
@@ -69,7 +69,7 @@ fn remove_with_yes_returns_the_books_and_list_and_show_skip_them_afterwards() {
             from: None,
         },
         Some(&file),
-        Output::new(
+        Run::new(
             crumbkit::ViewFlags::new(),
             crumbkit::DryRun::default(),
             Cli::command(),

@@ -46,7 +46,7 @@ impl ViewFlag {
         }
     }
 
-    /// Returns the id of the flag's argument in [`Output`](crate::Output),
+    /// Returns the id of the flag's argument in [`Run`](crate::Run),
     /// such as `long`.
     pub(crate) const fn id(self) -> &'static str {
         match self {
@@ -56,7 +56,7 @@ impl ViewFlag {
         }
     }
 
-    /// Returns the view flag whose argument id in [`Output`](crate::Output)
+    /// Returns the view flag whose argument id in [`Run`](crate::Run)
     /// is `id`, or `None` when `id` names no view flag.
     pub(crate) fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|flag| flag.id() == id)

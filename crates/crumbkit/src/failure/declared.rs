@@ -56,8 +56,8 @@ impl Failures {
     /// sets none spells them with [`Spelling::COLONS`], as in
     /// `shelf::books::not_found`.
     ///
-    /// [`parse`](crate::parse()) and [`Output::new`](crate::Output::new) copy
-    /// the spelling into the [`Output`](crate::Output) that they return, so
+    /// [`parse`](crate::parse()) and [`Run::new`](crate::Run::new) copy
+    /// the spelling into the [`Run`](crate::Run) that they return, so
     /// `finish`, `stream` and crumbkit-child's `hand_over` print every code in
     /// it, and crumbkit-test's checks read it from the tool record. crumbkit's
     /// own codes print with the tool's name in place of `crumbkit`, as
@@ -94,7 +94,7 @@ impl Failures {
     /// The spelling writes `crumbkit` in crumbkit's own codes until
     /// [`Spelling::for_tool`] names the tool, such as with
     /// [`Tool::tool_name`](crate::Tool::tool_name). [`parse`](crate::parse) and
-    /// [`Output::new`](crate::Output::new) apply the tool's name with
+    /// [`Run::new`](crate::Run::new) apply the tool's name with
     /// [`Spelling::for_tool`], which replaces any tool name the spelling
     /// held.
     #[must_use]

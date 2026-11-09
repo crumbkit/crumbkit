@@ -45,14 +45,14 @@ pub enum Input {
 /// The settings of one [`run`]: the child's input, what it keeps of each
 /// output stream, when and how it stops the child, and the child's scope.
 ///
-/// A `Limits` value that delivers a stream as lines serves one run, because
-/// the run ends the line queue when it returns.
+/// A `RunOptions` value that delivers a stream as lines serves one run,
+/// because the run ends the line queue when it returns.
 ///
 /// The default reads nothing, keeps nothing, has no deadline and no cancel,
 /// kills at once when it stops the child, and starts the child in a group
 /// of its own.
 #[derive(Clone, Debug, Default)]
-pub struct Limits {
+pub struct RunOptions {
     stdin: Input,
     stdout: Capture,
     stderr: Capture,
@@ -62,7 +62,7 @@ pub struct Limits {
     scope: Scope,
 }
 
-impl Limits {
+impl RunOptions {
     /// Returns the default settings.
     #[must_use]
     pub fn new() -> Self {
@@ -219,11 +219,11 @@ impl std::error::Error for RunError {
     }
 }
 
-/// Runs `command` with the settings in `limits` and returns how it ended and
+/// Runs `command` with the settings in `options` and returns how it ended and
 /// what it printed.
 ///
 /// The run sets the command's standard streams, starts it in the scope of
-/// [`Limits::scope`], and waits until the child exits, the deadline passes,
+/// [`RunOptions::scope`], and waits until the child exits, the deadline passes,
 /// the cancel is cancelled, or a stream whose policy stops the child passes
 /// its limit. In the last three cases it stops the child with the
 /// [`Escalation`]. Once the child has exited, the run kills what is left of
@@ -253,9 +253,9 @@ impl std::error::Error for RunError {
 /// Returns [`RunError::Start`] when the program cannot be started, and
 /// [`RunError::Run`] when waiting for, reaping or reading the child fails.
 /// The child is stopped and reaped on every path.
-pub fn run(mut command: Command, limits: &Limits) -> Result<ChildFinished, RunError> {
-    let _end = EndLines(limits);
-    if limits.cancel.as_ref().is_some_and(Cancel::is_cancelled) {
+pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, RunError> {
+    let _end = EndLines(options);
+    if options.cancel.as_ref().is_some_and(Cancel::is_cancelled) {
         return Ok(ChildFinished {
             outcome: Outcome::Stopped(StopReason::Cancelled),
             status: None,
@@ -264,19 +264,19 @@ pub fn run(mut command: Command, limits: &Limits) -> Result<ChildFinished, RunEr
             first_stdout: None,
         });
     }
-    let input = match &limits.stdin {
+    let input = match &options.stdin {
         Input::Null => Stdio::null(),
         Input::Inherit => Stdio::inherit(),
         Input::Bytes(_) => Stdio::piped(),
     };
     command
         .stdin(input)
-        .stdout(limits.stdout.stdio())
-        .stderr(limits.stderr.stdio());
+        .stdout(options.stdout.stdio())
+        .stderr(options.stderr.stdio());
     let started = Instant::now();
-    let mut group = Group::start(command, limits.scope).map_err(RunError::Start)?;
+    let mut group = Group::start(command, options.scope).map_err(RunError::Start)?;
     let notice = Arc::new(Notice::default());
-    if let Some(cancel) = &limits.cancel {
+    if let Some(cancel) = &options.cancel {
         cancel.watch(&notice);
     }
     let ends = Ends::default();
@@ -284,9 +284,9 @@ pub fn run(mut command: Command, limits: &Limits) -> Result<ChildFinished, RunEr
         let unwind = Unwind {
             group: &mut group,
             ends: &ends,
-            limits,
+            options,
         };
-        follow(threads, &mut *unwind.group, &notice, &ends, limits)
+        follow(threads, &mut *unwind.group, &notice, &ends, options)
     });
     let (outcome, status, stdout, stderr) = followed.map_err(RunError::Run)?;
     Ok(ChildFinished {
@@ -299,7 +299,7 @@ pub fn run(mut command: Command, limits: &Limits) -> Result<ChildFinished, RunEr
 }
 
 /// Ends the line queues of a run when the run returns, on every path.
-struct EndLines<'run>(&'run Limits);
+struct EndLines<'run>(&'run RunOptions);
 
 impl Drop for EndLines<'_> {
     fn drop(&mut self) {
@@ -317,7 +317,7 @@ impl Drop for EndLines<'_> {
 struct Unwind<'a> {
     group: &'a mut Group,
     ends: &'a Ends,
-    limits: &'a Limits,
+    options: &'a RunOptions,
 }
 
 impl Drop for Unwind<'_> {
@@ -326,7 +326,7 @@ impl Drop for Unwind<'_> {
         // process id that another process may have taken.
         let _ = self.group.signal(Signal::Kill);
         self.ends.set(Instant::now());
-        self.limits.stopping();
+        self.options.stopping();
     }
 }
 
@@ -345,7 +345,7 @@ fn follow<'scope>(
     group: &mut Group,
     notice: &'scope Notice,
     ends: &'scope Ends,
-    limits: &'scope Limits,
+    options: &'scope RunOptions,
 ) -> io::Result<(Outcome, Status, Kept, Kept)> {
     let pipes = (group.take_stdin(), group.take_stdout(), group.take_stderr());
     let exit = group.waiter();
@@ -367,12 +367,12 @@ fn follow<'scope>(
         stderr: None,
         stdin: None,
     };
-    let mut failure = start_pipes(threads, &mut started, pipes, notice, ends, limits).err();
+    let mut failure = start_pipes(threads, &mut started, pipes, notice, ends, options).err();
     let stopped = if failure.is_some() {
-        stop(group, notice, &Escalation::default(), limits);
+        stop(group, notice, &Escalation::default(), options);
         None
     } else {
-        control(group, notice, limits)
+        control(group, notice, options)
     };
     let status = group.reap();
     // The child is gone. The queues drop lines from the middle of the drain,
@@ -381,7 +381,7 @@ fn follow<'scope>(
     let reaped = Instant::now();
     let after = |grace: Duration| reaped.checked_add(grace).unwrap_or(reaped);
     ends.set(after(DRAIN_GRACE));
-    limits.drain_until(after(DRAIN_GRACE / 2));
+    options.drain_until(after(DRAIN_GRACE / 2));
     let exited = joined(started.waiter.join());
     let stdout = started.stdout.map(|reader| joined(reader.join()));
     let stderr = started.stderr.map(|reader| joined(reader.join()));
@@ -418,24 +418,24 @@ fn start_pipes<'scope>(
     ),
     notice: &'scope Notice,
     ends: &'scope Ends,
-    limits: &'scope Limits,
+    options: &'scope RunOptions,
 ) -> io::Result<()> {
     let over = || notice.set(|flags| flags.over_limit = true);
     if let Some(stdout) = stdout {
-        let keeper = Keeper::new(&limits.stdout);
+        let keeper = Keeper::new(&options.stdout);
         started.stdout = Some(
             Builder::new()
                 .spawn_scoped(threads, move || pipes::read(stdout, ends, keeper, over))?,
         );
     }
     if let Some(stderr) = stderr {
-        let keeper = Keeper::new(&limits.stderr);
+        let keeper = Keeper::new(&options.stderr);
         started.stderr = Some(
             Builder::new()
                 .spawn_scoped(threads, move || pipes::read(stderr, ends, keeper, over))?,
         );
     }
-    if let (Some(stdin), Input::Bytes(bytes)) = (stdin, &limits.stdin) {
+    if let (Some(stdin), Input::Bytes(bytes)) = (stdin, &options.stdin) {
         started.stdin =
             Some(Builder::new().spawn_scoped(threads, move || pipes::write(stdin, bytes, ends))?);
     }
@@ -445,8 +445,8 @@ fn start_pipes<'scope>(
 /// Waits until the child exits or the run must stop it, stops it then, and
 /// returns the exit that the stop gives, or `None` when the child ended on
 /// its own. The child has exited when it returns, and is unreaped.
-fn control(group: &Group, notice: &Notice, limits: &Limits) -> Option<Outcome> {
-    let flags = notice.wait(limits.deadline, |flags| {
+fn control(group: &Group, notice: &Notice, options: &RunOptions) -> Option<Outcome> {
+    let flags = notice.wait(options.deadline, |flags| {
         flags.exited || flags.cancelled || flags.over_limit
     });
     let exit = if flags.exited {
@@ -463,7 +463,7 @@ fn control(group: &Group, notice: &Notice, limits: &Limits) -> Option<Outcome> {
     } else {
         Outcome::TimedOut
     };
-    stop(group, notice, &limits.escalation, limits);
+    stop(group, notice, &options.escalation, options);
     Some(exit)
 }
 
@@ -480,8 +480,8 @@ fn control(group: &Group, notice: &Notice, limits: &Limits) -> Option<Outcome> {
 /// refuses the tool's signals with `EPERM`, which holds the run until it
 /// exits. A run that gives up on such a child and reports it replaces this
 /// when a caller needs one.
-fn stop(group: &Group, notice: &Notice, escalation: &Escalation, limits: &Limits) {
-    limits.stopping();
+fn stop(group: &Group, notice: &Notice, escalation: &Escalation, options: &RunOptions) {
+    options.stopping();
     if sys::GRACEFUL {
         for (signal, grace) in escalation.steps() {
             let _ = group.signal(signal);

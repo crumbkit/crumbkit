@@ -8,9 +8,9 @@
 //!
 //! ```ignore
 //! SelfCommand::Figures { verb: FiguresVerb::List(args) } => {
-//!     let result = crumbkit_usage::figures(&mut output, &TOOL, &args);
+//!     let result = crumbkit_usage::figures(&mut run, &TOOL, &args);
 //!     let result = Ok::<_, crumbkit::Error>(result);
-//!     crumbkit::finish(output, crumbkit_usage::SELF_FIGURES_LIST, result)
+//!     crumbkit::finish(run, crumbkit_usage::SELF_FIGURES_LIST, result)
 //! }
 //! ```
 //!
@@ -38,7 +38,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::self_usage::{CommandFigures, SelfUsage, UsageSummary, open, summarize};
-use crumbkit::{Document, Listing, Output, Page, Tool};
+use crumbkit::{Document, Listing, Page, Run, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -95,7 +95,7 @@ impl crumbkit::Row for FiguresRow {
 }
 
 /// Returns the figures of each command in the usage log of the tool whose
-/// command `output` holds, for the runs that ended in
+/// command `run` holds, for the runs that ended in
 /// the `--since` duration before now, one page of them as `args` asks, for
 /// the tool to pass to [`finish`](crumbkit::finish) with [`SELF_FIGURES_LIST`].
 ///
@@ -106,11 +106,11 @@ impl crumbkit::Row for FiguresRow {
 /// tool record, whose exit codes give the meaning of each exit from 3.
 #[must_use]
 pub fn figures(
-    output: &mut Output,
+    run: &mut Run,
     tool: &Tool,
     args: &SelfFigures,
 ) -> Listing<FiguresRow, UsageSummary> {
-    let tool_name = output.command();
+    let tool_name = run.command();
     figures_from(
         tool_name,
         tool,

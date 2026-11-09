@@ -3,8 +3,8 @@
 use std::time::{Duration, Instant};
 
 use super::super::{
-    Capture, ChildFinished, DRAIN_GRACE, Limits, Outcome, OverLimit, RunError, Status, StopReason,
-    run,
+    Capture, ChildFinished, DRAIN_GRACE, Outcome, OverLimit, RunError, RunOptions, Status,
+    StopReason, run,
 };
 use crate::testing::sh;
 use crate::{Cancel, Lines, line_queue};
@@ -14,7 +14,7 @@ const WAIT: Duration = Duration::from_secs(5);
 
 /// Returns the settings that deliver standard output as lines to a queue
 /// of `most` lines within `line` and `total` bytes, and the caller's side.
-fn lines(most: usize, line: usize, total: usize) -> (Limits, Lines) {
+fn lines(most: usize, line: usize, total: usize) -> (RunOptions, Lines) {
     let (queue, lines) = line_queue(most);
     let capture = Capture::Lines {
         queue,
@@ -22,7 +22,7 @@ fn lines(most: usize, line: usize, total: usize) -> (Limits, Lines) {
         total,
         over: OverLimit::Stop,
     };
-    (Limits::new().stdout(capture), lines)
+    (RunOptions::new().stdout(capture), lines)
 }
 
 /// Returns every line that `lines` still holds once its run has ended.
@@ -33,7 +33,7 @@ fn rest(lines: &Lines) -> Vec<String> {
 }
 
 /// Runs `script` with `settings`.
-fn run_sh(script: &str, settings: &Limits) -> ChildFinished {
+fn run_sh(script: &str, settings: &RunOptions) -> ChildFinished {
     run(sh(script), settings).unwrap()
 }
 

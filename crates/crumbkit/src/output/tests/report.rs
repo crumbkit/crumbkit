@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::tool::Failures;
-use crate::{Document, Error, Output, Row, Sink, Spelling, Tool, ViewFlags, finish_to};
+use crate::{Document, Error, Row, Run, Sink, Spelling, Tool, ViewFlags, finish_to};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
 /// prints in the spelling that the tool record sets, where the colon
@@ -37,7 +37,7 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let tool = Tool::new().failures(Failures::new().spelling(DOTS));
-    let output = Output::new(
+    let output = Run::new(
         ViewFlags::new(),
         crate::DryRun::default(),
         clap::Command::new("shelf"),

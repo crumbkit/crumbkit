@@ -14,7 +14,7 @@ include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICE
 [dependencies]
 # crumbkit tells the log what each run did through its run observer
 # (ADR-0057), and `self usage` and `self figures list` print crumbkit
-# listings with crumbkit's `Output` and `Page`.
+# listings with crumbkit's `Run` and `Page`.
 crumbkit = { workspace = true }
 # The record names commands and flags from the tool's `clap::Command`, and
 # `SelfUsage` and `SelfFigures` derive `clap::Args`.

@@ -1,7 +1,7 @@
 //! Tests for the catalogue, its failures and the calls that shelf prints.
 
 use clap::CommandFactory as _;
-use crumbkit::{Batch, Failure as _, Output, Recovery, RenderCall as _, Room, Tool, ViewFlags};
+use crumbkit::{Batch, Failure as _, Recovery, RenderCall as _, Room, Run, Tool, ViewFlags};
 
 use super::{
     BOOKS_SHOW, Book, BooksError, IdsFileProblem, MOST_IDS, parse_ids, show, show_call, summarize,
@@ -10,7 +10,7 @@ use crate::cli::{BooksShow, BooksSummarize, Cli};
 
 /// Returns the room of `books show` with crumbkit's default output budget.
 fn roomy() -> Room<Batch<Book, BooksError>> {
-    Output::new(
+    Run::new(
         ViewFlags::new(),
         crumbkit::DryRun::default(),
         Cli::command(),

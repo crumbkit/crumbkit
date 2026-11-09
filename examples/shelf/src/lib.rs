@@ -41,8 +41,8 @@ pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
 /// the first word with its words from shelf's aliases file, so clap,
 /// help and every output see only real commands.
 ///
-/// `crumbkit::try_parse_to` returns the parsed `Cli` and an `Output`. The
-/// output holds the command with crumbkit's help lines and the words that
+/// `crumbkit::try_parse_to` returns the parsed `Cli` and a `Run`. The
+/// run holds the command with crumbkit's help lines and the words that
 /// the caller typed, which `books remove` repeats with `--yes` when no
 /// person can confirm it. `finish` renders the
 /// `Next:` line and a failure's recovery against it. `shelf commands list`
@@ -73,7 +73,7 @@ where
     // builds it once.
     let parsed =
         crumbkit::try_parse_to::<Cli>(&mut crumbkit::Sink::standard(), command, &TOOL, args);
-    let (cli, mut output) = match parsed.map_err(crumbkit::Unparsed::print) {
+    let (cli, mut run) = match parsed.map_err(crumbkit::Unparsed::print) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.exit_code(),
     };
@@ -83,69 +83,69 @@ where
             let removed = removed.as_deref();
             match command {
                 BooksCommand::List(args) => {
-                    crumbkit::finish(output, books::BOOKS_LIST, books::list(&args, removed))
+                    crumbkit::finish(run, books::BOOKS_LIST, books::list(&args, removed))
                 }
                 BooksCommand::Show(args) => {
-                    let room = output.room(books::BOOKS_SHOW);
+                    let room = run.room(books::BOOKS_SHOW);
                     let result = books::show(&args, removed, room);
-                    crumbkit::finish(output, books::BOOKS_SHOW, result)
+                    crumbkit::finish(run, books::BOOKS_SHOW, result)
                 }
                 BooksCommand::Summarize(args) => crumbkit::finish(
-                    output,
+                    run,
                     books::BOOKS_SUMMARIZE,
                     books::summarize(&args, removed),
                 ),
                 // `remove` reads `--dry-run` and asks for confirmation
-                // through `&mut output`, so it runs before `finish`.
+                // through `&mut run`, so it runs before `finish`.
                 BooksCommand::Remove(args) => {
-                    let result = books::remove(&mut output, &args, removed);
-                    crumbkit::finish(output, books::BOOKS_REMOVE, result)
+                    let result = books::remove(&mut run, &args, removed);
+                    crumbkit::finish(run, books::BOOKS_REMOVE, result)
                 }
             }
         }
         // `commands list`, `schemas`, `self` and `aliases list` read the
-        // command tree through `&mut output`, so each runs before
-        // `finish` takes `output` in turn.
+        // command tree through `&mut run`, so each runs before
+        // `finish` takes `run` in turn.
         Resource::Commands { command } => match command {
             CommandsCommand::List(args) => {
-                let result = crumbkit::commands::list(&mut output, &TOOL, &args);
+                let result = crumbkit::commands::list(&mut run, &TOOL, &args);
                 let document = crumbkit::commands::COMMANDS_LIST;
-                crumbkit::finish(output, document, result)
+                crumbkit::finish(run, document, result)
             }
         },
         Resource::Schemas { command } => match command {
             SchemasCommand::List(args) => {
-                let result = crumbkit::schemas::list(&mut output, &TOOL, &args);
+                let result = crumbkit::schemas::list(&mut run, &TOOL, &args);
                 let document = crumbkit::schemas::SCHEMAS_LIST;
-                crumbkit::finish(output, document, result)
+                crumbkit::finish(run, document, result)
             }
             SchemasCommand::Show(args) => {
-                let result = crumbkit::schemas::show(&mut output, &TOOL, &args);
+                let result = crumbkit::schemas::show(&mut run, &TOOL, &args);
                 let document = crumbkit::schemas::SCHEMAS_SHOW;
-                crumbkit::finish(output, document, result)
+                crumbkit::finish(run, document, result)
             }
         },
         Resource::SelfCommand { command } => match command {
             SelfCommand::Usage(args) => {
                 let result =
-                    Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&mut output, &TOOL, &args));
+                    Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&mut run, &TOOL, &args));
                 let document = crumbkit_usage::SELF_USAGE;
-                crumbkit::finish(output, document, result)
+                crumbkit::finish(run, document, result)
             }
             SelfCommand::Figures {
                 command: FiguresCommand::List(args),
             } => {
                 let result =
-                    Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&mut output, &TOOL, &args));
+                    Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&mut run, &TOOL, &args));
                 let document = crumbkit_usage::SELF_FIGURES_LIST;
-                crumbkit::finish(output, document, result)
+                crumbkit::finish(run, document, result)
             }
         },
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {
-                let result = crumbkit_aliases::list(&mut output, file.as_deref(), &args);
+                let result = crumbkit_aliases::list(&mut run, file.as_deref(), &args);
                 let document = crumbkit_aliases::ALIASES_LIST;
-                crumbkit::finish(output, document, result)
+                crumbkit::finish(run, document, result)
             }
         },
     }

@@ -51,7 +51,7 @@ pub(crate) enum Message {
     DebugWarning,
     /// The line that marks a dry run.
     DryRun,
-    /// The question of `Output::confirm` or of a picker, which a person
+    /// The question of `Run::confirm` or of a picker, which a person
     /// answers.
     Prompt,
     /// The `Running:` line of a run whose arguments a picker filled in.

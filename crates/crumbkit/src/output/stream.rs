@@ -12,7 +12,7 @@ use clap::Command;
 use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
-use super::{JsonLayout, Output, fields, problems};
+use super::{JsonLayout, Run, fields, problems};
 use crate::help::view::{Kind, Printed};
 use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
@@ -26,7 +26,7 @@ mod tests;
 use self::open::open;
 
 /// Opens the stream of `document` on the process's standard output and
-/// standard error, in the format that `output` chooses.
+/// standard error, in the format that `run` chooses.
 ///
 /// It behaves as [`stream_to`] does with a sink over the standard streams.
 /// Standard output stays locked until the [`Streaming`] is dropped, so
@@ -43,15 +43,15 @@ use self::open::open;
 /// lines that `--json` alone prints, and end with a note that the flag adds
 /// nothing (ADR-0149). The pairs that cannot work together, `--full` without
 /// `--json` and `--fields` with `--long` or `--full`, were refused when the
-/// `Output` was built (ADR-0093). `main` returns that code.
+/// `Run` was built (ADR-0093). `main` returns that code.
 pub fn stream<R: Row>(
-    output: Output,
+    run: Run,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<R, StdoutLock<'static>, Stderr>, ExitCode> {
-    open(Sink::standard(), output, document)
+    open(Sink::standard(), run, document)
 }
 
-/// Opens the stream of `document` on `sink`, in the format that `output`
+/// Opens the stream of `document` on `sink`, in the format that `run`
 /// chooses, and returns the [`Streaming`] that prints each item.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, as
@@ -83,7 +83,7 @@ pub fn stream<R: Row>(
 /// The stream flushes the output writer after each line, so a reader sees
 /// each item as soon as it is printed.
 ///
-/// The stream prints within [`Output::budget`] bytes on the output writer.
+/// The stream prints within [`Run::budget`] bytes on the output writer.
 /// Its first item always prints. A later item whose line would
 /// pass the budget does not print: the stream prints the failure
 /// `<tool>::output::over_budget`, or the tool record's rename of it, in its
@@ -92,7 +92,7 @@ pub fn stream<R: Row>(
 /// stream runs for a long time sets a larger budget with
 /// [`tool::Output::budget`](crate::tool::Output::budget).
 ///
-/// `stream` and `stream_to` take `output` by value, because a stream is
+/// `stream` and `stream_to` take `run` by value, because a stream is
 /// the last thing a run prints, and the [`Streaming`] holds the view and
 /// the command tree until it ends (ADR-0094).
 ///
@@ -103,13 +103,13 @@ pub fn stream<R: Row>(
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Entry { position: u32 }
 /// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
-/// use crumbkit::{Document, Error, Output, Stream};
+/// use crumbkit::{Document, Error, Run, Stream};
 ///
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
 /// let result: Result<Vec<Entry>, Error> = Ok(Vec::new());
-/// let output = Output::new(
+/// let run = Run::new(
 ///     crumbkit::ViewFlags::new(),
 ///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
@@ -117,7 +117,7 @@ pub fn stream<R: Row>(
 ///     ["reading"],
 /// )
 /// .unwrap();
-/// crumbkit::finish(output, ENTRIES_STREAM, result);
+/// crumbkit::finish(run, ENTRIES_STREAM, result);
 /// ```
 ///
 /// A tool that streams entries opens the stream, prints each item until the
@@ -129,12 +129,12 @@ pub fn stream<R: Row>(
 /// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
 /// use std::ops::ControlFlow;
 ///
-/// use crumbkit::{Document, Error, Output, Sink, Stream};
+/// use crumbkit::{Document, Error, Run, Sink, Stream};
 ///
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
-/// let output = Output::new(
+/// let run = Run::new(
 ///     crumbkit::ViewFlags::new(),
 ///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
@@ -145,7 +145,7 @@ pub fn stream<R: Row>(
 /// let mut out = Vec::new();
 /// let mut err = Vec::new();
 /// let mut sink = Sink::new(&mut out, &mut err);
-/// let code = match crumbkit::stream_to(&mut sink, output, ENTRIES_STREAM) {
+/// let code = match crumbkit::stream_to(&mut sink, run, ENTRIES_STREAM) {
 ///     Ok(mut streaming) => {
 ///         for position in 1..=3 {
 ///             if streaming.item(&Entry { position }).is_break() {
@@ -167,17 +167,17 @@ pub fn stream<R: Row>(
 /// of the stream prints.
 pub fn stream_to<R: Row, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: Output,
+    run: Run,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<R, &mut O, &mut W>, ExitCode> {
-    open(sink.by_ref(), output, document)
+    open(sink.by_ref(), run, document)
 }
 
 /// An open stream, which prints each item that the tool passes to
 /// [`Streaming::item`] and ends with [`Streaming::end`].
 ///
 /// [`stream`] and [`stream_to`] open it, and it owns the view and the
-/// command tree of the `Output` that they took. A stream that is dropped
+/// command tree of the `Run` that they took. A stream that is dropped
 /// without `end` has printed every line that it was given, and records no
 /// exit code.
 ///
@@ -202,7 +202,7 @@ pub struct Streaming<R, O, W> {
     columns: Vec<Cow<'static, str>>,
     /// The width of each column, which is the width of its header.
     widths: Vec<usize>,
-    /// The command tree that a failure's `Run` recovery renders against.
+    /// The command tree that a failure's `Recovery::Run` renders against.
     command: Command,
     /// The spelling of the failures' codes.
     spelling: Spelling,
@@ -289,7 +289,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     }
 
     /// Returns the bytes that the stream can still print on the output
-    /// writer: [`Output::budget`], less the bytes printed since the stream
+    /// writer: [`Run::budget`], less the bytes printed since the stream
     /// opened. A tool reads it to stop producing items that cannot print.
     #[must_use]
     pub const fn budget(&self) -> usize {

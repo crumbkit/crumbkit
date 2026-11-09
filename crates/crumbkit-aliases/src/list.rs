@@ -7,7 +7,7 @@ use std::path::Path;
 
 use clap::{Args, Command};
 use crumbkit::help::quote;
-use crumbkit::{Document, Error, Failure, Listing, Output, Page, Row};
+use crumbkit::{Document, Error, Failure, Listing, Page, Row, Run};
 use schemars::JsonSchema;
 use serde::Serialize;
 use toml::de::{DeTable, DeValue};
@@ -77,7 +77,7 @@ impl Row for AliasRow {
     const PROBLEM: Option<&'static str> = Some("problem");
 }
 
-/// Returns the built-in aliases of the command tree that `output` holds and
+/// Returns the built-in aliases of the command tree that `run` holds and
 /// the entries of the aliases file at `file`,
 /// one page of them as `args` asks, for the tool to pass to
 /// [`finish`](crumbkit::finish) with [`ALIASES_LIST`].
@@ -93,7 +93,7 @@ impl Row for AliasRow {
 /// from expanding, as [`expand`](crate::expand) decides it, and the entries
 /// with a problem keep name order among themselves.
 ///
-/// It builds the whole command tree through `Output::command`, so it sees
+/// It builds the whole command tree through `Run::command`, so it sees
 /// each command that `Command::defer` adds.
 ///
 /// A missing file, or no file because the environment gives no config
@@ -109,11 +109,11 @@ impl Row for AliasRow {
 /// path and the reason, and the recovery asks the person to fix or remove
 /// the file.
 pub fn list(
-    output: &mut Output,
+    run: &mut Run,
     file: Option<&Path>,
     args: &AliasesList,
 ) -> Result<Listing<AliasRow>, Error> {
-    let command = output.command();
+    let command = run.command();
     let text = match file {
         Some(path) => crate::file::read(path).map_err(|error| AliasesError::Unreadable {
             path: path.display().to_string(),
