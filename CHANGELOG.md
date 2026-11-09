@@ -19,6 +19,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/processes]).
 - crumbkit-process: `Capture::Inherit` sends a stream to the tool's own, so a
   run can hold an interactive step and return ([behaviour/processes]).
+- crumbkit-process: `RunOptions::report_survivors` and
+  `ChildFinished::survivors` say whether a process in the child's group outlived
+  it ([behaviour/processes]).
 
 ### Changed
 

@@ -14,6 +14,8 @@ use std::time::Duration;
 
 use rustix::event::{PollFd, PollFlags, Timespec, poll};
 use rustix::io::Errno;
+#[cfg(target_os = "macos")]
+use rustix::process::test_kill_process_group;
 use rustix::process::{
     Pid, Signal as Raw, WaitId, WaitIdOptions, WaitIdStatus, getpgid, kill_process,
     kill_process_group, waitid,
@@ -64,6 +66,13 @@ impl Child {
             pid,
             scope,
         })
+    }
+
+    /// Returns true when another process in the group still runs. The
+    /// caller knows that the child has exited and is unreaped, so its id
+    /// still names the group.
+    pub(crate) fn others_alive(&self) -> bool {
+        self.scope == Scope::Group && others_in_group(self.pid)
     }
 
     /// Returns the child's process id.
@@ -174,6 +183,59 @@ impl Waiter {
             }
         }
     }
+}
+
+/// Returns true when a live process is in the group that the exited child
+/// `leader` leads.
+///
+/// Linux counts the unreaped leader as a member of its group, so a signal
+/// cannot tell whether anything else is there, and the check reads
+/// `/proc`.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn others_in_group(leader: Pid) -> bool {
+    let Ok(processes) = std::fs::read_dir("/proc") else {
+        return false;
+    };
+    processes.flatten().any(|process| {
+        std::fs::read(process.path().join("stat")).is_ok_and(|stat| {
+            live_in_group(
+                &String::from_utf8_lossy(&stat),
+                leader.as_raw_nonzero().get(),
+            )
+        })
+    })
+}
+
+/// Returns true when the exited child's group has a live process. macOS
+/// skips a process that has exited when it signals a group, and refuses the
+/// signal when no other process is left.
+#[cfg(target_os = "macos")]
+fn others_in_group(leader: Pid) -> bool {
+    test_kill_process_group(leader).is_ok()
+}
+
+/// Returns false.
+///
+/// RUST-10: only Linux and macOS have a checked way to tell a live member
+/// of the group from the exited leader, so another Unix reports no
+/// survivors. A check for that system replaces this when a tool needs it.
+#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
+const fn others_in_group(_leader: Pid) -> bool {
+    false
+}
+
+/// Returns true when `stat`, the text of a `/proc/<id>/stat` file, is a
+/// process in `group` that has not exited. The name in that file can hold
+/// spaces and parentheses, so the fields are read after its last `)`.
+#[cfg(any(target_os = "linux", target_os = "android", test))]
+fn live_in_group(stat: &str, group: i32) -> bool {
+    let Some((_, fields)) = stat.rsplit_once(')') else {
+        return false;
+    };
+    let mut fields = fields.split_ascii_whitespace();
+    let state = fields.next();
+    let in_group = fields.nth(1).and_then(|value| value.parse().ok()) == Some(group);
+    in_group && !matches!(state, Some("Z" | "X" | "x"))
 }
 
 /// Consumes a report that the child `pid` stopped or continued, so that the

@@ -59,6 +59,18 @@ impl Child {
         })
     }
 
+    /// Returns false.
+    ///
+    /// RUST-10: Windows reports no survivors. A query of the job's process
+    /// list replaces this when a tool on Windows needs the report.
+    #[expect(
+        clippy::unused_self,
+        reason = "the Unix function of the same name reads the child"
+    )]
+    pub(crate) const fn others_alive(&self) -> bool {
+        false
+    }
+
     /// Takes the child's standard input, when it is a pipe.
     pub(crate) fn take_stdin(&mut self) -> Option<ChildStdin> {
         locked(&self.wrapped).stdin().take()

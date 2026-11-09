@@ -85,6 +85,12 @@ impl Group {
         })
     }
 
+    /// Returns true when another process in the group still runs. The
+    /// child must have exited and stayed unreaped, so it names the group.
+    pub(crate) fn others_alive(&self) -> bool {
+        self.child.others_alive()
+    }
+
     /// Returns the child's process id.
     #[cfg(all(test, unix))]
     pub(crate) fn id(&self) -> u32 {
