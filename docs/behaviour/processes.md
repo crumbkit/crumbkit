@@ -84,6 +84,12 @@ Each output stream has a `Capture`:
   With `LongLine::Skip` the run drops that line up to its end and delivers
   the next one, and `Captured::long_line` says that it dropped one.
 
+`RunOptions::stdout_copy` and `stderr_copy` give a function each chunk of the
+stream as the run reads it, whatever the capture keeps, so a tool can show the
+output and keep a bounded copy. A function that blocks holds the reader and so
+the child and the run. A function that panics gets no more chunks, the child
+runs on, and the run ends with `RunError::Run`.
+
 `Captured::over_limit` tells whether the kept bytes, or the lines
 delivered, passed a limit, and `Captured::long_line`
 tells whether one line passed its limit. `ChildFinished::first_stdout` gives the time from the
@@ -164,12 +170,14 @@ for at most one second after the reap, and keeps running.
 
 On Unix, for a child that the tool may signal, a run takes at most the
 time to its deadline, plus the graces of its escalation, plus the drain
-grace, plus the time that a hook around the start takes. A child that refuses the tool's signals, such as a setuid program,
+grace, plus the time that a hook around the start takes, plus the time that a copy
+function blocks. A child that refuses the tool's signals, such as a setuid program,
 holds the run until it exits. On Windows a reader blocks until its pipe
 closes, so a process outside the job that holds a pipe, as a grandchild of
 a child in `Scope::Child` can, holds the run until it exits.
 
-Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183, ADR-0184.
+Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183, ADR-0184,
+ADR-0187, ADR-0188.
 
 ## Reaping
 

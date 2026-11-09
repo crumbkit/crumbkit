@@ -1,6 +1,8 @@
 //! What a run keeps of each output stream.
 
+use std::fmt;
 use std::process::Stdio;
+use std::sync::Arc;
 use std::time::Instant;
 
 use crate::LineQueue;
@@ -164,6 +166,31 @@ impl Captured {
     #[must_use]
     pub const fn long_line(&self) -> bool {
         self.long_line
+    }
+}
+
+/// The caller's function that receives each chunk of one output stream.
+#[derive(Clone)]
+pub(super) struct OutputCopy(Arc<CopyFn>);
+
+/// The caller's function, which the settings hold and a reader thread calls.
+type CopyFn = dyn Fn(&[u8]) + Send + Sync;
+
+impl OutputCopy {
+    /// Wraps the caller's function.
+    pub(super) fn new(copy: impl Fn(&[u8]) + Send + Sync + 'static) -> Self {
+        Self(Arc::new(copy))
+    }
+
+    /// Gives `chunk` to the caller's function.
+    pub(super) fn send(&self, chunk: &[u8]) {
+        (self.0)(chunk);
+    }
+}
+
+impl fmt::Debug for OutputCopy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("OutputCopy(..)")
     }
 }
 
