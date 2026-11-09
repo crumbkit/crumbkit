@@ -353,7 +353,9 @@ impl<'a> Recoveries<'a> {
 /// A chain follows the recovery and then each alternative of a failure. A
 /// `run` step fills each placeholder, such as `<ID>...` or each of the two
 /// in `<plugin>.<capability>`, keeps the text between placeholders in a
-/// word, drops the tool's name and runs the words. A placeholder takes the first value that one of
+/// word, drops the tool's name and runs the words. A `terminal` step holds
+/// no placeholder, and the chain runs its words as it runs a `run` step's.
+/// A placeholder takes the first value that one of
 /// these sources gives:
 ///
 /// 1. the value of [`Failing::values`] whose name matches it exactly;
@@ -392,8 +394,10 @@ impl<'a> Recoveries<'a> {
 /// - a step that fails with the code of the failure it follows or of an
 ///   earlier failure of its chain, unless an opt-out from
 ///   [`Rule::SameCode`] covers the step's command;
+/// - a `terminal` step that holds a placeholder, because a terminal runs a
+///   call exactly as it prints;
 /// - a failure with one of the tool's declared codes that offers no `run`,
-///   `retry` or `hint` step, such as a failure whose recovery is
+///   `terminal`, `retry` or `hint` step, such as a failure whose recovery is
 ///   `Recovery::None` with a reason, unless an opt-out from
 ///   [`Rule::NextStep`] covers the command that failed. A failure from a
 ///   run that writes a `warning: <tool> left out` line is not also reported here;

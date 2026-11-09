@@ -117,7 +117,8 @@ pub enum Rule {
     /// failure printed the recovery.
     FieldValue,
     /// [`check_recoveries`](crate::check_recoveries): a failure with one of
-    /// the tool's declared codes offers no `run`, `retry` or `hint` step,
+    /// the tool's declared codes offers no `run`, `terminal`, `retry` or
+    /// `hint` step,
     /// such as a failure whose recovery is `Recovery::None`. Its id is
     /// `recoveries/next-step`, and its opt-out names the command that
     /// failed. The opt-out declares the exception that ADR-0001 allows, so

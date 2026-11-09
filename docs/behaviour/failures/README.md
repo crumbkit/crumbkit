@@ -46,7 +46,9 @@ such as one that opens an editor or asks questions. Text prints it as
 `{"kind":"terminal","call":"shelf login"}`, so a program that reads the
 failure can hand the step to a person and not run it itself. A call that the
 tool's command tree cannot render behaves as a `Recovery::Run` call that
-cannot render.
+cannot render. The call must be concrete, because a terminal runs exactly the
+call that prints, so a call with a placeholder from `Call::arg` or `Call::all`
+behaves as a call that cannot render.
 
 `Recovery::None` with a reason is the exception for a failure that no step
 can repair. A tool declares each such failure with one of its declared codes

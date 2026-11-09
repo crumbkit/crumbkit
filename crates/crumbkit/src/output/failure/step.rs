@@ -44,9 +44,9 @@ impl RecoveryStep {
     /// Reads `recovery` into a step, rendering a `Recovery::Run` or
     /// `Recovery::Terminal` call against `command`. It returns `Err` with a
     /// `RecoveryStep::None` when the recovery offers no step: a
-    /// `Recovery::None`, or a call that cannot be rendered because it does
-    /// not resolve. It adds the reason that a call does not resolve to
-    /// `unrendered`.
+    /// `Recovery::None`, a call that cannot be rendered because it does not
+    /// resolve, or a `Recovery::Terminal` call that holds a placeholder. It
+    /// adds the reason that such a call offers no step to `unrendered`.
     pub(super) fn offered(
         recovery: Recovery,
         command: &mut Command,
@@ -64,7 +64,16 @@ impl RecoveryStep {
                 })
             }
             Recovery::Terminal(call) => {
-                Self::rendered(&call, command, unrendered).map(Self::Terminal)
+                let rendered = Self::rendered(&call, command, unrendered)?;
+                // `words` returns `None` for a call with a placeholder, and
+                // the call has rendered, so every lookup in it succeeds.
+                if crate::call::words(&call, command).is_none() {
+                    unrendered.push(format!(
+                        "the terminal call `{rendered}` holds a placeholder, and a terminal runs a call exactly as it prints"
+                    ));
+                    return Err(Self::None(UNAVAILABLE.to_owned()));
+                }
+                Ok(Self::Terminal(rendered))
             }
             Recovery::Retry => Ok(Self::Retry),
             Recovery::Hint(text) => Ok(Self::Hint(text)),

@@ -116,3 +116,74 @@ fn a_terminal_call_with_a_value_prints_the_value_quoted_for_a_shell() {
         finished.err
     );
 }
+
+/// Returns the calls that hold a placeholder: one from `Call::arg`, one from
+/// `Call::all` and one from `Call::typed_all`.
+fn calls_with_a_placeholder() -> [Call; 3] {
+    [
+        Call::new(&["show"]).arg("ids"),
+        Call::new(&["show"]).all("ids", "left_out"),
+        Call::typed_all(vec!["show".to_owned()], 1, "<ID>...".to_owned(), "left_out"),
+    ]
+}
+
+#[test]
+fn a_terminal_call_with_a_placeholder_prints_as_a_call_that_does_not_resolve() {
+    for call in calls_with_a_placeholder() {
+        let text = fail_with(&[], missing(Recovery::Terminal(call.clone())));
+        let json = fail_with(&["--json"], missing(Recovery::Terminal(call)));
+
+        assert!(
+            text.err
+                .contains("\n  help:  no next step: the suggested command is not available\n"),
+            "{}",
+            text.err
+        );
+        assert!(
+            json.out.contains(
+                r#""recovery":{"kind":"none","reason":"the suggested command is not available"}"#
+            ),
+            "{}",
+            json.out
+        );
+    }
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn a_terminal_call_with_a_placeholder_adds_a_warning_line_in_a_debug_build() {
+    for call in calls_with_a_placeholder() {
+        let finished = fail_with(&[], missing(Recovery::Terminal(call)));
+
+        assert!(finished.err.starts_with("warning: "), "{}", finished.err);
+        assert!(finished.err.contains("placeholder"), "{}", finished.err);
+    }
+}
+
+#[test]
+fn a_terminal_alternative_with_a_placeholder_is_left_out() {
+    for call in calls_with_a_placeholder() {
+        let failure = Missing {
+            alternatives: vec![Recovery::Terminal(call)],
+            ..missing(run_list())
+        };
+
+        let json = fail_with(&["--json"], failure);
+
+        assert!(!json.out.contains("alternatives"), "{}", json.out);
+    }
+}
+
+#[test]
+fn a_terminal_call_with_only_concrete_values_prints_as_a_terminal_step() {
+    let call = Call::new(&["show"]).value("ids", "7");
+
+    let json = fail_with(&["--json"], missing(Recovery::Terminal(call)));
+
+    assert!(
+        json.out
+            .contains(r#""recovery":{"kind":"terminal","call":"tool show 7"}"#),
+        "{}",
+        json.out
+    );
+}

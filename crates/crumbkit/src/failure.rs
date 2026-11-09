@@ -137,8 +137,9 @@ pub trait Failure: std::error::Error {
     ///
     /// `crumbkit::finish` prints each alternative on its own `help:` line
     /// after the recovery's, and under `alternatives` in JSON. It leaves out
-    /// an alternative that offers no step: a `Recovery::Run` whose call does
-    /// not resolve, and a `Recovery::None`. When the recovery itself offers
+    /// an alternative that offers no step: a `Recovery::Run` or
+    /// `Recovery::Terminal` whose call does not resolve, and a
+    /// `Recovery::None`. When the recovery itself offers
     /// no step, the first alternative that offers one prints in its place.
     ///
     /// ```
@@ -298,8 +299,10 @@ pub enum Recovery {
     /// opens an editor or asks questions, so a program that reads the
     /// failure should hand the step to a person. `crumbkit::finish` renders
     /// the call as it renders a [`Recovery::Run`] call, and a call that does
-    /// not resolve prints the same way. A placeholder from `Call::arg` or
-    /// `Call::all` stays in the printed call for the person to fill in.
+    /// not resolve prints the same way. The call must be concrete, because
+    /// a terminal runs exactly the call that prints, so a call with a
+    /// placeholder from `Call::arg` or `Call::all` counts as a call that
+    /// does not resolve. `Call::value` gives an argument a concrete value.
     Terminal(Call),
     /// Run the same command again later, because the failure may pass.
     Retry,

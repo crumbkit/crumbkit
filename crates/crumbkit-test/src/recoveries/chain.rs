@@ -223,7 +223,17 @@ impl Walk<'_> {
                 return;
             }
             let (call, values) = match step {
-                RecoveryStep::Run(call) | RecoveryStep::Terminal(call) => (call, None),
+                RecoveryStep::Run(call) => (call, None),
+                RecoveryStep::Terminal(call) => {
+                    if let Some(placeholder) = fill::first_placeholder(call) {
+                        self.problems.push(format!(
+                            "{}: the terminal step `{call}` has the placeholder {placeholder}, and a terminal runs a call exactly as it prints",
+                            chain.start
+                        ));
+                        continue;
+                    }
+                    (call, None)
+                }
                 RecoveryStep::RunAll { call, field } => {
                     let list = parent.lists.iter().find(|(name, _)| name == field);
                     let Some((_, values)) = list.filter(|(_, values)| !values.is_empty()) else {

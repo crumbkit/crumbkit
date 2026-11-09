@@ -28,7 +28,9 @@ A step fails the check in these cases:
   marks a step that a person or an agent must complete by hand first.
 
 The check treats a `terminal` step as a `run` step, so the call must resolve
-and the check runs it without a person. A step that waits for a person, such
+and the check runs it without a person. A `terminal` step that holds a
+placeholder fails the check, even when a field of the failure could fill it,
+because a terminal runs the call exactly as it prints. A step that waits for a person, such
 as one that opens an editor, needs an opt-out from `Rule::Recoveries`, id
 `recoveries/follow`, that names the command.
 

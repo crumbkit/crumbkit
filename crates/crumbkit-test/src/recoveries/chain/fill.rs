@@ -3,6 +3,8 @@
 
 use clap::Command;
 
+use crate::recoveries::words::split;
+
 /// Returns the value of the placeholder `name`: the start's own value in
 /// `own` whose name matches exactly, then the field in `fields` whose name
 /// matches with capitals lowered and `-` read as `_`, then the shared value
@@ -101,4 +103,12 @@ pub(super) fn path_below<S: AsRef<str>>(root: &Command, words: &[S]) -> String {
         command = sub;
     }
     names.join(" ")
+}
+
+/// Returns the first placeholder of the command line `call`, such as
+/// `<ID>`, or `None` when it has none or is not a line that `split` reads.
+pub(in crate::recoveries) fn first_placeholder(call: &str) -> Option<String> {
+    split(call)?
+        .iter()
+        .find_map(|word| fill_word(word, |_| None).err())
 }
