@@ -65,11 +65,11 @@ mod walked;
 ///
 /// fn main() -> ExitCode {
 ///     let parsed = crumbkit::parse::<Cli>(&Tool::new());
-///     let (_cli, _output) = match parsed {
+///     let (_cli, _run) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.exit_code(),
 ///     };
-///     // Run the command, then return `crumbkit::finish(output, ...)`.
+///     // Run the command, then return `crumbkit::finish(run, ...)`.
 ///     ExitCode::SUCCESS
 /// }
 /// ```
@@ -319,7 +319,7 @@ pub fn parse_to<C: CommandFactory + FromArgMatches>(
 ///         &Tool::new(),
 ///         std::env::args_os(),
 ///     );
-///     let (_cli, _output) = match parsed {
+///     let (_cli, _run) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(Unparsed::Refused(refused)) => {
 ///             // The tool reads `refused.typed()` and `refused.culprit()`
@@ -328,7 +328,7 @@ pub fn parse_to<C: CommandFactory + FromArgMatches>(
 ///         }
 ///         Err(unparsed) => return unparsed.print().exit_code(),
 ///     };
-///     // Run the command, then return `crumbkit::finish(output, ...)`.
+///     // Run the command, then return `crumbkit::finish(run, ...)`.
 ///     ExitCode::SUCCESS
 /// }
 /// ```

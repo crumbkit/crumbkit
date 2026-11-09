@@ -67,7 +67,7 @@ a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a bare
 `ExitCode`. `try_parse_to` returns the `Stop` of help or the version inside
 `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a refusal. A
 tool's `main` returns `stop.exit_code()`. A tool that prints more before it
-exits reads `Stop::output`, whose `Run::is_json` says whether the caller
+exits reads `Stop::run`, whose `Run::is_json` says whether the caller
 asked for JSON, or, after `Refused::as_json`, which form the refusal printed in.
 `Stop::exit` returns the same exit code as a `u8`: 0 after help or the version,
 the code that the tool record lists for a refused command line, which is 2
@@ -228,7 +228,7 @@ A `Refused` holds what the refusal prints and what the run knew:
   after the tool record's renames and the recovery after the tool's declared
   hint or calls, so a tool that prints its own document prints its hint;
 - `exit`, the exit code that the run ends with once the refusal prints;
-- `output`, the output flags as far as the walk found them;
+- `run`, the handle with the view flags as far as the walk found them;
 - `typed`, the words after the program name as the caller typed them;
 - `parsed`, the words that crumbkit gave clap, after it turned the word
   `help` into `--help`, replaced a dashed form or added a picked value;
@@ -277,7 +277,7 @@ text`, reads that flag with `Refused::value` and calls
 `true` the refusal prints the document on the output writer, and with
 `false` it prints text on the error writer, whatever the words said. So
 `tool --error-format text list --nosuch --json` prints text on standard
-error. The call leaves `Refused::output` reporting the words, and it
+error. The call leaves `Refused::run` reporting the words, and it
 changes neither the exit code nor the observers' events. The `Stop` that
 printing returns reports the printed form through `Run::is_json`. A tool
 holding an `Unparsed` matches `Unparsed::Refused(refused)` and calls

@@ -23,7 +23,7 @@ crumbkit = { workspace = true, features = ["derive"] }
 signal-hook = { workspace = true }
 
 [dev-dependencies]
-# The tests parse the output flags into a `Run` with `clap::Parser`.
+# The tests parse the output flags into a `ViewFlags` with `clap::Parser`.
 clap = { workspace = true, features = ["derive"] }
 # The tests read the failure document that a refused `--json` prints.
 serde_json = { workspace = true, features = ["std"] }

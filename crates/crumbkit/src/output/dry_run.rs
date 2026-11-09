@@ -103,7 +103,7 @@ impl Run {
     /// run. [`Run::confirm`] asks nothing in a dry run.
     #[must_use]
     pub const fn is_dry_run(&self) -> bool {
-        self.dry
+        self.dry_mode
     }
 }
 

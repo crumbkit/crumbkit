@@ -31,7 +31,7 @@ struct Cli {
     view: ViewFlags,
 }
 
-/// Parses `vault` followed by `flags` into the output of the run, as a
+/// Parses `vault` followed by `flags` into the handle of the run, as a
 /// tool that parses with clap alone builds it.
 fn output(flags: &[&str]) -> Run {
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
@@ -253,7 +253,7 @@ fn a_refused_json_exits_with_the_code_that_the_tool_gives_a_refused_command_line
 const DOTS: Spelling =
     Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
 
-/// Parses `vault` followed by `flags` into the output of the run, as a tool
+/// Parses `vault` followed by `flags` into the handle of the run, as a tool
 /// that parses with clap alone and sets the dotted spelling on its tool record
 /// builds it.
 fn dotted(flags: &[&str]) -> Run {

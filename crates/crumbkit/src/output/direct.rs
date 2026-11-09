@@ -12,8 +12,8 @@ use crate::{Code, Document, Failure, Rows, Sink};
 impl Run {
     /// Prints `failure` to `sink` as `finish` prints a failure, in the format
     /// that the flags choose and with the code that the tool record prints for
-    /// it, in the tool record's spelling, with a `Run` recovery rendered
-    /// against the command that the output holds.
+    /// it, in the tool record's spelling, with a `Recovery::Run` rendered
+    /// against the command that the run holds.
     ///
     /// It returns no exit code, for a command that passes on another code
     /// or counts the bytes it printed. That caller reports its code and
@@ -134,7 +134,7 @@ impl Run {
 
     /// Returns the exit code of a run whose first failure has `code`, as
     /// [`Tool::failure_exit`](crate::Tool::failure_exit) decides
-    /// for the tool record that the output copied: the exit that
+    /// for the tool record that the run copied: the exit that
     /// lists the code, or crumbkit's default of 2 for a refused command
     /// line and 1 for every other failure.
     #[must_use]

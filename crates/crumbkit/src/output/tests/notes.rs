@@ -170,7 +170,7 @@ impl Failure for Gone {
 #[test]
 fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
     let mut output = parse_against(Cli::command(), &[]);
-    output.dry = true;
+    output.dry_mode = true;
     let finished = finish_output(output, SHOWN, answered(vec![saturn()], vec![Gone]));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
@@ -192,7 +192,7 @@ fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
 #[test]
 fn a_dry_runs_line_prints_on_standard_error_after_a_list() {
     let mut output = parse_against(Cli::command(), &[]);
-    output.dry = true;
+    output.dry_mode = true;
     let finished = finish_output(output, PLANETS, vec![saturn()]);
 
     assert_eq!(finished.out, "NAME    MOONS\nSaturn  274\n");
@@ -256,7 +256,7 @@ fn a_prose_results_note_prints_before_its_failures() {
 #[test]
 fn a_batchs_note_prints_on_standard_error_before_its_failures_and_the_dry_runs_line() {
     let mut output = parse_against(Cli::command(), &[]);
-    output.dry = true;
+    output.dry_mode = true;
     let batch = answered(vec![saturn()], vec![Gone]).note("Pluto is not a planet.");
     let finished = finish_output(output, SHOWN, batch);
 

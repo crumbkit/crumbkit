@@ -12,7 +12,7 @@ categories = ["command-line-interface"]
 include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
-# `Run` and `Page` derive `clap::Args`. `Page` gives `--limit` a default
+# `ViewFlags` and `Page` derive `clap::Args`. `Page` gives `--limit` a default
 # that it formats at runtime from its const parameter, and clap accepts a
 # default held in an owned `String` only with its `string` feature.
 # `help::extend` sets a help template, which clap offers only with its `help`

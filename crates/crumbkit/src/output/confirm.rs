@@ -92,7 +92,7 @@ impl Run {
         yes: Yes,
         question: &str,
     ) -> Result<(), Error> {
-        if yes.yes || self.dry {
+        if yes.yes || self.dry_mode {
             return Ok(());
         }
         if self.no_input || self.no_terminal || !sink.is_interactive() {

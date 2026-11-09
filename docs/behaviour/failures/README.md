@@ -32,13 +32,13 @@ Why: ADR-0001.
 ## Recoveries and alternatives
 
 Every failure states a [`Recovery`](../../../crates/crumbkit/src/failure.rs).
-A `Run` call that the tool's command tree cannot render prints as `None` with
-crumbkit's reason, so crumbkit never advertises a command the tool hid. A
-`Run` call can carry concrete values with `Call::value`, so a failure can
-suggest the exact command that repairs it. Rendering refuses a value that the
-tool would refuse before it runs: a value for a flag, a value outside the
-argument's possible values, and a positional value that clap would read as a
-flag.
+A `Recovery::Run` call that the tool's command tree cannot render prints as
+`None` with crumbkit's reason, so crumbkit never advertises a command the tool
+hid. A `Recovery::Run` call can carry concrete values with `Call::value`, so a
+failure can suggest the exact command that repairs it. Rendering refuses a
+value that the tool would refuse before it runs: a value for a flag, a value
+outside the argument's possible values, and a positional value that clap would
+read as a flag.
 
 `Recovery::None` with a reason is the exception for a failure that no step
 can repair. A tool declares each such failure with one of its declared codes
@@ -70,11 +70,12 @@ Why: ADR-0001, ADR-0007, ADR-0081.
 ## Debug-build warnings
 
 A build with debug assertions writes one `warning:` line on standard error
-before a failure for each field that `finish` leaves out, and for each `Run`
-call of its recovery or alternatives that does not render, with the reason.
-A tool's own tests then see the mistake, and `check_recoveries` fails on the
-line. A release build writes no such line. These lines are every output that
-differs between a debug build and a release build.
+before a failure for each field that `finish` leaves out, and for each
+`Recovery::Run` call of its recovery or alternatives that does not render,
+with the reason. A tool's own tests then see the mistake, and
+`check_recoveries` fails on the line. A release build writes no such line.
+These lines are every output that differs between a debug build and a release
+build.
 
 Why: ADR-0001.
 

@@ -221,10 +221,11 @@ impl Refused {
         self.inner.refusal.recovery()
     }
 
-    /// Returns the output flags as far as the walk of the typed words found
-    /// them. Its [`Run::is_json`] says whether the caller asked for JSON.
+    /// Returns the handle of the run, with the view flags as far as the walk
+    /// of the typed words found them. Its [`Run::is_json`] says whether the
+    /// caller asked for JSON.
     #[must_use]
-    pub fn output(&self) -> &Run {
+    pub fn run(&self) -> &Run {
         &self.inner.output
     }
 
@@ -332,13 +333,13 @@ impl Refused {
     /// `<tool>/failure/v1` document on the output writer. With `false`, it
     /// prints text on the error writer. Without this call, it prints in the
     /// form that the walk of the words chose, which
-    /// [`Run::is_json`] of [`Refused::output`] reports.
+    /// [`Run::is_json`] of [`Refused::run`] reports.
     ///
     /// A tool whose own flag chooses the form of a failure, such as
     /// `--error-format text`, reads the flag with [`Refused::value`] and
     /// passes the form it resolved here, so `tool --error-format text list
     /// --nosuch --json` prints text on standard error. The call changes
-    /// neither [`Refused::output`], which still reports the words, nor the
+    /// neither [`Refused::run`], which still reports the words, nor the
     /// exit code and the observers' events. The [`Stop`] that printing
     /// returns holds a [`Run`] whose `is_json` reports the form that
     /// printed.

@@ -42,7 +42,7 @@ pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
 /// help and every output see only real commands.
 ///
 /// `crumbkit::try_parse_to` returns the parsed `Cli` and a `Run`. The
-/// output holds the command with crumbkit's help lines and the words that
+/// run holds the command with crumbkit's help lines and the words that
 /// the caller typed, which `books remove` repeats with `--yes` when no
 /// person can confirm it. `finish` renders the
 /// `Next:` line and a failure's recovery against it. `shelf commands list`

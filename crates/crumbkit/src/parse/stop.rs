@@ -22,13 +22,13 @@ mod tests;
 ///
 /// A tool's `main` returns its exit code, as in `Err(stop) => return
 /// stop.exit_code()`. A tool that does more before it exits reads
-/// [`Stop::output`], whose [`Run::is_json`] says whether the caller asked
+/// [`Stop::run`], whose [`Run::is_json`] says whether the caller asked
 /// for JSON, so the tool knows the format of what it prints next. It reads
 /// [`Stop::path`], [`Stop::flags`] and [`Stop::value`] as it reads them on a
 /// [`Refused`](crate::Refused), such as a global option that chooses the
 /// format of a note it prints after a help page.
 ///
-/// The output and the words sit in a `Box`, so a `Result` that holds a
+/// The handle and the words sit in a `Box`, so a `Result` that holds a
 /// `Stop` stays small on the path that parses.
 #[derive(Debug)]
 pub struct Stop {
@@ -191,7 +191,7 @@ impl Stop {
         self.printed
     }
 
-    /// Returns the output flags of the run that `parse` ended. Its
+    /// Returns the handle of the run that `parse` ended. Its
     /// [`Run::is_json`] and [`Run::progress_allowed`] answer as they
     /// do after parsing. Its `--long`, `--full` and `--fields` are always
     /// off, because they shape a result that a stopped run does not have.
@@ -199,7 +199,7 @@ impl Stop {
     /// [`Refused::as_json`](crate::Refused::as_json), its `is_json` reports
     /// the form that printed.
     #[must_use]
-    pub fn output(&self) -> &Run {
+    pub fn run(&self) -> &Run {
         &self.inner.output
     }
 

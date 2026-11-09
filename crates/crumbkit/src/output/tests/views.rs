@@ -99,7 +99,7 @@ fn output_new_refuses_fields_with_long_in_crumbkit_s_words() {
 
     let stop = built.result.unwrap_err();
     assert_eq!(stop.exit(), 2);
-    assert!(!stop.output().is_json());
+    assert!(!stop.run().is_json());
     assert_eq!(built.out, "");
     assert_eq!(
         built.err,
@@ -118,7 +118,7 @@ fn output_new_refuses_fields_with_full_and_full_without_json_in_crumbkit_s_words
 
     let stop = with_fields.result.unwrap_err();
     assert_eq!(stop.exit(), 2);
-    assert!(stop.output().is_json());
+    assert!(stop.run().is_json());
     let document: serde_json::Value = serde_json::from_str(&with_fields.out).unwrap();
     assert_eq!(
         document["message"],

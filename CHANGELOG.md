@@ -86,6 +86,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `Output`, the handle of one run that `parse` returns, is
   now `Run`. `tool::Output`, the section of the `Tool` record, keeps its name
   ([behaviour/parsing]).
+- crumbkit: breaking: `Stop::output` and `Refused::output`, which return that
+  handle, are now `Stop::run` and `Refused::run` ([behaviour/parsing]).
 - crumbkit: breaking: `Duration` is now `Elapsed`, so a handler that also
   uses `std::time::Duration` needs no alias ([behaviour/output/values]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match

@@ -100,7 +100,7 @@ fn the_output_of_a_stopped_run_has_the_tool_s_output_budget() {
     let Err(stop) = result else {
         panic!("help did not stop the run");
     };
-    assert_eq!(stop.output().budget(), 1024);
+    assert_eq!(stop.run().budget(), 1024);
 }
 
 /// A tool whose `remove` command takes `--dry-run` and `--yes`.

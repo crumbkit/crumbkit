@@ -132,7 +132,7 @@ struct Finished {
     err: String,
 }
 
-/// What `Run::new_to` returned and wrote: the output of a run whose view
+/// What `Run::new_to` returned and wrote: the handle of a run whose view
 /// flags work together, or the stop of a refused pair.
 struct Built {
     result: Result<Run, Stop>,
@@ -148,7 +148,7 @@ fn build_to(flags: &[&str]) -> Built {
     build_output(tool.view, &args)
 }
 
-/// Builds the output of the test tool from `view` and `args` into memory,
+/// Builds the handle of the test tool from `view` and `args` into memory,
 /// as a tool's `main` builds it with `Run::new_to`.
 fn build_output(view: ViewFlags, args: &[&str]) -> Built {
     let mut out = Vec::new();

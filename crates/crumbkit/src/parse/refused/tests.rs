@@ -264,11 +264,11 @@ fn printing_a_refusal_returns_a_stop_with_its_number_and_its_output() {
     );
 
     let number = refused.exit();
-    let json = refused.output().is_json();
+    let json = refused.run().is_json();
     let stop = refused.print_to(&mut Sink::new(Vec::new(), Vec::new()));
 
     assert_eq!((number, json), (64, true));
-    assert_eq!((stop.exit(), stop.output().is_json()), (64, true));
+    assert_eq!((stop.exit(), stop.run().is_json()), (64, true));
 }
 
 #[test]
@@ -493,7 +493,7 @@ fn a_refusal_without_as_json_prints_in_the_form_that_the_words_chose() {
 fn as_json_leaves_the_output_that_the_refusal_reports_unchanged() {
     let refused = refused(&["tool", "comets", "--json"]).as_json(false);
 
-    assert!(refused.output().is_json(), "{:?}", refused.output());
+    assert!(refused.run().is_json(), "{:?}", refused.run());
 }
 
 #[test]
@@ -504,10 +504,7 @@ fn the_stop_after_as_json_reports_the_form_that_printed() {
         .print_to(sink);
     let json = refused(&["tool", "comets"]).as_json(true).print_to(sink);
 
-    assert_eq!(
-        (text.output().is_json(), json.output().is_json()),
-        (false, true)
-    );
+    assert_eq!((text.run().is_json(), json.run().is_json()), (false, true));
 }
 
 #[test]

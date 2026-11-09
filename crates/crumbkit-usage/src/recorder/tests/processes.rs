@@ -28,7 +28,7 @@ mod unix;
 #[cfg(windows)]
 mod windows;
 
-/// Returns the output of a run of a tool named `tool` with every view flag
+/// Returns the handle of a run of a tool named `tool` with every view flag
 /// off, for a test that hands the terminal to a child.
 fn bare_output() -> Run {
     Run::new(

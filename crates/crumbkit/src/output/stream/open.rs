@@ -24,7 +24,7 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
     let Run {
         view,
         command,
-        dry: dry_run,
+        dry_mode: dry_run,
         ..
     } = output;
     let columns: Vec<Cow<'static, str>> = if let Some(names) = view.names() {

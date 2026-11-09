@@ -96,7 +96,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
     // The text and a document without the envelope have no `dry_run` field,
     // so a dry-run message marks a dry run, after any failures. A
     // result that was refused or failed to print gets no line.
-    let dry_run_line = output.dry
+    let dry_run_line = output.dry_mode
         && (!output.is_json() || !document.get_envelope().wraps())
         && code == 0
         && !matches!(answer, Answer::Refused(_));

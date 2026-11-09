@@ -147,7 +147,7 @@ impl Run {
             } else {
                 1
             };
-            let empty = empty_document(document, self.dry, self.json_layout);
+            let empty = empty_document(document, self.dry_mode, self.json_layout);
             Form::Json {
                 layout: self.json_layout,
                 depth,

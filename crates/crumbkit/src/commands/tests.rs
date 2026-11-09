@@ -124,7 +124,7 @@ fn tree() -> Command {
         )
 }
 
-/// Returns the output of a run of the tool with every view flag off.
+/// Returns the handle of a run of the tool with every view flag off.
 fn output() -> Run {
     Run::of(tree())
 }

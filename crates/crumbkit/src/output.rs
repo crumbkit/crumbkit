@@ -94,7 +94,7 @@ pub struct Run {
 
     /// Whether the run is a dry run: `parse` read `--dry-run` on the
     /// deepest command, or the tool passed the flag to [`Run::new`].
-    dry: bool,
+    dry_mode: bool,
 
     /// Whether the caller passed `--no-input`.
     no_input: bool,
@@ -229,7 +229,7 @@ fn several_keys<T: Rows>(value: &T) -> bool {
     value.key(1).is_some()
 }
 
-/// Prints a command's result in the format that `output` chooses, and
+/// Prints a command's result in the format that `run` chooses, and
 /// returns the process's exit code.
 ///
 /// A tool's `main` calls it last with the handler's `result` and returns its
@@ -241,7 +241,7 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// unfitted table (ADR-0121). `finish_to` fits a table to the width that its
 /// sink has, which [`Sink::fitted`] sets (ADR-0134).
 ///
-/// It takes `output` by value, because a run prints one result, so `main`
+/// It takes `run` by value, because a run prints one result, so `main`
 /// cannot call it twice with one `Run` (ADR-0094):
 ///
 /// ```compile_fail
@@ -281,7 +281,7 @@ pub fn finish<T: Rows, E: AsFailure>(
     ExitCode::from(finish_to(sink, run, document, result))
 }
 
-/// Prints a command's result to `sink` in the format that `output` chooses,
+/// Prints a command's result to `sink` in the format that `run` chooses,
 /// and returns the exit code that [`finish`] would return, as a number.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, so they
@@ -326,13 +326,13 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// has a next step, a `Next:` line follows, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
 /// is left out of the text and of `next` when the step's
-/// [`Call`](crate::Call) does not resolve in the command tree that `output`
+/// [`Call`](crate::Call) does not resolve in the command tree that `run`
 /// holds, and the exit code stays 0.
 ///
-/// `finish` takes `output` by value, because it is the last call of a run:
+/// `finish` takes `run` by value, because it is the last call of a run:
 /// it builds the branch of the command tree that a next step's call or a
-/// failure's `Run` call names, and nothing reads the `Run` after it
-/// (ADR-0015, ADR-0094). A handler that reads `output` with `&mut`, such as
+/// failure's `Recovery::Run` call names, and nothing reads the `Run` after it
+/// (ADR-0015, ADR-0094). A handler that reads `run` with `&mut`, such as
 /// [`commands::list`](crate::commands::list), runs before `finish`, and
 /// `main` passes its result in.
 ///
@@ -371,9 +371,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
 /// for each error in the failure's `source()` chain, and a `url:` line
 /// follows the `code:` line when the failure has a url. The code prints in
-/// the spelling that `output` took from the tool record. A
+/// the spelling that `run` took from the tool record. A
 /// [`Recovery::Run`](crate::Recovery::Run) call is rendered against the
-/// command tree that `output` holds, and prints as `no next step: the
+/// command tree that `run` holds, and prints as `no next step: the
 /// suggested command is not available` when the call does not resolve. With
 /// `--json`, the failure prints to the output writer as one
 /// `<tool>/failure/v1` document, on one line or in the tool record's layout,

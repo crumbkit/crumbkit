@@ -92,7 +92,7 @@ fn tree() -> Command {
         )
 }
 
-/// Returns the output of a run of the tool with `flags`, as `Run::new`
+/// Returns the handle of a run of the tool with `flags`, as `Run::new`
 /// builds it.
 fn output_with(flags: &[&str]) -> Run {
     let matches = crate::ViewFlags::augment_args(Command::new("shelf"))
@@ -109,7 +109,7 @@ fn output_with(flags: &[&str]) -> Run {
     .unwrap()
 }
 
-/// Returns the output of a run of the tool with every view flag off.
+/// Returns the handle of a run of the tool with every view flag off.
 fn output() -> Run {
     output_with(&[])
 }

@@ -28,6 +28,10 @@ measures a time and prints it has to qualify or alias one of the two.
 - A public function that takes the handle names its parameter `run`.
   Crumbkit's documentation and examples say `run` as well. Private code and
   tests may keep a local variable named `output`.
+- `Stop::output` and `Refused::output`, which return the handle, are
+  `Stop::run` and `Refused::run`.
+- Prose writes `Recovery::Run` in full wherever a bare `Run` could mean that
+  variant, because `Run` alone now means the handle.
 - `crumbkit_process::Limits` is `RunOptions`, because it holds every option of
   one `run`. The parameter of `run` is `options`.
 - `crumbkit::Duration` is `crumbkit::Elapsed`, because it holds a length of

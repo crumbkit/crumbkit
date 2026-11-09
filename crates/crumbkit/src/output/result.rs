@@ -171,7 +171,7 @@ impl<'a> Settings<'a> {
         let settings = Self {
             view: &output.view,
             words: &output.words,
-            dry_run: output.dry,
+            dry_run: output.dry_mode,
             layout: output.json_layout,
             budget: output.budget,
             renames: output.renames,

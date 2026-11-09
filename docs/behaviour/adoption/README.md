@@ -19,11 +19,11 @@ crumbkit's behaviour.
 | --- | --- | --- |
 | `Help` | `crumbkit::help::Help` | Groups, leaves, topics, file formats, the root, root verbs and personal aliases. |
 | `Failures` | `crumbkit::tool::Failures` | The spelling and renames of codes, exit codes, the refusal alternatives and the refusal hint. |
-| `Run` | `crumbkit::tool::Output` | The output budget, the JSON layout and terminal detection. |
+| `Output` | `crumbkit::tool::Output` | The output budget, the JSON layout and terminal detection. |
 
 `Tool::picker` and `Tool::dashed_forms` sit on `Tool`. `crumbkit::Run` is
-the handle of one run, so the record of what a run prints has the path
-`crumbkit::tool::Output`.
+the handle of one run, and `crumbkit::tool::Output` is the record that
+declares what a tool prints.
 
 Why: ADR-0180, ADR-0184.
 
@@ -38,8 +38,8 @@ for each ([dependencies](../../project/dependencies.md)). It enables clap's
 Each part follows an existing convention:
 
 - `Failure` extends `std::error::Error` ([failures](../failures/README.md)).
-- `Run` is added with clap's `#[command(flatten)]`, or built with
-  `Run::new()` by a tool that defines the view flags itself
+- `ViewFlags` is added with clap's `#[command(flatten)]`, or built with
+  `ViewFlags::new()` by a tool that defines the view flags itself
   ([output](../output/README.md#view-flags)).
 - Results derive `Serialize` and `JsonSchema` and implement `Row` to name
   their table columns ([output](../output/README.md)).
@@ -48,7 +48,7 @@ Each part follows an existing convention:
   ([checks](../checks/README.md)).
 
 Each argument type that crumbkit gives a tool to flatten or to take as a
-command's arguments, such as `Run`, `Page` or `CommandsList`, clears the
+command's arguments, such as `ViewFlags`, `Page` or `CommandsList`, clears the
 command's about and long about, because clap otherwise copies the type's
 rustdoc into the help of a command that has no doc comment of its own. A
 derived command sets its own doc comment after the types it flattens, so it

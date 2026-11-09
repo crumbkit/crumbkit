@@ -26,7 +26,7 @@ mod tests;
 use self::open::open;
 
 /// Opens the stream of `document` on the process's standard output and
-/// standard error, in the format that `output` chooses.
+/// standard error, in the format that `run` chooses.
 ///
 /// It behaves as [`stream_to`] does with a sink over the standard streams.
 /// Standard output stays locked until the [`Streaming`] is dropped, so
@@ -51,7 +51,7 @@ pub fn stream<R: Row>(
     open(Sink::standard(), run, document)
 }
 
-/// Opens the stream of `document` on `sink`, in the format that `output`
+/// Opens the stream of `document` on `sink`, in the format that `run`
 /// chooses, and returns the [`Streaming`] that prints each item.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, as
@@ -92,7 +92,7 @@ pub fn stream<R: Row>(
 /// stream runs for a long time sets a larger budget with
 /// [`tool::Output::budget`](crate::tool::Output::budget).
 ///
-/// `stream` and `stream_to` take `output` by value, because a stream is
+/// `stream` and `stream_to` take `run` by value, because a stream is
 /// the last thing a run prints, and the [`Streaming`] holds the view and
 /// the command tree until it ends (ADR-0094).
 ///
@@ -202,7 +202,7 @@ pub struct Streaming<R, O, W> {
     columns: Vec<Cow<'static, str>>,
     /// The width of each column, which is the width of its header.
     widths: Vec<usize>,
-    /// The command tree that a failure's `Run` recovery renders against.
+    /// The command tree that a failure's `Recovery::Run` renders against.
     command: Command,
     /// The spelling of the failures' codes.
     spelling: Spelling,

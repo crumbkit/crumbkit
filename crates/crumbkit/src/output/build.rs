@@ -1,5 +1,5 @@
 //! `ViewFlags`, the view flags that a tool flattens into its clap parser or
-//! builds itself, and `Run::new`, which builds the output of a run from
+//! builds itself, and `Run::new`, which builds the handle of a run from
 //! them.
 
 use std::ffi::OsString;
@@ -171,7 +171,7 @@ impl ViewFlags {
 }
 
 impl Run {
-    /// Returns the output of a run that parsed `args`, the command line
+    /// Returns the handle of a run that parsed `args`, the command line
     /// with the program name first, against `command` with clap alone,
     /// with the view flags `view`, the dry-run flag `dry_run` and the
     /// tool's `tool`, or the [`Stop`] of a run whose view flags cannot
@@ -252,7 +252,7 @@ impl Run {
         Self::new_to(&mut Sink::standard(), view, dry_run, command, tool, args)
     }
 
-    /// Returns the output of a run as [`Run::new`] does, and prints the
+    /// Returns the handle of a run as [`Run::new`] does, and prints the
     /// refusal of view flags that cannot work together to `sink` in place
     /// of standard error.
     ///
@@ -307,7 +307,7 @@ impl Run {
         }
     }
 
-    /// Returns the output of a run that parsed `words`, the words after the
+    /// Returns the handle of a run that parsed `words`, the words after the
     /// program name, against `command`, with the view flags `view`, whether the
     /// caller passed `--dry-run` and `--no-input`, and the terminal detection,
     /// output budget, JSON layout, exit codes and renames of `tool`. The
@@ -330,7 +330,7 @@ impl Run {
             .find(|leaf| leaf.path().iter().eq(path.iter()));
         Self {
             words,
-            dry: dry_run,
+            dry_mode: dry_run,
             no_input,
             renames: Renames::with_leaf(tool, leaf),
             ..Self::stopped(view, command, tool)
@@ -343,7 +343,7 @@ impl Run {
         self.view = view;
     }
 
-    /// Returns the output of a run with the view `view` that parsed against
+    /// Returns the handle of a run with the view `view` that parsed against
     /// `command` with `tool`, without words. `parse` uses it after it
     /// printed help, the version or a refusal.
     pub(crate) fn stopped(view: View, command: Command, tool: &Tool) -> Self {
@@ -356,7 +356,7 @@ impl Run {
             view,
             command,
             words: Vec::new(),
-            dry: false,
+            dry_mode: false,
             no_input: false,
             no_terminal: !tool.get_output().terminal_detection(),
             json_layout: tool.get_output().get_json_layout(),
@@ -367,7 +367,7 @@ impl Run {
         }
     }
 
-    /// Returns the output of a run of `command` without view flags, words
+    /// Returns the handle of a run of `command` without view flags, words
     /// or a tool record, for a test that needs any output.
     #[cfg(test)]
     pub(crate) fn of(command: Command) -> Self {

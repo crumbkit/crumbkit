@@ -12,7 +12,7 @@ use crate::testing::tree;
 /// The path that the personal rows name as their source.
 const FILE: &str = "/home/ada/.config/shelf/aliases.toml";
 
-/// Returns the output of a run of the test tool with every view flag off.
+/// Returns the handle of a run of the test tool with every view flag off.
 fn output() -> Run {
     Run::new(
         crumbkit::ViewFlags::new(),

@@ -44,7 +44,7 @@ fn a_table_delivers_as_the_result_and_its_footer_as_a_note_after_it() {
 fn the_dry_run_line_delivers_as_a_dry_run_message_after_the_result() {
     let mut recorded = Recorded::default();
     let mut output = parse_against(Cli::command(), &[]);
-    output.dry = true;
+    output.dry_mode = true;
 
     responded(&mut recorded, output, PLANETS, vec![mercury()]);
 
