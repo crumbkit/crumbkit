@@ -52,8 +52,7 @@ const WRITE_FAILED: Code = Code::new("crumbkit", "docs", "write_failed");
 /// A failure to build a tool's binary or to run it for its command tree,
 /// which `weigh` and `docs` share. Each failure's next step is advice,
 /// because each one needs a change outside cargo crumbkit: to cargo, to
-/// the workspace or to the tool. `#[derive(Failure)]` also writes
-/// `ToolError::CODES`, which the tests pass to crumbkit-test's codes check.
+/// the workspace or to the tool.
 #[derive(Debug, Failure)]
 pub(crate) enum ToolError {
     /// cargo cannot start.
@@ -162,9 +161,7 @@ impl std::error::Error for ToolError {
 
 /// A failure of `cargo crumbkit weigh`. Each failure's next step is
 /// advice, because each one needs a change outside cargo crumbkit: to the
-/// workspace or to the tool. `#[derive(Failure)]` also writes
-/// `WeighError::CODES`, which lists its codes besides those of
-/// [`ToolError`], and the tests pass it to crumbkit-test's codes check.
+/// workspace or to the tool.
 #[derive(Debug, Failure)]
 pub(crate) enum WeighError {
     /// The binary cannot be built or run for its command tree.
@@ -252,9 +249,7 @@ impl std::error::Error for WeighError {
 
 /// A failure of `cargo crumbkit docs`. Each failure's next step is advice,
 /// because each one needs a change outside cargo crumbkit: to the tool or
-/// to the file system. `#[derive(Failure)]` also writes `DocsError::CODES`,
-/// which lists its codes besides those of [`ToolError`], and the tests pass
-/// it to crumbkit-test's codes check.
+/// to the file system.
 #[derive(Debug, Failure)]
 pub(crate) enum DocsError {
     /// The binary cannot be built or run for its command tree.

@@ -121,14 +121,13 @@ pub(super) struct Run {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "u8")]
     pub(super) exit: Option<u8>,
-    /// The code of the run's failure or refusal in the tool's spelling, such
-    /// as `shelf::books::not_found`. A batch gives the code of its first
-    /// failure.
+    /// The code of the run's failure or refusal, such as
+    /// `shelf::books::not_found`. A batch gives the code of its first failure.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Name")]
     pub(super) code: Option<Name>,
     /// The codes of the failures that the run met and recovered from, which
-    /// the tool reported with `events::tolerated`, in the tool's spelling.
+    /// the tool reported with `events::tolerated`.
     /// Each code appears once, in report order, and the list holds at most
     /// 8 codes. It is present only when the tool reported one.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

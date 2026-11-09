@@ -1,7 +1,7 @@
 # ADR-0177. The twin check trusts only the codes that crumbkit's crates list
 
 - Date: 2026-11-08
-- Status: accepted
+- Status: amended by ADR-0186
 - Supersedes: ADR-0058, which it amends
 
 ## Context

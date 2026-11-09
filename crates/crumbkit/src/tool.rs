@@ -1,7 +1,7 @@
 //! The record of what a tool declares to crumbkit. [`Tool`] composes the
 //! [`Help`], [`Failures`] and [`Output`] records, and this module also holds
-//! the paths of the last two, with [`Exit`], [`Rename`] and
-//! [`RefusalContext`], which the failure declarations name.
+//! the paths of the last two, with [`Exit`] and [`RefusalContext`], which
+//! the failure declarations name.
 //! This `Output` declares what a tool prints, and [`crate::Run`] is the
 //! handle of one run.
 
@@ -10,7 +10,6 @@ use clap::Command;
 pub use crate::failure::declared::Failures;
 pub use crate::help::exit::Exit;
 pub use crate::help::leaf::RefusalContext;
-pub use crate::help::rename::Rename;
 pub use crate::output::declared::Output;
 
 use crate::ToolName;
@@ -21,8 +20,7 @@ use crate::pick::Picker;
 mod tests;
 
 /// What a tool declares to crumbkit, once, as a `const`. It holds the
-/// [`Help`], [`Failures`] and [`Output`] records, the picker and whether
-/// commands answer to their dashed forms.
+/// [`Help`], [`Failures`] and [`Output`] records and the picker.
 ///
 /// A tool sets only the records it needs, and each record it leaves out
 /// keeps crumbkit's behaviour. It passes the value to
@@ -78,8 +76,6 @@ pub struct Tool {
     /// The picker that asks a person for a missing argument, or `None` when
     /// `parse` refuses every command line that leaves one out.
     picker: Option<&'static dyn Picker>,
-    /// Whether a command named in another style answers to its dashed form.
-    dashed_forms: bool,
 }
 
 impl Tool {
@@ -92,7 +88,6 @@ impl Tool {
             failures: Failures::new(),
             output: Output::new(),
             picker: None,
-            dashed_forms: false,
         }
     }
 
@@ -191,39 +186,6 @@ impl Tool {
     #[must_use]
     pub const fn get_picker(&self) -> Option<&'static dyn Picker> {
         self.picker
-    }
-
-    /// Declares that each command named in another style, such as
-    /// `reading_lists` or `ReadingLists`, also answers to its
-    /// [`dashed_form`](crate::dashed_form), such as `reading-lists`.
-    ///
-    /// With the declaration, [`parse`](crate::parse()), completion and
-    /// [`command_path`](crate::command_path) read a typed dashed form as the
-    /// command, and help, completion candidates, the usage log and the
-    /// parsed words name the command by the tool's own name only. Without
-    /// it, a dashed form names no command, and clap refuses it as it
-    /// refuses any unknown word. crumbkit-test's `check_grammar` then
-    /// accepts such a name without an opt-out, and `check_opt_outs` lists
-    /// the declaration and each such command as declarations (ADR-0056).
-    ///
-    /// ```
-    /// use crumbkit::Tool;
-    ///
-    /// const TOOL: Tool = Tool::new().dashed_forms();
-    /// assert!(TOOL.get_dashed_forms());
-    /// assert!(!Tool::new().get_dashed_forms());
-    /// ```
-    #[must_use]
-    pub const fn dashed_forms(mut self) -> Self {
-        self.dashed_forms = true;
-        self
-    }
-
-    /// Reports whether the tool declared [`Tool::dashed_forms`]. The name
-    /// has clap's `get_` prefix.
-    #[must_use]
-    pub const fn get_dashed_forms(&self) -> bool {
-        self.dashed_forms
     }
 }
 

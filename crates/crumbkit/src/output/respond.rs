@@ -7,7 +7,7 @@ use std::io;
 
 use super::budget::OverBudget;
 use super::dry_run::DRY_RUN_LINE;
-use super::failure::{self, PreparedFailure, Printing};
+use super::failure::{self, PreparedFailure};
 use super::result::{Answer, write_result};
 use super::{Run, fields};
 use crate::sink::role::{Deliver, Message, Role};
@@ -64,8 +64,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
                 let key = indexes
                     .next()
                     .and_then(|&index| Some((index, value.key(index)?)));
-                PreparedFailure::new(failure, spelling, printing, &mut output.command, sink)
-                    .keyed(key)
+                PreparedFailure::new(failure, spelling, &mut output.command, sink).keyed(key)
             })
             .collect()
     });
@@ -105,12 +104,9 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
         Answer::RefusedFirst {
             position, first, ..
         } => failures.map(|mut listed| {
-            // `code` is already the code that the run prints, so no rename
-            // applies to it.
             let key = value.key(*position).map(|key| (*position, key));
             let command = &mut output.command;
-            let printing = Printing::default();
-            let refused = PreparedFailure::new(first, spelling, printing, command, sink);
+            let refused = PreparedFailure::new(first, spelling, command, sink);
             listed.insert(failure::before(&listed, *position), refused.keyed(key));
             listed
         }),
@@ -165,9 +161,8 @@ fn print_failures<T: Rows>(
             failure::deliver_text(sink, failure);
         }
         if let Some(over) = left_out {
-            let printing = output.printing();
             let command = &mut output.command;
-            let over = PreparedFailure::new(over, spelling, printing, command, sink);
+            let over = PreparedFailure::new(over, spelling, command, sink);
             failure::deliver_text(sink, &over);
         }
     }

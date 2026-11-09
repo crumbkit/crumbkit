@@ -9,10 +9,9 @@ use clap::{ArgMatches, Args, Command};
 
 use super::failure::Printing;
 use super::{DryRun, Run, budget};
-use crate::help::rename::Renames;
 use crate::parse::{Printed, Stop};
 use crate::view::View;
-use crate::{Sink, Tool};
+use crate::{Sink, Spelling, Tool};
 
 /// The flags that choose how a command prints its result: `--json`,
 /// `--fields`, `--long` and `--full`.
@@ -208,13 +207,9 @@ impl Run {
     /// step and a failure's [`Recovery::Run`](crate::Recovery::Run) call
     /// against, and the words of `args` after the program name, which
     /// [`Run::confirm`] repeats with `--yes`. It reads the terminal
-    /// detection, output budget, JSON layout, exit codes, code renames and
-    /// [spelling](crate::tool::Failures::spelling) of `tool`, so `finish` and `stream` print
-    /// every code in the tool record's spelling with the tool's name in
-    /// crumbkit's own codes (ADR-0086). The renames of the leaf that the words
-    /// name, as [`command_path`](crate::command_path) finds it, come before the
-    /// tool record's (ADR-0060), so a tool that parses with clap alone prints a
-    /// leaf's own codes as one that parses with crumbkit does (ADR-0076).
+    /// detection, output budget, JSON layout and exit codes of `tool`, so
+    /// `finish` and `stream` print every code with the tool's name in
+    /// crumbkit's own codes (ADR-0079).
     ///
     /// The `Run` reads no `--no-input` from the words, so
     /// [`Run::confirm`] fails without asking only when no person can
@@ -278,22 +273,16 @@ impl Run {
         let words: Vec<OsString> = args.into_iter().skip(1).map(Into::into).collect();
         match View::try_from(view) {
             Ok(view) => {
-                let path = crate::command_path(&command, tool, &words);
                 let dry_run = dry_run.is_on();
-                Ok(Self::parsed(
-                    view, command, words, dry_run, false, tool, &path,
-                ))
+                Ok(Self::parsed(view, command, words, dry_run, false, tool))
             }
             Err(refusal) => {
                 let mut command = command;
-                let spelling = tool
-                    .get_failures()
-                    .get_spelling()
-                    .for_tool(tool.tool_name(&command));
+                let spelling = Spelling::COLONS.for_tool(tool.tool_name(&command));
                 let printing = Printing::of(tool);
                 crate::events::exited(printing.exit(&crate::codes::CLI_USAGE));
                 let code = refusal.print(sink, json, spelling, printing, &mut command);
-                let path = crate::command_path(&command, tool, &words);
+                let path = crate::command_path(&command, &words);
                 Err(Stop::new(
                     Printed::Refusal,
                     code,
@@ -310,10 +299,7 @@ impl Run {
     /// Returns the handle of a run that parsed `words`, the words after the
     /// program name, against `command`, with the view flags `view`, whether the
     /// caller passed `--dry-run` and `--no-input`, and the terminal detection,
-    /// output budget, JSON layout, exit codes and renames of `tool`. The
-    /// renames of the tool record's leaf at `path`, the real names of the
-    /// parsed command's subcommands from the root, come before the tool
-    /// record's (ADR-0060).
+    /// output budget, JSON layout and exit codes of `tool`.
     pub(crate) fn parsed(
         view: View,
         command: Command,
@@ -321,18 +307,11 @@ impl Run {
         dry_run: bool,
         no_input: bool,
         tool: &Tool,
-        path: &[String],
     ) -> Self {
-        let leaf = tool
-            .get_help()
-            .get_leaves()
-            .iter()
-            .find(|leaf| leaf.path().iter().eq(path.iter()));
         Self {
             words,
             dry_mode: dry_run,
             no_input,
-            renames: Renames::with_leaf(tool, leaf),
             ..Self::stopped(view, command, tool)
         }
     }
@@ -361,9 +340,8 @@ impl Run {
             no_terminal: !tool.get_output().terminal_detection(),
             json_layout: tool.get_output().get_json_layout(),
             budget: budget::from_environment(budget, tool_name),
-            spelling: tool.get_failures().get_spelling().for_tool(tool_name),
+            spelling: Spelling::COLONS.for_tool(tool_name),
             exits: tool.get_failures().get_exits(),
-            renames: Renames::of(tool),
         }
     }
 

@@ -102,13 +102,3 @@ fn a_spelling_without_a_tool_spells_crumbkits_codes_as_they_are() {
     assert_eq!(Spelling::COLONS.spell(&USAGE), "crumbkit::cli::usage");
     assert_eq!(Spelling::COLONS.tool(), ToolName::CRUMBKIT);
 }
-
-#[test]
-fn a_custom_spelling_for_a_tool_reads_the_tools_component() {
-    fn upper(code: &Code, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}-{}", code.component().to_uppercase(), code.reason())
-    }
-    let spelling = Spelling::custom(upper).for_tool(ToolName::new("shelf"));
-
-    assert_eq!(spelling.spell(&USAGE), "SHELF-usage");
-}

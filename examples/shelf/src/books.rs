@@ -396,7 +396,7 @@ pub const NO_STATE_DIRECTORY: Code = Code::new("shelf", "books", "no_state_direc
 /// line instead, as `shelf books show <ID>...`.
 ///
 /// `#[derive(Failure)]` also writes `BooksError::CODES`, which shelf's tests
-/// pass to crumbkit-test's codes and recovery checks.
+/// pass to crumbkit-test's twin and recovery checks.
 #[derive(Debug, Failure)]
 pub(crate) enum BooksError {
     /// The catalogue has no book with these ids. Each id appears once, in

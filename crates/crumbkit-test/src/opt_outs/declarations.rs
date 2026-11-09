@@ -3,20 +3,17 @@
 //! and keep crumbkit's behaviour, so they need no reason (ADR-0056).
 
 use clap::Command;
-use crumbkit::codes::CLI_USAGE;
 use crumbkit::help::{Leaf, LeafDocument};
-use crumbkit::tool::Rename;
-use crumbkit::{Code, Spelling, Tool};
+use crumbkit::{Spelling, Tool};
 use serde::Serialize;
 
 use crate::allow::{Allow, command_line};
 use crate::documents::declared_name;
-use crate::tree;
 
 /// One declaration as the report shows it.
 #[derive(Serialize)]
 pub(super) struct Declaration {
-    /// The kind of declaration, such as `code-rename`.
+    /// The kind of declaration, such as `exit-code`.
     #[serde(rename = "declaration")]
     pub(super) kind: &'static str,
     /// What the declaration applies to, such as `every run of shelf` or a
@@ -30,70 +27,36 @@ pub(super) struct Declaration {
 }
 
 /// Returns the declarations of `tool` for the tool whose root command is
-/// `command`, in this order: the tool record's spelling when it spells
-/// crumbkit's usage code other than [`Spelling::COLONS`] does, each code
-/// rename, each exit that lists one of crumbkit's codes or the tool's rename of
-/// it, whether the tool record declares refusal alternatives for every command,
-/// whether it declares a refusal hint for every command, the
-/// [`Tool::dashed_forms`] declaration followed by each command that answers to
-/// its dashed form, as [`dashed_names`] lists them, the root verbs that
+/// `command`, in this order: each exit that lists one of crumbkit's codes,
+/// whether the tool record declares refusal alternatives for every command,
+/// whether it declares a refusal hint for every command, the root verbs that
 /// [`root_verbs`] lists, and then for each leaf in declared order its
 /// document's name when the leaf's path gives another, the program whose exit
 /// code it passes on, whether it declares refusal alternatives, whether it
 /// declares a refusal hint, the form of its rows' own text line (`Row::LINE`,
-/// ADR-0064), each code rename of [`Leaf::codes`](crumbkit::help::Leaf::codes),
-/// and each example that needs a precondition (`Example::needs`, ADR-0163). An
-/// exit that lists a code that only a leaf renames applies to that leaf's
-/// command. A declaration that a later change adds joins this list beside the
-/// declarations of the same scope: a tool record setting before the leaves, and
-/// a leaf's declaration after its refusal-hint entry. The completion variable
-/// is not listed, because `complete_with` sets it for the process and the tool
-/// record does not hold it.
+/// ADR-0064), and each example that needs a precondition (`Example::needs`,
+/// ADR-0163). A declaration that a later change adds joins this list beside
+/// the declarations of the same scope: a tool record setting before the
+/// leaves, and a leaf's declaration after its refusal-hint entry. The
+/// completion variable is not listed, because `complete_with` sets it for the
+/// process and the tool record does not hold it.
 pub(super) fn declarations(command: &Command, tool: &Tool, allow: &[Allow]) -> Vec<Declaration> {
     let every_run = format!("every run of {}", command.get_name());
-    let tool_name = tool.tool_name(command);
-    let spelling = tool.get_failures().get_spelling().for_tool(tool_name);
-    let spell = |code: &Code| spelling.spell(code);
+    let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
     let mut list = Vec::new();
-    let colons = Spelling::COLONS.for_tool(tool_name).spell(&CLI_USAGE);
-    let usage = spell(&CLI_USAGE);
-    if usage != colons {
-        list.push(Declaration {
-            kind: "code-spelling",
-            applies_to: every_run.clone(),
-            declares: format!("Runs print codes such as {usage} in place of {colons}."),
-            reason: None,
-        });
-    }
-    for rename in tool.get_failures().get_codes() {
-        list.push(Declaration {
-            kind: "code-rename",
-            applies_to: every_run.clone(),
-            declares: format!(
-                "Runs print {} in place of {}.",
-                spell(rename.tool()),
-                spell(rename.crumbkit())
-            ),
-            reason: None,
-        });
-    }
     for exit in tool.get_failures().get_exits() {
         for &listed in exit.get_failures() {
-            let Some((crumbkit, leaf)) = crumbkit_code(tool, listed) else {
+            if listed.component() != "crumbkit" {
                 continue;
-            };
-            let applies_to = match leaf {
-                Some(path) => command_line(command, &path.join(" ")),
-                None => every_run.clone(),
-            };
+            }
             list.push(Declaration {
                 kind: "exit-code",
-                applies_to,
+                applies_to: every_run.clone(),
                 declares: format!(
                     "A failure with {} exits with {}, where the default is {}.",
-                    spell(listed),
+                    spelling.spell(listed),
                     exit.code(),
-                    Tool::new().failure_exit(&[], crumbkit)
+                    Tool::new().failure_exit(listed)
                 ),
                 reason: None,
             });
@@ -119,28 +82,16 @@ pub(super) fn declarations(command: &Command, tool: &Tool, allow: &[Allow]) -> V
             reason: None,
         });
     }
-    if tool.get_dashed_forms() {
-        list.push(Declaration {
-            kind: "dashed-forms",
-            applies_to: every_run.clone(),
-            declares: "A command named in another style also answers to its dashed form."
-                .to_owned(),
-            reason: None,
-        });
-        list.extend(dashed_names(command));
-    }
     list.extend(root_verbs(command, tool, allow));
     for leaf in tool.get_help().get_leaves() {
-        list.extend(leaf_declarations(command, spelling, leaf));
+        list.extend(leaf_declarations(command, leaf));
     }
     list
 }
 
 /// Returns the declarations of `leaf` in the tool whose root command is
-/// `command`, in the order that [`declarations`] lists them, with each
-/// code in `spelling`.
-fn leaf_declarations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<Declaration> {
-    let spell = |code: &Code| spelling.spell(code);
+/// `command`, in the order that [`declarations`] lists them.
+fn leaf_declarations(command: &Command, leaf: &Leaf) -> Vec<Declaration> {
     let mut list = Vec::new();
     let printed = leaf.get_document();
     let document = printed.map(LeafDocument::document);
@@ -216,18 +167,6 @@ fn leaf_declarations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<
             reason: None,
         });
     }
-    for rename in leaf.get_codes() {
-        list.push(Declaration {
-            kind: "code-rename",
-            applies_to: command_line(command, &leaf.path().join(" ")),
-            declares: format!(
-                "Runs print {} in place of {}.",
-                spell(rename.tool()),
-                spell(rename.crumbkit())
-            ),
-            reason: None,
-        });
-    }
     let text = command_line(command, &leaf.path().join(" "));
     for example in leaf.get_examples() {
         let Some(names) = and_list(example.get_needs()) else {
@@ -288,53 +227,4 @@ fn and_list(names: &[&str]) -> Option<String> {
         return Some((*last).to_owned());
     }
     Some(format!("{} and {last}", rest.join(", ")))
-}
-
-/// Returns a `resource-name` declaration for each command with
-/// subcommands, and a `verb-name` declaration for each command without,
-/// in the tree of `command`, hidden ones included, whose name is not in
-/// crumbkit's dashed form and that answers to its dashed form
-/// (`crumbkit::dashed_form`).
-fn dashed_names(command: &Command) -> Vec<Declaration> {
-    let mut list = Vec::new();
-    for visit in tree::walk(command) {
-        let Some(parent) = visit.parent() else {
-            continue;
-        };
-        let name = visit.command().get_name();
-        if let Some(form) = crumbkit::dashed_form(parent, name) {
-            list.push(Declaration {
-                kind: if visit.command().has_subcommands() {
-                    "resource-name"
-                } else {
-                    "verb-name"
-                },
-                applies_to: visit.path().to_owned(),
-                declares: format!("The command also answers to {form}."),
-                reason: None,
-            });
-        }
-    }
-    list
-}
-
-/// Returns the code of crumbkit's that `listed` is, or that the tool record or
-/// one of its leaves renames to `listed`, with the path of the first leaf
-/// that renames it when the tool record does not, or `None` for one of the
-/// tool's own codes.
-fn crumbkit_code(
-    tool: &Tool,
-    listed: &'static Code,
-) -> Option<(&'static Code, Option<&'static [&'static str]>)> {
-    if listed.component() == "crumbkit" {
-        return Some((listed, None));
-    }
-    let renames_to = |rename: &&Rename| rename.tool() == listed;
-    if let Some(rename) = tool.get_failures().get_codes().iter().find(renames_to) {
-        return Some((rename.crumbkit(), None));
-    }
-    tool.get_help().get_leaves().iter().find_map(|leaf| {
-        let rename = leaf.get_codes().iter().find(renames_to)?;
-        Some((rename.crumbkit(), Some(leaf.path())))
-    })
 }

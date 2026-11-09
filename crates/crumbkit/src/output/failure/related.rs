@@ -23,8 +23,8 @@ const MOST_LEVELS: usize = 8;
 pub(super) struct Related {
     /// The diagnostic's `Display`.
     message: String,
-    /// The diagnostic's own code, which is free text that no codes check has
-    /// seen, when it has one.
+    /// The diagnostic's own code, which is free text that no `CODES` list
+    /// names, when it has one.
     code: Option<String>,
     /// The diagnostic's severity, `error` when it gives none, as miette
     /// treats it.

@@ -6,7 +6,7 @@ use std::fmt;
 
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode};
 
-use super::super::{Entry, PreparedFailure, Printing};
+use super::super::{Entry, PreparedFailure};
 use crate::{Code, Failure, Recovery, Spelling};
 
 const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
@@ -75,7 +75,6 @@ fn json_holds_each_label_with_its_place_when_the_span_could_be_read() {
     let document = PreparedFailure::new(
         &failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     );
@@ -101,7 +100,6 @@ fn a_batch_entry_holds_the_labels_as_the_failure_document_does() {
     let document = PreparedFailure::new(
         &failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     );
@@ -124,7 +122,6 @@ fn json_leaves_out_labels_when_the_diagnostic_has_none() {
     let document = PreparedFailure::new(
         &failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     );
@@ -141,7 +138,6 @@ fn a_label_excerpt_holds_every_line_of_its_span_and_one_line_before_and_after() 
     let document = PreparedFailure::new(
         &failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     );

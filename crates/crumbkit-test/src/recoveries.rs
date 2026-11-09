@@ -5,7 +5,6 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::help::Leaf;
 use crumbkit::{Code, Spelling, Tool};
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -438,29 +437,13 @@ pub fn check_recoveries(command: &Command, tool: &Tool, recoveries: &Recoveries<
 }
 
 /// Returns the spelled codes whose recoveries the check follows by name:
-/// the `declared` codes, crumbkit's codes as `tool` prints them, and each
-/// code that `tool` or one of its leaves prints in place of a code on a
-/// built-in list, which may be an add-on crate's code that
-/// `crumbkit::codes::ALL` does not list.
-fn known_codes(declared: &[(String, &Code)], tool: &Tool, spelling: Spelling) -> Vec<String> {
+/// the `declared` codes and crumbkit's codes as a run prints them.
+fn known_codes(declared: &[(String, &Code)], spelling: Spelling) -> Vec<String> {
     let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
     known.extend(
         crumbkit::codes::ALL
             .iter()
-            .map(|&code| spelling.spell(tool.printed(&[], code))),
-    );
-    let leaves = tool
-        .get_help()
-        .get_leaves()
-        .iter()
-        .flat_map(Leaf::get_codes);
-    known.extend(
-        tool.get_failures()
-            .get_codes()
-            .iter()
-            .chain(leaves)
-            .filter(|rename| library_codes().any(|listed| listed == rename.crumbkit()))
-            .map(|rename| spelling.spell(rename.tool())),
+            .map(|&code| spelling.spell(code)),
     );
     known
 }
@@ -469,19 +452,15 @@ fn known_codes(declared: &[(String, &Code)], tool: &Tool, spelling: Spelling) ->
 /// the check compares or overwrites the golden file.
 fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str, assert: &Assert) {
     let reader = failures::reader(&recoveries.examples);
-    // Codes print in the tool record's spelling, and crumbkit's own codes print
-    // with the tool's name (ADR-0079).
-    let spelling = tool
-        .get_failures()
-        .get_spelling()
-        .for_tool(tool.tool_name(command));
+    // crumbkit's own codes print with the tool's name (ADR-0079).
+    let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();
     for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
             declared.push((spelling.spell(code), code));
         }
     }
-    let known = known_codes(&declared, tool, spelling);
+    let known = known_codes(&declared, spelling);
     // crumbkit's add-on crates, such as crumbkit-aliases, own codes in the
     // `crumbkit` component that `crumbkit::codes::ALL` does not list. The
     // walk finds them on the built-in lists, so only the declared codes
@@ -492,9 +471,10 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
         if components.iter().any(|(seen, _)| seen == component) {
             continue;
         }
-        if let Some(prefix) = chain::known::spelled_prefix(spelling, component) {
-            components.push((component.to_owned(), prefix));
-        }
+        components.push((
+            component.to_owned(),
+            chain::known::spelled_prefix(spelling, component),
+        ));
     }
     let rules = [
         Rule::Recoveries,
@@ -510,9 +490,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
         declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,
         components,
-        // A leaf cannot rename the usage code, so every command prints the
-        // tool record's.
-        usage: spelling.spell(tool.printed(&[], &crumbkit::codes::CLI_USAGE)),
+        usage: spelling.spell(&crumbkit::codes::CLI_USAGE),
         allowances,
         problems: Vec::new(),
         report: String::new(),

@@ -7,8 +7,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
-use crate::help::{Help, Leaf};
-use crate::tool::{Exit, Failures, Rename};
+use crate::tool::{Exit, Failures};
 use crate::{Batch, Code, Document, Failure, Prose, Recovery, Run, Sink, Tool, finish_to};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
@@ -152,12 +151,10 @@ fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_
 }
 
 #[test]
-fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_its_listed_code() {
-    const STALE: Code = Code::new("solar", "planets", "stale");
-    const RENAMED: Tool = Tool::new().failures(
-        Failures::new()
-            .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
-            .exits(&[Exit::new(5, "The planet changed since it was read.").failures(&[&STALE])]),
+fn a_crumbkit_failure_in_a_batch_exits_with_the_code_that_the_tool_lists_for_it() {
+    const LISTED: Tool = Tool::new().failures(
+        Failures::new().exits(&[Exit::new(5, "The planet changed since it was read.")
+            .failures(&[&crate::codes::VERSION_CONFLICT])]),
     );
     let view = Cli::try_parse_from(["tool", "list", "--json"])
         .unwrap()
@@ -166,7 +163,7 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
         view,
         crate::DryRun::default(),
         Cli::command(),
-        &RENAMED,
+        &LISTED,
         ["tool", "list", "--json"],
     )
     .unwrap();
@@ -185,73 +182,7 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
 
     assert_eq!(code, 5);
     let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
-    assert_eq!(document["failures"][0]["code"], "solar::planets::stale");
-}
-
-#[test]
-fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_with_its_listed_code()
-{
-    const STALE: Code = Code::new("solar", "planets", "stale");
-    const MOVED: Code = Code::new("solar", "planets", "moved");
-    const RENAMED: Tool = Tool::new()
-        .help(Help::new().leaves(&[
-            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)]),
-        ]))
-        .failures(
-            Failures::new()
-                .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
-                .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])]),
-        );
-    let mut out = Vec::new();
-    let mut err = Vec::new();
-    let mut sink = Sink::new(&mut out, &mut err);
-    let (_tool, output) =
-        crate::parse_to::<Cli>(&mut sink, &RENAMED, ["tool", "list", "--json"]).unwrap();
-    let code = finish_to(
-        &mut sink,
-        output,
-        PLANETS,
-        Err(Failed(&crate::codes::VERSION_CONFLICT)),
-    );
-
-    assert_eq!(code, 5);
-    let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
-    assert_eq!(document["code"], "solar::planets::moved");
-}
-
-#[test]
-fn a_tool_that_parses_with_clap_alone_gets_the_renames_of_the_leaf_that_its_words_name() {
-    const MOVED: Code = Code::new("solar", "planets", "moved");
-    const RENAMED: Tool = Tool::new()
-        .help(Help::new().leaves(&[
-            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)]),
-        ]))
-        .failures(
-            Failures::new()
-                .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])]),
-        );
-    let words = ["tool", "list", "--json"];
-    let tool = Cli::try_parse_from(words).unwrap();
-    let output = Run::new(
-        tool.view,
-        crate::DryRun::default(),
-        Cli::command(),
-        &RENAMED,
-        words,
-    )
-    .unwrap();
-    let mut out = Vec::new();
-    let mut err = Vec::new();
-    let code = finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        output,
-        PLANETS,
-        Err(Failed(&crate::codes::VERSION_CONFLICT)),
-    );
-
-    assert_eq!(code, 5);
-    let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
-    assert_eq!(document["code"], "solar::planets::moved");
+    assert_eq!(document["failures"][0]["code"], "tool::version::conflict");
 }
 
 #[test]

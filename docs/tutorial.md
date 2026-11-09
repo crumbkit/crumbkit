@@ -97,7 +97,7 @@ fn list(args: &JarsList) -> Listing<Jar> {
 
 `main` calls `crumbkit::parse` in place of `Cli::parse`. `parse` prints help
 and refusals itself and returns a `Stop` with the exit code, so `main`
-returns that code. On success `parse` returns the parsed `Cli` and an
+returns that code. On success `parse` returns the parsed `Cli` and a
 `Run` that holds the command tree that `parse` built, and `finish` prints
 the result through that `Run` and returns the exit code:
 
@@ -176,9 +176,9 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 
 `pantry jars list --shelf middle` exits with 1 and prints the error, a `help:`
 line that tells the caller to run `pantry jars list`, and the code
-`pantry::shelves::not_found`. The code joins its segments with `::` because the
-tool record sets no other spelling. With `--json`, it prints the failure as a
-JSON document. [ADR-0001] says why every failure carries a code and a next step.
+`pantry::shelves::not_found`. The code joins its segments with `::`. With
+`--json`, it prints the failure as a JSON document. [ADR-0001] says why every
+failure carries a code and a next step.
 
 ## 3. A tool record
 
@@ -236,11 +236,11 @@ fn every_command_is_a_resource_followed_by_a_verb() {
 }
 ```
 
-The file also runs `check_effects`, `check_listings`, `check_help` and
-`check_codes`. With no opt-outs, `check_names` fails, because help shows the
-visible alias `ls` as a second name for `jars list`. pantry could make the
-alias hidden, which passes the check and keeps `ls` working. pantry keeps it
-visible, and opts out of the rule for that command with a reason:
+The file also runs `check_effects`, `check_listings` and `check_help`. With no
+opt-outs, `check_names` fails, because help shows the visible alias `ls` as a
+second name for `jars list`. pantry could make the alias hidden, which passes
+the check and keeps `ls` working. pantry keeps it visible, and opts out of the
+rule for that command with a reason:
 
 ```rust
 const ALLOW: &[Allow] = &[Allow::new(

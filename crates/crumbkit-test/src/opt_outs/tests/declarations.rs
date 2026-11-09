@@ -5,7 +5,7 @@ use clap::Command;
 use crumbkit::codes::CLI_USAGE;
 use crumbkit::help::{Help, Leaf};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::tool::{Exit, RefusalContext, Rename};
+use crumbkit::tool::{Exit, RefusalContext};
 use crumbkit::{Call, Children, Code, Document, Prose, Tool};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
@@ -29,11 +29,8 @@ fn id_hint(_: &RefusalContext<'_>) -> Option<String> {
     Some("name a book by its id".to_owned())
 }
 
-/// The tool's code for crumbkit's usage code.
-const USAGE: Code = Code::new("shelf", "cli", "usage");
-
-/// A tool record that declares a rename, an exit for the renamed usage code,
-/// refusal alternatives and a refusal hint for every command line, and a
+/// A tool record that declares an exit for crumbkit's usage code, refusal
+/// alternatives and a refusal hint for every command line, and a
 /// leaf that passes on its program's exit code and offers its own
 /// alternatives and hint when its command line is refused.
 const DECLARING: Tool = Tool::new()
@@ -45,8 +42,7 @@ const DECLARING: Tool = Tool::new()
     )
     .failures(
         Failures::new()
-            .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
-            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
+            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])])
             .refusal_alternatives(version_call)
             .refusal_hint(id_hint),
     );
@@ -61,10 +57,7 @@ fn the_report_lists_declarations_under_declarations_without_a_reason_or_a_cost()
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf has 7 declarations, which need no reason.\n\
-         \n\
-         code-rename: every run of shelf\n\
-         \x20 Declares: Runs print shelf::cli::usage in place of shelf::cli::usage.\n\
+         shelf has 6 declarations, which need no reason.\n\
          \n\
          exit-code: every run of shelf\n\
          \x20 Declares: A failure with shelf::cli::usage exits with 64, where the default is 2.\n\
@@ -87,14 +80,14 @@ fn the_report_lists_declarations_under_declarations_without_a_reason_or_a_cost()
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(report["data"], json!([]));
     assert_eq!(
-        report["declarations"][4],
+        report["declarations"][3],
         json!({
             "declaration": "passes-on-exit",
             "applies_to": "shelf books show",
             "declares": "The command exits with the exit code of the pager.",
         })
     );
-    assert_eq!(report["declarations"].as_array().unwrap().len(), 7);
+    assert_eq!(report["declarations"].as_array().unwrap().len(), 6);
 }
 
 #[test]
@@ -168,80 +161,6 @@ fn a_cargo_subcommand_names_its_documents_after_the_path_below_its_own_name() {
         Tool::new().help(Help::new().leaves(&[Leaf::new(&["crumbkit", "weigh"]).document(WEIGH)]));
 
     assert!(declarations(&Command::new("cargo"), &TOOL, &[]).is_empty());
-}
-
-#[test]
-fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_declarations() {
-    let shelf = Command::new("shelf").subcommand(
-        Command::new("reading_lists")
-            .subcommand(Command::new("ExportAll"))
-            .subcommand(Command::new("list")),
-    );
-    let listed = |tool: &Tool| -> Vec<_> {
-        declarations(&shelf, tool, &[])
-            .into_iter()
-            .map(|entry| (entry.kind, entry.applies_to, entry.declares))
-            .collect()
-    };
-
-    assert_eq!(
-        listed(&Tool::new().dashed_forms()),
-        [
-            (
-                "dashed-forms",
-                "every run of shelf".to_owned(),
-                "A command named in another style also answers to its dashed form.".to_owned()
-            ),
-            (
-                "resource-name",
-                "shelf reading_lists".to_owned(),
-                "The command also answers to reading-lists.".to_owned()
-            ),
-            (
-                "verb-name",
-                "shelf reading_lists ExportAll".to_owned(),
-                "The command also answers to export-all.".to_owned()
-            ),
-        ]
-    );
-    assert_eq!(listed(&Tool::new()), Vec::new());
-}
-
-#[test]
-fn a_leaf_s_rename_and_an_exit_that_lists_it_are_declarations_of_that_command() {
-    const MOVED: Code = Code::new("shelf", "books", "moved");
-    const TOOL: Tool = Tool::new()
-        .help(
-            Help::new().leaves(&[Leaf::new(&["books", "import"])
-                .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]),
-        )
-        .failures(
-            Failures::new()
-                .exits(&[Exit::new(6, "A book moved during the import.").failures(&[&MOVED])]),
-        );
-    let shelf = Command::new("shelf");
-
-    let listed: Vec<_> = declarations(&shelf, &TOOL, &[])
-        .into_iter()
-        .map(|entry| (entry.kind, entry.applies_to, entry.declares))
-        .collect();
-
-    assert_eq!(
-        listed,
-        [
-            (
-                "exit-code",
-                "shelf books import".to_owned(),
-                "A failure with shelf::books::moved exits with 6, where the default is 1."
-                    .to_owned()
-            ),
-            (
-                "code-rename",
-                "shelf books import".to_owned(),
-                "Runs print shelf::books::moved in place of shelf::version::conflict.".to_owned()
-            ),
-        ]
-    );
 }
 
 /// A removed book whose text is its own line.
@@ -422,50 +341,6 @@ fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_declaration_of_one_
     let json: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(json["data"][0]["rule"], json!("documents/rows-whole"));
     assert_eq!(json["declarations"][0]["declaration"], json!("text-line"));
-}
-
-/// Joins the segments of a code with `.`, a custom spelling.
-const DOTS: crumbkit::Spelling = crumbkit::Spelling::custom(|code, f| {
-    write!(f, "{}.{}.{}", code.component(), code.area(), code.reason())
-});
-
-#[test]
-fn a_custom_spelling_is_a_declaration_and_spells_every_listed_code() {
-    const TOOL: Tool = Tool::new().failures(
-        Failures::new()
-            .spelling(DOTS)
-            .codes(&[Rename::new(&CLI_USAGE, &USAGE)]),
-    );
-    let shelf = Command::new("shelf");
-
-    let listed: Vec<_> = declarations(&shelf, &TOOL, &[])
-        .into_iter()
-        .map(|entry| (entry.kind, entry.applies_to, entry.declares))
-        .collect();
-
-    assert_eq!(
-        listed,
-        [
-            (
-                "code-spelling",
-                "every run of shelf".to_owned(),
-                "Runs print codes such as shelf.cli.usage in place of shelf::cli::usage."
-                    .to_owned()
-            ),
-            (
-                "code-rename",
-                "every run of shelf".to_owned(),
-                "Runs print shelf.cli.usage in place of shelf.cli.usage.".to_owned()
-            ),
-        ]
-    );
-}
-
-#[test]
-fn a_tool_that_sets_the_colon_spelling_lists_no_spelling() {
-    const TOOL: Tool = Tool::new().failures(Failures::new().spelling(crumbkit::Spelling::COLONS));
-
-    assert!(declarations(&Command::new("shelf"), &TOOL, &[]).is_empty());
 }
 
 #[test]

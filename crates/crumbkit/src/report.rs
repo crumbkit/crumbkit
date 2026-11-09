@@ -11,12 +11,12 @@ use crate::{Code, Error, Failure, Recovery};
 /// conversion exists only with the `miette` feature, which crumbkit's own
 /// `miette` feature turns on.
 ///
-/// The failure's code is `<tool>::report::unchecked` in the tool's
-/// spelling for every report, because a report's own code is free text that
-/// no codes check has seen. The message is the report's `Display`, followed
-/// by the report's own code in parentheses when it has one, such as
-/// `unknown key (shelf::config::unknown_key)`. The report's help becomes a
-/// [`Recovery::Hint`], and a report without help has a [`Recovery::None`].
+/// The failure's code is `<tool>::report::unchecked` for every report, because
+/// a report's own code is free text that no `CODES` list names. The message is
+/// the report's `Display`, followed by the report's own code in parentheses
+/// when it has one, such as `unknown key (shelf::config::unknown_key)`. The
+/// report's help becomes a [`Recovery::Hint`], and a report without help has a
+/// [`Recovery::None`].
 /// The url is the report's url, each error in the report's chain prints as a
 /// cause, and the labels of the report's diagnostic print as a failure's
 /// labels do.

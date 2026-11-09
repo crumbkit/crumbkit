@@ -10,8 +10,7 @@ use clap::{Arg, ArgAction, Command};
 use super::{Parsed, tree};
 use crate::help::Help;
 use crate::parse::Stop;
-use crate::tool::{Failures, Rename};
-use crate::{Code, Sink, Tool, codes};
+use crate::{Sink, Tool};
 
 /// Runs `parse_to` over `command` with `tool` and `args` into memory, for
 /// a command line that does not parse.
@@ -72,22 +71,6 @@ fn a_tool_whose_name_has_a_hyphen_keeps_it_in_the_schema_id_and_spells_its_code_
             .starts_with(r#"{"schema":"my-tool/failure/v1","code":"my_tool::cli::usage","#),
         "{}",
         parsed.out
-    );
-}
-
-#[test]
-fn a_tool_that_renames_the_usage_code_prints_its_own_code_in_place_of_the_tools_name() {
-    const REFUSED: Code = Code::new("tool", "command_line", "refused");
-    const TOOL: Tool =
-        Tool::new().failures(Failures::new().codes(&[Rename::new(&codes::CLI_USAGE, &REFUSED)]));
-    let parsed = parse(tree(), &TOOL, &["tool", "planets", "show"]);
-
-    assert!(
-        parsed
-            .err
-            .ends_with("  code:  tool::command_line::refused\n"),
-        "{}",
-        parsed.err
     );
 }
 

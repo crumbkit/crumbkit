@@ -5,7 +5,7 @@ use std::fmt;
 
 use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode};
 
-use super::super::{PreparedFailure, Printing};
+use super::super::PreparedFailure;
 use crate::{Code, Failure, Recovery, Spelling};
 
 const BAD_CONFIG: Code = Code::new("shelf", "config", "bad");
@@ -146,7 +146,6 @@ fn json(related: Vec<Note>) -> serde_json::Value {
     serde_json::to_value(PreparedFailure::new(
         &failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     ))
@@ -173,7 +172,6 @@ fn json_holds_each_related_diagnostic_with_every_part_it_has_after_the_labels() 
     let document = PreparedFailure::new(
         &failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     );
@@ -276,7 +274,6 @@ fn related_diagnostics_nest_at_most_eight_levels_deep() {
     let document = PreparedFailure::new(
         &Loop,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     );

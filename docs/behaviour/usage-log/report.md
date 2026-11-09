@@ -86,9 +86,8 @@ counts it, so a hand-edited line cannot put its text in the report.
   path fails.
 - Each flag and the nearest flag must be a long name of the command's
   arguments, or a short name of an argument without a long one.
-- A code and each tolerated code must be 1 to 128 ASCII letters, digits,
-  `_`, `-`, `:`, `.` and `/`. A code in a predefined spelling or a custom
-  one passes, and a code with whitespace or any other character fails.
+- A code and each tolerated code must be 1 to 128 ASCII letters, digits, `_`,
+  `-` and `:`. A code with whitespace or any other character fails.
 - A caller must be `person`, `unknown` or an id that is-ai-agent gives.
 
 A record that fails a check is left out and counted in the summary's

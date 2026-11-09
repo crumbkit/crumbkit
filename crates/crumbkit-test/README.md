@@ -72,7 +72,6 @@ with a reason.
 
 These checks read the tool record, failure codes or crumbkit's output:
 
-- Failure codes: [`check_codes`].
 - Effects: [`check_effects`].
 - The tool record: [`check_help`], and [`check_exit_codes`].
 - Help pages: the checks above with [`Pages::rendered`] or
@@ -105,7 +104,6 @@ option.
 [`Suite`]: src/suite.rs
 [`Check`]: src/suite/check.rs
 [`conventions!`]: src/suite/check.rs
-[`check_codes`]: src/codes.rs
 [`check_command_reference`]: src/reference.rs
 [`Allow`]: src/allow.rs
 [`Rule`]: src/allow/rule.rs

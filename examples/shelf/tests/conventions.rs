@@ -138,7 +138,6 @@ const SUITE: Suite<'_> = Suite::new(|| (Cli::command(), TOOL))
     .verbs(&["summarize", "usage", "remove"])
     .path_budgets(PATH_BUDGETS)
     .examples(EXAMPLES)
-    .codes(&[shelf::CODES])
     .recoveries(RECOVERIES)
     .twins(TWINS);
 

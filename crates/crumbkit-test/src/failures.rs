@@ -12,11 +12,11 @@ use crate::examples::Examples;
 use crate::runs;
 
 /// The failure that one run printed, as crumbkit-test reads it back from
-/// the run's output: the code in the tool's spelling, the
-/// steps, the recovery first and then each alternative, and the fields.
+/// the run's output: the code, the steps, the recovery first and then each
+/// alternative, and the fields.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReadFailure {
-    /// The code in the tool's spelling, such as `shelf::books::not_found`.
+    /// The code as the run printed it, such as `shelf::books::not_found`.
     code: String,
     /// The recovery first, then each alternative.
     steps: Vec<RecoveryStep>,
@@ -25,8 +25,8 @@ pub struct ReadFailure {
 }
 
 impl ReadFailure {
-    /// Returns the failure with `code`, in the tool's spelling, and `steps`,
-    /// the recovery first and then each alternative.
+    /// Returns the failure with `code` and `steps`, the recovery first and
+    /// then each alternative.
     #[must_use]
     pub const fn new(code: String, steps: Vec<RecoveryStep>) -> Self {
         Self {
@@ -51,7 +51,7 @@ impl ReadFailure {
         self
     }
 
-    /// Returns the code in the tool's spelling.
+    /// Returns the code as the run printed it.
     #[must_use]
     pub fn code(&self) -> &str {
         &self.code
@@ -79,12 +79,11 @@ impl ReadFailure {
 ///
 /// `read` receives the run's standard output `out` and standard error
 /// `err`, and returns each failure it finds, the first failure first, or
-/// no failure when it finds none. Each failure holds its code in the tool's
-/// spelling, its steps, the recovery first and then each alternative, and
-/// its fields, which fill the placeholders of a recovery's call. A reader
-/// maps a code that the tool writes in place of one of crumbkit's, such as
-/// its own usage code in place of `crumbkit::cli::usage`, back to
-/// crumbkit's code, so the checks match it.
+/// no failure when it finds none. Each failure holds its code, its steps, the
+/// recovery first and then each alternative, and its fields, which fill the
+/// placeholders of a recovery's call. A reader maps a code that the tool writes
+/// in place of one of crumbkit's, such as its own usage code in place of
+/// `crumbkit::cli::usage`, back to crumbkit's code, so the checks match it.
 ///
 /// When the reader returns no failure, the checks read crumbkit's failure
 /// document on standard output and then the last `code:` line on standard

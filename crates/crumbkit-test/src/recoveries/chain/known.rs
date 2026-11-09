@@ -59,35 +59,11 @@ impl Walk<'_> {
     }
 }
 
-/// The area of the probe code that [`spelled_prefix`] spells.
-const PROBE_AREA: &str = "area_probe";
-/// The reason of the probe code that [`spelled_prefix`] spells.
-const PROBE_REASON: &str = "reason_probe";
-
 /// Returns the text that `spelling` writes before the area of every code in
-/// `component`, such as `shelf::` or `shelf.`, which it finds by spelling a
-/// probe code in that component.
-///
-/// It returns `None` when the check cannot tell from that text which
-/// component a code belongs to: the spelling writes the area first, writes
-/// the reason before the area, changes the area's letters, leaves out the
-/// component's name, or ends the text with a letter, a digit, `_` or `-`.
-/// A segment may hold those characters, so `shelf_` would also begin a code
-/// of the component `shelf_cache`, and `shelf-` a code of `shelf-cache`.
-pub(in crate::recoveries) fn spelled_prefix(
-    spelling: Spelling,
-    component: &'static str,
-) -> Option<String> {
-    let code = Code::new(component, PROBE_AREA, PROBE_REASON);
-    let probe = spelling.spell(&code);
-    let prefix = &probe[..probe.find(PROBE_AREA)?];
-    let name = spelling.tool().code(&code).component();
-    let ends_in_segment = prefix
-        .chars()
-        .next_back()
-        .is_none_or(|last| matches!(last, 'a'..='z' | '0'..='9' | '_' | '-'));
-    (!ends_in_segment && prefix.contains(name) && !prefix.contains(PROBE_REASON))
-        .then(|| prefix.to_owned())
+/// `component`, such as `shelf::`.
+pub(in crate::recoveries) fn spelled_prefix(spelling: Spelling, component: &'static str) -> String {
+    let code = Code::new(component, "area", "reason");
+    format!("{}::", spelling.tool().code(&code).component())
 }
 
 #[cfg(test)]

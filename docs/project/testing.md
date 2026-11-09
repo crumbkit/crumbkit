@@ -27,7 +27,7 @@ Why: ADR-0005.
 ## Property tests
 
 proptest checks the code segment rules, the document component rule, the
-predefined spellings, table rendering and the reduction of usage records.
+colon spelling, table rendering and the reduction of usage records.
 The reduction must report the same figures and findings for any
 interleaving of sessions in the log and for a log read in two parts.
 

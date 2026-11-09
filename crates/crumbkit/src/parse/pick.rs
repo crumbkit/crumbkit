@@ -85,7 +85,7 @@ impl Picking {
         json: bool,
         spelling: Spelling,
     ) -> Step {
-        let given = given(command, words, tool.get_dashed_forms());
+        let given = given(command, words);
         if given.ids.iter().any(|id| id == NO_INPUT_ID) {
             return Step::Refuse;
         }
@@ -124,7 +124,7 @@ impl Picking {
         let choices = match choices(&arg, leaf) {
             Ok(choices) => choices,
             Err(error) => {
-                let printing = Printing::at(tool, leaf);
+                let printing = Printing::of(tool);
                 let failure = error.failure();
                 failure::print(sink, json, spelling, printing, failure, command);
                 let exit = printing.exit(failure.code());

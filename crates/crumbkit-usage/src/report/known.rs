@@ -28,10 +28,10 @@ const LONGEST_CODE: usize = 128;
 /// - each flag and the nearest flag is the name of an argument of `tool` or
 ///   of a command on the path, as the writer names it: `--long`, or `-s`
 ///   for an argument without a long name;
-/// - the code and each tolerated code is 1 to 128 ASCII letters, digits, `_`, `-`, `:`, `.` and
-///   `/`, which covers crumbkit's predefined spellings of a
-///   [`Code`](crumbkit::Code) and a tool's custom spelling, and keeps out
-///   whitespace and any other character;
+/// - the code and each tolerated code is 1 to 128 ASCII letters, digits, `_`,
+///   `-` and `:`, which covers crumbkit's spelling of a
+///   [`Code`](crumbkit::Code), and keeps out whitespace and any other
+///   character;
 /// - the caller is an agent id from is-ai-agent, `person` or `unknown`.
 pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
     let Some(path) = path(tool, entry.command.as_deref()) else {
@@ -79,12 +79,12 @@ fn names(arg: &Arg, flag: &str) -> bool {
 }
 
 /// Returns whether `text` is 1 to [`LONGEST_CODE`] ASCII letters, digits,
-/// `_`, `-`, `:`, `.` and `/`.
+/// `_`, `-` and `:`.
 fn is_code(text: &str) -> bool {
     (1..=LONGEST_CODE).contains(&text.len())
         && text
             .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || b"_-:./".contains(&byte))
+            .all(|byte| byte.is_ascii_alphanumeric() || b"_-:".contains(&byte))
 }
 
 /// Returns whether the usage log writes `name` as a caller. An agent's id

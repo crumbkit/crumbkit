@@ -1,11 +1,10 @@
 //! Tests for failure codes and their spellings.
 
-use std::fmt;
 use std::panic;
 
 use proptest::prelude::*;
 
-use super::{Code, Form, Spelling};
+use super::{Code, Spelling};
 use crate::segment::is_code_segment;
 
 const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
@@ -97,23 +96,6 @@ fn colons_spells_the_segments_joined_by_two_colons() {
         Spelling::COLONS.spell(&NOT_FOUND),
         "shelf::books::not_found"
     );
-}
-
-/// Spells a code as its area and reason in upper case, joined by a dash.
-fn upper_area_and_reason(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(
-        f,
-        "{}-{}",
-        code.area().to_uppercase(),
-        code.reason().to_uppercase()
-    )
-}
-
-#[test]
-fn a_custom_spelling_spells_a_code_with_the_function_it_was_given() {
-    const UPPER: Spelling = Spelling::custom(upper_area_and_reason);
-
-    assert_eq!(UPPER.spell(&NOT_FOUND), "BOOKS-NOT_FOUND");
 }
 
 /// Generates a segment that `Code::new` accepts.
@@ -210,23 +192,12 @@ fn a_spelling_for_a_tool_splits_as_the_spelling_it_names() {
 }
 
 #[test]
-fn a_custom_spelling_splits_nothing() {
-    const UPPER: Spelling = Spelling::custom(upper_area_and_reason);
+fn the_colon_spelling_splits_the_text_it_writes() {
+    let text = Spelling::COLONS.spell(&NOT_FOUND);
 
-    assert_eq!(UPPER.split("BOOKS-NOT_FOUND"), None);
-}
-
-/// A joined spelling holds its separator once, so the text it writes and
-/// the text it splits agree for any separator.
-#[test]
-fn a_joined_spelling_splits_at_the_separator_it_writes() {
-    let dots = Spelling {
-        form: Form::Joined("."),
-        tool: crate::ToolName::CRUMBKIT,
-    };
-
-    let text = dots.spell(&NOT_FOUND);
-
-    assert_eq!(text, "shelf.books.not_found");
-    assert_eq!(dots.split(&text), Some(("shelf", "books", "not_found")));
+    assert_eq!(text, "shelf::books::not_found");
+    assert_eq!(
+        Spelling::COLONS.split(&text),
+        Some(("shelf", "books", "not_found"))
+    );
 }

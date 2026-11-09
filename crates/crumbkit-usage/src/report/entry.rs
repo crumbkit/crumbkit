@@ -54,7 +54,7 @@ pub(super) struct Entry {
     #[serde(default)]
     pub(super) code: Option<String>,
     /// The codes of the failures that the run reported and carried on
-    /// past, in the tool's spelling.
+    /// past.
     #[serde(default)]
     pub(super) tolerated: Vec<String>,
     /// The bytes that the run wrote to standard output.

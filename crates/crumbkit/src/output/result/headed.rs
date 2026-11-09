@@ -46,7 +46,7 @@ pub(super) fn write<T: Rows>(
     first_always: bool,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
-    let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
+    let code = &codes::OUTPUT_OVER_BUDGET;
     let rows = value.rows();
     let headers = crate::output::several_keys(value) || rows.len() > 1;
     let mut printed: Vec<(String, Cow<'_, [u8]>)> = Vec::new();

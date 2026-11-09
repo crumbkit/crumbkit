@@ -36,10 +36,10 @@ impl Code {
     /// returns their code. A tool that receives `Full` reports the failure
     /// under a code of its own.
     ///
-    /// crumbkit-test's codes check cannot list run-time codes, because the
-    /// tool does not know them when its tests run. A failure with a run-time
-    /// code supplies its own recovery, which is `Recovery::None` with a
-    /// reason when the plugin gives no next step.
+    /// A `CODES` list cannot name run-time codes, because the tool does not
+    /// know them when its tests run. A failure with a run-time code supplies
+    /// its own recovery, which is `Recovery::None` with a reason when the plugin
+    /// gives no next step.
     ///
     /// ```
     /// use crumbkit::{Code, Spelling};

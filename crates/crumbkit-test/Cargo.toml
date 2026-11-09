@@ -12,8 +12,8 @@ categories = ["command-line-interface", "development-tools::testing"]
 include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
-# The codes check takes crumbkit's `Code` and `Tool`, and spells each code in
-# the tool record's `Spelling`, as the tool's `finish` prints it.
+# The checks read a tool's `Tool` record, and spell each `Code` with the tool's
+# name, as the tool's `finish` prints it.
 crumbkit = { workspace = true }
 # The command reference check renders a tool's `commands list` document with
 # crumbkit-markdown, which `cargo crumbkit docs` also calls, so the two write

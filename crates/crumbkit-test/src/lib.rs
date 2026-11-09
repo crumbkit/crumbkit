@@ -4,7 +4,6 @@
 //! [`Suite`]: crate::Suite
 //! [`Check`]: crate::Check
 //! [`conventions!`]: crate::conventions
-//! [`check_codes`]: crate::check_codes
 //! [`Allow`]: crate::Allow
 //! [`Rule`]: crate::Rule
 //! [`Failing`]: crate::Failing
@@ -86,7 +85,6 @@ mod weights;
 
 pub use crate::allow::{Allow, Rule};
 pub use crate::budget::Budget;
-pub use crate::codes::check_codes;
 pub use crate::documents::{check_document_ids, check_mounts};
 pub use crate::effects::check_effects;
 pub use crate::examples::{Examples, check_examples, example_golden_name};

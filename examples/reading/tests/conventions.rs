@@ -153,7 +153,6 @@ const SUITE: Suite<'_> = Suite::new(fixture_tool)
     .verbs(&["stream", "edit", "set", "export"])
     .path_budgets(PATH_BUDGETS)
     .examples(EXAMPLES)
-    .codes(&[reading::CODES])
     .recoveries(RECOVERIES)
     .twins(TWINS)
     .skip(

@@ -5,19 +5,10 @@ use clap::CommandFactory as _;
 use crumbkit_test::{Budgets, Pages};
 
 use crate::cli::{ALLOW, Cli, TOOL};
-use crate::error::{DocsError, ToolError, WeighError};
 
 /// The budgets of cargo-crumbkit's `-h` pages, which are crumbkit's
 /// defaults.
 const BUDGETS: Budgets = Budgets::new();
-
-#[test]
-fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(
-        &TOOL,
-        &[ToolError::CODES, WeighError::CODES, DocsError::CODES],
-    );
-}
 
 #[test]
 fn every_command_and_argument_has_one_name() {

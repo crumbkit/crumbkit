@@ -9,7 +9,7 @@ use super::rerun::{self, Rerun};
 use super::{Answer, Prepared};
 use crate::output::budget::{self, Over, OverBudget};
 use crate::output::envelope::Failures;
-use crate::output::failure::{PreparedFailure, Printing};
+use crate::output::failure::PreparedFailure;
 use crate::sink::role::Deliver;
 use crate::{Code, Rows, Spelling};
 
@@ -89,17 +89,8 @@ impl<T: Rows> Prepared<'_, T> {
             return Ok((Answer::Whole, bytes));
         }
         let bytes = {
-            // `code` is already the code that the run prints, so no rename
-            // applies to it.
-            let prepared = in_document.then(|| {
-                PreparedFailure::new(
-                    &over,
-                    left_out.spelling,
-                    Printing::default(),
-                    left_out.command,
-                    sink,
-                )
-            });
+            let prepared = in_document
+                .then(|| PreparedFailure::new(&over, left_out.spelling, left_out.command, sink));
             self.measured_write(sink, shown, None, Some(failures(prepared.as_ref())))?
         };
         self.send_notes_before_left_out(sink, shown);
@@ -137,16 +128,12 @@ impl<T: Rows> Prepared<'_, T> {
         let any_left_out = !self.value.left_out(1).is_empty();
         let in_document = self.view.is_json() && self.document.get_envelope().wraps();
         let (bytes, over) = if in_document {
-            // `code` is already the code that the run prints, so no rename
-            // applies to it.
-            let printing = Printing::default();
             let command = &mut *left_out.command;
-            let refused =
-                PreparedFailure::new(&first, left_out.spelling, printing, command, sink).keyed(key);
+            let refused = PreparedFailure::new(&first, left_out.spelling, command, sink).keyed(key);
             let over = self.name_keys(sink, listed, Some(&refused), &mut left_out, 0, 1)?;
             let prepared = any_left_out.then(|| {
                 let command = &mut *left_out.command;
-                PreparedFailure::new(&over, left_out.spelling, printing, command, sink)
+                PreparedFailure::new(&over, left_out.spelling, command, sink)
             });
             let failures = Failures {
                 listed,
@@ -189,13 +176,7 @@ impl<T: Rows> Prepared<'_, T> {
         let low = rows.min(1);
         let budget = left_out.budget;
         let most = self.left_out_failure(left_out, low, usize::MAX);
-        let prepared = PreparedFailure::new(
-            &most,
-            left_out.spelling,
-            Printing::default(),
-            &mut *left_out.command,
-            sink,
-        );
+        let prepared = PreparedFailure::new(&most, left_out.spelling, &mut *left_out.command, sink);
         let failures = Failures {
             listed,
             first: None,
@@ -240,13 +221,8 @@ impl<T: Rows> Prepared<'_, T> {
         };
         let mut fits_naming = |named: usize| {
             let failure = self.left_out_failure(left_out, from, named);
-            let prepared = PreparedFailure::new(
-                &failure,
-                left_out.spelling,
-                Printing::default(),
-                &mut *left_out.command,
-                sink,
-            );
+            let prepared =
+                PreparedFailure::new(&failure, left_out.spelling, &mut *left_out.command, sink);
             let failures = Failures {
                 listed,
                 first,

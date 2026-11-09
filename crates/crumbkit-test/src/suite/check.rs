@@ -74,8 +74,6 @@ checks! { $
     Help => every_command_leaf_and_topic_meets_the_help_rules,
     /// [`check_exit_codes`](crate::check_exit_codes).
     ExitCodes => every_exit_code_meets_the_exit_code_rules,
-    /// [`check_codes`](crate::check_codes).
-    Codes => every_failure_code_spells_uniquely_as_printable_ascii,
     /// [`check_help_sizes`](crate::check_help_sizes).
     HelpSizes => every_help_page_fits_its_size_budget,
     /// [`check_path_weights`](crate::check_path_weights).

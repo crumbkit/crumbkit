@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::{Code, Tool};
+use crumbkit::Tool;
 
 use crate::allow::{Allow, is_reason};
 use crate::opt_outs::{Departures, check_departures};
@@ -49,7 +49,7 @@ const REFERENCE: &str = "docs/commands.md";
 /// ```
 ///
 /// Each check reads only the inputs that it needs. [`Suite::path_budgets`],
-/// [`Suite::examples`], [`Suite::codes`], [`Suite::recoveries`] and
+/// [`Suite::examples`], [`Suite::recoveries`] and
 /// [`Suite::twins`] have no default, so a check that needs one fails and names
 /// it, unless [`Suite::skip`] gives a written reason. Every other input has a
 /// default that the setter's documentation gives.
@@ -72,8 +72,6 @@ pub struct Suite<'a> {
     goldens: &'a str,
     /// The tool's binary and the golden files of its examples.
     examples: Option<Examples<'a>>,
-    /// The tool's failure codes.
-    codes: Option<&'a [&'a [&'a Code]]>,
     /// The settings of the recovery check.
     recoveries: Option<Recoveries<'a>>,
     /// The settings of the twin check.
@@ -95,7 +93,6 @@ impl<'a> Suite<'a> {
             path_budgets: None,
             goldens: "tests/golden",
             examples: None,
-            codes: None,
             recoveries: None,
             twins: None,
             skips: [None; Check::ALL.len()],
@@ -159,14 +156,6 @@ impl<'a> Suite<'a> {
         self
     }
 
-    /// Sets the tool's failure codes, which
-    /// [`check_codes`](crate::check_codes) needs.
-    #[must_use]
-    pub const fn codes(mut self, codes: &'a [&'a [&'a Code]]) -> Self {
-        self.codes = Some(codes);
-        self
-    }
-
     /// Sets the settings of [`check_recoveries`](crate::check_recoveries).
     #[must_use]
     pub const fn recoveries(mut self, recoveries: Recoveries<'a>) -> Self {
@@ -189,8 +178,10 @@ impl<'a> Suite<'a> {
     ///
     /// # Panics
     ///
-    /// Panics unless `reason` is non-empty and holds no line break. A `const`
-    /// that calls it with such a reason fails to compile:
+    /// Panics unless `reason` is non-empty and holds no line break, and
+    /// panics when `check` is [`Check::OptOuts`], because that check is what
+    /// lists every skip and departure. A `const` that calls it in either way
+    /// fails to compile:
     ///
     /// ```compile_fail
     /// use clap::Command;
@@ -200,9 +191,22 @@ impl<'a> Suite<'a> {
     /// const BAD: Suite<'_> =
     ///     Suite::new(|| (Command::new("shelf"), Tool::new())).skip(Check::Listings, "");
     /// ```
+    ///
+    /// ```compile_fail
+    /// use clap::Command;
+    /// use crumbkit::Tool;
+    /// use crumbkit_test::{Check, Suite};
+    ///
+    /// const BAD: Suite<'_> = Suite::new(|| (Command::new("shelf"), Tool::new()))
+    ///     .skip(Check::OptOuts, "The report is not wanted.");
+    /// ```
     #[must_use]
     pub const fn skip(mut self, check: Check, reason: &'static str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
+        assert!(
+            !matches!(check, Check::OptOuts),
+            "the opt-out report lists every skip and departure, so it cannot be skipped"
+        );
         self.skips[check as usize] = Some(reason);
         self
     }
@@ -231,9 +235,6 @@ impl<'a> Suite<'a> {
             Check::Filters => crate::check_filters(command, self.allow),
             Check::Help => crate::check_help(command, tool, self.allow),
             Check::ExitCodes => crate::check_exit_codes(command, tool, self.allow),
-            Check::Codes => {
-                crate::check_codes(tool, required(self.codes, check, "codes"));
-            }
             Check::HelpSizes => crate::check_help_sizes(command, pages(), &self.budgets),
             Check::PathWeights => crate::check_path_weights(
                 command,

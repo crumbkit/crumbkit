@@ -1,23 +1,13 @@
-//! Tests that a tool sets its spelling once, on its tool record: `parse`,
-//! `finish`, `stream` and `Run::new` print every code in the tool record's
-//! spelling, with the tool's name in crumbkit's own codes, and in the colon
-//! spelling when the tool record sets none.
+//! Tests that `parse`, `finish`, `stream` and `Run::new` print every code
+//! in the colon spelling, with the tool's name in crumbkit's own codes.
 
 use std::fmt;
 
 use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet};
-use crate::tool::Failures;
-use crate::{Code, Document, Failure, Recovery, Run, Sink, Spelling, Stream, Tool, ViewFlags};
+use crate::{Code, Document, Failure, Recovery, Run, Sink, Stream, Tool, ViewFlags};
 use crate::{finish_to, parse_to, stream_to};
-
-/// A spelling that joins the segments of a code with `.`.
-const DOTS: Spelling =
-    Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
-
-/// A tool record that sets the dotted spelling and nothing else.
-const DOTTED: Tool = Tool::new().failures(Failures::new().spelling(DOTS));
 
 /// A stream of planets, one line for each planet as it arrives.
 const PLANETS_WATCH: Document<Stream<Planet>> =
@@ -85,7 +75,7 @@ fn fail(output: Run) -> String {
 }
 
 #[test]
-fn a_tool_without_a_spelling_prints_colon_spelled_codes_with_the_tools_name() {
+fn a_tool_prints_colon_spelled_codes_with_the_tools_name() {
     let refused = parse(&Tool::new(), &["tool", "lisst"]).unwrap_err();
     let output = parse(&Tool::new(), &["tool", "list"]).unwrap();
 
@@ -101,27 +91,8 @@ fn a_tool_without_a_spelling_prints_colon_spelled_codes_with_the_tools_name() {
 }
 
 #[test]
-fn a_tool_with_a_custom_spelling_prints_it_when_parse_refuses_a_command_line() {
-    let refused = parse(&DOTTED, &["tool", "lisst"]).unwrap_err();
-
-    assert!(refused.ends_with("  code:  tool.cli.usage\n"), "{refused}");
-}
-
-#[test]
-fn a_tool_with_a_custom_spelling_prints_it_through_finish_without_a_further_argument() {
-    let output = parse(&DOTTED, &["tool", "list"]).unwrap();
-
-    let failed = fail(output);
-
-    assert!(
-        failed.ends_with("  code:  tool.planets.missing\n"),
-        "{failed}"
-    );
-}
-
-#[test]
-fn a_tool_with_a_custom_spelling_prints_it_through_stream_without_a_further_argument() {
-    let output = parse(&DOTTED, &["tool", "list"]).unwrap();
+fn a_stream_prints_its_failure_s_code_in_colons() {
+    let output = parse(&Tool::new(), &["tool", "list"]).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
 
@@ -130,11 +101,11 @@ fn a_tool_with_a_custom_spelling_prints_it_through_stream_without_a_further_argu
     let _ = streaming.end(Err::<(), Missing>(Missing));
 
     let err = String::from_utf8(err).unwrap();
-    assert!(err.ends_with("  code:  tool.planets.missing\n"), "{err}");
+    assert!(err.ends_with("  code:  tool::planets::missing\n"), "{err}");
 }
 
 #[test]
-fn a_clap_only_tools_output_new_carries_the_tools_spelling() {
+fn a_clap_only_tools_output_new_prints_a_refusal_with_the_tools_name() {
     let args = ["tool", "list", "--full"];
     let view = Cli::try_parse_from(args).unwrap().view;
     let mut out = Vec::new();
@@ -147,25 +118,28 @@ fn a_clap_only_tools_output_new_carries_the_tools_spelling() {
         view,
         crate::DryRun::default(),
         Cli::command(),
-        &DOTTED,
+        &Tool::new(),
         args,
     )
     .unwrap_err();
 
     assert_eq!(stop.exit(), 2);
     let refused = String::from_utf8(err).unwrap();
-    assert!(refused.ends_with("  code:  tool.cli.usage\n"), "{refused}");
+    assert!(
+        refused.ends_with("  code:  tool::cli::usage\n"),
+        "{refused}"
+    );
 }
 
 #[test]
-fn a_clap_only_tools_output_new_prints_the_handlers_code_in_the_tools_spelling() {
+fn a_clap_only_tools_output_new_prints_the_handlers_code_in_colons() {
     let args = ["tool", "list"];
     let view = Cli::try_parse_from(args).unwrap().view;
     let output = Run::new(
         view,
         crate::DryRun::default(),
         Cli::command(),
-        &DOTTED,
+        &Tool::new(),
         args,
     )
     .unwrap();
@@ -173,7 +147,7 @@ fn a_clap_only_tools_output_new_prints_the_handlers_code_in_the_tools_spelling()
     let failed = fail(output);
 
     assert!(
-        failed.ends_with("  code:  tool.planets.missing\n"),
+        failed.ends_with("  code:  tool::planets::missing\n"),
         "{failed}"
     );
 }

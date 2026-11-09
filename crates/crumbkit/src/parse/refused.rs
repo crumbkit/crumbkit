@@ -115,8 +115,7 @@ struct Inner {
     /// The words after the program name that crumbkit gave clap.
     parsed: Vec<OsString>,
     /// The words that `flags` and `value` read: the words that the caller
-    /// typed, with the tool's own name for each dashed form, and without
-    /// the word `help` that crumbkit answered (ADR-0136).
+    /// typed, without the word `help` that crumbkit answered (ADR-0136).
     caller: Vec<OsString>,
     /// The form that the tool chose with `as_json`: `Some(true)` for the
     /// JSON document, `Some(false)` for text, and `None` for the form that
@@ -171,12 +170,11 @@ impl Refused {
         self.inner.refusal.message()
     }
 
-    /// Returns the code that the refusal prints: crumbkit's
-    /// [`CLI_USAGE`](crate::codes::CLI_USAGE), or the tool's own code
-    /// when the tool record renames it.
+    /// Returns the code that the refusal prints, crumbkit's
+    /// [`CLI_USAGE`](crate::codes::CLI_USAGE).
     #[must_use]
     pub fn code(&self) -> &'static Code {
-        self.inner.output.printing().renames.printed(&CLI_USAGE)
+        &CLI_USAGE
     }
 
     /// Returns the exit code that the run ends with once the refusal prints: 2,
@@ -238,9 +236,8 @@ impl Refused {
 
     /// Returns the words after the program name that crumbkit gave clap.
     /// They differ from [`Refused::typed`] when crumbkit turned the word
-    /// `help` into `--help`, replaced a dashed form with the command's own
-    /// name, or added a value that a picker picked. `tool help nonsense`
-    /// gives `nonsense` and `--help`.
+    /// `help` into `--help` or added a value that a picker picked. `tool help
+    /// nonsense` gives `nonsense` and `--help`.
     #[must_use]
     pub fn parsed(&self) -> &[OsString] {
         &self.inner.parsed

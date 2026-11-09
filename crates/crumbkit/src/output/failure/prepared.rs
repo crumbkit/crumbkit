@@ -4,8 +4,7 @@ use super::PreparedFailure;
 use crate::Failure;
 
 impl<'a> PreparedFailure<'a> {
-    /// Returns the failure's code in the tool's spelling, such as
-    /// `shelf::books::not_found`.
+    /// Returns the failure's printed code, such as `shelf::books::not_found`.
     #[cfg(feature = "tracing")]
     #[must_use]
     pub(crate) fn code(&self) -> &str {

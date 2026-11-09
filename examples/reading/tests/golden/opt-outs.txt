@@ -28,7 +28,7 @@ effects/expect: reading to-read edit
 
 suite/skip: Check::CommandReference
   Reason: reading's commands come from the lists in the caller's directory, so no checked-in reference holds for every caller.
-  Cost: None of the check's rules holds anywhere in the tool, so a change that breaks one of them passes unnoticed and an agent meets the broken convention.
+  Cost: No test checks this check's rules anywhere in the tool, so a change that breaks one of them passes unnoticed and an agent meets the broken convention.
 
 path-budget/path: every path through reading
   Budget: 4300 bytes, where the default is 8000 bytes.

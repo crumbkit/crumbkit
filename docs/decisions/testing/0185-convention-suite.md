@@ -1,7 +1,7 @@
 # ADR-0185. One suite runs every convention check
 
 - Date: 2026-11-09
-- Status: accepted
+- Status: amended by ADR-0186
 - Supersedes: ADR-0036, which it amends
 
 ## Context

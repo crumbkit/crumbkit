@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use crate::Envelope;
 use crate::help::{Help, Leaf};
-use crate::tool::{Exit, Failures, Rename};
+use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Stream, Tool};
 
@@ -381,21 +381,18 @@ fn a_tool_s_own_long_argument_on_a_leaf_is_neither_hidden_nor_refused() {
 
 #[test]
 fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_its_tool_lists() {
-    const USAGE: crate::Code = crate::Code::new("tool", "cli", "usage");
-    const RENAMED: Tool = Tool::new()
+    const LISTED: Tool = Tool::new()
         .help(Help::new().leaves(&[Leaf::new(&["books", "count"]).document(COUNT)]))
-        .failures(
-            Failures::new()
-                .codes(&[Rename::new(&crate::codes::CLI_USAGE, &USAGE)])
-                .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])]),
-        );
+        .failures(Failures::new().exits(&[
+            Exit::new(64, "The command line was refused.").failures(&[&crate::codes::CLI_USAGE]),
+        ]));
     let mut out = Vec::new();
     let mut err = Vec::new();
 
     let stop = parse_tree_to::<()>(
         &mut Sink::new(&mut out, &mut err),
         tree(),
-        &RENAMED,
+        &LISTED,
         ["tool", "books", "count", "--long"],
     )
     .err()

@@ -164,15 +164,14 @@ Why: ADR-0087, ADR-0130.
 `--limit` takes. It defaults to `usize::MAX`, which means no bound. shelf's
 `books list` uses `Page<4, 100>`.
 
-clap refuses a larger value as it parses the command line. The refusal has
-the code `<tool>::cli::usage` and the exit code of a refused command line,
-2 unless the tool record renames the code or lists another exit for it
-([refused command lines](../../parsing/README.md)). Its fields are `argument`,
-`value` and `most`, the bound as an integer. The refusal's recovery runs the
-caller's own words with `--limit N` replaced by `--all`, so the caller's
-filters stay. Its alternative runs the same words with `--limit MOST`. A
-`--limit` spelled through an alias that the tool adds falls back to the `-h`
-recovery.
+clap refuses a larger value as it parses the command line. The refusal has the
+code `<tool>::cli::usage` and the exit code of a refused command line, 2 unless
+the tool record lists another exit for it ([refused command
+lines](../../parsing/README.md)). Its fields are `argument`, `value` and `most`,
+the bound as an integer. The refusal's recovery runs the caller's own words with
+`--limit N` replaced by `--all`, so the caller's filters stay. Its alternative
+runs the same words with `--limit MOST`. A `--limit` spelled through an alias
+that the tool adds falls back to the `-h` recovery.
 
 Every refused `--limit` value states the range that `--limit` takes, in the
 same sentence for a value above the bound, 0, a word and a negative number.

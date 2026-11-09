@@ -11,9 +11,8 @@ use crate::{Code, Document, Failure, Rows, Sink};
 
 impl Run {
     /// Prints `failure` to `sink` as `finish` prints a failure, in the format
-    /// that the flags choose and with the code that the tool record prints for
-    /// it, in the tool record's spelling, with a `Recovery::Run` rendered
-    /// against the command that the run holds.
+    /// that the flags choose, with a `Recovery::Run` rendered against the
+    /// command that the run holds.
     ///
     /// It returns no exit code, for a command that passes on another code
     /// or counts the bytes it printed. That caller reports its code and

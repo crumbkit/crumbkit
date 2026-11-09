@@ -55,13 +55,11 @@ Why: ADR-0048, ADR-0029, ADR-0057.
 ## Hidden names
 
 The candidates follow clap_complete's rule for hidden items. A hidden
-subcommand, flag or alias is left out whenever a visible one matches the
-typed word, and a word that matches only hidden names completes to them. So
-`shelf books ls` completes when `ls` is a hidden alias of `list`, and
-`shelf al` completes to the hidden `aliases`. This is the one place where
-crumbkit prints a hidden name that the caller typed only in part. Completion
-candidates show only the tool's own command names and never a declared
-dashed form ([parsing](README.md#dashed-forms-of-command-names)).
+subcommand, flag or alias is left out whenever a visible one matches the typed
+word, and a word that matches only hidden names completes to them. So `shelf
+books ls` completes when `ls` is a hidden alias of `list`, and `shelf al`
+completes to the hidden `aliases`. This is the one place where crumbkit prints a
+hidden name that the caller typed only in part.
 
 Why: ADR-0048, ADR-0015.
 

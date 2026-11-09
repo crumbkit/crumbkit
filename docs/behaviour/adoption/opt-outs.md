@@ -44,7 +44,7 @@ rule's page gives its reason.
 | Rule | Id | When a tool needs it |
 | --- | --- | --- |
 | `RootLeaf` | `grammar/root-leaf` | a leaf sits directly under the root and is no declared [root verb](declarations.md#root-verbs) ([checks](../checks/README.md)) |
-| `ResourceName` | `grammar/resource-name` | a resource name is not lowercase dashed words and answers to no [dashed form](declarations.md#dashed-forms) |
+| `ResourceName` | `grammar/resource-name` | a resource name is not lowercase dashed words |
 | `OneName` | `names/one-name` | a built-in alias shows in help ([aliases](../parsing/aliases.md)) |
 | `PersonalAliases` | `names/personal-aliases` | the root's help names a person's aliases ([aliases](../parsing/aliases.md#personal-aliases-in-help)) |
 | `ListPages` | `listings/list-pages` | a `list` command lacks `Page`'s flags ([checks](../checks/README.md)) |
@@ -94,7 +94,6 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
 - The help checks take budgets in place of opt-outs
   ([help checks](../help/checks.md)).
 - `check_mounts` exists to keep crumbkit's commands at fixed paths.
-- `check_codes` keeps failure codes unique.
 - The name rule of a failure's fields has no opt-out, because the failure
   document's schema promises it to every reader.
 

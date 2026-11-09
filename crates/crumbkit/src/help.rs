@@ -12,7 +12,6 @@ mod format;
 mod group;
 pub(crate) mod leaf;
 mod list;
-pub(crate) mod rename;
 mod root_verbs;
 mod runtime;
 pub(crate) mod topic;

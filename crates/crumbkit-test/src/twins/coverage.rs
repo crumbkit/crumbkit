@@ -2,7 +2,6 @@
 //! each declared code.
 
 use clap::Command;
-use crumbkit::help::Leaf;
 use crumbkit::{Code, Spelling, Tool};
 
 use super::{Admitted, named, refuse, tool_name, twin};
@@ -193,13 +192,11 @@ impl<'a> Twins<'a> {
 /// A twin may refuse with a code of crumbkit or of one of its add-on crates,
 /// such as `crumbkit::cli::usage` or crumbkit-child's
 /// `crumbkit::child::not_found`. The check requires no twin and no declaration
-/// for such a code, and no twin for a declared code that the tool record's
-/// [`Failures::codes`](crumbkit::tool::Failures::codes) or a leaf prints in
-/// place of one, because a crumbkit crate raises that failure. The check reads
-/// these codes from `crumbkit::codes::ALL` and from crumbkit-test's list of the
-/// add-on crates' codes, as the recovery check does. Every other code is the
-/// tool's code, whatever its component. A code in the `crumbkit` component that
-/// neither list holds must be declared and needs a twin, an entry in
+/// for such a code, because a crumbkit crate raises that failure. The check
+/// reads these codes from `crumbkit::codes::ALL` and from crumbkit-test's list
+/// of the add-on crates' codes, as the recovery check does. Every other code is
+/// the tool's code, whatever its component. A code in the `crumbkit` component
+/// that neither list holds must be declared and needs a twin, an entry in
 /// [`Twins::unprovoked`] or an untwinned opt-out.
 ///
 /// The check reads the untwinned opt-outs from the
@@ -215,15 +212,12 @@ impl<'a> Twins<'a> {
 /// Panics when a rule above is broken. The message lists each problem on
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
-    let spelling = tool
-        .get_failures()
-        .get_spelling()
-        .for_tool(tool.tool_name(command));
+    let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
     let declared: Vec<&Code> = twins.codes.to_vec();
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();
-        if !declared.contains(&code) && !crumbkit_owned(tool, code) {
+        if !declared.contains(&code) && !is_library_code(code) {
             let name = tool_name(&twins.examples);
             problems.push(format!(
                 "the refused line `{}` fails with {}, which is not a declared code or a code of crumbkit or of one of its add-on crates",
@@ -254,9 +248,9 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
             failing.own_env(),
         );
         let opt_out = format!("the opt-out from `{}` for {line}", Rule::NoTwin.id());
-        if crumbkit_owned(tool, code) {
+        if is_library_code(code) {
             problems.push(format!(
-                "{opt_out} names {text}, a code of crumbkit or of one of its add-on crates or the rename of one, which needs no twin, so it is stale"
+                "{opt_out} names {text}, a code of crumbkit or of one of its add-on crates, which needs no twin, so it is stale"
             ));
         } else if !declared.contains(&code) {
             problems.push(format!(
@@ -281,11 +275,7 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
         }
     }
     for &code in &declared {
-        if !crumbkit_owned(tool, code)
-            && !listed(code)
-            && !refused(code)
-            && !untwinned.contains(&code)
-        {
+        if !is_library_code(code) && !listed(code) && !refused(code) && !untwinned.contains(&code) {
             problems.push(format!(
                 "{}: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it",
                 spelling.spell(code)
@@ -313,13 +303,13 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
 }
 
 /// Pushes a problem for each failure code that an exit of `tool` lists and
-/// `declared`, the codes of the tool's `CODES` lists, does not hold. A code
-/// of crumbkit or of one of its add-on crates, or the tool's rename of one,
-/// needs no `CODES` list, because a crumbkit crate raises the failure.
+/// `declared`, the codes of the tool's `CODES` lists, does not hold. A code of
+/// crumbkit or of one of its add-on crates needs no `CODES` list, because a
+/// crumbkit crate raises the failure.
 fn unheld(tool: &Tool, spelling: Spelling, declared: &[&Code], problems: &mut Vec<String>) {
     for exit in tool.get_failures().get_exits() {
         for &code in exit.get_failures() {
-            if !declared.contains(&code) && !crumbkit_owned(tool, code) {
+            if !declared.contains(&code) && !is_library_code(code) {
                 problems.push(format!(
                     "{}: the tool record's exit code {} lists the failure code, and no CODES list holds it",
                     spelling.spell(code),
@@ -369,29 +359,7 @@ fn json_lines(refused: &[&str], admitted: &[&str]) -> (Vec<String>, Vec<String>)
 }
 
 /// Returns whether `code` is a code of crumbkit or of one of its add-on
-/// crates, or the tool's code that `tool` prints in place of one. A
-/// crumbkit crate raises such a failure, so the code needs no twin.
-fn crumbkit_owned(tool: &Tool, code: &Code) -> bool {
-    is_library_code(code) || renamed_to(tool, code)
-}
-
-/// Returns whether `code` is a code of crumbkit or of one of its add-on
-/// crates.
+/// crates. A crumbkit crate raises such a failure, so the code needs no twin.
 fn is_library_code(code: &Code) -> bool {
     library_codes().any(|listed| listed == code)
-}
-
-/// Returns whether `tool`, or one of its leaves, prints `code` in place of
-/// a code of crumbkit or of one of its add-on crates.
-fn renamed_to(tool: &Tool, code: &Code) -> bool {
-    let leaves = tool
-        .get_help()
-        .get_leaves()
-        .iter()
-        .flat_map(Leaf::get_codes);
-    tool.get_failures()
-        .get_codes()
-        .iter()
-        .chain(leaves)
-        .any(|rename| rename.tool() == code && is_library_code(rename.crumbkit()))
 }

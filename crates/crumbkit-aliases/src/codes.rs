@@ -2,8 +2,7 @@
 //!
 //! Each code is in the `aliases` area and prints with the tool's component,
 //! such as `<tool>::aliases::unreadable`, as crumbkit's own codes are
-//! (ADR-0079). A tool prints its own code in place of any of them with a
-//! `Rename` in `Failures::codes`. [`ALL`] lists them.
+//! (ADR-0079). [`ALL`] lists them.
 
 use crumbkit::Code;
 

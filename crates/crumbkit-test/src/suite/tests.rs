@@ -1,7 +1,7 @@
 //! Tests for the convention suite and the macro that expands it.
 
 use clap::Command;
-use crumbkit::{Code, Tool};
+use crumbkit::Tool;
 
 use super::{Check, Suite};
 use crate::testing::panic_message;
@@ -22,7 +22,6 @@ const SUITE: Suite<'_> = Suite::new(second_name);
 fn a_check_whose_input_is_missing_fails_and_names_the_input() {
     for (check, input) in [
         (Check::PathWeights, ".path_budgets("),
-        (Check::Codes, ".codes("),
         (Check::Examples, ".examples("),
         (Check::OutputBudget, ".examples("),
         (Check::CommandReference, ".examples("),
@@ -40,14 +39,14 @@ fn a_check_whose_input_is_missing_fails_and_names_the_input() {
 
 #[test]
 fn a_skip_with_a_reason_passes_a_check_whose_input_is_missing() {
-    const SKIPS: Suite<'_> = SUITE.skip(Check::Codes, "shelf declares no codes.");
+    const SKIPS: Suite<'_> = SUITE.skip(Check::Recoveries, "shelf starts no recovery chain.");
 
-    assert_eq!(panic_message(|| SKIPS.run(Check::Codes)), None);
+    assert_eq!(panic_message(|| SKIPS.run(Check::Recoveries)), None);
 }
 
 #[test]
 fn a_skip_leaves_every_other_check_running() {
-    const SKIPS: Suite<'_> = SUITE.skip(Check::Codes, "shelf declares no codes.");
+    const SKIPS: Suite<'_> = SUITE.skip(Check::Recoveries, "shelf starts no recovery chain.");
 
     let message = panic_message(|| SKIPS.run(Check::Twins)).unwrap_or_default();
     assert!(message.contains(".twins("), "{message}");
@@ -71,12 +70,10 @@ fn the_opt_outs_reach_the_checks() {
 }
 
 #[test]
-fn the_codes_reach_the_codes_check() {
-    const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-    const LIST: &[&Code] = &[&NOT_FOUND];
-    const CODES: Suite<'_> = SUITE.codes(&[LIST]);
+fn the_opt_out_report_cannot_be_skipped_because_it_lists_every_skip() {
+    let refused = panic_message(|| SUITE.skip(Check::OptOuts, "The report is not wanted."));
 
-    assert_eq!(panic_message(|| CODES.run(Check::Codes)), None);
+    assert!(refused.is_some());
 }
 
 #[test]
@@ -112,7 +109,9 @@ fn with_examples_the_help_checks_read_what_the_binary_prints() {
 const fn skip_every_check(mut suite: Suite<'static>) -> Suite<'static> {
     let mut index = 0;
     while index < Check::ALL.len() {
-        suite = suite.skip(Check::ALL[index], "This suite tests the macro.");
+        // The field is set directly because `Suite::skip` refuses the opt-out
+        // report, and this suite has no golden files for that check to read.
+        suite.skips[index] = Some("This suite tests the macro.");
         index += 1;
     }
     suite

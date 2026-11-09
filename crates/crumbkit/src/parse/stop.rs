@@ -50,9 +50,8 @@ struct Inner {
     /// that the walk of the words reached.
     path: Vec<String>,
     /// The words that `flags` and `value` read: the words after the program
-    /// name that the caller typed, with the tool's own name for each dashed
-    /// form, and without the word `help` that crumbkit answered
-    /// (ADR-0136).
+    /// name that the caller typed, without the word `help` that crumbkit
+    /// answered (ADR-0136).
     words: Vec<OsString>,
 }
 

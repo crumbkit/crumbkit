@@ -398,11 +398,11 @@ pub fn aliased() {
 /// crumbkit::events::tolerated(&LOCKED);
 /// ```
 ///
-/// The usage log lists the code under `tolerated` in the tool's spelling,
-/// once, in the order the tool reported its codes, up to eight codes, and
-/// `self usage` counts the runs that tolerated each code. A code that the
-/// run then fails with belongs to [`finish`](crate::finish), which reports
-/// it as the run's failure. Without an observer it does nothing.
+/// The usage log lists the code under `tolerated` once, in the order the tool
+/// reported its codes, up to eight codes, and `self usage` counts the runs that
+/// tolerated each code. A code that the run then fails with belongs to
+/// [`finish`](crate::finish), which reports it as the run's failure. Without an
+/// observer it does nothing.
 pub fn tolerated(code: &'static Code) {
     for observer in observers() {
         observer.tolerated(code);

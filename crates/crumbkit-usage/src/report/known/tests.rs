@@ -42,14 +42,11 @@ fn a_flag_or_a_nearest_flag_that_the_command_lacks_is_not_known() {
 }
 
 #[test]
-fn a_code_in_a_predefined_or_a_custom_spelling_is_known() {
+fn a_code_in_crumbkit_s_spelling_is_known() {
     let tool = tree();
     let spelled = [
         "shelf::books::not_found",
-        "shelf.books.not_found",
-        "crumbkit/cli/usage",
-        "shelf-books-not_found",
-        "SHELF/BOOKS/NOT_FOUND",
+        "crumbkit::cli::usage",
         &"a".repeat(128),
     ];
 
@@ -90,7 +87,7 @@ fn a_tolerated_code_is_checked_as_the_failure_code_is() {
 
     assert!(tolerated(&[
         "shelf::catalogue::locked",
-        "shelf.network.timed_out"
+        "shelf::network::timed_out"
     ]));
     assert!(!tolerated(&[
         "shelf::catalogue::locked",

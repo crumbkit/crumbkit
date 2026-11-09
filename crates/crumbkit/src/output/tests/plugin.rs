@@ -1,6 +1,6 @@
 //! Tests for a failure whose code the tool learns only at run time, such as
 //! the code that a plugin answers with. The tool reads the plugin's code
-//! back into its segments with its tool record's spelling, makes the code with
+//! back into its segments with crumbkit's spelling, makes the code with
 //! `Code::runtime`, and `finish` prints it as it prints a declared code.
 
 use std::fmt;
@@ -8,13 +8,12 @@ use std::fmt;
 use clap::{Parser, Subcommand};
 
 use super::{PLANETS, Planet};
-use crate::{Code, Failure, Recovery, Sink, Tool, ViewFlags, finish_to, parse_to};
+use crate::{Code, Failure, Recovery, Sink, Spelling, Tool, ViewFlags, finish_to, parse_to};
 
 /// The tool's own code for a plugin answer whose code the tool cannot read.
 const PLUGIN_FAILED: Code = Code::new("tool", "plugin", "failed");
 
-/// The tool record, which sets no spelling, so its codes print with
-/// colons.
+/// The tool record.
 const TOOL: Tool = Tool::new();
 
 /// The failure that a plugin answered with.
@@ -29,14 +28,12 @@ struct PluginFailure {
 
 impl PluginFailure {
     /// Returns the failure of a plugin's answer, whose code is the text
-    /// `code` in the tool's spelling and whose message is `message`. The
+    /// `code` in crumbkit's spelling and whose message is `message`. The
     /// failure has the plugin's code when the spelling splits the text into
     /// three segments that [`Code::runtime`] accepts, and [`PLUGIN_FAILED`]
     /// otherwise.
-    fn from_answer(tool: &Tool, code: &str, message: &str) -> Self {
-        let code = tool
-            .get_failures()
-            .get_spelling()
+    fn from_answer(code: &str, message: &str) -> Self {
+        let code = Spelling::COLONS
             .split(code)
             .and_then(|(component, area, reason)| Code::runtime(component, area, reason).ok())
             .unwrap_or(&PLUGIN_FAILED);
@@ -102,7 +99,7 @@ fn finish(args: &[&str], failure: PluginFailure) -> (u8, String) {
 
 #[test]
 fn a_code_that_a_plugin_answers_with_prints_as_the_failure_s_code_and_exits_with_1() {
-    let failure = PluginFailure::from_answer(&TOOL, "lending::loans::overdue", "the loan is late");
+    let failure = PluginFailure::from_answer("lending::loans::overdue", "the loan is late");
 
     let (code, out) = finish(&["tool", "list", "--json"], failure);
 
@@ -114,7 +111,7 @@ fn a_code_that_a_plugin_answers_with_prints_as_the_failure_s_code_and_exits_with
 fn a_plugin_code_that_the_spelling_cannot_split_or_that_breaks_the_segment_rule_gives_the_tool_s_own_code()
  {
     for answer in ["lending::overdue", "lending::Loans::overdue"] {
-        let failure = PluginFailure::from_answer(&TOOL, answer, "the loan is late");
+        let failure = PluginFailure::from_answer(answer, "the loan is late");
 
         assert_eq!(failure.code(), &PLUGIN_FAILED, "{answer}");
     }

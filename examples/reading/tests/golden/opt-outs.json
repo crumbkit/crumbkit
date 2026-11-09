@@ -62,7 +62,7 @@
       "applies_to": "Check::CommandReference",
       "reason": "reading's commands come from the lists in the caller's directory, so no checked-in reference holds for every caller.",
       "costs": [
-        "None of the check's rules holds anywhere in the tool, so a change that breaks one of them passes unnoticed and an agent meets the broken convention."
+        "No test checks this check's rules anywhere in the tool, so a change that breaks one of them passes unnoticed and an agent meets the broken convention."
       ],
       "budget": null
     },

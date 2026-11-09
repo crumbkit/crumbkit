@@ -1,7 +1,7 @@
 # ADR-0086. A tool sets its spelling on its guide
 
 - Date: 2026-10-18
-- Status: amended by ADR-0180
+- Status: amended by ADR-0180 and ADR-0186
 - Supersedes: ADR-0001 and ADR-0076, which it amends
 - Missed: ADR-0001 did not consider that a tool passing the spelling to every call that prints a code could pass two different ones. ADR-0076 did not consider that the `Output` could carry the spelling with the guide's other settings.
 

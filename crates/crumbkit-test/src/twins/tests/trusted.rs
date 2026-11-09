@@ -2,7 +2,7 @@
 //! when `crumbkit::codes::ALL` or the list of the add-on crates' codes holds
 //! it, whatever its component (ADR-0177).
 
-use crumbkit::tool::{Exit, Rename};
+use crumbkit::tool::Exit;
 use crumbkit::{Code, Tool};
 
 use super::tree;
@@ -18,8 +18,6 @@ use crumbkit::tool::Failures;
 const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
 /// A code in the `crumbkit` component that no crumbkit crate lists.
 const UNLISTED: Code = Code::new("crumbkit", "books", "unlisted");
-/// The tool's code that a tool record prints in place of another code.
-const RENAMED: Code = Code::new("tool", "books", "renamed");
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books show
 /// 5` fails with crumbkit-child's code `tool::child::not_found`, `books
@@ -101,18 +99,6 @@ fn a_declared_child_code_or_aliases_code_needs_no_twin() {
 }
 
 #[test]
-fn a_declared_tool_code_renamed_from_a_child_code_needs_no_twin() {
-    const TOOL: Tool = Tool::new().failures(
-        Failures::new().codes(&[Rename::new(&crumbkit_child::codes::NOT_STARTED, &RENAMED)]),
-    );
-
-    assert_eq!(
-        checked(&[&[&NOT_FOUND, &RENAMED]], &[SHOW_7], &TOOL, &[]),
-        None
-    );
-}
-
-#[test]
 fn a_twin_that_refuses_a_crumbkit_component_code_on_neither_list_fails_as_not_declared() {
     assert_eq!(
         checked(&[&[&NOT_FOUND]], &[SHOW_7, SHOW_6], &Tool::new(), &[]).as_deref(),
@@ -130,20 +116,6 @@ fn a_declared_crumbkit_component_code_on_neither_list_needs_a_twin() {
         Some(
             "the tool's twins break crumbkit's twin rule:\n\
              tool::books::unlisted: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
-        )
-    );
-}
-
-#[test]
-fn a_declared_tool_code_renamed_from_a_crumbkit_component_code_on_neither_list_needs_a_twin() {
-    const TOOL: Tool =
-        Tool::new().failures(Failures::new().codes(&[Rename::new(&UNLISTED, &RENAMED)]));
-
-    assert_eq!(
-        checked(&[&[&NOT_FOUND, &RENAMED]], &[SHOW_7], &TOOL, &[]).as_deref(),
-        Some(
-            "the tool's twins break crumbkit's twin rule:\n\
-             tool::books::renamed: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
         )
     );
 }

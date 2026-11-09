@@ -2,8 +2,8 @@
 
 crumbkit-derive holds `#[derive(Failure)]`, which writes the `Failure` impl
 of [crumbkit] for an enum or a struct from `#[failure(...)]` attributes. It
-also writes a `CODES` constant that lists the type's codes for the codes
-check. A tool does not add this crate itself. It turns on the `derive`
+also writes a `CODES` constant that lists the type's codes for the twin and
+recovery checks. A tool does not add this crate itself. It turns on the `derive`
 feature of crumbkit, which re-exports the derive beside the trait of the
 same name.
 

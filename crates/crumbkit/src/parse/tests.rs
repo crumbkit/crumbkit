@@ -14,7 +14,6 @@ use crate::{Run, Sink, Tool};
 
 mod aliases;
 mod alternatives;
-mod dashed;
 mod fields;
 mod help_flag;
 mod help_word;
