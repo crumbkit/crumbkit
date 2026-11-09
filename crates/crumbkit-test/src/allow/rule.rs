@@ -15,11 +15,8 @@ pub enum Rule {
     /// `grammar/root-leaf`.
     RootLeaf,
     /// [`check_grammar`](crate::check_grammar): a resource's name is not
-    /// lowercase words joined by single dashes, and the resource answers to no
-    /// such dashed form. Its id is `grammar/resource-name`. A resource named in
-    /// another style, such as `reading_lists`, needs no opt-out when the tool
-    /// record declares `Tool::dashed_forms` and the name maps to a dashed form
-    /// that no other command beside it takes.
+    /// lowercase words joined by single dashes. Its id is
+    /// `grammar/resource-name`.
     ResourceName,
     /// [`check_effects`](crate::check_effects): a visible leaf declares no
     /// effects. Its id is `effects/declared`.

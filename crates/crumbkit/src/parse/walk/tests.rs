@@ -6,7 +6,6 @@ use std::ffi::OsString;
 use clap::{Arg, ArgAction, Command};
 
 use super::{command_path, given, help_word, program_stem, walk};
-use crate::Tool;
 
 /// A tool whose root has a global option, an option with two values, an
 /// option with any number of values and a flag, and whose `planets` group,
@@ -116,36 +115,17 @@ fn command_path_names_real_commands_and_stops_at_the_first_positional_value() {
     let tool = tree();
 
     assert_eq!(
-        command_path(&tool, &Tool::new(), &["-f", "id", "worlds", "show"]),
+        command_path(&tool, &["-f", "id", "worlds", "show"]),
         ["planets", "show"]
     );
-    assert_eq!(
-        command_path(&tool, &Tool::new(), &["planets", "7", "show"]),
-        ["planets"]
-    );
-}
-
-#[test]
-fn command_path_follows_a_dashed_form_only_when_the_tool_declares_dashed_forms() {
-    let tool = Command::new("tool")
-        .subcommand(Command::new("reading_lists").subcommand(Command::new("list")));
-    let words = ["reading-lists", "list"];
-
-    assert_eq!(
-        command_path(&tool, &Tool::new().dashed_forms(), &words),
-        ["reading_lists", "list"]
-    );
-    assert_eq!(
-        command_path(&tool, &Tool::new(), &words),
-        Vec::<String>::new()
-    );
+    assert_eq!(command_path(&tool, &["planets", "7", "show"]), ["planets"]);
 }
 
 /// Returns each value that `given` reads in `words` over `tree()`, as the
 /// option's id and the value.
 fn values(words: &[&str]) -> Vec<(String, String)> {
     let tool = tree();
-    given(&tool, words, false)
+    given(&tool, words)
         .values
         .iter()
         .map(|(arg, value)| {

@@ -39,7 +39,7 @@ rule's page gives its reason.
 | Rule | Id | When a tool needs it |
 | --- | --- | --- |
 | `RootLeaf` | `grammar/root-leaf` | a leaf sits directly under the root and is no declared [root verb](declarations.md#root-verbs) ([checks](../checks/README.md)) |
-| `ResourceName` | `grammar/resource-name` | a resource name is not lowercase dashed words and answers to no [dashed form](declarations.md#dashed-forms) |
+| `ResourceName` | `grammar/resource-name` | a resource name is not lowercase dashed words |
 | `OneName` | `names/one-name` | a built-in alias shows in help ([aliases](../parsing/aliases.md)) |
 | `PersonalAliases` | `names/personal-aliases` | the root's help names a person's aliases ([aliases](../parsing/aliases.md#personal-aliases-in-help)) |
 | `ListPages` | `listings/list-pages` | a `list` command lacks `Page`'s flags ([checks](../checks/README.md)) |

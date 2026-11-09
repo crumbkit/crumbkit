@@ -23,9 +23,7 @@ use clap_complete::env::Shells;
 
 #[cfg(feature = "complete")]
 #[cfg(feature = "complete")]
-use crate::parse::walk::own_names;
-#[cfg(feature = "complete")]
-use crate::{Sink, Tool};
+use crate::Sink;
 
 #[cfg(test)]
 mod tests;
@@ -99,7 +97,7 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// const TOOL: Tool = Tool::new();
 ///
 /// fn main() -> ExitCode {
-///     if let Some(code) = crumbkit::complete(Cli::command, &TOOL) {
+///     if let Some(code) = crumbkit::complete(Cli::command) {
 ///         return code;
 ///     }
 ///     // Start the usage log, parse and run the command.
@@ -108,9 +106,7 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// ```
 ///
 /// `complete` calls `command` only for a completion request, so an ordinary
-/// run builds its command once, for parsing. Completion reads the tool record's
-/// [`Tool::dashed_forms`] declaration, so a dashed form completes when
-/// `parse` accepts it. A tool that hides or removes
+/// run builds its command once, for parsing. A tool that hides or removes
 /// commands at run time does so inside the function it passes here and to
 /// [`parse`](crate::parse()), so completion offers what parsing accepts.
 ///
@@ -134,8 +130,8 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// offers and how a shell registers it (ADR-0002).
 #[cfg(feature = "complete")]
 #[must_use]
-pub fn complete(command: impl FnOnce() -> Command, tool: &Tool) -> Option<ExitCode> {
-    complete_with(VAR, command, tool)
+pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
+    complete_with(VAR, command)
 }
 
 /// Answers a shell's completion request as [`complete`] does, when the
@@ -148,17 +144,14 @@ pub fn complete(command: impl FnOnce() -> Command, tool: &Tool) -> Option<ExitCo
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
-/// use crumbkit::Tool;
 ///
 /// /// List the books in a small catalogue.
 /// #[derive(Parser)]
 /// #[command(name = "shelf")]
 /// struct Cli {}
 ///
-/// const TOOL: Tool = Tool::new();
-///
 /// fn main() -> ExitCode {
-///     if let Some(code) = crumbkit::complete_with("SHELF_COMPLETE", Cli::command, &TOOL) {
+///     if let Some(code) = crumbkit::complete_with("SHELF_COMPLETE", Cli::command) {
 ///         return code;
 ///     }
 ///     // Start the usage log, parse and run the command.
@@ -184,9 +177,8 @@ pub fn complete(command: impl FnOnce() -> Command, tool: &Tool) -> Option<ExitCo
 pub fn complete_with(
     variable: &'static str,
     command: impl FnOnce() -> Command,
-    tool: &Tool,
 ) -> Option<ExitCode> {
-    complete_with_words(variable, |_| command(), tool)
+    complete_with_words(variable, |_| command())
 }
 
 /// Answers a shell's completion request as [`complete_with`] does, and
@@ -202,7 +194,6 @@ pub fn complete_with(
 /// use std::process::ExitCode;
 ///
 /// use clap::{Arg, Command};
-/// use crumbkit::Tool;
 ///
 /// /// Returns the directory after the first `-C` in `words`, if any.
 /// fn directory(words: &[OsString]) -> Option<&OsString> {
@@ -216,10 +207,8 @@ pub fn complete_with(
 ///     Command::new("shelf").arg(Arg::new("dir").short('C').global(true))
 /// }
 ///
-/// const TOOL: Tool = Tool::new();
-///
 /// fn main() -> ExitCode {
-///     if let Some(code) = crumbkit::complete_with_words("COMPLETE", shelf, &TOOL) {
+///     if let Some(code) = crumbkit::complete_with_words("COMPLETE", shelf) {
 ///         return code;
 ///     }
 ///     // Start the usage log, parse and run the command.
@@ -238,7 +227,6 @@ pub fn complete_with(
 pub fn complete_with_words(
     variable: &'static str,
     command: impl FnOnce(&[OsString]) -> Command,
-    tool: &Tool,
 ) -> Option<ExitCode> {
     // A second declaration keeps the first, so `events::observe` and the
     // registration agree within one run.
@@ -260,7 +248,6 @@ pub fn complete_with_words(
     Some(complete_to(
         &mut sink,
         command,
-        tool,
         variable,
         &shell,
         std::env::args_os(),
@@ -270,8 +257,8 @@ pub fn complete_with_words(
 
 /// Answers the completion request of `shell` for the command that
 /// `command` builds from the typed words, as [`complete_with_words`]
-/// describes, and which the tool parses with `tool`, writes the answer to
-/// the sink's output writer, and returns the exit code.
+/// describes, writes the answer to the sink's output writer, and returns
+/// the exit code.
 /// `variable` is the name of the completion variable, `COMPLETE` or the
 /// name that the tool passes to [`complete_with`], which a registration
 /// script sets for each completion. `args` are
@@ -290,11 +277,7 @@ pub fn complete_with_words(
 /// The candidates are those of `clap_complete`. They leave out every
 /// subcommand, flag and alias that the tool hid, except that a word that
 /// matches only hidden names completes to them, so `shelf books ls` still
-/// completes when `ls` is a hidden alias of `list`. When `tool` declares
-/// [`Tool::dashed_forms`], a word before the cursor that is a command's
-/// [`dashed_form`](crate::dashed_form) reaches that command, as it does in
-/// [`parse_to`](crate::parse_to), and the candidates name each command by
-/// the tool's own name. clap's `help`
+/// completes when `ls` is a hidden alias of `list`. clap's `help`
 /// subcommand is turned off, as [`parse_to`](crate::parse_to) turns it off.
 ///
 /// A completion never prints a failure into the shell. An unknown shell, a
@@ -306,7 +289,6 @@ pub fn complete_with_words(
 pub fn complete_to<O, E, R, I, T>(
     sink: &mut Sink<O, E, R>,
     command: impl FnOnce(&[OsString]) -> Command,
-    tool: &Tool,
     variable: &str,
     shell: &OsStr,
     args: I,
@@ -319,18 +301,7 @@ where
 {
     let mut answer = Vec::new();
     let args = args.into_iter().map(Into::into).collect();
-    let dashed_forms = tool.get_dashed_forms();
-    if answer_into(
-        &mut answer,
-        command,
-        dashed_forms,
-        variable,
-        shell,
-        args,
-        current_dir,
-    )
-    .is_err()
-    {
+    if answer_into(&mut answer, command, variable, shell, args, current_dir).is_err() {
         return ExitCode::FAILURE;
     }
     match sink.deliver_result(&answer) {
@@ -341,8 +312,7 @@ where
 }
 
 /// Writes the answer to the completion request of `shell` into `answer`, as
-/// [`complete_to`] describes. `dashed_forms` is the tool record's
-/// [`Tool::dashed_forms`] declaration.
+/// [`complete_to`] describes.
 //
 // RUST-10: this repeats clap_complete's `CompleteEnv::try_complete`, which
 // writes to the process's standard output itself, so that the answer goes
@@ -357,7 +327,6 @@ where
 fn answer_into(
     answer: &mut Vec<u8>,
     command: impl FnOnce(&[OsString]) -> Command,
-    dashed_forms: bool,
     variable: &str,
     shell: &OsStr,
     mut args: Vec<OsString>,
@@ -381,17 +350,7 @@ fn answer_into(
     // tool reads the words after it.
     let typed = args.get(1..).unwrap_or_default();
     let mut command = command(typed).disable_help_subcommand(true);
-    if let Some(last) = args.len().checked_sub(1) {
-        // A dashed form reaches its command as it does in `parse`, so the
-        // words after it complete. The word at the cursor keeps its
-        // spelling, because the shell matches candidates against it.
-        //
-        // RUST-10: the cursor is taken to be on the last word, as fish,
-        // zsh, elvish and PowerShell send the line. Bash can complete a
-        // word in the middle of the line, and a dashed form at its cursor
-        // then reads as the tool's own name. Reading clap_complete's index
-        // variable replaces this if that case matters.
-        own_names(&command, dashed_forms, &mut args[..last]);
+    if !args.is_empty() {
         return shell.write_complete(&mut command, args, current_dir, answer);
     }
     let mut program = PathBuf::from(program);

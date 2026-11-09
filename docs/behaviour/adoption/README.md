@@ -18,12 +18,11 @@ crumbkit's behaviour.
 | Record | Path | What it declares |
 | --- | --- | --- |
 | `Help` | `crumbkit::help::Help` | Groups, leaves, topics, file formats, the root, root verbs and personal aliases. |
-| `Failures` | `crumbkit::tool::Failures` | The spelling and renames of codes, exit codes, the refusal alternatives and the refusal hint. |
+| `Failures` | `crumbkit::tool::Failures` | Exit codes, the refusal alternatives and the refusal hint. |
 | `Output` | `crumbkit::tool::Output` | The output budget, the JSON layout and terminal detection. |
 
-`Tool::picker` and `Tool::dashed_forms` sit on `Tool`. `crumbkit::Output` is
-the handle of one run, so the record of what a run prints has the path
-`crumbkit::tool::Output`.
+`Tool::picker` sits on `Tool`. `crumbkit::Output` is the handle of one run, so
+the record of what a run prints has the path `crumbkit::tool::Output`.
 
 Why: ADR-0180.
 

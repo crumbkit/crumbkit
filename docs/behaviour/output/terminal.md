@@ -86,8 +86,8 @@ a terminal is never asked and must type every argument and `--yes`, progress,
 help, refusal and cell colours never show, and a text table never fits the
 terminal's width ([opt-outs](../adoption/opt-outs.md)). The `Output` that
 `parse` returns, the `Output` inside a `Stop` and the `Output` that
-`Output::new` builds copy the setting from the tool, as they copy the
-tool's JSON layout and code renames.
+`Output::new` builds copy the setting from the tool, as they copy the tool's
+JSON layout.
 
 The setting belongs to the tool and has no environment variable. A caller
 already turns colour off with `NO_COLOR`, and the colours of help, a refusal

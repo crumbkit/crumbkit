@@ -16,7 +16,7 @@ use self::lines::add_help_lines;
 use self::message::command_line_refusal;
 use self::page::print_page;
 use self::pick::{Picking, Step};
-use self::walk::{help_word, own_names, program_stem, typed_words, walk};
+use self::walk::{help_word, program_stem, walk};
 use crate::{Output, Sink, Spelling, Tool};
 
 mod attempt;
@@ -132,15 +132,6 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 /// parser does, from the option's `Arg`, so an option's value that equals a
 /// subcommand name, as in `shelf --fields books`, names no command.
 ///
-/// When `tool` declares [`Tool::dashed_forms`], a command that the tool
-/// named in another style, such as `reading_lists` or `ReadingLists`, also
-/// answers to its [`dashed_form`](crate::dashed_form), such as
-/// `reading-lists`. Before anything else reads the words, crumbkit replaces each
-/// word that reaches a command by its dashed form with the command's own
-/// name, so help, refusals, the usage log and the words in the returned
-/// [`Output`] name the command as the tool does. An option's value that
-/// equals a dashed form stays as typed.
-///
 /// A command that `tool` gives goals lists its subcommands under their
 /// headings, as [`help::extend`](crate::help::extend) describes, below the
 /// command's own `before_help` or `before_long_help`. crumbkit adds its
@@ -237,7 +228,7 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 /// [`Refused::print_to`] prints it as the paragraphs below describe.
 ///
 /// A command line that clap refuses prints as a failure with the code
-/// `<tool>::cli::usage` in the tool record's spelling, and the exit code is 2.
+/// `<tool>::cli::usage`, and the exit code is 2.
 /// The message is clap's error on one line, and the recovery runs the `-h` of
 /// the deepest typed command that has a help flag, so a refusal at a command
 /// that turned its help flag off names the help of the nearest command above it
@@ -386,12 +377,9 @@ where
     let span = crate::trace::spans::parse();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    // Codes print in the tool record's spelling, and crumbkit's own codes print
-    // with the tool's name in place of `crumbkit` (ADR-0079).
-    let spelling = tool
-        .get_failures()
-        .get_spelling()
-        .for_tool(tool.tool_name(&command));
+    // crumbkit's own codes print with the tool's name in place of `crumbkit`
+    // (ADR-0079).
+    let spelling = Spelling::COLONS.for_tool(tool.tool_name(&command));
     let standard = sink.is_standard();
     let parsed = read(sink, command, tool, spelling, args, standard);
     #[cfg(feature = "tracing")]
@@ -428,11 +416,10 @@ where
     if cfg!(windows) {
         program_stem(&mut args);
     }
-    let replaced = own_names(&command, tool.get_dashed_forms(), &mut args);
     // A refusal reports the words as the caller typed them. Only a run
-    // that changes a word keeps a copy, so a run that types the tool's own
-    // names and no `help` allocates no copy.
-    let mut typed = (!replaced.is_empty()).then(|| typed_words(&args, replaced));
+    // that changes a word keeps a copy, so a run that types no `help`
+    // allocates no copy.
+    let mut typed: Option<Vec<OsString>> = None;
     // The words that the getters read, which only a run that answers `help`
     // or picks copies (ADR-0136).
     let mut caller: Option<Vec<OsString>> = None;
@@ -515,7 +502,7 @@ where
         }) => {
             return Ok((
                 parsed,
-                Output::parsed(view, command, words, dry_run, no_input, tool, &path),
+                Output::parsed(view, command, words, dry_run, no_input, tool),
             ));
         }
         Ok(Attempt {

@@ -16,7 +16,7 @@ use crate::Envelope;
 mod batch;
 mod rerun;
 mod room;
-use crate::tool::{Exit, Failures, Rename};
+use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{
     AsFailure, Batch, Call, Code, Document, Error, Failure, JsonLayout, Listing, Output, Prose,
@@ -36,14 +36,12 @@ const CHART: Document<Prose<String, Error>> = Document::new("sky", "chart", 1, "
 
 const TOO_MUCH: Code = Code::new("sky", "stars", "too_much");
 
-/// A tool record with the budget of [`BUDGET`] that prints `TOO_MUCH` in place
-/// of crumbkit's over-budget code and lists it under 9.
-const RENAMED: Tool = Tool::new()
-    .failures(
-        Failures::new()
-            .codes(&[Rename::new(&crate::codes::OUTPUT_OVER_BUDGET, &TOO_MUCH)])
-            .exits(&[Exit::new(9, "The answer was too long.").failures(&[&TOO_MUCH])]),
-    )
+/// A tool record with the budget of [`BUDGET`] that lists crumbkit's
+/// over-budget code under 9.
+const LISTED: Tool = Tool::new()
+    .failures(Failures::new().exits(&[
+        Exit::new(9, "The answer was too long.").failures(&[&crate::codes::OUTPUT_OVER_BUDGET]),
+    ]))
     .output(crate::tool::Output::new().budget(BUDGET, "the tests print little"));
 
 /// A row whose `story` column is long, so a few rows pass the budget.
@@ -226,23 +224,15 @@ fn a_full_json_listing_over_the_budget_is_cut_too() {
 }
 
 #[test]
-fn a_tool_that_renames_the_over_budget_code_marks_a_cut_with_the_tool_s_code() {
-    let output = output_of(&RENAMED, &["--json"]);
-    let finished = finish_output(output, STAR_LISTING, Listing::new(stars(20), 20));
-
-    assert_eq!(parsed(&finished.out)["cut"]["code"], "sky::stars::too_much");
-}
-
-#[test]
-fn a_row_refused_with_a_renamed_over_budget_code_exits_with_the_code_the_tool_lists() {
+fn a_row_refused_with_the_over_budget_code_exits_with_the_code_the_tool_lists() {
     let star = Star {
         name: "vega".to_owned(),
         story: "a".repeat(2 * BUDGET),
     };
-    let output = output_of(&RENAMED, &["--json"]);
+    let output = output_of(&LISTED, &["--json"]);
     let finished = finish_output(output, STAR, star);
 
-    assert_eq!(parsed(&finished.out)["code"], "sky::stars::too_much");
+    assert_eq!(parsed(&finished.out)["code"], "tool::output::over_budget");
     assert_eq!(finished.code, ExitCode::from(9));
 }
 

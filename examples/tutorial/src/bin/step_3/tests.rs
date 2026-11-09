@@ -45,5 +45,5 @@ fn every_command_and_leaf_meets_the_help_rules() {
 
 #[test]
 fn every_failure_code_is_distinct_and_printable() {
-    crumbkit_test::check_codes(&TOOL, &[CODES]);
+    crumbkit_test::check_codes(&[CODES]);
 }

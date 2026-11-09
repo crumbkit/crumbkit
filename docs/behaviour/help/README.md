@@ -102,8 +102,8 @@ effects, refusal alternatives and the document its command prints.
 `RuntimeLeaf::document` takes a document that the tool declares as a constant,
 such as the one a static command that does the same work prints, so the
 command's help, `commands list` and `schemas list` describe it as they describe
-a `const` leaf with that document. The joined tool record keeps the tool
-record's renames and every other setting.
+a `const` leaf with that document. The joined tool record keeps every setting of
+the tool record.
 
 Why: ADR-0021, ADR-0024, ADR-0080.
 

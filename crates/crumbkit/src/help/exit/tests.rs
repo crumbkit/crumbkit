@@ -3,9 +3,12 @@
 //! `commands list`.
 
 use super::{Exit, note, text};
-use crate::Tool;
+use crate::codes::{CLI_USAGE, VERSION_CONFLICT};
 use crate::help::{Help, Leaf};
 use crate::tool::Failures;
+use crate::{Code, Tool};
+
+const LOCKED: Code = Code::new("ledger", "rows", "locked");
 
 /// A code that every command returns.
 const BUSY: Exit = Exit::new(3, "The catalogue was locked by another run.");
@@ -140,7 +143,7 @@ const USAGE_64: Tool = Tool::new().failures(
         64,
         "The command line was refused. The refusal names the help to read.",
     )
-    .failures(&[&crate::codes::CLI_USAGE])]),
+    .failures(&[&CLI_USAGE])]),
 );
 
 #[test]
@@ -186,4 +189,50 @@ Exit codes
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
 ";
     assert_eq!(text("shelf", &TOOL), expected);
+}
+
+const USAGE_EXIT: Tool = Tool::new().failures(Failures::new().exits(&[
+    Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE]),
+    Exit::new(3, "The ledger was locked.").failures(&[&LOCKED]),
+]));
+
+#[test]
+fn a_failure_exits_with_the_number_that_the_tool_lists_for_its_code() {
+    assert_eq!(USAGE_EXIT.failure_exit(&CLI_USAGE), 64);
+    assert_eq!(USAGE_EXIT.failure_exit(&LOCKED), 3);
+}
+
+#[test]
+fn a_range_that_lists_a_failure_code_does_not_decide_the_exit_of_that_failure() {
+    const RANGE: Tool = Tool::new().failures(Failures::new().exits(&[
+        Exit::range(64, 78, "The importer ended with its own code.").failures(&[&LOCKED]),
+    ]));
+
+    assert_eq!(RANGE.failure_exit(&LOCKED), 1);
+}
+
+#[test]
+fn a_failure_that_no_exit_lists_exits_with_1_and_a_refusal_with_2() {
+    assert_eq!(USAGE_EXIT.failure_exit(&VERSION_CONFLICT), 1);
+    assert_eq!(Tool::new().failure_exit(&LOCKED), 1);
+    assert_eq!(Tool::new().failure_exit(&CLI_USAGE), 2);
+}
+
+#[test]
+fn a_refused_command_line_prints_the_tool_s_usage_code_and_exits_with_the_code_its_tool_lists() {
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let command = clap::Command::new("ledger").arg(clap::Arg::new("id"));
+
+    let stop = crate::parse::tests::parse_tree_to::<()>(
+        &mut crate::Sink::new(&mut out, &mut err),
+        command,
+        &USAGE_EXIT,
+        ["ledger", "--srot"],
+    )
+    .err()
+    .unwrap();
+
+    assert_eq!(stop.exit_code(), std::process::ExitCode::from(64));
+    let err = String::from_utf8(err).unwrap();
+    assert!(err.ends_with("  code:  ledger::cli::usage\n"), "{err}");
 }

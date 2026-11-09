@@ -1,17 +1,15 @@
-//! The record of what a tool declares about its failures: how it spells
-//! their codes (ADR-0001, ADR-0086), its renames of crumbkit's codes
-//! (ADR-0056), its exit codes and its answers to a refused command line.
+//! The record of what a tool declares about its failures: its exit codes
+//! and its answers to a refused command line.
 
-use crate::tool::{Exit, RefusalContext, Rename};
-use crate::{Call, Spelling};
+use crate::Call;
+use crate::tool::{Exit, RefusalContext};
 
-/// What a tool declares about its failures: the spelling of their codes,
-/// its own codes for crumbkit's failures, its exit codes besides crumbkit's
-/// 0, 1 and 2, and the functions that answer a refused command line.
+/// What a tool declares about its failures: its exit codes besides
+/// crumbkit's 0, 1 and 2, and the functions that answer a refused command
+/// line.
 ///
 /// [`Tool::failures`](crate::Tool::failures) takes it. A tool that sets
-/// nothing here spells its codes with colons and exits with crumbkit's
-/// codes.
+/// nothing here exits with crumbkit's codes.
 ///
 /// ```
 /// use crumbkit::Tool;
@@ -21,13 +19,8 @@ use crate::{Call, Spelling};
 ///     Tool::new().failures(Failures::new().exits(&[Exit::new(3, "The shelf was locked.")]));
 /// assert_eq!(TOOL.get_failures().get_exits().len(), 1);
 /// ```
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Failures {
-    /// How the tool spells its failure codes, which [`Failures::spelling`]
-    /// sets.
-    spelling: Spelling,
-    /// The tool's own codes for crumbkit's failures.
-    codes: &'static [Rename],
     /// The tool's own exit codes, which `<tool> help exit-codes` lists.
     exits: &'static [Exit],
     /// The function that builds refusal alternatives for a command whose
@@ -39,92 +32,22 @@ pub struct Failures {
 }
 
 impl Failures {
-    /// Returns the record of crumbkit's spelling and codes, with no exit
-    /// codes of the tool's own and no refusal functions.
+    /// Returns the record with no exit codes of the tool's own and no
+    /// refusal functions.
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            spelling: Spelling::COLONS,
-            codes: &[],
             exits: &[],
             refusal_alternatives: None,
             refusal_hint: None,
         }
     }
 
-    /// Sets how the tool spells its failure codes as text. A tool record that
-    /// sets none spells them with [`Spelling::COLONS`], as in
-    /// `shelf::books::not_found`.
-    ///
-    /// [`parse`](crate::parse()) and [`Output::new`](crate::Output::new) copy
-    /// the spelling into the [`Output`](crate::Output) that they return, so
-    /// `finish`, `stream` and crumbkit-child's `hand_over` print every code in
-    /// it, and crumbkit-test's checks read it from the tool record. crumbkit's
-    /// own codes print with the tool's name in place of `crumbkit`, as
-    /// [`Spelling::for_tool`] describes (ADR-0079).
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// use crumbkit::Tool;
-    /// use crumbkit::{Code, Spelling};
-    /// use crumbkit::tool::Failures;
-    ///
-    /// fn dots(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///     write!(f, "{}.{}.{}", code.component(), code.area(), code.reason())
-    /// }
-    ///
-    /// const TOOL: Tool = Tool::new().failures(Failures::new().spelling(Spelling::custom(dots)));
-    ///
-    /// let code = Code::new("shelf", "books", "not_found");
-    /// assert_eq!(TOOL.get_failures().get_spelling().spell(&code), "shelf.books.not_found");
-    /// assert_eq!(Tool::new().get_failures().get_spelling().spell(&code), "shelf::books::not_found");
-    /// ```
-    #[must_use]
-    pub const fn spelling(mut self, spelling: Spelling) -> Self {
-        self.spelling = spelling;
-        self
-    }
-
-    /// Returns the spelling that
-    /// [`Failures::spelling`](crate::tool::Failures::spelling) set, or
-    /// [`Spelling::COLONS`] when the tool record sets none. The name has clap's
-    /// `get_` prefix, because `spelling` is the builder method.
-    ///
-    /// The spelling writes `crumbkit` in crumbkit's own codes until
-    /// [`Spelling::for_tool`] names the tool, such as with
-    /// [`Tool::tool_name`](crate::Tool::tool_name). [`parse`](crate::parse) and
-    /// [`Output::new`](crate::Output::new) apply the tool's name with
-    /// [`Spelling::for_tool`], which replaces any tool name the spelling
-    /// held.
-    #[must_use]
-    pub const fn get_spelling(&self) -> Spelling {
-        self.spelling
-    }
-
-    /// Sets the tool's own codes for crumbkit's failures. A run prints the
-    /// tool's code of each [`Rename`] in place of crumbkit's, and the usage
-    /// log, the trace and crumbkit-test's checks read the same code. A
-    /// tool that renames nothing prints crumbkit's codes (ADR-0056).
-    #[must_use]
-    pub const fn codes(mut self, renames: &'static [Rename]) -> Self {
-        self.codes = renames;
-        self
-    }
-
-    /// Returns the renames that
-    /// [`Failures::codes`](crate::tool::Failures::codes) set. The name has
-    /// clap's `get_` prefix, because `codes` is the builder method.
-    #[must_use]
-    pub const fn get_codes(&self) -> &'static [Rename] {
-        self.codes
-    }
-
     /// Sets the exit codes that the tool returns besides crumbkit's 0, 1
     /// and 2, in the order that `<tool> help exit-codes` lists them. An
     /// exit can list the tool's failure codes and crumbkit's, so a tool
     /// gives a refused command line its own number, such as 64, by listing
-    /// `crumbkit::codes::CLI_USAGE` or the tool's rename of it (ADR-0056).
+    /// `crumbkit::codes::CLI_USAGE` (ADR-0056).
     #[must_use]
     pub const fn exits(mut self, exits: &'static [Exit]) -> Self {
         self.exits = exits;
@@ -241,13 +164,5 @@ impl Failures {
     #[must_use]
     pub const fn get_refusal_hint(&self) -> Option<fn(&RefusalContext<'_>) -> Option<String>> {
         self.refusal_hint
-    }
-}
-
-impl Default for Failures {
-    /// Returns [`Failures::new`]. `Spelling` has no `Default`, so the record
-    /// cannot derive it.
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -1,18 +1,15 @@
 //! The codes check, which a tool's test runs over every failure code the tool
 //! can print.
 
-use crumbkit::{Code, Tool};
+use crumbkit::{Code, Spelling};
 
 use crate::tree;
 
 #[cfg(test)]
 mod tests;
 
-/// Checks a tool's failure codes as the spelling of `tool` prints them, and
-/// panics, as a failed test assertion does, naming every problem it finds.
-///
-/// A tool passes the tool record that it passes to `parse` or `Output::new`, so
-/// the check spells each code as the tool prints it.
+/// Checks a tool's failure codes as crumbkit spells them, and panics, as a
+/// failed test assertion does, naming every problem it finds.
 ///
 /// `codes` holds the `CODES` list of each of the tool's error types. A code
 /// that two lists share counts once. The check finds:
@@ -34,27 +31,25 @@ mod tests;
 ///
 /// ```
 /// use crumbkit::Code;
-/// use crumbkit::Tool;
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
 ///
-/// crumbkit_test::check_codes(&Tool::new(), &[&[&NOT_FOUND], &[&TIMED_OUT]]);
+/// crumbkit_test::check_codes(&[&[&NOT_FOUND], &[&TIMED_OUT]]);
 /// ```
 ///
 /// # Panics
 ///
 /// Panics when any code breaks a rule above. The message lists each problem
 /// on its own line and names each code as the `Code::new` call that makes it.
-pub fn check_codes(tool: &Tool, codes: &[&[&Code]]) {
-    let spelling = tool.get_failures().get_spelling();
+pub fn check_codes(codes: &[&[&Code]]) {
     let mut problems = Vec::new();
     let mut spelled: Vec<(String, &Code)> = Vec::new();
     for &code in codes.iter().flat_map(|list| list.iter()) {
         if spelled.iter().any(|&(_, seen)| seen == code) {
             continue;
         }
-        let text = spelling.spell(code);
+        let text = Spelling::COLONS.spell(code);
         if let Some((_, other)) = spelled.iter().find(|(seen, _)| *seen == text) {
             problems.push(format!(
                 "{} and {} both spell {text:?}",

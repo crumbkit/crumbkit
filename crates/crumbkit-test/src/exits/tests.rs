@@ -1,8 +1,7 @@
 //! Tests for the exit code check.
 
 use clap::Command;
-use crumbkit::help::{Help, Leaf};
-use crumbkit::tool::{Exit, Rename};
+use crumbkit::tool::Exit;
 use crumbkit::{Code, Tool};
 
 use super::check_exit_codes;
@@ -264,153 +263,6 @@ fn an_exit_that_lists_one_of_crumbkit_s_failure_codes_passes() {
 }
 
 #[test]
-fn an_exit_that_lists_a_crumbkit_code_and_another_that_lists_its_rename_fail_the_check() {
-    const USAGE: Code = Code::new("shelf", "cli", "usage");
-    const TOOL: Tool = Tool::new().failures(
-        Failures::new()
-            .codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE)])
-            .exits(&[
-                Exit::new(64, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
-                Exit::new(65, "Usage.").failures(&[&USAGE]),
-            ]),
-    );
-
-    assert_eq!(
-        checked(&TOOL, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the exit code 65 lists the failure code shelf::cli::usage, which the exit code 64 lists already, so a run that fails with it cannot exit with both"
-    );
-}
-
-#[test]
-fn a_crumbkit_code_that_two_renames_name_fails_the_check() {
-    const USAGE: Code = Code::new("shelf", "cli", "usage");
-    const BAD: Code = Code::new("shelf", "cli", "bad");
-    const TOOL: Tool = Tool::new().failures(Failures::new().codes(&[
-        Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE),
-        Rename::new(&crumbkit::codes::CLI_USAGE, &BAD),
-    ]));
-
-    assert_eq!(
-        checked(&TOOL, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the tool record renames crumbkit's shelf::cli::usage twice, and a run prints only the first rename, shelf::cli::usage"
-    );
-}
-
-#[test]
-fn two_renames_to_one_code_of_the_tool_fail_the_check() {
-    const USAGE: Code = Code::new("shelf", "cli", "usage");
-    const TOOL: Tool = Tool::new().failures(Failures::new().codes(&[
-        Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE),
-        Rename::new(&crumbkit::codes::COMMANDS_NOT_FOUND, &USAGE),
-    ]));
-
-    assert_eq!(
-        checked(&TOOL, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the tool record renames crumbkit's shelf::commands::not_found to shelf::cli::usage, which it gives crumbkit's shelf::cli::usage already, so a caller cannot tell the two failures apart"
-    );
-}
-
-#[test]
-fn a_leaf_that_renames_a_crumbkit_code_twice_fails_the_check() {
-    const MOVED: Code = Code::new("shelf", "books", "moved");
-    const GONE: Code = Code::new("shelf", "books", "gone");
-    const TOOL: Tool =
-        Tool::new().help(
-            Help::new().leaves(&[Leaf::new(&["books", "import"]).codes(&[
-                Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED),
-                Rename::new(&crumbkit::codes::VERSION_CONFLICT, &GONE),
-            ])]),
-        );
-
-    assert_eq!(
-        checked(&TOOL, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the leaf `shelf books import` renames crumbkit's shelf::version::conflict twice, and a run prints only the first rename, shelf::books::moved"
-    );
-}
-
-#[test]
-fn a_leaf_s_rename_to_a_code_that_the_tool_gives_another_crumbkit_code_fails_the_check() {
-    const USAGE: Code = Code::new("shelf", "cli", "usage");
-    const TOOL: Tool = Tool::new()
-        .help(
-            Help::new().leaves(&[Leaf::new(&["books", "import"])
-                .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &USAGE)])]),
-        )
-        .failures(Failures::new().codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE)]));
-
-    assert_eq!(
-        checked(&TOOL, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the leaf `shelf books import` renames crumbkit's shelf::version::conflict to shelf::cli::usage, which the tool record gives crumbkit's shelf::cli::usage already, so a caller cannot tell the two failures apart"
-    );
-}
-
-#[test]
-fn two_leaves_that_rename_different_crumbkit_codes_to_one_code_fail_the_check() {
-    const MOVED: Code = Code::new("shelf", "books", "moved");
-    const TOOL: Tool = Tool::new().help(
-        Help::new().leaves(&[
-            Leaf::new(&["books", "list"])
-                .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)]),
-            Leaf::new(&["books", "import"])
-                .codes(&[Rename::new(&crumbkit::codes::OUTPUT_OVER_BUDGET, &MOVED)]),
-        ]),
-    );
-
-    assert_eq!(
-        checked(&TOOL, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the leaf `shelf books import` renames crumbkit's shelf::output::over_budget to shelf::books::moved, which the leaf `shelf books list` gives crumbkit's shelf::version::conflict already, so a caller cannot tell the two failures apart"
-    );
-}
-
-#[test]
-fn a_leaf_that_gives_a_crumbkit_code_its_own_name_and_exit_passes() {
-    const STALE: Code = Code::new("shelf", "books", "stale");
-    const MOVED: Code = Code::new("shelf", "books", "moved");
-    const TOOL: Tool = Tool::new()
-        .help(
-            Help::new().leaves(&[Leaf::new(&["books", "import"])
-                .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]),
-        )
-        .failures(
-            Failures::new()
-                .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &STALE)])
-                .exits(&[
-                    Exit::new(5, "A book changed since it was read.").failures(&[&STALE]),
-                    Exit::new(6, "A book moved during the import.").failures(&[&MOVED]),
-                ]),
-        );
-
-    assert_eq!(checked(&TOOL, &[]), None);
-}
-
-#[test]
-fn an_exit_that_lists_a_crumbkit_code_and_another_that_lists_a_leaf_s_rename_of_it_fail_the_check()
-{
-    const MOVED: Code = Code::new("shelf", "books", "moved");
-    const TOOL: Tool = Tool::new()
-        .help(
-            Help::new().leaves(&[Leaf::new(&["books", "import"])
-                .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]),
-        )
-        .failures(Failures::new().exits(&[
-            Exit::new(5, "A book changed.").failures(&[&crumbkit::codes::VERSION_CONFLICT]),
-            Exit::new(6, "A book moved.").failures(&[&MOVED]),
-        ]));
-
-    assert_eq!(
-        checked(&TOOL, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the exit code 6 lists the failure code shelf::books::moved, which the exit code 5 lists already, so a run of `shelf books import` that fails with it cannot exit with both"
-    );
-}
-
-#[test]
 fn exits_that_list_different_failure_codes_pass() {
     const LOCKED: Code = Code::new("shelf", "books", "locked");
     const SLOW: Code = Code::new("shelf", "books", "timed_out");
@@ -423,23 +275,15 @@ fn exits_that_list_different_failure_codes_pass() {
 }
 
 #[test]
-fn the_problems_spell_codes_in_the_tools_spelling_with_the_tools_name() {
-    const BAD: Code = Code::new("shelf", "cli", "bad");
-    const TOOL: Tool = Tool::new().failures(
-        Failures::new()
-            .spelling(crumbkit::Spelling::custom(|code, f| {
-                write!(f, "{}.{}.{}", code.component(), code.area(), code.reason())
-            }))
-            .codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &BAD)])
-            .exits(&[
-                Exit::new(64, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
-                Exit::new(65, "Bad.").failures(&[&BAD]),
-            ]),
-    );
+fn the_problems_spell_crumbkit_s_codes_with_the_tool_s_name() {
+    const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
+        Exit::new(64, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
+        Exit::new(65, "Bad.").failures(&[&crumbkit::codes::CLI_USAGE]),
+    ]));
 
     assert_eq!(
         checked(&TOOL, &[]).unwrap(),
         "the command tree breaks crumbkit's exit code rules:\n\
-         the exit code 65 lists the failure code shelf.cli.bad, which the exit code 64 lists already, so a run that fails with it cannot exit with both"
+         the exit code 65 lists the failure code shelf::cli::usage, which the exit code 64 lists already, so a run that fails with it cannot exit with both"
     );
 }

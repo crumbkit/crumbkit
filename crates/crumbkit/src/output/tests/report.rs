@@ -6,14 +6,7 @@ use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, miette};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::tool::Failures;
-use crate::{Document, Error, Output, Row, Sink, Spelling, Tool, ViewFlags, finish_to};
-
-/// Joins the segments of a code with `.`, so a test shows that the code
-/// prints in the spelling that the tool record sets, where the colon
-/// spelling would join them with `::`.
-const DOTS: Spelling =
-    Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
+use crate::{Document, Error, Output, Row, Sink, Tool, ViewFlags, finish_to};
 
 /// A row type for the result that the failing command would have printed.
 #[derive(Serialize, JsonSchema)]
@@ -36,7 +29,7 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     };
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let tool = Tool::new().failures(Failures::new().spelling(DOTS));
+    let tool = Tool::new();
     let output = Output::new(
         ViewFlags::new(),
         crate::DryRun::default(),
@@ -68,7 +61,7 @@ fn a_report_with_a_code_help_and_url_prints_its_code_in_the_message_and_its_help
     let expected = "\
 error: unknown key (shelf::config::unknown_key)
   help:  use `color`
-  code:  shelf.report.unchecked
+  code:  shelf::report::unchecked
   url:   https://example.com/keys
 ";
     assert_eq!(text, expected);
@@ -83,7 +76,7 @@ fn a_report_without_a_code_or_help_prints_its_causes_and_no_next_step() {
 error: the settings cannot be read
   cause: permission denied
   help:  no next step: the error gives no advice
-  code:  shelf.report.unchecked
+  code:  shelf::report::unchecked
 ";
     assert_eq!(text, expected);
 }
@@ -128,7 +121,7 @@ error: unknown key `colour`
      2 | colour = \"red\"
        | ^^^^^^
   help:  no next step: the error gives no advice
-  code:  shelf.report.unchecked
+  code:  shelf::report::unchecked
 ";
     assert_eq!(text, expected);
 }

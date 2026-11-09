@@ -1,6 +1,4 @@
-//! Failure codes, and the spellings that turn a code into text.
-
-use std::fmt;
+//! Failure codes, and the spelling that turns a code into text.
 
 use crate::ToolName;
 use crate::segment::is_code_segment;
@@ -18,8 +16,7 @@ pub use runtime::{RuntimeCodeError, Segment};
 /// the tool it belongs to, and the reason. A tool declares each code as a
 /// constant and returns it from [`Failure::code`](crate::Failure::code).
 ///
-/// `Code` has no `Display`. Each tool chooses how its codes print with one
-/// [`Spelling`], so every printed code goes through that spelling.
+/// `Code` has no `Display`, so every printed code goes through [`Spelling`].
 ///
 /// ```
 /// use crumbkit::{Code, Spelling};
@@ -99,77 +96,31 @@ impl Code {
     }
 }
 
-/// How a tool spells its failure codes as text.
+/// How crumbkit spells a failure code as text.
 ///
-/// A tool sets one spelling on its tool record with `Failures::spelling`, and
-/// crumbkit prints every code in it. crumbkit-test's codes check reads the
-/// same spelling from the tool record. The built-in spelling,
-/// [`Spelling::COLONS`], joins the three segments of a code with `::`, and
-/// a tool record that sets no spelling uses it. A tool that needs another form,
-/// such as segments joined with `.`, gives its own function to
-/// [`Spelling::custom`].
+/// crumbkit prints every code in the one built-in spelling,
+/// [`Spelling::COLONS`], which joins the three segments of a code with `::`.
+/// [`Spelling::for_tool`] names the tool whose name a run writes in place of
+/// `crumbkit` in crumbkit's own codes.
 #[derive(Clone, Copy, Debug)]
 pub struct Spelling {
-    /// How the spelling writes a code.
-    form: Form,
     /// The tool whose name the spelling writes in place of `crumbkit` in
     /// crumbkit's own codes.
     tool: ToolName,
 }
 
-/// The two forms of a [`Spelling`]. A joined form holds its separator once,
-/// so [`Spelling::spell`] and [`Spelling::split`] cannot disagree on it.
-#[derive(Clone, Copy, Debug)]
-enum Form {
-    /// The segments joined by the separator, which `split` splits at.
-    Joined(&'static str),
-    /// A tool's own function, which `split` cannot read back.
-    Custom(fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result),
-}
+/// The text between the segments of a spelled code.
+const SEPARATOR: &str = "::";
 
 impl Spelling {
     /// Joins the segments with `::`, as in `shelf::books::not_found`.
     pub const COLONS: Self = Self {
-        form: Form::Joined("::"),
         tool: ToolName::CRUMBKIT,
     };
 
-    /// Returns a spelling that writes each code with `write`, which reads the
-    /// segments through [`Code::component`], [`Code::area`] and
-    /// [`Code::reason`].
-    ///
-    /// crumbkit-test's codes check fails when two of a tool's codes spell the
-    /// same, or when a spelled code is empty or holds a character other than
-    /// printable ASCII, `!` to `~`.
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// use crumbkit::{Code, Spelling};
-    ///
-    /// fn upper(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///     write!(f, "{}_{}", code.component().to_uppercase(), code.reason().to_uppercase())
-    /// }
-    ///
-    /// const UPPER: Spelling = Spelling::custom(upper);
-    ///
-    /// let code = Code::new("shelf", "books", "not_found");
-    /// assert_eq!(UPPER.spell(&code), "SHELF_NOT_FOUND");
-    /// ```
-    #[must_use]
-    pub const fn custom(write: fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result) -> Self {
-        Self {
-            form: Form::Custom(write),
-            tool: ToolName::CRUMBKIT,
-        }
-    }
-
     /// Returns the same spelling, writing `tool`'s name in place of
     /// `crumbkit` in each of crumbkit's own codes, such as
-    /// `shelf::cli::usage` for `crumbkit::cli::usage`.
-    ///
-    /// crumbkit names the spelling for the tool it runs, so a tool sets its
-    /// spelling on its tool record without a tool name. A code whose component
+    /// `shelf::cli::usage` for `crumbkit::cli::usage`. A code whose component
     /// is not `crumbkit` keeps it.
     ///
     /// ```
@@ -182,7 +133,7 @@ impl Spelling {
     /// ```
     #[must_use]
     pub const fn for_tool(self, tool: ToolName) -> Self {
-        Self { tool, ..self }
+        Self { tool }
     }
 
     /// Returns the tool whose name the spelling writes in crumbkit's own
@@ -199,22 +150,19 @@ impl Spelling {
     /// calls it to check how a tool's codes print.
     #[must_use]
     pub fn spell(self, code: &Code) -> String {
-        Spelled {
-            spelling: self,
-            code,
-        }
-        .to_string()
+        let code = self.tool.code(code);
+        format!(
+            "{}{SEPARATOR}{}{SEPARATOR}{}",
+            code.component, code.area, code.reason
+        )
     }
 
     /// Returns the component, the area and the reason of `text`, a code in
-    /// this spelling, or `None` when this is a custom spelling or `text`
-    /// does not split into exactly three parts at the spelling's separator.
+    /// this spelling, or `None` when `text` does not split into exactly three
+    /// parts at `::`.
     ///
     /// It does not check the segments, so a tool passes them to
-    /// [`Code::runtime`], which does. A custom spelling may drop a segment or
-    /// change its letters, so it cannot be read back. A tool with a custom
-    /// spelling therefore splits the text itself before it calls
-    /// [`Code::runtime`], because this method returns `None` for every code.
+    /// [`Code::runtime`], which does.
     ///
     /// ```
     /// use crumbkit::Spelling;
@@ -227,36 +175,10 @@ impl Spelling {
     /// ```
     #[must_use]
     pub fn split(self, text: &str) -> Option<(&str, &str, &str)> {
-        let Form::Joined(separator) = self.form else {
-            return None;
-        };
-        let mut parts = text.split(separator);
+        let mut parts = text.split(SEPARATOR);
         match (parts.next(), parts.next(), parts.next(), parts.next()) {
             (Some(component), Some(area), Some(reason), None) => Some((component, area, reason)),
             _ => None,
-        }
-    }
-}
-
-/// A code in a spelling, which `Display` writes. A spelling's function needs a
-/// `fmt::Formatter`, and only a `Display` impl receives one.
-struct Spelled<'a> {
-    /// The spelling to write the code in.
-    spelling: Spelling,
-    /// The code to write.
-    code: &'a Code,
-}
-
-impl fmt::Display for Spelled<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let code = self.spelling.tool.code(self.code);
-        match self.spelling.form {
-            Form::Joined(separator) => write!(
-                f,
-                "{}{separator}{}{separator}{}",
-                code.component, code.area, code.reason
-            ),
-            Form::Custom(write) => write(&code, f),
         }
     }
 }

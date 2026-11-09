@@ -86,8 +86,7 @@ pub fn stream<R: Row>(
 /// The stream prints within [`Output::budget`] bytes on the output writer.
 /// Its first item always prints. A later item whose line would
 /// pass the budget does not print: the stream prints the failure
-/// `<tool>::output::over_budget`, or the tool record's rename of it, in its
-/// place, stops, and ends with exit code 1 unless the tool record lists another
+/// `<tool>::output::over_budget` in its place, stops, and ends with exit code 1 unless the tool record lists another
 /// for the code (ADR-0046). A tool whose
 /// stream runs for a long time sets a larger budget with
 /// [`tool::Output::budget`](crate::tool::Output::budget).
@@ -210,8 +209,8 @@ pub struct Streaming<R, O, W> {
     document: Document<Stream<R>>,
     /// Whether the stream printed a failure.
     failed: bool,
-    /// What the tool record decides about failures: the layout, the exit
-    /// codes (ADR-0037) and the renames of crumbkit's codes (ADR-0056).
+    /// What the tool record decides about failures: the layout and the exit
+    /// codes (ADR-0037).
     printing: Printing,
     /// The exit code of the stream's first failure, which is 1 until a
     /// failure prints.
@@ -271,7 +270,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         }
         if self.items > 0 && self.sent.saturating_add(self.line.len()) > self.budget {
             self.line.clear();
-            let code = self.printing.renames.printed(&codes::OUTPUT_OVER_BUDGET);
+            let code = &codes::OUTPUT_OVER_BUDGET;
             let over = OverBudget {
                 code,
                 budget: self.budget,
@@ -416,13 +415,8 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         let span = self.span.clone();
         #[cfg(feature = "tracing")]
         let _entered = span.enter();
-        let document = PreparedFailure::new(
-            failure,
-            self.spelling,
-            self.printing,
-            &mut self.command,
-            &mut self.sink,
-        );
+        let document =
+            PreparedFailure::new(failure, self.spelling, &mut self.command, &mut self.sink);
         // The stream's first failure chooses the exit code, and the span
         // records only that failure, as the usage log does.
         if !self.failed {

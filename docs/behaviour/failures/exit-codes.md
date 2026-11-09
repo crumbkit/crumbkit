@@ -37,20 +37,18 @@ returns the codes that an exit holds, and `Exit::code` returns the first.
 An `Exit` lists failure codes with `Exit::failures`. A run whose first failure
 has a listed code exits with that code in place of 1, in `finish`, a batch, a
 prose result and a stream alike. A listed code may be one of crumbkit's, such as
-the code of a refused command line, or the tool's rename of it. A rename that a
-leaf declares with `Leaf::codes` counts only in runs of that leaf's command, so
-an exit that lists a leaf's code covers the failure only there. The first
-failure decides, because the usage log and the `crumbkit.finish` span record its
-code, so a recorded `code` explains its `exit`. The tool record holds the
-mapping beside the meaning, so crumbkit-test can predict each run's exit. A
-range names no single code to exit with, so the failures that a range lists
-never decide a run's exit, and such a failure exits with 1.
+the code of a refused command line. The first failure decides, because the usage
+log and the `crumbkit.finish` span record its code, so a recorded `code`
+explains its `exit`. The tool record holds the mapping beside the meaning, so
+crumbkit-test can predict each run's exit. A range names no single code to exit
+with, so the failures that a range lists never decide a run's exit, and such a
+failure exits with 1.
 
 The `Output` that `parse` returns, and the one that `Output::new` builds,
 copy the exits from the tool record. A code from
 `Code::runtime` cannot be listed, so its failure exits with 1.
 
-Why: ADR-0037, ADR-0056, ADR-0060, ADR-0103.
+Why: ADR-0037, ADR-0056, ADR-0103, ADR-0186.
 
 ## Listing the codes
 
@@ -83,8 +81,8 @@ crumbkit-test's `check_exit_codes` reports each declaration that would give a
 code two meanings or leave a caller unable to read it, as its rustdoc lists.
 
 - `check_twin` and `check_recoveries` fail a run that exits otherwise than
-  `Tool::failure_exit` decides for the run's command path, unless its leaf
-  passes on a program's exit code.
+  `Tool::failure_exit` decides for the failure's code, unless its leaf passes on
+  a program's exit code.
 - A single code from 126 to 128 or from 160 to 255 needs an opt-out of
   `exit-codes/shell-code`, and 1 or 2 an opt-out of
   `exit-codes/shared-exit`, that covers every command returning it

@@ -176,9 +176,9 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 
 `pantry jars list --shelf middle` exits with 1 and prints the error, a `help:`
 line that tells the caller to run `pantry jars list`, and the code
-`pantry::shelves::not_found`. The code joins its segments with `::` because the
-tool record sets no other spelling. With `--json`, it prints the failure as a
-JSON document. [ADR-0001] says why every failure carries a code and a next step.
+`pantry::shelves::not_found`. The code joins its segments with `::`. With
+`--json`, it prints the failure as a JSON document. [ADR-0001] says why every
+failure carries a code and a next step.
 
 ## 3. A tool record
 

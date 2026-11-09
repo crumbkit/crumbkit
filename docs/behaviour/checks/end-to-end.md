@@ -161,8 +161,7 @@ refused one by one word added, removed or replaced, and that the tool accepts
 - A code of crumbkit or of one of its add-on crates, such as crumbkit-child,
   needs no twin and no declaration, because that crate raises the failure.
   crumbkit-test reads these codes from `crumbkit::codes::ALL` and from its own
-  list of the add-on crates' codes. A declared code that a `Rename` of the tool
-  record or of a leaf prints in place of one of them needs no twin either.
+  list of the add-on crates' codes.
 - Every other code is the tool's code, whatever its component. It must be
   declared, and it needs a twin, an `Unprovoked` entry or an
   `Allow::untwinned` opt-out.
@@ -179,13 +178,13 @@ that runs one, such as `books list`.
 
 `check_twins` runs the line of an `Allow::untwinned` opt-out with `--json`
 added, and fails when the line exits with 0 or fails with another code. The
-opt-out is stale when a twin refuses its code, when `Unprovoked` lists the
-code, or when the code is a code of crumbkit or of one of its add-on crates
-or the rename of one. A problem names a line with its variables, such as `` `tool books list` (with DEPTH=1) ``.
+opt-out is stale when a twin refuses its code, when `Unprovoked` lists the code,
+or when the code is a code of crumbkit or of one of its add-on crates. A problem
+names a line with its variables, such as `` `tool books list` (with DEPTH=1) ``.
 
 `check_twin` and `check_twins` take the tool's unbuilt command tree and read
 the command of each line with `crumbkit::command_path`, the walk that `parse`
 makes. A test passes the tree that the binary builds for the twin's run, such
 as the tree of an empty directory for a tool that adds commands at run time.
 
-Why: ADR-0005, ADR-0060, ADR-0118, ADR-0177.
+Why: ADR-0005, ADR-0118, ADR-0177, ADR-0186.

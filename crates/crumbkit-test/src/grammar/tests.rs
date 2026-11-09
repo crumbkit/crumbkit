@@ -1,7 +1,6 @@
 //! Tests for the grammar check.
 
 use clap::Command;
-use crumbkit::Tool;
 
 use super::check_grammar;
 use crate::Pages;
@@ -55,12 +54,8 @@ fn a_command_without_subcommands_directly_under_the_tool_fails() {
     );
 }
 
-/// A tool record that declares dashed forms.
-const DASHED: Tool = Tool::new().dashed_forms();
-
 #[test]
-fn a_resource_name_that_is_not_lowercase_words_joined_by_single_dashes_fails_without_dashed_forms()
-{
+fn a_resource_name_that_is_not_lowercase_words_joined_by_single_dashes_fails() {
     let mut shelf = Command::new("shelf");
     for name in [
         "Books",
@@ -94,41 +89,6 @@ fn a_passed_verb_that_is_built_in_or_badly_formed_fails() {
          the tool passes the verb `show`, which is built in, and a tool passes only its other verbs\n\
          the verb `Export` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
          the verb `` is not lowercase letters and digits in words joined by single dashes, starting with a letter"
-    );
-}
-
-#[test]
-fn a_resource_or_verb_named_in_another_style_passes_when_the_tool_declares_dashed_forms() {
-    let shelf = Command::new("shelf")
-        .subcommand(Command::new("Books").subcommand(Command::new("export_all")))
-        .subcommand(Command::new("reading_lists").subcommand(Command::new("list")))
-        .subcommand(Command::new("AuthorNotes").subcommand(Command::new("list")));
-
-    check_grammar(&shelf, Pages::rendered(&DASHED), &["export_all"], &[]);
-}
-
-#[test]
-fn with_dashed_forms_a_name_with_no_dashed_form_or_whose_dashed_form_another_command_takes_fails() {
-    let list = || Command::new("list");
-    let mut shelf = Command::new("shelf");
-    for name in ["2books", "Authors", "authors", "Help"] {
-        shelf = shelf.subcommand(Command::new(name).subcommand(list()));
-    }
-    shelf = shelf.subcommand(
-        Command::new("books")
-            .subcommand(Command::new("export_all"))
-            .subcommand(Command::new("export-all")),
-    );
-    let verbs = ["export_all", "export-all", "2export"];
-
-    assert_eq!(
-        panic_message(|| check_grammar(&shelf, Pages::rendered(&DASHED), &verbs, &[])).unwrap(),
-        "the command tree breaks crumbkit's grammar:\n\
-         the verb `2export` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
-         shelf 2books: the resource name `2books` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
-         shelf Authors: the resource name `Authors` maps to `authors`, which another command beside it has or maps to\n\
-         shelf Help: the resource name `Help` maps to `help`, which crumbkit reserves for asking for help\n\
-         shelf books export_all: the verb name `export_all` maps to `export-all`, which another command beside it has or maps to"
     );
 }
 

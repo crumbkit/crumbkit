@@ -1,7 +1,7 @@
 # ADR-0085. Public items without a caller removed
 
 - Date: 2026-10-18
-- Status: amended by ADR-0088, ADR-0089, ADR-0160 and ADR-0162
+- Status: amended by ADR-0088, ADR-0089, ADR-0160, ADR-0162 and ADR-0186
 - Supersedes: ADR-0001, ADR-0005, ADR-0045 and ADR-0081, which it amends
 - Missed: ADR-0001 added `Code::runtime` for plugin codes, but no tool called it and `RuntimeLeaf` has no way to declare a code, so a run-time code could reach neither help nor `check_codes`. ADR-0045 and ADR-0081 kept `FailureReader` for a tool with its own failure shape, but no tool implemented it outside a doc example.
 
@@ -12,6 +12,7 @@
 - [ADR-0181. Parse functions read the command from the type](0181-parse-functions-read-the-command-from-the-type.md)
 - [ADR-0182. A leaf's document and a row's child lines are records](0182-leaf-document-and-children-records.md)
 - [ADR-0183. Small corrections to the public API before 0.2.0](0183-small-public-api-corrections.md)
+- [ADR-0186. Three seams without a user removed](0186-three-seams-without-a-user-removed.md)
 
 ## Context
 

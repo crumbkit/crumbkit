@@ -12,14 +12,14 @@ use super::walk::given;
 /// program name, pass as flags to `command`, in the order typed, as
 /// [`given`] reads them.
 pub(super) fn flags(command: &Command, words: &[OsString]) -> Vec<String> {
-    given(command, words, false).ids
+    given(command, words).ids
 }
 
 /// Returns the last value that `words`, the words after the program name,
 /// give the option of `command` whose clap id is `id`, as [`given`] reads
 /// them, or `None` when they give it none.
 pub(super) fn value<'w>(command: &Command, words: &'w [OsString], id: &str) -> Option<&'w OsStr> {
-    given(command, words, false)
+    given(command, words)
         .values
         .iter()
         .rev()

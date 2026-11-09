@@ -3,7 +3,7 @@
 
 use miette::{LabeledSpan, NamedSource};
 
-use super::super::super::{PreparedFailure, Printing, write_crumbkit_text};
+use super::super::super::{PreparedFailure, write_crumbkit_text};
 use super::super::tests::{SHELF_TOML, UnknownKey, in_shelf_toml, on_colour};
 use crate::{Failure, Spelling};
 
@@ -24,7 +24,6 @@ fn text(failure: &dyn Failure) -> String {
     let document = PreparedFailure::new(
         failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool"),
         &mut crate::sink::role::Recorded::default(),
     );

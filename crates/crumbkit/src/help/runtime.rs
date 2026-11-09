@@ -143,11 +143,8 @@ impl Tool {
     /// Returns a tool record with every setting of `self`, and the leaves of
     /// `self` followed by `leaves`, each with its path, examples, document,
     /// effects, the program whose exit code it passes on and its refusal
-    /// alternatives. The joined tool record keeps the renames that
-    /// [`Failures::codes`](crate::tool::Failures::codes) set, so a failure or
-    /// refusal of a runtime leaf's command prints the tool's code in place of
-    /// crumbkit's, as one of a `const` leaf's command does. It also keeps the
-    /// groups, topics, exit codes and every other setting of `self`.
+    /// alternatives. The joined tool record keeps the groups, topics, exit
+    /// codes and every other setting of `self`.
     ///
     /// Every function that reads a tool record reads the joined one as it reads
     /// a `const` tool record, and of two leaves with one path only the first

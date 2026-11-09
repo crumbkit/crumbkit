@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Output;
 
 use clap::Command;
-use crumbkit::Tool;
+use crumbkit::{Spelling, Tool};
 
 use crate::examples::Examples;
 use crate::exits;
@@ -80,7 +80,7 @@ mod tests;
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::Tool;
+/// use crumbkit::{Spelling, Tool};
 /// use crumbkit_test::{Examples, Failing};
 ///
 /// const TOOL: Tool = Tool::new();
@@ -169,7 +169,6 @@ pub(super) fn twin(
             let admitted_line = named(&binary, words, refused.own_env());
             one_word(
                 command,
-                tool,
                 refused.words(),
                 words,
                 &refused_line,
@@ -225,11 +224,9 @@ pub(super) fn named(tool: &str, words: &[&str], env: &[(&str, Option<&str>)]) ->
 /// `admitted_line`, do not differ by one word, whose admitted line adds a
 /// word that skips the command's work, or whose admitted line runs another
 /// command of `command`, the tool's tree, than the refused line, or no
-/// command when the refused line runs none. `tool` is the tool record,
-/// whose declarations say which words name a command.
+/// command when the refused line runs none.
 fn one_word(
     command: &Command,
-    tool: &Tool,
     refused: &[&str],
     admitted: &[&str],
     refused_line: &str,
@@ -245,8 +242,8 @@ fn one_word(
             "the admitted line {admitted_line} adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line {refused_line}. A code that no word of a command line causes needs an opt-out made with Allow::untwinned"
         ));
     }
-    let named = words::named(command, tool, refused);
-    let other = words::named(command, tool, admitted);
+    let named = words::named(command, refused);
+    let other = words::named(command, admitted);
     if !named.runs && !other.runs {
         return Err(format!(
             "the refused line {refused_line} runs no command, and the admitted line {admitted_line} runs none either, so the twin proves nothing about a command. A twin of a line that runs no command admits a line that runs one"
@@ -276,16 +273,12 @@ pub(super) fn refuse(
     refused: &Failing<'_>,
 ) -> Result<Output, String> {
     let reader = failures::reader(examples);
-    // Codes print in the tool record's spelling, and crumbkit's own codes print
-    // with the tool's name (ADR-0079).
+    // crumbkit's own codes print with the tool's name (ADR-0079).
     let name = tool.tool_name(command);
-    let spelling = tool.get_failures().get_spelling().for_tool(name);
+    let spelling = Spelling::COLONS.for_tool(name);
     let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
-    // A leaf's renames decide the code that a run of its command prints, so
-    // the code is spelled for the command that the refused line names.
-    let path = crumbkit::command_path(command, tool, refused.words());
-    let leaf_path: Vec<&str> = path.iter().map(String::as_str).collect();
-    let code = spelling.spell(tool.printed(&leaf_path, refused.code()));
+    let path = crumbkit::command_path(command, refused.words());
+    let code = spelling.spell(refused.code());
     let output = run(
         examples,
         refused,
@@ -308,7 +301,7 @@ pub(super) fn refuse(
     // A line that stops at a group prints the group's help page in text,
     // which holds no code, so the check reads the code from the same line
     // run with `--json` (ADR-0118).
-    if printed.is_none() && !words::named(command, tool, refused.words()).runs {
+    if printed.is_none() && !words::named(command, refused.words()).runs {
         let json = runs::with_json(&owned(refused.words()));
         let json: Vec<&str> = json.iter().map(String::as_str).collect();
         let json_line = named(&tool_name(examples), &json, refused.own_env());

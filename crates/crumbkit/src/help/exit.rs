@@ -160,9 +160,7 @@ impl Exit {
     /// default (ADR-0037). A range names no single code to exit with, so the
     /// failures of a range never decide a run's exit, and crumbkit-test's
     /// `check_exit_codes` fails on a range that lists any. A code may be one of
-    /// crumbkit's, such as `crumbkit::codes::CLI_USAGE`, or the tool's rename
-    /// of it from [`Failures::codes`](crate::tool::Failures::codes), and either
-    /// covers both.
+    /// crumbkit's, such as `crumbkit::codes::CLI_USAGE`.
     #[must_use]
     pub const fn failures(mut self, codes: &'static [&'static Code]) -> Self {
         self.failures = codes;
@@ -319,5 +317,41 @@ pub(crate) fn note(tool_name: &str, tool: &Tool) -> String {
 /// Returns whether a refused command line exits with crumbkit's 2 under
 /// `tool`, which lists no other code for it.
 fn refuses_with_2(tool: &Tool) -> bool {
-    tool.failure_exit(&[], &crate::codes::CLI_USAGE) == 2
+    tool.failure_exit(&crate::codes::CLI_USAGE) == 2
+}
+
+impl Tool {
+    /// Returns the exit code of a run whose first failure has `code`. It is
+    /// the code of the first [`Exit`] that lists `code`. A failure that no
+    /// exit lists exits with crumbkit's default: 2 for a refused command line
+    /// and 1 for every other failure (ADR-0002). The failures that a range of
+    /// codes lists count as unlisted, because a range names no single code to
+    /// exit with (ADR-0103).
+    #[must_use]
+    pub fn failure_exit(&self, code: &'static Code) -> u8 {
+        failure_exit(self.get_failures().get_exits(), code)
+    }
+}
+
+/// Returns the exit code of a run whose first failure has `code`, as
+/// [`Tool::failure_exit`] describes.
+pub(crate) fn failure_exit(exits: &[Exit], code: &'static Code) -> u8 {
+    if let Some(exit) = listed_exit(exits, code) {
+        return exit;
+    }
+    if *code == crate::codes::CLI_USAGE {
+        return 2;
+    }
+    1
+}
+
+/// Returns the code of the first single code of `exits` that lists `code`,
+/// and `None` when no such exit lists it. A range names no single code to
+/// exit with, so its failures count as unlisted.
+pub(crate) fn listed_exit(exits: &[Exit], code: &'static Code) -> Option<u8> {
+    exits
+        .iter()
+        .filter(|exit| exit.is_single())
+        .find(|exit| exit.get_failures().contains(&code))
+        .map(Exit::code)
 }

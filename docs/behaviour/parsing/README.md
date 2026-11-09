@@ -27,11 +27,10 @@ keeps help plain.
 
 On success, `parse` returns the tool's parsed type and an
 [`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the view
-flags, the command tree, the tool record's settings with the spelling of its
-codes, the words the caller typed with any values that a
-[picker](../effects/pickers.md) added, whether the caller passed `--no-input` or
-`--dry-run`, and the code renames of the leaf that the words name.
-`Output::confirm` repeats those words with `--yes` in its recovery.
+flags, the command tree, the tool record's settings, the words the caller typed
+with any values that a [picker](../effects/pickers.md) added, whether the caller
+passed `--no-input` or `--dry-run`. `Output::confirm` repeats those words
+with `--yes` in its recovery.
 
 A tool flattens [`ViewFlags`](../../../crates/crumbkit/src/output/build.rs)
 into its clap types to accept `--json`, `--fields`, `--long` and `--full`.
@@ -39,18 +38,15 @@ into its clap types to accept `--json`, `--fields`, `--long` and `--full`.
 reads them through the `Output`. A tool that does not flatten `ViewFlags`
 parses with every view flag off.
 
-A tool that parses with clap alone builds its `Output` with
-`Output::new(view, dry_run, command, &TOOL, args)`, where `dry_run` is the
-`DryRun` that the command parsed, or `DryRun::default()` in a tool without
-the flag, and `args` is the argv with the program name first. `Output::new`
-returns `Err` with the `Stop` of a refused command line when `--full` comes
-without `--json` or `--fields`
-comes with `--long` or `--full`, after it printed the refusal on standard
-error, so a tool's `main` returns the stop's code as it does after `parse`.
-`Output::new_to` prints the refusal to a sink instead. `Output::new` finds
-the leaf that the words name, so the run gets that leaf's code renames, and
-it keeps the words for the `--yes` recovery. It takes the spelling of codes
-from the tool record, as `parse` does. It reads no `--no-input`.
+A tool that parses with clap alone builds its `Output` with `Output::new(view,
+dry_run, command, &TOOL, args)`, where `dry_run` is the `DryRun` that the
+command parsed, or `DryRun::default()` in a tool without the flag, and `args` is
+the argv with the program name first. `Output::new` returns `Err` with the
+`Stop` of a refused command line when `--full` comes without `--json` or
+`--fields` comes with `--long` or `--full`, after it printed the refusal on
+standard error, so a tool's `main` returns the stop's code as it does after
+`parse`. `Output::new_to` prints the refusal to a sink instead. `Output::new`
+keeps the words for the `--yes` recovery. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before it parses, and passes the `Command` that
@@ -114,18 +110,6 @@ where the caller typed it. The rustdoc of
 builds.
 
 Why: ADR-0015, ADR-0076, ADR-0094.
-
-## Dashed forms of command names
-
-When the tool record declares `Tool::dashed_forms`, `parse` replaces each
-typed dashed form, such as `reading-lists`, with the command's own name,
-such as `reading_lists`, before anything else reads the words. clap, help,
-refusals, the usage log and the parsed words then name the command as the
-tool does. Completion and `command_path` find the command through the same
-lookup. The rewrite walks the typed words once. The
-[declarations page](../adoption/declarations.md) covers the declaration.
-
-Why: ADR-0015, ADR-0056.
 
 ## Refused command lines
 
@@ -224,14 +208,14 @@ command line comes back as `Unparsed::Refused` with a
 
 A `Refused` holds what the refusal prints and what the run knew:
 
-- `message`, `code` and `recovery`, which the refusal prints, with the code
-  after the tool record's renames and the recovery after the tool's declared
-  hint or calls, so a tool that prints its own document prints its hint;
+- `message`, `code` and `recovery`, which the refusal prints, with the recovery
+  after the tool's declared hint or calls, so a tool that prints its own
+  document prints its hint;
 - `exit`, the exit code that the run ends with once the refusal prints;
 - `output`, the output flags as far as the walk found them;
 - `typed`, the words after the program name as the caller typed them;
-- `parsed`, the words that crumbkit gave clap, after it turned the word
-  `help` into `--help`, replaced a dashed form or added a picked value;
+- `parsed`, the words that crumbkit gave clap, after it turned the word `help`
+  into `--help` or added a picked value;
 - `path`, the real names of the subcommands from the root to the deepest
   command that the walk reached, which is empty at the root;
 - `flags`, the clap ids of the arguments that the caller's words pass as

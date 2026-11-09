@@ -90,26 +90,20 @@ time, such as a plugin's. The area is a noun from the tool's domain, such as
 `books`, so moving code does not change a code (OUTPUT-2). Each error type
 lists its codes in a `CODES` list for crumbkit-test's `check_codes`.
 
-Each tool chooses how its codes are spelled with one
-[`Spelling`](../../../crates/crumbkit/src/code.rs), which it sets with
-`Failures::spelling`. A tool record that sets none spells codes with
-`Spelling::COLONS`. `parse` and `Output::new` carry the tool record's spelling
-in the `Output`, so `finish`, `stream` and `hand_over` print in it, and
-`check_codes` reads it from the same tool record. `Code` has no `Display`, so
-every printed code goes through the tool's spelling. `check_codes` refuses
-characters that let two different codes look the same, because callers match a
-code exactly.
+Every code prints in [`Spelling::COLONS`](../../../crates/crumbkit/src/code.rs),
+which joins the segments with `::`. `parse` and `Output::new` carry the spelling
+in the `Output`, so `finish`, `stream` and `hand_over` print in it. `Code` has
+no `Display`, so every printed code goes through the spelling. `check_codes`
+refuses characters that let two different codes look the same, because callers
+match a code exactly.
 
 crumbkit's own codes are public constants in `crumbkit::codes`, which
-`codes::ALL` lists, so a tool's tests can name them. A tool may print its own
-code in place of any of crumbkit's, such as its own usage code for
-`<tool>::cli::usage`, with a `Rename` in `Failures::codes`. One command can
-print its own code for one of crumbkit's failures with a `Rename` in
-`Leaf::codes`, which its runs read before the tool record's. crumbkit still
-decides when the failure happens, its message and its recovery
-([declarations](../adoption/declarations.md#codes-per-command)).
+`codes::ALL` lists, so a tool's tests can name them. A tool's failures print
+these codes with the tool's name as the component, as the next section
+describes. crumbkit decides when each failure happens, its message and its
+recovery.
 
-Why: ADR-0001, ADR-0086, ADR-0056, ADR-0060, ADR-0156.
+Why: ADR-0001, ADR-0086, ADR-0056, ADR-0156, ADR-0186.
 
 ## The tool's name
 
@@ -142,40 +136,34 @@ tool record's `root` when the tool runs below another program, so
   `_2FA_OUTPUT_BUDGET`.
 - A name without an ASCII letter or digit is spelled `tool` in each place.
 
-Only crumbkit's own codes and documents change. A tool's own codes, its
-renames in `Failures::codes` and `Leaf::codes`, and the document of its failure
-form print as the tool declared them. The Rust constants, such as
-`crumbkit::codes::CLI_USAGE`, and the checked-in schema files keep the
-`crumbkit` component, and the tool's output spells them with the tool's
-name. A tool's own code that equals one of crumbkit's codes spelled with
-the tool's name, such as a declared `shelf::cli::usage`, is not detected
-by `check_codes`.
+Only crumbkit's own codes and documents change. A tool's own codes and the
+document of its failure form print as the tool declared them. The Rust
+constants, such as `crumbkit::codes::CLI_USAGE`, and the checked-in schema files
+keep the `crumbkit` component, and the tool's output spells them with the tool's
+name. A tool's own code that equals one of crumbkit's codes spelled with the
+tool's name, such as a declared `shelf::cli::usage`, is not detected by
+`check_codes`.
 
 Why: ADR-0079.
 
 ## Codes learned at run time
 
-A tool that learns a code only at run time, such as from a plugin's answer,
-gets it from [`Code::runtime`](../../../crates/crumbkit/src/code/runtime.rs),
-which checks the segments by the same rule and keeps each distinct code until
-the process exits. A process holds at most 256 run-time codes. A new code
-past that limit is refused, and the tool reports the failure under a code of
-its own, so a plugin that puts an id in its reason cannot grow memory without
-bound. `Spelling::split` reads a code in `Spelling::COLONS` back into its
-segments, and returns `None` for a custom spelling, so a tool calls
-`tool.get_failures().get_spelling().split(text)` and passes the segments to
-`Code::runtime`. A tool with a custom spelling gets `None` for every code
-from that call, so it splits the text itself before it calls
-`Code::runtime`.
+A tool that learns a code only at run time, such as from a plugin's answer, gets
+it from [`Code::runtime`](../../../crates/crumbkit/src/code/runtime.rs), which
+checks the segments by the same rule and keeps each distinct code until the
+process exits. A process holds at most 256 run-time codes. A new code past that
+limit is refused, and the tool reports the failure under a code of its own, so a
+plugin that puts an id in its reason cannot grow memory without bound.
+`Spelling::COLONS.split(text)` reads a printed code back into its segments, so a
+tool passes the segments to `Code::runtime`.
 
 `check_codes` cannot list a run-time code, so such a failure supplies its own
 recovery. `check_recoveries` does not follow the recovery of a code from a
-component that no declared code has, such as a plugin's, and counts such
-codes in its report. It reports a code from a declared component that is
-not declared. It finds a printed code's component from the text that
-the spelling writes before the area, as
-[recovery chains](../checks/recovery-chains.md) describes. A run-time code
-cannot be listed by an [exit](exit-codes.md), so its failure exits with 1.
+component that no declared code has, such as a plugin's, and counts such codes
+in its report. It reports a code from a declared component that is not declared.
+It finds a printed code's component from the text before the area, as [recovery
+chains](../checks/recovery-chains.md) describes. A run-time code cannot be
+listed by an [exit](exit-codes.md), so its failure exits with 1.
 
 A tool whose tests hold its declared codes by value, such as a `Vec<Code>`
 built from `Code::runtime`, passes them to `Recoveries::from_codes` and

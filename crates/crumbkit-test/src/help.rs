@@ -7,7 +7,7 @@ use crumbkit::help::{Column, Leaf, LeafDocument, ViewFlag, quote};
 use crumbkit::{Shape, Tool};
 
 use crate::allow::{Allow, Allowances, Rule};
-use crate::tree::{self, DASHED_NAME};
+use crate::tree::{self, DASHED_NAME, is_dashed};
 
 mod children;
 mod document;
@@ -546,7 +546,7 @@ fn check_topics(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
     let topics = tool.get_help().get_topics();
     for (index, topic) in topics.iter().enumerate() {
         let name = topic.name();
-        if !crumbkit::is_dashed(name) {
+        if !is_dashed(name) {
             problems.push(format!("the topic name `{name}` is not {DASHED_NAME}"));
         }
         // `find_subcommand` resolves aliases, as `parse` does.

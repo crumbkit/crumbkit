@@ -13,7 +13,6 @@ use crate::failures::FailureReader;
 use crate::recoveries::Failing;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
-use crumbkit::tool::Failures;
 
 mod coverage;
 mod exits;
@@ -416,55 +415,4 @@ fn a_twin_with_a_global_option_before_the_path_runs_the_command_after_the_option
             "the refused line `tool -C empty books put 7` must fail with tool::cli::usage"
         )
     );
-}
-
-/// A tool record that spells codes with their segments joined by `.`.
-const DOTTED: Tool = Tool::new().failures(Failures::new().spelling(crumbkit::Spelling::custom(
-    |code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()),
-)));
-
-/// The answers of a tool whose tool record sets the dotted spelling: `books get
-/// --limit 0` fails with the usage code in that spelling, `books list
-/// --limit 0` fails with it in the colon spelling, and `--limit 1` succeeds
-/// for both. Any other command line fails with code 3.
-const DOTTED_SCRIPT: &str = r#"#!/bin/sh
-case "$*" in
-  'books get --limit 0') printf 'error: 0 is not a limit\n  code:  tool.cli.usage\n' >&2; exit 2;;
-  'books list --limit 0') printf 'error: 0 is not a limit\n  code:  tool::cli::usage\n' >&2; exit 2;;
-  'books get --limit 1'|'books list --limit 1') echo listed; exit 0;;
-  *) echo "unexpected: $*" >&2; exit 3;;
-esac
-"#;
-
-/// Runs `check_twin` with the dotted tool record on the dotted script, refusing
-/// `books <verb> --limit 0` and admitting `--limit 1`, and returns the
-/// panic message, or `None` when it passes.
-fn dotted_twin(verb: &str) -> Option<String> {
-    let dir = TempDir::new("twins-dotted").unwrap();
-    dir.write_script("tool", DOTTED_SCRIPT);
-    let path = dir.path().join("tool").display().to_string();
-    let examples = Examples::new(&path, "");
-    panic_message(|| {
-        check_twin(
-            &tree(),
-            &DOTTED,
-            &examples,
-            &Failing::new(&USAGE, &["books", verb, "--limit", "0"]),
-            &["books", verb, "--limit", "1"],
-        );
-    })
-}
-
-#[test]
-fn a_twin_passes_when_the_refused_line_prints_its_code_in_the_tools_custom_spelling() {
-    assert_eq!(dotted_twin("get"), None);
-}
-
-#[test]
-fn a_twin_fails_when_the_refused_line_prints_its_code_in_colons_and_the_tool_sets_another_spelling()
-{
-    let message = dotted_twin("list").unwrap();
-
-    assert!(message.contains("tool.cli.usage"), "{message}");
-    assert!(message.contains("tool::cli::usage"), "{message}");
 }

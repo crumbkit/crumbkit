@@ -41,6 +41,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: `Rename`, `Failures::codes`, `Leaf::codes` and
+  `Tool::printed` are removed, so a tool's failures print crumbkit's own code.
+  `Tool::failure_exit` takes only the code ([behaviour/failures]).
+- crumbkit: breaking: `Spelling::custom` and `Failures::spelling` are removed,
+  so every code prints in `Spelling::COLONS` ([behaviour/failures]).
+- crumbkit: breaking: `Tool::dashed_forms`, `dashed_form` and `is_dashed` are
+  removed, so a command answers only to its own names ([behaviour/parsing]).
+- crumbkit: breaking: `complete`, `complete_with`, `complete_with_words`,
+  `complete_to` and `command_path` no longer take the tool record
+  ([behaviour/parsing]).
+- crumbkit-test: breaking: `check_codes` no longer takes the tool record, and
+  the opt-outs report no longer lists code renames, a code spelling or dashed
+  forms ([behaviour/adoption/declarations]).
+- crumbkit-usage: the usage report refuses a code that holds `.` or `/`,
+  because every code now prints with `::` ([behaviour/usage-log]).
+
 - crumbkit-process: breaking: `Outcome::Code` and `Outcome::Signal` are
   `Outcome::Ended(Status)`, and `Stop` is `StopReason`
   ([behaviour/processes]).
@@ -67,9 +83,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `try_parse` and `try_parse_from` are removed. Use
   `try_parse_to` with `Sink::standard` ([behaviour/parsing]).
 - crumbkit: breaking: `help::Guide` is now `crumbkit::Tool`, composed of the
-  `help::Help`, `tool::Failures` and `tool::Output` records, with the picker
-  and dashed forms on `Tool`. `Guide::output_budget` is `tool::Output::budget`,
-  and each getter is on the record that owns its field ([behaviour/adoption]).
+  `help::Help`, `tool::Failures` and `tool::Output` records, with the picker on
+  `Tool`. `Guide::output_budget` is `tool::Output::budget`, and each getter is
+  on the record that owns its field ([behaviour/adoption]).
 - crumbkit-test: breaking: every check that took `&Guide` takes `&Tool`, and
   the `check_opt_outs` report and its JSON array say "declarations" where they
   said "customisations" ([behaviour/adoption]).
@@ -79,8 +95,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and `Rule::GuideDocument` are `Rule::HelpExamples` and `Rule::HelpDocument`,
   and the opt-out ids are `help/examples` and `help/document`
   ([behaviour/help/checks]).
-- crumbkit: breaking: `Exit`, `Rename` and `RefusalContext` move from
-  `crumbkit::help` to `crumbkit::tool` ([behaviour/adoption]).
+- crumbkit: breaking: `Exit` and `RefusalContext` move from `crumbkit::help` to
+  `crumbkit::tool` ([behaviour/adoption]).
 - crumbkit: breaking: `Guide::documents` is now `Help::file_formats`, a name
   that says it registers file formats ([behaviour/schemas/commands]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
@@ -1460,8 +1476,8 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`report`]: crates/crumbkit/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
 [`command_path`]: crates/crumbkit/src/parse/walk.rs
-[`dashed_form`]: crates/crumbkit/src/dashed.rs
-[`is_dashed`]: crates/crumbkit/src/dashed.rs
+[`dashed_form`]: https://github.com/crumbkit/crumbkit/blob/db7f1f076e1483c2916847e8af36ad0ec79c30ee/crates/crumbkit/src/dashed.rs
+[`is_dashed`]: https://github.com/crumbkit/crumbkit/blob/db7f1f076e1483c2916847e8af36ad0ec79c30ee/crates/crumbkit/src/dashed.rs
 [`RuntimeFailing`]: crates/crumbkit-test/src/recoveries/runtime.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`try_parse`]: crates/crumbkit/src/parse.rs
@@ -1491,7 +1507,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`check_guide`]: crates/crumbkit-test/src/guide.rs
 [`check_exit_codes`]: crates/crumbkit-test/src/exits.rs
 [`help::Exit`]: crates/crumbkit/src/help/exit.rs
-[`help::Rename`]: crates/crumbkit/src/help/rename.rs
+[`help::Rename`]: https://github.com/crumbkit/crumbkit/blob/db7f1f076e1483c2916847e8af36ad0ec79c30ee/crates/crumbkit/src/help/rename.rs
 [`check_help_sizes`]: crates/crumbkit-test/src/sizes.rs
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs

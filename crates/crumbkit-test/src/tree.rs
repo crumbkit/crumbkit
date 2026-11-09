@@ -9,7 +9,6 @@ mod tests;
 /// One command that a walk visits.
 pub(crate) struct Visit<'a> {
     command: &'a Command,
-    parent: Option<&'a Command>,
     path: String,
     depth: usize,
     visible: bool,
@@ -19,12 +18,6 @@ impl<'a> Visit<'a> {
     /// Returns the command.
     pub(crate) fn command(&self) -> &'a Command {
         self.command
-    }
-
-    /// Returns the command that holds this command, or `None` for the
-    /// command passed to the walk.
-    pub(crate) fn parent(&self) -> Option<&'a Command> {
-        self.parent
     }
 
     /// Returns the command's names from the command passed to the walk down
@@ -84,17 +77,15 @@ pub(crate) fn walk_visible(root: &Command) -> Vec<Visit<'_>> {
 /// [`walk_visible`] returns when `hidden` is unset.
 fn walk_tree(root: &Command, hidden: bool) -> Vec<Visit<'_>> {
     let mut visits = Vec::new();
-    visit(root, None, root.get_name(), 0, hidden, true, &mut visits);
+    visit(root, root.get_name(), 0, hidden, true, &mut visits);
     visits
 }
 
-/// Adds `command`, which `parent` holds, and every command below it to
-/// `visits`. A hidden command and everything below it are left out unless
+/// Adds `command` and every command below it to `visits`. A hidden command and everything below it are left out unless
 /// `hidden` is set. `visible` says whether every command above `command`
 /// is visible.
 fn visit<'a>(
     command: &'a Command,
-    parent: Option<&'a Command>,
     path: &str,
     depth: usize,
     hidden: bool,
@@ -107,7 +98,6 @@ fn visit<'a>(
     let visible = visible && (depth == 0 || !command.is_hide_set());
     visits.push(Visit {
         command,
-        parent,
         path: path.to_owned(),
         depth,
         visible,
@@ -115,15 +105,7 @@ fn visit<'a>(
     for subcommand in command.get_subcommands() {
         let path = format!("{path} {}", subcommand.get_name());
         let depth = depth + 1;
-        visit(
-            subcommand,
-            Some(command),
-            &path,
-            depth,
-            hidden,
-            visible,
-            visits,
-        );
+        visit(subcommand, &path, depth, hidden, visible, visits);
     }
 }
 
@@ -180,9 +162,21 @@ pub(crate) fn report(rules: &str, problems: &[String]) {
     );
 }
 
-/// The rule that `crumbkit::is_dashed` checks, as a problem states it. The
-/// grammar check applies the rule to resources and verbs, and the tool record
-/// check to topic names.
+/// Reports whether `name` is lowercase ASCII letters and digits in words
+/// joined by single dashes, starting with a letter, such as `reading-lists`.
+pub(crate) fn is_dashed(name: &str) -> bool {
+    name.starts_with(|c: char| c.is_ascii_lowercase())
+        && name.split('-').all(|word| {
+            !word.is_empty()
+                && word
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        })
+}
+
+/// The rule that [`is_dashed`] checks, as a problem states it. The grammar
+/// check applies the rule to resources and verbs, and the tool record check
+/// to topic names.
 ///
 /// The rule reads only the name's form. It cannot tell a plural noun from a
 /// singular one, so the grammar check accepts a resource named `book` as

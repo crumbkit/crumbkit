@@ -25,8 +25,7 @@ mod tests;
 /// The code of every refusal: a command line that clap refused, or a flag
 /// value that crumbkit refused, such as an unknown `--fields` name. The run
 /// exits with code 2 unless the tool record lists another exit for the
-/// code, and a tool may print its own code in its place with
-/// [`Rename`](crate::tool::Rename).
+/// code.
 pub const CLI_USAGE: Code = Code::new("crumbkit", "cli", "usage");
 
 /// The code of a `commands list` `PATH` that names no visible command

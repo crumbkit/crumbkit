@@ -2,7 +2,7 @@
 //! that the tool record declares for failure codes (ADR-0037).
 
 use crumbkit::help::{Help, Leaf};
-use crumbkit::tool::{Exit, Rename};
+use crumbkit::tool::Exit;
 use crumbkit::{Code, Tool};
 
 use super::tree;
@@ -199,60 +199,5 @@ fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins()
         panic_message(|| check_twins(&tree(), &LISTING, &twins)).unwrap(),
         "the tool's twins break crumbkit's twin rule:\n\
          tool::books::gone: the tool record's exit code 3 lists the failure code, and no CODES list holds it"
-    );
-}
-
-#[test]
-fn a_twin_that_refuses_a_renamed_crumbkit_code_passes_when_the_tool_prints_its_own_code_and_exit() {
-    const USAGE: Code = Code::new("tool", "cli", "usage");
-    const RENAMING: Tool = Tool::new().failures(
-        Failures::new()
-            .codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE)])
-            .exits(&[
-                Exit::new(124, "Slow.").failures(&[&TIMED_OUT]),
-                Exit::new(64, "Refused.").failures(&[&USAGE]),
-            ]),
-    );
-    const CODES: &[&[&Code]] = &[&[&TIMED_OUT]];
-    const PAIRS: &[Twin<'_>] = &[
-        Twin::new(
-            Failing::new(&TIMED_OUT, &["books", "get", "1"]),
-            &["books", "get", "3"],
-        ),
-        Twin::new(
-            Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "get", "9"]),
-            &["books", "get", "3"],
-        ),
-    ];
-    let dir = TempDir::new("twins-exits-renamed").unwrap();
-    dir.write_script("tool", SCRIPT);
-    let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(PAIRS);
-
-    assert_eq!(
-        panic_message(|| check_twins(&tree(), &RENAMING, &twins)),
-        None
-    );
-}
-
-#[test]
-fn a_twin_that_refuses_a_crumbkit_code_that_its_leaf_renames_passes_when_the_tool_prints_the_leaf_s_code_and_exit()
- {
-    const RENAMING: Tool = Tool::new()
-        .help(
-            Help::new().leaves(&[Leaf::new(&["books", "get"]).codes(&[Rename::new(
-                &crumbkit::codes::OUTPUT_OVER_BUDGET,
-                &TIMED_OUT,
-            )])]),
-        )
-        .failures(Failures::new().exits(EXITS));
-
-    assert_eq!(
-        checked_with(
-            &RENAMING,
-            &crumbkit::codes::OUTPUT_OVER_BUDGET,
-            &["books", "get", "1"]
-        ),
-        None
     );
 }

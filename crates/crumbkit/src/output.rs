@@ -38,7 +38,6 @@ use self::failure::Printing;
 pub use self::layout::JsonLayout;
 pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
-use crate::help::rename::Renames;
 use crate::tool::Exit;
 use crate::view::View;
 use crate::{AsFailure, Document, Rows, Sink, Spelling};
@@ -113,11 +112,7 @@ pub struct Output {
     /// one of them lists ends the run with that exit code (ADR-0037).
     exits: &'static [Exit],
 
-    /// The tool's own codes for crumbkit's failures, of the tool record and of
-    /// the leaf of the parsed command (ADR-0056, ADR-0060).
-    renames: Renames,
-
-    /// The tool record's spelling of the run's codes, which writes the tool's
+    /// The spelling of the run's codes, which writes the tool's
     /// name in crumbkit's own codes. The tool's name also names crumbkit's
     /// documents and variables (ADR-0079).
     spelling: Spelling,
@@ -200,7 +195,7 @@ impl Output {
         self.view.fields()
     }
 
-    /// Returns the tool record's spelling and `document`, with the tool's name
+    /// Returns the run's spelling and `document`, with the tool's name
     /// in place of `crumbkit` in crumbkit's own codes and documents (ADR-0079).
     pub(crate) const fn named<T>(&self, document: Document<T>) -> (Spelling, Document<T>) {
         (self.spelling, self.spelling.tool().document(document))
@@ -213,12 +208,11 @@ impl Output {
     }
 
     /// Returns what the tool record decides about the run's failures: the
-    /// JSON layout, the exit codes and the renames.
+    /// JSON layout and the exit codes.
     pub(crate) const fn printing(&self) -> Printing {
         Printing {
             layout: self.json_layout,
             exits: self.exits,
-            renames: self.renames,
         }
     }
 }
@@ -370,8 +364,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 ///
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
 /// for each error in the failure's `source()` chain, and a `url:` line
-/// follows the `code:` line when the failure has a url. The code prints in
-/// the spelling that `output` took from the tool record. A
+/// follows the `code:` line when the failure has a url. A
 /// [`Recovery::Run`](crate::Recovery::Run) call is rendered against the
 /// command tree that `output` holds, and prints as `no next step: the
 /// suggested command is not available` when the call does not resolve. With
@@ -385,8 +378,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// fit and exits 0: in text, a line on the error writer such as `Showing
 /// 812 of 5000 books, because output stops at 1048576 bytes. Ask for less
 /// with --limit or --fields.` says so, and its JSON document holds `cut`
-/// with the code `<tool>::output::over_budget`, or the tool's rename of
-/// it, and the budget. A batch prints the rows that fit, ends with one
+/// with the code `<tool>::output::over_budget` and the budget. A batch prints the rows that fit, ends with one
 /// over-budget failure whose fields are `left_out` and `budget`, and exits
 /// with code 1. A batch's first row prints even when it passes the budget
 /// alone if its document is marked with `Document::always_print_first`, and
@@ -406,16 +398,14 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// the result prints. [`parse`](crate::parse()) refuses such a name before
 /// the handler runs on a leaf that declares a document. The refusal prints as a failure does, with the message
 /// `--fields names an unknown field 'radius'`, the code `<tool>::cli::usage`
-/// in the tool record's spelling, and the hint `use the valid fields: a, b`.
+/// and the hint `use the valid fields: a, b`.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. When the result is a failure, or a batch or prose
 /// result with at least one failure, the exit code belongs to the run's first
 /// failure: the code of the tool record's [`Exit`] whose [`Exit::failures`]
-/// list that failure's printed code, or 1 when none does, also after the reader
-/// closed the pipe early (ADR-0037). The printed code is the tool's own code
-/// when the tool record renames one of crumbkit's with
-/// [`Failures::codes`](crate::tool::Failures::codes). The tool record reaches
+/// list that failure's code, or 1 when none does, also after the reader closed
+/// the pipe early (ADR-0037). The tool record reaches
 /// `finish` through the `Output` that [`parse`](crate::parse()) or
 /// [`Output::new`] returns. The exit code is 1 as well when a write fails for
 /// any other reason, or when the result cannot be serialized, and the cause of

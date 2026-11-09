@@ -3,12 +3,11 @@
 //! `tests/conventions.rs`.
 
 use crate::books::BooksError;
-use crate::cli::TOOL;
 use crumbkit::help::Help;
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(&TOOL, &[BooksError::CODES]);
+    crumbkit_test::check_codes(&[BooksError::CODES]);
 }
 
 /// The choices of the whole catalogue, as `books::choices` offers them when

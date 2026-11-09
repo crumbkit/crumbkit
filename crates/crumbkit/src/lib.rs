@@ -50,7 +50,6 @@ pub mod commands;
 mod complete;
 #[cfg(test)]
 mod conforms;
-mod dashed;
 mod document;
 mod duration;
 pub mod events;
@@ -92,7 +91,6 @@ pub use crate::call::{Call, CallArg, CallError, CallTarget, RenderCall};
 pub use crate::code::{Code, RuntimeCodeError, Segment, Spelling};
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
-pub use crate::dashed::{dashed_form, dashed_name, is_dashed};
 pub use crate::document::{Document, Envelope};
 pub use crate::duration::Duration;
 pub use crate::expect::Expect;

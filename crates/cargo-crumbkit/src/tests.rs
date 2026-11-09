@@ -13,10 +13,7 @@ const BUDGETS: Budgets = Budgets::new();
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(
-        &TOOL,
-        &[ToolError::CODES, WeighError::CODES, DocsError::CODES],
-    );
+    crumbkit_test::check_codes(&[ToolError::CODES, WeighError::CODES, DocsError::CODES]);
 }
 
 #[test]

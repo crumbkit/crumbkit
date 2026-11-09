@@ -1,7 +1,7 @@
 //! Tests for clap's usage lines, which the text form of a refused command
 //! line prints under its `error:` line.
 
-use super::super::{PreparedFailure, Printing, write_crumbkit_text};
+use super::super::{PreparedFailure, write_crumbkit_text};
 use super::{Missing, missing, run_list, two_causes};
 use crate::Spelling;
 
@@ -11,7 +11,6 @@ fn prepared<'a>(failure: &'a Missing, usage: &'a [String]) -> PreparedFailure<'a
     PreparedFailure::new(
         failure,
         Spelling::COLONS,
-        Printing::default(),
         &mut clap::Command::new("tool").subcommand(clap::Command::new("list")),
         &mut crate::sink::role::Recorded::default(),
     )

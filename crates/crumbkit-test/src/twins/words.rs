@@ -3,7 +3,6 @@
 //! and both lines run the same command of the tool's command tree.
 
 use clap::Command;
-use crumbkit::Tool;
 
 /// The words that make clap or crumbkit's `parse` answer without running
 /// the command: help and the version.
@@ -52,11 +51,11 @@ pub(super) struct Named {
 
 /// Returns the command that `words`, the words after the tool's name, name
 /// in `tree`, the tool's unbuilt command tree, as
-/// [`crumbkit::command_path`] reads them with `tool`: it skips options and
+/// [`crumbkit::command_path`] reads them: it skips options and
 /// their values, global options before the path included, and resolves
 /// aliases.
-pub(super) fn named(tree: &Command, tool: &Tool, words: &[&str]) -> Named {
-    let path = crumbkit::command_path(tree, tool, words);
+pub(super) fn named(tree: &Command, words: &[&str]) -> Named {
+    let path = crumbkit::command_path(tree, words);
     let mut node = tree;
     for name in &path {
         // The path holds only real names of subcommands of the tree.

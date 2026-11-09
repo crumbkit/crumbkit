@@ -193,8 +193,8 @@ struct CallerRuns {
 /// flag, failure code or caller that the tool's usage log could not have
 /// written is left out and counted in the summary, so a hand-edited line
 /// cannot put its text in the report. A code counts when it is 1 to 128
-/// ASCII letters, digits, `_`, `-`, `:`, `.` and `/`, which covers the
-/// predefined spellings and a custom one.
+/// ASCII letters, digits, `_`, `-` and `:`, which covers crumbkit's spelling
+/// of a code.
 ///
 /// A failure to find or read the log stays silent, as every usage-log
 /// failure does, and the report holds the runs read before it. A tool whose
@@ -287,7 +287,7 @@ pub(super) fn summarize(
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
-    let mut tally = Tally::new(tool.failure_exit(&[], &crumbkit::codes::CLI_USAGE));
+    let mut tally = Tally::new(tool.failure_exit(&crumbkit::codes::CLI_USAGE));
     if let Some(log) = log {
         read(log, start_ms, tool_name, &mut tally);
     }

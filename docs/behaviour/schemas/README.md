@@ -58,11 +58,10 @@ Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0
 
 A failure prints with `--json` as the `<tool>/failure/v1` document.
 
-- A failure's `cause` is one string that joins the source chain, because
-  those errors usually come from libraries whose wording and depth are not
-  stable. A program matches on `code` and shows `cause` as one line. The
-  schema accepts any spelling of `code`, because each tool chooses its own
-  spelling.
+- A failure's `cause` is one string that joins the source chain, because those
+  errors usually come from libraries whose wording and depth are not stable. A
+  program matches on `code` and shows `cause` as one line. The schema requires
+  `code` to be printable ASCII without spaces.
 - The document and each batch failure hold `alternatives` when the failure
   offers at least one alternative repair, each in the shape of `recovery`.
 - A `run` step may hold `all`, the name of a list field of the same failure,

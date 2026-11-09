@@ -51,9 +51,8 @@ Why: ADR-0029, ADR-0057.
 - They report a request for help as `short` for `-h` and `long` for
   `--help` or the `help` command, with the command path that the help names.
 - For a refused command line they report how many flags name no flag of the
-  command, clap's suggested real flag, the exit code of a refused command
-  line, and the code `<tool>::cli::usage` in the tool's spelling or the
-  tool's rename of it.
+  command, clap's suggested real flag, the exit code of a refused command line,
+  and the code `<tool>::cli::usage`.
 - For a parsed command line they report how many values the command's
   positional arguments with the value name `ID` received, and, as `picked`,
   how many arguments a [picker](../effects/pickers.md) filled, without the

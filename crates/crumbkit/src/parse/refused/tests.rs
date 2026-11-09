@@ -129,17 +129,6 @@ fn a_missing_required_argument_has_no_culprit() {
 }
 
 #[test]
-fn a_dashed_form_is_typed_as_the_caller_wrote_it_and_parsed_as_the_command_s_name() {
-    const DASHED: Tool = Tool::new().dashed_forms();
-
-    let refused = refused_by(tree(), &DASHED, &["tool", "moon-phases", "full"]);
-
-    assert_eq!(refused.typed(), words(&["moon-phases", "full"]));
-    assert_eq!(refused.parsed(), words(&["moon_phases", "full"]));
-    assert_eq!(refused.culprit(), Some("full"));
-}
-
-#[test]
 fn a_refused_view_flag_names_its_flag_as_the_culprit() {
     /// A tool whose root flattens the view flags.
     #[derive(clap::Parser)]

@@ -123,7 +123,7 @@ fn check(
     for leaf in tool.get_help().get_leaves() {
         let path = leaf.path();
         let below = path.join(" ");
-        let failed = tool.failure_exit(path, &crumbkit::codes::OUTPUT_OVER_BUDGET);
+        let failed = tool.failure_exit(&crumbkit::codes::OUTPUT_OVER_BUDGET);
         if !visits.iter().any(|visit| visit.below() == below)
             || allowances.excuses(Rule::Examples, &below)
         {

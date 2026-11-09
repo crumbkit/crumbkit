@@ -9,8 +9,8 @@ use serde::Serialize;
 
 use super::RuntimeLeaf;
 use crate::help::{Column, Example, Goal, Group, Help, Leaf, Topic};
-use crate::tool::{Exit, Failures, RefusalContext, Rename};
-use crate::{Call, Code, Document, Row, Sink, Tool};
+use crate::tool::{Exit, Failures, RefusalContext};
+use crate::{Call, Document, Row, Sink, Tool};
 
 const TOOL: Tool = Tool::new()
     .help(
@@ -123,30 +123,22 @@ fn a_runtime_leaf_keeps_the_program_whose_exit_code_it_passes_on() {
     assert_eq!(programs, [Some("the editor"), None]);
 }
 
-/// The tool's own code for crumbkit's usage code.
-const BAD_LINE: Code = Code::new("tool", "cli", "bad_line");
-
-/// The tool record's rename of crumbkit's usage code.
-const RENAMES: &[Rename] = &[Rename::new(&crate::codes::CLI_USAGE, &BAD_LINE)];
-
 /// Returns `tool moons list` for any refusal of a runtime leaf's command.
 fn list_moons(_: &RefusalContext<'_>) -> Vec<Call> {
     vec![Call::new(&["moons", "list"])]
 }
 
 #[test]
-fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call_and_prints_the_rename() {
+fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call() {
     let name = String::from("moons");
     let tool_name = Command::new("tool").subcommand(
         Command::new(name.clone())
             .subcommand(Command::new("list").about("List the moons"))
             .subcommand(Command::new("show").about("Show a moon")),
     );
-    let tool = Tool::new()
-        .failures(Failures::new().codes(RENAMES))
-        .with_runtime_leaves(vec![
-            RuntimeLeaf::new(vec![name, "show".to_owned()]).refusal_alternatives(list_moons),
-        ]);
+    let tool = Tool::new().with_runtime_leaves(vec![
+        RuntimeLeaf::new(vec![name, "show".to_owned()]).refusal_alternatives(list_moons),
+    ]);
     let mut err = Vec::new();
 
     let result = parse_tree_to::<()>(
@@ -160,7 +152,7 @@ fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call_and_pri
     let text = String::from_utf8(err).unwrap();
     assert!(
         text.contains(
-            "  help:  run `tool moons list`\n  help:  run `tool moons show -h`\n  code:  tool::cli::bad_line\n"
+            "  help:  run `tool moons list`\n  help:  run `tool moons show -h`\n  code:  tool::cli::usage\n"
         ),
         "{text}"
     );

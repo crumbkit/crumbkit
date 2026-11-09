@@ -55,8 +55,7 @@ pub(super) struct Walk<'a> {
     pub(super) skipped: usize,
     /// The tool's failure reader, which reads each failed run first.
     pub(super) reader: Option<Reader<'a>>,
-    /// The tool record, whose exits and renames give the exit code of a
-    /// failed run.
+    /// The tool record, whose exits give the exit code of a failed run.
     pub(super) tool: &'a Tool,
     /// The problem that stopped the walk: a failed run whose failure the
     /// tool's reader does not read, so no later run can be
@@ -506,7 +505,7 @@ impl Walk<'_> {
     fn run(&mut self, chain: &mut Chain<'_>, label: &str, words: &[String]) -> Option<Outcome> {
         let args = with_json(words);
         let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        let path = crumbkit::command_path(self.command, self.tool, &refs);
+        let path = crumbkit::command_path(self.command, &refs);
         let result = runs::run(
             self.recoveries.examples.binary(),
             self.recoveries.examples.variables(),

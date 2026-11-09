@@ -18,7 +18,7 @@ fn fixture_command() -> Command {
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(&crate::cli::TOOL, &[EntriesError::CODES]);
+    crumbkit_test::check_codes(&[EntriesError::CODES]);
 }
 
 #[test]

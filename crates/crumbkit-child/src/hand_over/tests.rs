@@ -13,7 +13,7 @@ use clap::{CommandFactory as _, Parser};
 
 use super::{hand_over_to, respond_text};
 use crumbkit::tool::Exit;
-use crumbkit::{Output, Sink, Spelling, Tool, ViewFlags};
+use crumbkit::{Output, Sink, Tool, ViewFlags};
 
 use crate::testing::assert_one_word_apart;
 use crumbkit::tool::Failures;
@@ -247,38 +247,4 @@ fn a_refused_json_exits_with_the_code_that_the_tool_gives_a_refused_command_line
     let code = respond(|sink| hand_over_to(sink, output, command(MISSING))).code;
 
     assert_eq!(code, ExitCode::from(64));
-}
-
-/// A spelling that joins the segments of a code with `.`.
-const DOTS: Spelling =
-    Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
-
-/// Parses `vault` followed by `flags` into the output of the run, as a tool
-/// that parses with clap alone and sets the dotted spelling on its tool record
-/// builds it.
-fn dotted(flags: &[&str]) -> Output {
-    const TOOL: Tool = Tool::new().failures(Failures::new().spelling(DOTS));
-    let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
-    let view = Cli::try_parse_from(&words).unwrap().view;
-    Output::new(
-        view,
-        crumbkit::DryRun::default(),
-        Cli::command(),
-        &TOOL,
-        words,
-    )
-    .unwrap()
-}
-
-#[test]
-fn a_tool_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_argument() {
-    let output = dotted(&["--json"]);
-
-    let responded = respond(|sink| hand_over_to(sink, output, command("vi")));
-
-    assert!(
-        responded.out.contains(r#""code":"vault.cli.usage""#),
-        "{}",
-        responded.out
-    );
 }

@@ -9,7 +9,7 @@ use clap::{Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::testing::{DOTS, give_child_env, watch};
+use super::testing::{give_child_env, watch};
 use super::{Observer, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in};
 use crate::tool::{Exit, Failures};
 use crate::{
@@ -200,7 +200,7 @@ const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
 /// A tool record that maps `TIMED_OUT` to 124 and refused command lines to 64
 /// (ADR-0037), with the smallest output budget.
 const TOOL: Tool = Tool::new()
-    .failures(Failures::new().spelling(DOTS).exits(&[
+    .failures(Failures::new().exits(&[
         Exit::new(124, "The catalogue ran out of time.").failures(&[&TIMED_OUT]),
         Exit::new(64, "The command line was refused.").failures(&[&crate::codes::CLI_USAGE]),
     ]))
@@ -241,9 +241,7 @@ enum Books {
     },
 }
 
-/// Parses `args` into memory with [`TOOL`], which sets the spelling
-/// [`DOTS`], and
-/// returns the output flags with the tool's command, or the exit code of a
+/// Parses `args` into memory with [`TOOL`], and returns the output flags with the tool's command, or the exit code of a
 /// run that parsing ended.
 fn parse(args: &[&str]) -> Result<Output, ExitCode> {
     let (_, output) = parse_to::<Cli>(&mut Sink::new(Vec::new(), Vec::new()), &TOOL, args)?;
@@ -259,7 +257,7 @@ fn parse_reports_the_root_command_and_the_typed_words_before_it_reports_the_pars
     assert_eq!(
         seen,
         [
-            "typed shelf: shelf books list --all in a.b.c",
+            "typed shelf: shelf books list --all in a::b::c",
             "parsed shelf books list",
         ]
     );
@@ -306,7 +304,7 @@ fn a_refusal_reports_the_tool_s_exit_code_and_the_visible_flag_that_clap_suggest
         seen[1..],
         [
             "refused shelf: books list 64 nearest all",
-            "failed shelf.cli.usage"
+            "failed shelf::cli::usage"
         ]
     );
 }
@@ -456,7 +454,7 @@ fn finish_reports_the_failure_s_code_in_the_tool_s_spelling_and_the_tool_s_exit_
     assert_eq!(
         seen,
         [
-            "failed shelf.network.timed_out",
+            "failed shelf::network::timed_out",
             "finished 124 0 bytes truncated false empty false"
         ]
     );
@@ -473,7 +471,7 @@ fn a_listing_that_the_budget_cut_reports_the_budget_s_code_and_exits_with_0() {
     assert_eq!(
         seen,
         [
-            "failed shelf.output.over_budget".to_owned(),
+            "failed shelf::output::over_budget".to_owned(),
             format!("finished 0 {bytes} bytes truncated true empty false"),
         ]
     );
@@ -498,7 +496,7 @@ fn a_stream_reports_its_exit_its_bytes_and_whether_the_budget_stopped_it() {
     assert_eq!(
         seen,
         [
-            "failed shelf.network.timed_out".to_owned(),
+            "failed shelf::network::timed_out".to_owned(),
             format!(
                 "finished 124 {} bytes truncated false empty false",
                 out.len()
@@ -524,7 +522,7 @@ fn the_public_reports_reach_the_observer_and_ended_returns_its_exit_code() {
         seen,
         [
             "aliased",
-            "tolerated shelf.catalogue.locked",
+            "tolerated shelf::catalogue::locked",
             "ended 124 Some(2048)"
         ]
     );

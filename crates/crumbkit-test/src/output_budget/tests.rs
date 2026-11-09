@@ -253,29 +253,26 @@ const FAILS_WITH_9: &[&str] = &[
 
 #[cfg(unix)]
 #[test]
-fn a_leaf_whose_rename_of_the_over_budget_failure_an_exit_lists_makes_that_code_the_failed_one() {
+fn an_exit_that_lists_the_over_budget_failure_makes_its_number_the_failed_one() {
     use clap::Command;
-    use crumbkit::Code;
     use crumbkit::Tool;
     use crumbkit::help::{Example, Leaf};
-    use crumbkit::tool::{Exit, Rename};
+    use crumbkit::tool::Exit;
 
     use crate::examples::Examples;
     use crate::temp::TempDir;
 
-    const TOO_LONG: Code = Code::new("sh", "output", "too_long");
     const TOOL: Tool = Tool::new()
         .help(
-            Help::new().leaves(&[Leaf::new(&["-c"])
-                .examples(&[Example::new(FAILS_WITH_9, "Print")])
-                .codes(&[Rename::new(&crumbkit::codes::OUTPUT_OVER_BUDGET, &TOO_LONG)])]),
+            Help::new()
+                .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(FAILS_WITH_9, "Print")])]),
         )
         .failures(
-            Failures::new()
-                .exits(&[Exit::new(9, "The output was too long.").failures(&[&TOO_LONG])]),
+            Failures::new().exits(&[Exit::new(9, "The output was too long.")
+                .failures(&[&crumbkit::codes::OUTPUT_OVER_BUDGET])]),
         );
     let sh = Command::new("sh").subcommand(Command::new("-c"));
-    let goldens = TempDir::new("output-budget-leaf-exit").unwrap();
+    let goldens = TempDir::new("output-budget-listed-exit").unwrap();
     let dir = goldens.path().display().to_string();
 
     let problems = super::check(&sh, &TOOL, &Examples::new("/bin/sh", &dir), super::TIMEOUT);

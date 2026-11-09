@@ -16,7 +16,6 @@ use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
 use super::table::{self, Table};
 use super::{Output, children, fields, lines, listing, problems, prose};
-use crate::help::rename::Renames;
 use crate::help::view::{Kind, Printed};
 use crate::shown::TextCells;
 use crate::sink::role::{Deliver, Message, Role};
@@ -102,9 +101,7 @@ pub(super) fn write_result<T: Rows>(
     problems: usize,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
-    // The code is the tool's rename when the tool record has one, so the cut,
-    // the failure, the usage log and the trace all carry it.
-    let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
+    let code = &codes::OUTPUT_OVER_BUDGET;
     if let Some(bytes) = value.bytes().filter(|_| !output.is_json()) {
         // The text of bytes is their own length, so it is measured without
         // a buffer.
@@ -153,8 +150,6 @@ struct Settings<'a> {
     layout: JsonLayout,
     /// The most bytes that the run prints on standard output.
     budget: usize,
-    /// The tool's own codes for crumbkit's failures.
-    renames: Renames,
     /// The number of columns that the sink gives the result, which a text
     /// table fits, or `None` when the table prints unfitted.
     width: Option<usize>,
@@ -178,7 +173,6 @@ impl<'a> Settings<'a> {
             dry_run: output.dry_run,
             layout: output.json_layout,
             budget: output.budget,
-            renames: output.renames,
             width,
             styled,
         };
@@ -209,7 +203,7 @@ fn write_rows<T: Rows>(
     problems: usize,
 ) -> io::Result<(Answer, usize)> {
     let budget = settings.budget;
-    let code = settings.renames.printed(&codes::OUTPUT_OVER_BUDGET);
+    let code = &codes::OUTPUT_OVER_BUDGET;
     // A document without the envelope has no `next`, so it renders no step.
     let next = if settings.is_json() && !document.get_envelope().wraps() {
         Vec::new()
