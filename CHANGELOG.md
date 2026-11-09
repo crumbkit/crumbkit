@@ -31,6 +31,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: breaking: `Input` has the variant `File`, which gives the
   child a file or the read end of a pipe, and no longer implements
   `PartialEq` ([behaviour/processes]).
+- crumbkit-process: breaking: `Input::Bytes` holds a `Zeroizing<Vec<u8>>`, so
+  the bytes are cleared when the settings drop and `Debug` prints only their
+  length ([behaviour/processes]).
 
 ## [0.2.0] - 2026-11-09
 

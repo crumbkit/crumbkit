@@ -67,6 +67,10 @@ and then closes, the tool's own input, or a duplicate of a file or a pipe's
 read end that the tool holds. The writer stops early, with no
 failure, when the child closes its input.
 
+`Input::Bytes` clears its buffer when it drops, so a secret given to a child
+does not stay in the tool's memory. It clears that buffer alone, and the
+`Debug` output of the settings prints only its length.
+
 Each output stream has a `Capture`:
 
 - `Discard` sends the stream to the null device.

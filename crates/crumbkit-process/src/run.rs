@@ -1,12 +1,15 @@
 //! The one-shot run: start a child, write its input, read its output within
 //! limits and a deadline, stop it when needed, and reap it.
 
+use std::fmt;
 use std::fs::File;
 use std::io;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::thread::{Builder, Scope as Threads, ScopedJoinHandle};
 use std::time::{Duration, Instant};
+
+use zeroize::Zeroizing;
 
 use crate::notice::Notice;
 use crate::{Cancel, Escalation, Group, Outcome, Scope, Signal, Status, StopReason, sys};
@@ -32,7 +35,7 @@ pub use self::spawn::{Spawn, Spawned};
 pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
 
 /// What the child reads on its standard input.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 #[non_exhaustive]
 pub enum Input {
     /// The null device, so the child reads the end of its input at once.
@@ -40,7 +43,14 @@ pub enum Input {
     Null,
     /// These bytes, which a thread of the run writes and then closes. The
     /// thread stops early when the child closes its input.
-    Bytes(Vec<u8>),
+    ///
+    /// The buffer is cleared when it drops, so a secret given to a child
+    /// does not stay in the tool's memory after the settings are gone.
+    /// Each clone of the settings holds and clears its own copy. The
+    /// clearing covers this buffer only: it misses copies that the caller
+    /// made before and the pipe's buffer in the kernel. `Debug` prints the
+    /// length alone.
+    Bytes(Zeroizing<Vec<u8>>),
     /// The tool's own standard input. On Unix a child in a group of its own
     /// that reads a terminal is stopped by SIGTTIN, so a terminal suits
     /// only [`Scope::Child`].
@@ -52,6 +62,20 @@ pub enum Input {
     /// and moves the position that the caller and any later run see. The
     /// caller's `File` stays open.
     File(Arc<File>),
+}
+
+impl fmt::Debug for Input {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Null => f.write_str("Null"),
+            Self::Bytes(bytes) => f
+                .debug_tuple("Bytes")
+                .field(&format_args!("{} bytes", bytes.len()))
+                .finish(),
+            Self::Inherit => f.write_str("Inherit"),
+            Self::File(file) => f.debug_tuple("File").field(file).finish(),
+        }
+    }
 }
 
 /// The settings of one [`run`]: the child's input, what it keeps of each
