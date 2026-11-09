@@ -128,11 +128,13 @@ fn find_conflicts(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
         .get_help()
         .get_leaves()
         .iter()
-        .filter_map(|leaf| Some((leaf, leaf.get_document()?.to_string())))
+        .filter_map(|leaf| Some((leaf, leaf.get_document()?)))
+        .map(|(leaf, document)| (leaf, document, document.document().to_string()))
         .collect();
-    for (index, (first, id)) in leaves.iter().enumerate() {
-        for (second, other) in &leaves[index + 1..] {
-            if id != other || first.document_schema() == second.document_schema() {
+    for (index, (first, first_document, id)) in leaves.iter().enumerate() {
+        for (second, second_document, other) in &leaves[index + 1..] {
+            if id != other || first_document.document_schema() == second_document.document_schema()
+            {
                 continue;
             }
             problems.push(format!(

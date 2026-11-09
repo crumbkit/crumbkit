@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::help::{Help, Leaf};
 use crumbkit::schemas::SCHEMAS_LIST;
 use crumbkit::tool::{Exit, RefusalContext, Rename};
-use crumbkit::{Call, Code, Document, Prose, Tool};
+use crumbkit::{Call, Children, Code, Document, Prose, Tool};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
 
@@ -287,7 +287,7 @@ struct RemovedShelf {
 
 impl crumbkit::Row for RemovedShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("books");
+    const CHILDREN: Option<Children> = Some(Children::field("books"));
 }
 
 #[test]
@@ -321,8 +321,7 @@ struct FlushShelf {
 
 impl crumbkit::Row for FlushShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("books");
-    const CHILD_INDENT: u8 = 0;
+    const CHILDREN: Option<Children> = Some(Children::field("books").indent(0));
 }
 
 /// A removed shelf whose books print under it, folded into one line when
@@ -337,9 +336,10 @@ struct FoldedShelf {
 
 impl crumbkit::Row for FoldedShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("books");
-    const CHILDREN_HELP: Option<&'static str> =
-        Some("one line for each book, or one folded line for more than ten books.");
+    const CHILDREN: Option<Children> = Some(
+        Children::field("books")
+            .help("one line for each book, or one folded line for more than ten books."),
+    );
 }
 
 #[test]

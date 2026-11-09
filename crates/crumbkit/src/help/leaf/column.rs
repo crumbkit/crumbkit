@@ -7,7 +7,7 @@ use super::Leaf;
 #[cfg(doc)]
 use crate::Row;
 
-/// One column of a leaf's row type, as [`Leaf::column_descriptions`] reads
+/// One column of a leaf's row type, as [`LeafDocument::column_descriptions`](super::LeafDocument::column_descriptions) reads
 /// it from the row type's JSON Schema.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Column {

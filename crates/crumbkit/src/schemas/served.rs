@@ -130,9 +130,10 @@ pub fn documents(command: &Command, tool: &Tool) -> Vec<Served> {
         tool: tool_name,
     }];
     for leaf in tool.get_help().get_leaves() {
-        let Some((document, schema)) = leaf.get_document().zip(leaf.envelope()) else {
+        let Some(declared) = leaf.get_document() else {
             continue;
         };
+        let (document, schema) = (declared.document(), declared.envelope);
         if !is_visible(command, leaf.path()) {
             continue;
         }
@@ -151,7 +152,7 @@ pub fn documents(command: &Command, tool: &Tool) -> Vec<Served> {
                     Kind::Unwrapped
                 },
                 commands: vec![line],
-                stream: leaf.is_stream(),
+                stream: declared.is_stream(),
                 schema,
                 tool: tool_name,
             }),

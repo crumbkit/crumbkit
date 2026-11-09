@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Streamed, parse};
-use crate::{Document, Error, Row, Sink, Stream, stream_to};
+use crate::{Children, Document, Error, Row, Sink, Stream, stream_to};
 
 /// A nest and the eggs in it, each of which prints under the nest.
 #[derive(Serialize, JsonSchema)]
@@ -24,7 +24,7 @@ struct Nest {
 impl Row for Nest {
     const COLUMNS: &'static [&'static str] = &["bird"];
     const LONG_COLUMNS: &'static [&'static str] = &["place"];
-    const CHILDREN: Option<&'static str> = Some("eggs");
+    const CHILDREN: Option<Children> = Some(Children::field("eggs"));
 
     fn child_lines(&self) -> Vec<String> {
         self.eggs.iter().map(|egg| format!("egg {egg}")).collect()
@@ -129,7 +129,7 @@ struct Flock {
 impl Row for Flock {
     const COLUMNS: &'static [&'static str] = &["leader"];
     const LINE: Option<&'static str> = Some("a flock led by a <LEADER>");
-    const CHILDREN: Option<&'static str> = Some("others");
+    const CHILDREN: Option<Children> = Some(Children::field("others"));
 
     fn text_line(&self) -> Option<String> {
         Some(format!("a flock led by a {}", self.leader))
@@ -179,8 +179,7 @@ struct Ring<const INDENT: u8> {
 
 impl<const INDENT: u8> Row for Ring<INDENT> {
     const COLUMNS: &'static [&'static str] = &["bird"];
-    const CHILDREN: Option<&'static str> = Some("code");
-    const CHILD_INDENT: u8 = INDENT;
+    const CHILDREN: Option<Children> = Some(Children::field("code").indent(INDENT));
 
     fn child_lines(&self) -> Vec<String> {
         vec![self.code.to_owned()]
@@ -196,8 +195,7 @@ struct LinedRing(Ring<0>);
 impl Row for LinedRing {
     const COLUMNS: &'static [&'static str] = &["bird"];
     const LINE: Option<&'static str> = Some("a ringed <BIRD>");
-    const CHILDREN: Option<&'static str> = Some("code");
-    const CHILD_INDENT: u8 = 0;
+    const CHILDREN: Option<Children> = Some(Children::field("code").indent(0));
 
     fn text_line(&self) -> Option<String> {
         Some(format!("a ringed {}", self.0.bird))
@@ -264,15 +262,14 @@ fn a_stream_of_rows_with_their_own_text_line_and_a_child_indent_of_zero_prints_c
 }
 
 /// A ring whose code prints under it, of a row type that sets
-/// `Row::SPACED`, which a stream does not read (ADR-0151).
+/// `Children::spaced`, which a stream does not read (ADR-0151).
 #[derive(Serialize, JsonSchema)]
 #[serde(transparent)]
 struct SpacedRing(Ring<2>);
 
 impl Row for SpacedRing {
     const COLUMNS: &'static [&'static str] = &["bird"];
-    const CHILDREN: Option<&'static str> = Some("code");
-    const SPACED: bool = true;
+    const CHILDREN: Option<Children> = Some(Children::field("code").spaced());
 
     fn child_lines(&self) -> Vec<String> {
         self.0.child_lines()

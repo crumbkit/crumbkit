@@ -13,7 +13,7 @@ use clap::CommandFactory as _;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Document, Listing, Row, Tool};
+use crate::{Children, Document, Listing, Row, Tool};
 
 /// A check of one package, with the errors and warnings that it found.
 #[derive(Serialize, JsonSchema)]
@@ -37,7 +37,7 @@ struct Finding {
 
 impl Row for Check {
     const COLUMNS: &'static [&'static str] = &["package", "passed"];
-    const CHILDREN: Option<&'static str> = Some("findings");
+    const CHILDREN: Option<Children> = Some(Children::field("findings"));
     const WHOLE: bool = true;
 
     fn is_problem(&self) -> bool {

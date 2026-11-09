@@ -35,6 +35,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: `Leaf::get_document` returns `Option<&LeafDocument>`.
+  Reading that record replaces `Leaf`'s getters for the printed document, such
+  as `is_stream`, `shape`, `problem` and `column_descriptions`
+  ([behaviour/help]).
+- crumbkit: breaking: `Row::CHILDREN` is `Option<Children>`, a const-built
+  record that holds the field, `indent`, `spaced` and `help`, which replace
+  `Row::CHILD_INDENT`, `Row::SPACED` and `Row::CHILDREN_HELP`
+  ([behaviour/output/shapes]).
 - crumbkit: breaking: `parse`, `parse_from` and `parse_to` take the command
   from the parsed type, so a tool writes `crumbkit::parse::<Cli>(&TOOL)`. A
   turbofish names only that type. `try_parse_to` still takes a `Command`. With

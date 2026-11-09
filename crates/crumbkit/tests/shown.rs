@@ -9,8 +9,8 @@ use std::time::Duration as Std;
 use clap::{Parser, Subcommand};
 use crumbkit::schemars::{JsonSchema, Schema, SchemaGenerator};
 use crumbkit::{
-    Call, Code, Document, Duration, Failure, Field, Output, Recovery, Row, Shown, Sink, Tool,
-    ViewFlags,
+    Call, Children, Code, Document, Duration, Failure, Field, Output, Recovery, Row, Shown, Sink,
+    Tool, ViewFlags,
 };
 use serde::{Serialize, Serializer};
 use serde_json::{Value, json};
@@ -81,7 +81,7 @@ struct Loan {
 
 impl Row for Loan {
     const COLUMNS: &'static [&'static str] = &["title", "pages", "kept"];
-    const CHILDREN: Option<&'static str> = Some("reminders");
+    const CHILDREN: Option<Children> = Some(Children::field("reminders"));
 }
 
 const LOANS: Document<Vec<Loan>> = Document::new("loans", "loans", 1, "The loans.");

@@ -4,6 +4,7 @@ use clap::{Args as _, Command};
 use serde_json::{Value, json};
 
 use super::CommandRow;
+use crate::Children;
 use crate::Tool;
 use crate::help::{Effects, Help, Leaf};
 
@@ -252,7 +253,7 @@ struct Shelf {
 
 impl crate::Row for Shelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("books");
+    const CHILDREN: Option<Children> = Some(Children::field("books"));
 }
 
 #[test]
@@ -284,9 +285,10 @@ struct FoldedShelf {
 
 impl crate::Row for FoldedShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<&'static str> = Some("books");
-    const CHILDREN_HELP: Option<&'static str> =
-        Some("one line for each book, or one folded line for more than ten books.");
+    const CHILDREN: Option<Children> = Some(
+        Children::field("books")
+            .help("one line for each book, or one folded line for more than ten books."),
+    );
 }
 
 #[test]

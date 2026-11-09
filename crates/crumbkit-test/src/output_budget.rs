@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use clap::Command;
 use crumbkit::Tool;
+use crumbkit::help::LeafDocument;
 
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
@@ -128,7 +129,7 @@ fn check(
         {
             continue;
         }
-        let document = leaf.get_document();
+        let document = leaf.get_document().map(LeafDocument::document);
         let headed = document.is_some_and(|document| document.is_headed());
         let first_always = document.is_some_and(|document| document.get_always_print_first());
         for example in leaf.get_examples() {

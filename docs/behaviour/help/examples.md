@@ -20,7 +20,7 @@ whole document's. `Leaf` therefore has no type parameter, and one tool record
 holds leaves whose rows have different types. The
 [schema commands](../schemas/commands.md) and crumbkit-test's document
 checks read the document through `Leaf::get_document` and
-`Leaf::document_schema`.
+`LeafDocument::document_schema`.
 
 `Leaf::effects` declares what the command changes, and `Leaf::stream`
 declares a leaf whose document is a stream. Help prints them on the
@@ -54,7 +54,7 @@ Why: ADR-0024, ADR-0062.
 A column's description is the doc comment of the row type's field, which
 schemars puts into the JSON Schema, so the doc comment is the only place a
 column is described. `--help` and crumbkit-test's `check_help` both read
-the columns through `Leaf::column_descriptions`, so the check sees what the
+the columns through `LeafDocument::column_descriptions`, so the check sees what the
 page prints. `parse` builds the schema only when the typed words ask for
 `--help`, so a run that prints no long help never builds it.
 

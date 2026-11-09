@@ -3,16 +3,16 @@
 
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
-use schemars::{JsonSchema, Schema};
 
-use super::view::{self, Kind, Printed, Unoffered, ViewFlag};
+use super::view::{self, Unoffered, ViewFlag};
 use super::{Effects, write_line};
 use crate::pick::Choices;
-use crate::{Call, Document, Row, Rows, Shape, Stream, row};
+use crate::{Call, Document, Row, Rows, Shape, Stream};
 
 mod children;
 mod codes;
 mod column;
+mod document;
 mod example;
 mod lines;
 mod no_result;
@@ -24,6 +24,7 @@ mod text;
 
 pub use children::children_line;
 pub use column::Column;
+pub use document::LeafDocument;
 pub use example::Example;
 pub(crate) use example::examples;
 pub use refusal::RefusalContext;
@@ -77,7 +78,7 @@ pub struct Leaf {
     examples: &'static [Example],
     /// The document that the command prints and the columns of its rows,
     /// or `None` when the leaf has no document.
-    columns: Option<Columns>,
+    document: Option<LeafDocument>,
     /// The command's effects, or `None` when the tool declares none.
     effects: Option<Effects>,
     /// The sources of the values of the command's arguments, which a picker
@@ -109,7 +110,7 @@ impl Leaf {
         Self {
             path,
             examples: &[],
-            columns: None,
+            document: None,
             effects: None,
             choices: &[],
             no_result: false,
@@ -198,30 +199,15 @@ impl Leaf {
     /// from them.
     #[must_use]
     pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
-        self.columns = Some(Columns {
-            document: document.untyped(),
-            compact: <T::Row as Row>::COLUMNS,
-            long: <T::Row as Row>::LONG_COLUMNS,
-            uncut: <T::Row as Row>::UNCUT_COLUMNS,
-            problem: <T::Row as Row>::PROBLEM,
-            line: <T::Row as Row>::LINE,
-            children: <T::Row as Row>::CHILDREN,
-            child_indent: <T::Row as Row>::CHILD_INDENT,
-            children_help: <T::Row as Row>::CHILDREN_HELP,
-            schema: schema::<T::Row>,
-            envelope: crate::schemas::envelope::<T>,
-            kind: Kind::Document(T::SHAPE),
-            whole: <T::Row as Row>::WHOLE,
-        });
+        self.document = Some(LeafDocument::of(document));
         self
     }
 
-    /// Returns the leaf with the document and columns of `other`, which
-    /// [`Leaf::document`] or [`Leaf::stream`] set, or without a document
-    /// when `other` has none. A runtime leaf's document reaches its leaf in
-    /// the joined tool record this way.
-    pub(crate) const fn with_document_of(mut self, other: &Self) -> Self {
-        self.columns = other.columns;
+    /// Returns the leaf with `document`, or without a document when it is
+    /// `None`. A runtime leaf's document reaches its leaf in the joined tool
+    /// record this way.
+    pub(crate) const fn with_document(mut self, document: Option<LeafDocument>) -> Self {
+        self.document = document;
         self
     }
 
@@ -233,35 +219,8 @@ impl Leaf {
     /// `schemas list` writes the form `stream` for its document (ADR-0041).
     #[must_use]
     pub const fn stream<R: Row>(mut self, document: Document<Stream<R>>) -> Self {
-        self.columns = Some(Columns {
-            document: document.untyped(),
-            compact: R::COLUMNS,
-            long: R::LONG_COLUMNS,
-            uncut: R::UNCUT_COLUMNS,
-            problem: R::PROBLEM,
-            line: R::LINE,
-            children: R::CHILDREN,
-            child_indent: R::CHILD_INDENT,
-            children_help: R::CHILDREN_HELP,
-            schema: schema::<R>,
-            envelope: crate::schemas::envelope::<R>,
-            kind: Kind::Stream,
-            whole: R::WHOLE,
-        });
+        self.document = Some(LeafDocument::of_stream(document));
         self
-    }
-
-    /// Reports whether [`Leaf::stream`] set the leaf's document, so the
-    /// command prints a stream of rows, one line for each.
-    #[must_use]
-    pub const fn is_stream(&self) -> bool {
-        matches!(
-            self.columns,
-            Some(Columns {
-                kind: Kind::Stream,
-                ..
-            })
-        )
     }
 
     /// Returns the `Output:` line that the leaf's `-h` and `--help` print
@@ -271,30 +230,12 @@ impl Leaf {
     /// prints no result for a leaf that [`Leaf::prints_no_result`] declared,
     /// and `None` for any other leaf.
     pub(crate) const fn output_line(&self) -> Option<&'static str> {
-        match self.columns {
+        match self.document {
             None if self.no_result => Some(no_result::NO_RESULT_LINE),
-            Some(Columns {
-                kind: Kind::Stream, ..
-            }) => Some(STREAM_LINE),
-            Some(Columns {
-                kind: Kind::Document(Shape::Bytes),
-                ..
-            }) => Some(BYTES_LINE),
-            Some(columns) if columns.document.is_headed() => Some(HEADED_LINE),
+            Some(document) if document.is_stream() => Some(STREAM_LINE),
+            Some(document) if matches!(document.shape(), Some(Shape::Bytes)) => Some(BYTES_LINE),
+            Some(document) if document.document().is_headed() => Some(HEADED_LINE),
             _ => None,
-        }
-    }
-
-    /// Reports whether the row type of the leaf's document sets
-    /// [`Row::WHOLE`], so `--json` prints every field of each row without
-    /// `--full`, or `false` when the leaf has no document (ADR-0065).
-    /// crumbkit-test's `check_document_ids` reads it to require an opt-out
-    /// for such a leaf.
-    #[must_use]
-    pub const fn rows_whole(&self) -> bool {
-        match self.columns {
-            Some(columns) => columns.whole,
-            None => false,
         }
     }
 
@@ -320,242 +261,21 @@ impl Leaf {
     /// Returns why the leaf's command does not offer `flag`, or `None` when
     /// it offers it, as [`Leaf::offers`] describes.
     pub(crate) const fn unoffered(&self, flag: ViewFlag) -> Option<Unoffered> {
-        match self.columns {
-            Some(columns) => view::unoffered(&columns.printed(), flag),
+        match self.document {
+            Some(document) => view::unoffered(&document.printed(), flag),
             None if self.no_result => Some(Unoffered::NoResult),
             None => None,
         }
     }
 
-    /// Reports whether `flag`, passed with `--json` when `json` is true, adds
-    /// nothing to the JSON of the leaf's command, or `false` when the leaf
-    /// has no document (ADR-0149).
-    ///
-    /// `--long` and `--full` add nothing when the JSON already holds the
-    /// whole result: for prose and bytes, for a document or stream without
-    /// crumbkit's envelope, for a headed document and for rows whose type
-    /// sets [`Row::WHOLE`]. `parse`, `finish` and `stream` then accept the
-    /// flag with `--json`, also when [`Leaf::offers`] reports that the leaf
-    /// does not offer it, print what `--json` alone prints and write a note
-    /// that the flag adds nothing. `--fields` never adds nothing.
-    ///
-    /// crumbkit-test's `check_help` reads it, so it is public and hidden
-    /// from the documentation.
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn adds_nothing(&self, flag: ViewFlag, json: bool) -> bool {
-        match self.columns {
-            Some(columns) => view::adds_nothing(&columns.printed(), flag, json),
-            None => false,
-        }
-    }
-
-    /// Returns the document that [`Leaf::document`] set, without its result
-    /// type, or `None` when the leaf has no document. The name has clap's
-    /// `get_` prefix, because `document` is the builder method.
-    #[must_use]
-    pub const fn get_document(&self) -> Option<Document<()>> {
-        match self.columns {
-            Some(columns) => Some(columns.document),
-            None => None,
-        }
-    }
-
-    /// Returns the field that marks a row of the leaf's document as
-    /// reporting a problem, the row type's [`Row::PROBLEM`], or `None` when
-    /// the leaf has no document or its row type names no such field.
-    #[must_use]
-    pub const fn problem(&self) -> Option<&'static str> {
-        match self.columns {
-            Some(columns) => columns.problem,
-            None => None,
-        }
-    }
-
-    /// Returns the columns whose cells a text table at a terminal never
-    /// cuts, the row type's [`Row::UNCUT_COLUMNS`], or no column when the
-    /// leaf has no document. crumbkit-test's `check_help` reads it to fail
-    /// a name that is not one of the row type's columns.
-    #[must_use]
-    pub const fn uncut_columns(&self) -> &'static [&'static str] {
-        match self.columns {
-            Some(columns) => columns.uncut,
-            None => &[],
-        }
-    }
-
-    /// Returns the [`Shape`] of the result that [`Leaf::document`] set, such
-    /// as [`Shape::Batch`], or `None` when the leaf has no document or
-    /// [`Leaf::stream`] set it. crumbkit-test's `check_effects` reads it to
-    /// require that a leaf whose effects are
-    /// [`per_item`](crate::help::Effects::per_item) prints a document that
-    /// reports each item.
-    #[must_use]
-    pub const fn shape(&self) -> Option<Shape> {
-        match self.columns {
-            Some(Columns {
-                kind: Kind::Document(shape),
-                ..
-            }) => Some(shape),
-            Some(Columns {
-                kind: Kind::Stream, ..
-            })
-            | None => None,
-        }
-    }
-
-    /// Returns the JSON Schema of the whole document that the leaf prints,
-    /// as [`schemas::document_schema`](crate::schemas::document_schema)
-    /// builds it, or `None` when the leaf has no document. It builds the
-    /// schema on each call.
-    #[must_use]
-    pub fn document_schema(&self) -> Option<Schema> {
-        self.columns
-            .map(|columns| (columns.envelope)(columns.document))
-    }
-
-    /// Reports whether the row type of the leaf's document has any field, as
-    /// [`Row`] describes the fields of a row type, or `false` when the leaf
-    /// has no document. It builds the row type's JSON Schema on each call.
-    /// crumbkit-test's `check_help` reads it to fail on a row type that
-    /// sets [`Row::WHOLE`], names no columns and has fields that could be
-    /// columns.
-    #[must_use]
-    pub fn row_has_fields(&self) -> bool {
-        self.columns
-            .is_some_and(|columns| !row::properties(&(columns.schema)()).is_empty())
-    }
-
-    /// Returns the JSON Schema of the row type of the leaf's document, or
-    /// `None` when the leaf has no document. It builds the schema on each
-    /// call.
-    pub(crate) fn row_schema(&self) -> Option<Schema> {
-        self.columns.map(|columns| (columns.schema)())
-    }
-
-    /// Returns the function that builds the JSON Schema of the whole
-    /// document that the leaf prints, as
-    /// [`schemas::document_schema`](crate::schemas::document_schema)
-    /// builds it, or `None` when the leaf has no document.
-    pub(crate) fn envelope(&self) -> Option<fn(Document<()>) -> Schema> {
-        self.columns.map(|columns| columns.envelope)
-    }
-
-    /// Reports whether the leaf has a document whose row type has columns,
-    /// which its `--help` lists. A prose document has none. A headed
-    /// document always has some, because its `--help` lists `text` and
-    /// `base64` among the JSON fields also when its row type names no
-    /// column.
-    pub(crate) const fn has_columns(&self) -> bool {
-        match self.columns {
-            Some(columns) => {
-                columns.document.is_headed()
-                    || !columns.compact.is_empty()
-                    || !columns.long.is_empty()
-            }
-            None => false,
-        }
-    }
-
-    /// Returns the columns of the leaf's row type as its `--help` describes
-    /// them: each name of [`Row::COLUMNS`] and then each name of
-    /// [`Row::LONG_COLUMNS`], in declared order, or no column when the leaf
-    /// has no document. A headed document's text has no columns, so its
-    /// names are the JSON fields that `--fields` selects: the same names,
-    /// none of them long, and then `text` and `base64` (ADR-0062).
-    ///
-    /// It builds the row type's JSON Schema, so it costs a schema build on
-    /// each call. A column's description is the first paragraph of the
-    /// `description` of its property in the schema, which schemars takes
-    /// from the field's doc comment. The properties are those that
-    /// [`Row`] describes as the fields of a row type, so a column of an
-    /// enum's variant has a property too. crumbkit's `--help` and
-    /// crumbkit-test's `check_help` both read the columns through this
+    /// Returns the document and row-type facts that [`Leaf::document`] or
+    /// [`Leaf::stream`] set, or `None` when the leaf has no document. The
+    /// name has clap's `get_` prefix, because `document` is the builder
     /// method.
-    //
-    // RUST-10: the description comes only from the property itself. A
-    // column whose name is not a property, and a field without a doc
-    // comment, whose type's doc comment schemars keeps under `$defs`, have
-    // no description. crumbkit-test's `check_help` fails on each such
-    // column, so a tool finds them in a test. A reader that follows a
-    // property's `$ref` into `$defs` replaces this when a tool needs those
-    // descriptions.
     #[must_use]
-    pub fn column_descriptions(&self) -> Vec<Column> {
-        let Some(columns) = self.columns else {
-            return Vec::new();
-        };
-        let schema = (columns.schema)();
-        let properties = row::properties(&schema);
-        let headed = columns.document.is_headed();
-        let bytes: &[&str] = if headed { &["text", "base64"] } else { &[] };
-        let compact = columns.compact.iter().map(|name| (name, false));
-        let long = columns.long.iter().map(|name| (name, !headed));
-        let bytes = bytes.iter().filter(|name| !columns.compact.contains(name));
-        compact
-            .chain(long)
-            .chain(bytes.map(|name| (name, false)))
-            .map(|(&name, long)| Column::read(&properties, name, long))
-            .collect()
+    pub const fn get_document(&self) -> Option<&LeafDocument> {
+        self.document.as_ref()
     }
-}
-
-/// The document of a leaf and the columns of its row type, as
-/// [`Leaf::document`] records them.
-#[derive(Clone, Copy, Debug)]
-struct Columns {
-    /// The document's id and description.
-    document: Document<()>,
-    /// The row type's [`Row::COLUMNS`].
-    compact: &'static [&'static str],
-    /// The row type's [`Row::LONG_COLUMNS`].
-    long: &'static [&'static str],
-    /// The row type's [`Row::UNCUT_COLUMNS`].
-    uncut: &'static [&'static str],
-    /// The row type's [`Row::PROBLEM`].
-    problem: Option<&'static str>,
-    /// The row type's [`Row::LINE`].
-    line: Option<&'static str>,
-    /// The row type's [`Row::CHILDREN`].
-    children: Option<&'static str>,
-    /// The row type's [`Row::CHILD_INDENT`].
-    child_indent: u8,
-    /// The row type's [`Row::CHILDREN_HELP`].
-    children_help: Option<&'static str>,
-    /// Builds the row type's JSON Schema, whose properties hold the
-    /// columns' descriptions.
-    schema: fn() -> Schema,
-    /// Builds the JSON Schema of the whole document from its id and
-    /// description. A stream's schema describes one line.
-    envelope: fn(Document<()>) -> Schema,
-    /// The shape of the document's result, or a stream when
-    /// [`Leaf::stream`] set the document.
-    kind: Kind,
-    /// The row type's [`Row::WHOLE`].
-    whole: bool,
-}
-
-impl Columns {
-    /// Returns what the leaf's command prints, as far as the view flags
-    /// depend on it.
-    const fn printed(&self) -> Printed {
-        Printed {
-            kind: self.kind,
-            columns: self.compact,
-            long: self.long,
-            envelope: self.document.get_envelope().wraps(),
-            headed: self.document.is_headed(),
-            whole: self.whole,
-            listing: self.document.listing_text(),
-        }
-    }
-}
-
-/// Returns the JSON Schema of `R`, as the document's schema describes it.
-fn schema<R: JsonSchema>() -> Schema {
-    crate::schemas::settings()
-        .into_generator()
-        .into_root_schema_for::<R>()
 }
 
 /// Returns the sections of the `--help` of `leaf` that describe its
@@ -567,14 +287,16 @@ fn schema<R: JsonSchema>() -> Schema {
 /// `literal` each name.
 ///
 /// Each line has the layout of the goal list, and holds the column's name
-/// and the description that [`Leaf::column_descriptions`] reads. A column
+/// and the description that [`LeafDocument::column_descriptions`] reads. A column
 /// without a description prints its name alone. This builds the schema, so
 /// `parse` calls it only for `--help`.
 pub(crate) fn columns(leaf: &Leaf, header: Style, literal: Style) -> Vec<String> {
-    let columns = leaf.column_descriptions();
+    let columns = leaf
+        .get_document()
+        .map_or_else(Vec::new, LeafDocument::column_descriptions);
     let mut sections = Vec::new();
-    let compact = match leaf.columns {
-        Some(columns) if columns.document.is_headed() => "JSON fields that --fields selects:",
+    let compact = match leaf.document {
+        Some(document) if document.document().is_headed() => "JSON fields that --fields selects:",
         _ => "Columns:",
     };
     for (heading, long) in [(compact, false), ("Columns that --long adds:", true)] {

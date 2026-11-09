@@ -179,7 +179,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         !document.is_headed() && !T::Row::WHOLE && !matches!(T::SHAPE, Shape::Prose | Shape::Bytes);
     if by_columns {
         let mut columns = T::Row::COLUMNS.to_vec();
-        columns.extend(T::Row::CHILDREN);
+        columns.extend(T::Row::CHILDREN.map(crate::Children::get_field));
         super::columns::require_columns(&mut schema, T::SHAPE != Shape::Row, &columns);
     }
     schema

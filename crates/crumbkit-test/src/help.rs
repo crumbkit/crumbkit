@@ -3,7 +3,7 @@
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
-use crumbkit::help::{Column, Leaf, ViewFlag, quote};
+use crumbkit::help::{Column, Leaf, LeafDocument, ViewFlag, quote};
 use crumbkit::{Shape, Tool};
 
 use crate::allow::{Allow, Allowances, Rule};
@@ -102,10 +102,9 @@ mod tests;
 ///   `Row::COLUMNS` or `Row::LONG_COLUMNS`, and a headed leaf whose row
 ///   type sets `Row::CHILDREN`, because a headed batch's text never prints
 ///   the child lines (ADR-0120);
-/// - a leaf whose row type's `Row::CHILDREN_HELP` is empty, holds a control
+/// - a leaf whose row type's `Children::help` is empty, holds a control
 ///   character or does not end with a full stop, because help prints it as
-///   one sentence on one line, or is set without `Row::CHILDREN`, because
-///   help then never prints it (ADR-0137);
+///   one sentence on one line (ADR-0137);
 /// - a name in a leaf's `Row::UNCUT_COLUMNS` that is in neither
 ///   `Row::COLUMNS` nor `Row::LONG_COLUMNS`, because it then keeps no
 ///   column of the table whole when the table fits a terminal (ADR-0121);
@@ -128,7 +127,7 @@ mod tests;
 /// A hidden subcommand passes whether or not a goal names it, and a hidden
 /// command needs no leaf. A command that no group names keeps clap's list
 /// and is not checked. The column rules read
-/// [`Leaf::column_descriptions`](crumbkit::help::Leaf::column_descriptions),
+/// [`LeafDocument::column_descriptions`](crumbkit::help::LeafDocument::column_descriptions),
 /// the data that the leaf's `--help` lists. A topic with
 /// an empty summary passes.
 ///
@@ -380,27 +379,28 @@ fn check_leaves(
 /// `base64` that is not at the top level of the row type, and for rows
 /// whose row type has no compact column.
 fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
-    let columns = leaf.column_descriptions();
-    if let Some(field) = leaf.problem() {
+    let Some(document) = leaf.get_document() else {
+        return;
+    };
+    let columns = document.column_descriptions();
+    if let Some(field) = document.problem() {
         check_problem(text, field, &columns, problems);
     }
-    let headed = leaf
-        .get_document()
-        .is_some_and(|document| document.is_headed());
+    let headed = document.document().is_headed();
     // Prose and bytes have no rows, a headed batch prints each row's bytes
     // in text and every field in JSON, and rows that print whole without
     // columns print each row's own line in text and every field in JSON,
     // so only other rows need a compact column. The compiler refuses a
     // whole row type without columns and without a `LINE` for every shape
     // but a batch, which this check covers (ADR-0072).
-    let without_rows = matches!(leaf.shape(), Some(Shape::Prose | Shape::Bytes));
-    let rows = leaf.get_document().is_some() && !without_rows && !headed;
-    let whole_without_columns = leaf.rows_whole() && columns.is_empty();
-    if rows && whole_without_columns && leaf.line().is_none() {
+    let without_rows = matches!(document.shape(), Some(Shape::Prose | Shape::Bytes));
+    let rows = !without_rows && !headed;
+    let whole_without_columns = document.rows_whole() && columns.is_empty();
+    if rows && whole_without_columns && document.line().is_none() {
         problems.push(format!(
             "{text}: the row type sets Row::WHOLE and has no COLUMNS and no LINE, so its text has no form for a row; declare the row's own text line in `Row::LINE`"
         ));
-    } else if rows && whole_without_columns && leaf.row_has_fields() {
+    } else if rows && whole_without_columns && document.row_has_fields() {
         problems.push(format!(
             "{text}: the row type has fields and no COLUMNS, so its text prints each row's own line where a table could show its fields; name the fields that identify a row in `Row::COLUMNS`"
         ));
@@ -431,7 +431,7 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
 /// line form, `Row::LINE`, that is not one non-empty line, or declares one
 /// for a headed document, whose text never prints it (ADR-0064).
 fn check_line(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
-    let Some(line) = leaf.line() else {
+    let Some(line) = leaf.get_document().and_then(LeafDocument::line) else {
         return;
     };
     if line.trim().is_empty() || line.contains(['\n', '\r']) {
@@ -441,7 +441,7 @@ fn check_line(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     }
     if leaf
         .get_document()
-        .is_some_and(|document| document.is_headed())
+        .is_some_and(|document| document.document().is_headed())
     {
         problems.push(format!(
             "{text}: the row type declares LINE and the document is headed, so its text prints each row's bytes and never the line; remove LINE or the headed form"
@@ -454,8 +454,11 @@ fn check_line(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
 /// `Row::COLUMNS` nor `Row::LONG_COLUMNS`, because such a name keeps no
 /// column of the table whole (ADR-0121).
 fn check_uncut(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
-    let columns = leaf.column_descriptions();
-    for name in leaf.uncut_columns() {
+    let Some(document) = leaf.get_document() else {
+        return;
+    };
+    let columns = document.column_descriptions();
+    for name in document.uncut_columns() {
         if !columns.iter().any(|column| column.name() == *name) {
             problems.push(format!(
                 "{text}: the row type's UNCUT_COLUMNS names `{name}`, which is in neither COLUMNS nor LONG_COLUMNS, so the name keeps no column of the table whole; name a column from COLUMNS or LONG_COLUMNS, or remove the name"
@@ -484,7 +487,7 @@ fn check_problem(text: &str, field: &str, columns: &[Column], problems: &mut Vec
 
 /// Returns each view flag that the caller typed in `matches`, the matches
 /// of one example of `leaf`, and that the leaf does not offer or that adds
-/// nothing to the leaf's JSON, as `Leaf::adds_nothing` decides (ADR-0149),
+/// nothing to the leaf's JSON, as `LeafDocument::adds_nothing` decides (ADR-0149),
 /// with whether it adds nothing. crumbkit refuses the first kind and
 /// prints a note for the second, so an example should type neither.
 ///
@@ -513,7 +516,12 @@ fn flagged_view_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<
     [ViewFlag::Fields, ViewFlag::Long, ViewFlag::Full]
         .into_iter()
         .filter(|flag| typed(flag.name().trim_start_matches('-')))
-        .map(|flag| (flag, leaf.adds_nothing(flag, json)))
+        .map(|flag| {
+            let adds_nothing = leaf
+                .get_document()
+                .is_some_and(|document| document.adds_nothing(flag, json));
+            (flag, adds_nothing)
+        })
         .filter(|(flag, adds_nothing)| *adds_nothing || !leaf.offers(*flag))
         .collect()
 }

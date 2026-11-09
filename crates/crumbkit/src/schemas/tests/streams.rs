@@ -56,10 +56,12 @@ fn a_leaf_reports_whether_it_declares_a_stream() {
         panic!("the tool record has two leaves");
     };
 
-    assert!(stream.is_stream());
-    assert!(!document.is_stream());
+    assert!(stream.get_document().unwrap().is_stream());
+    assert!(!document.get_document().unwrap().is_stream());
     assert_eq!(
-        stream.get_document().map(|document| document.to_string()),
+        stream
+            .get_document()
+            .map(|document| document.document().to_string()),
         Some("shelf/books-watch/v1".to_owned())
     );
 }

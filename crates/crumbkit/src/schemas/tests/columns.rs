@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use crate::schemas::{document_schema, stream_schema};
-use crate::{Batch, Bytes, Document, Envelope, Error, Headed, Listing, Row, Stream};
+use crate::{Batch, Bytes, Children, Document, Envelope, Error, Headed, Listing, Row, Stream};
 
 /// A row with one field that is in neither column list.
 #[derive(Serialize, JsonSchema)]
@@ -485,7 +485,7 @@ struct Service {
 
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("components");
+    const CHILDREN: Option<Children> = Some(Children::field("components"));
 }
 
 #[test]

@@ -249,13 +249,16 @@ fn leaf_sections(
     Sections {
         short: short.into_iter().collect(),
         long,
-        columns: leaf.has_columns().then(|| {
-            if leaf.get_document().is_some_and(|doc| doc.is_headed()) {
-                "JSON field"
-            } else {
-                "column"
-            }
-        }),
+        columns: leaf
+            .get_document()
+            .filter(|document| document.has_columns())
+            .map(|document| {
+                if document.document().is_headed() {
+                    "JSON field"
+                } else {
+                    "column"
+                }
+            }),
         effects: leaf.get_effects().map(Effects::line),
         writes: leaf
             .get_effects()

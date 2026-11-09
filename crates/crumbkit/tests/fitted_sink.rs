@@ -6,7 +6,7 @@ use std::ops::ControlFlow;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use crumbkit::{Document, Error, Listing, Output, Row, Sink, Stream, Tool, ViewFlags};
+use crumbkit::{Children, Document, Error, Listing, Output, Row, Sink, Stream, Tool, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -238,8 +238,7 @@ struct Catalogued {
 
 impl Row for Catalogued {
     const COLUMNS: &'static [&'static str] = &["title", "shelf"];
-    const CHILDREN: Option<&'static str> = Some("reference");
-    const CHILD_INDENT: u8 = 0;
+    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
 
     fn child_lines(&self) -> Vec<String> {
         vec![self.reference.clone()]

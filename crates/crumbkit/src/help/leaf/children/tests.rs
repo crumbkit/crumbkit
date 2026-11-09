@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::{Effects, Example, Help, Leaf, STREAM_LINE, children_line};
-use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Stream, Tool};
+use crate::{Batch, Bytes, Children, Document, Error, Headed, Row, Sink, Stream, Tool};
 
 /// A tool with a global `--json` and one leaf, `tool services list`.
 fn tree() -> Command {
@@ -49,7 +49,7 @@ struct Service {
 
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("components");
+    const CHILDREN: Option<Children> = Some(Children::field("components"));
 }
 
 /// A workspace whose applications print under it, folded into one line
@@ -64,10 +64,9 @@ struct Workspace {
 
 impl Row for Workspace {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("applications");
-    const CHILDREN_HELP: Option<&'static str> = Some(
+    const CHILDREN: Option<Children> = Some(Children::field("applications").help(
         "one line for each application, or one folded line when every application is stopped.",
-    );
+    ));
 }
 
 /// A service whose components print at column 1 under it.
@@ -81,8 +80,7 @@ struct Flush {
 
 impl Row for Flush {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("components");
-    const CHILD_INDENT: u8 = 0;
+    const CHILDREN: Option<Children> = Some(Children::field("components").indent(0));
 }
 
 /// A service that prints its own text line, with its components under it.
@@ -97,7 +95,7 @@ struct Lined {
 impl Row for Lined {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LINE: Option<&'static str> = Some("<NAME>");
-    const CHILDREN: Option<&'static str> = Some("components");
+    const CHILDREN: Option<Children> = Some(Children::field("components"));
 }
 
 /// A service's log file, which a headed batch prints under a header.
@@ -113,7 +111,7 @@ struct Log {
 
 impl Row for Log {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<&'static str> = Some("components");
+    const CHILDREN: Option<Children> = Some(Children::field("components"));
 }
 
 impl Headed for Log {
@@ -162,13 +160,18 @@ const CHILDREN: &str = "Children: one indented line under each row for each of i
 
 #[test]
 fn a_leaf_holds_the_children_field_of_its_row_type() {
-    assert_eq!(SERVICES_LEAF[0].children(), Some("components"));
-    assert_eq!(Leaf::new(&["services", "list"]).children(), None);
+    let children = SERVICES_LEAF[0].get_document().unwrap().children();
+
+    assert_eq!(children.map(Children::get_field), Some("components"));
 }
 
 #[test]
 fn the_children_field_reads_as_a_column_with_its_property_and_description() {
-    let column = SERVICES_LEAF[0].children_column().unwrap();
+    let column = SERVICES_LEAF[0]
+        .get_document()
+        .unwrap()
+        .children_column()
+        .unwrap();
 
     assert_eq!(column.name(), "components");
     assert!(column.is_property(), "{column:?}");
@@ -221,22 +224,22 @@ fn a_row_type_with_an_indent_of_0_and_no_text_prints_a_sentence_that_does_not_sa
 
 #[test]
 fn a_leaf_holds_the_help_text_of_its_row_type_and_the_text_that_help_prints() {
+    let workspaces = WORKSPACES_LEAF[0].get_document().unwrap();
+    let services = SERVICES_LEAF[0].get_document().unwrap();
+    let help = workspaces.children().and_then(Children::get_help);
+
     assert_eq!(
-        WORKSPACES_LEAF[0].children_help(),
+        help,
         Some(
             "one line for each application, or one folded line when every application is stopped."
         )
     );
+    assert_eq!(workspaces.children().map(Children::text).as_deref(), help);
+    assert_eq!(services.children().and_then(Children::get_help), None);
     assert_eq!(
-        WORKSPACES_LEAF[0].children_text().as_deref(),
-        WORKSPACES_LEAF[0].children_help()
-    );
-    assert_eq!(SERVICES_LEAF[0].children_help(), None);
-    assert_eq!(
-        SERVICES_LEAF[0].children_text().as_deref(),
+        services.children().map(Children::text).as_deref(),
         Some("one indented line under each row for each of its components.")
     );
-    assert_eq!(Leaf::new(&["services", "list"]).children_text(), None);
 }
 
 #[test]

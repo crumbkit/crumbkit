@@ -24,11 +24,10 @@ fn a_leaf_without_a_document_that_does_not_declare_no_result_still_offers_every_
 }
 
 #[test]
-fn a_leaf_that_prints_no_result_reports_it_and_has_no_document_or_schema() {
+fn a_leaf_that_prints_no_result_reports_it_and_has_no_document() {
     assert!(SERVE.get_prints_no_result());
     assert!(!Leaf::new(&["serve"]).get_prints_no_result());
     assert!(SERVE.get_document().is_none());
-    assert!(SERVE.document_schema().is_none());
 }
 
 #[test]
