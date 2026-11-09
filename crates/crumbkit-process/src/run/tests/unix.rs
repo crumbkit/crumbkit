@@ -80,7 +80,10 @@ fn a_program_that_cannot_start_is_a_start_error() {
 
 #[test]
 fn stdin_bytes_reach_the_child_and_end_with_the_end_of_its_input() {
-    let finished = run_sh("cat", &kept().stdin(Input::Bytes(b"given\n".to_vec())));
+    let finished = run_sh(
+        "cat",
+        &kept().stdin(Input::Bytes(b"given\n".to_vec().into())),
+    );
 
     assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(0)));
     assert_eq!(finished.stdout().bytes(), b"given\n");
@@ -117,8 +120,15 @@ fn a_kept_stream_is_a_pipe_of_its_own_and_not_the_tools() {
 }
 
 #[test]
+fn the_debug_form_of_input_bytes_shows_their_length_and_not_the_bytes() {
+    let held = Input::Bytes(b"secret".to_vec().into());
+
+    assert_eq!(format!("{held:?}"), "Bytes(6 bytes)");
+}
+
+#[test]
 fn a_child_that_never_reads_its_large_input_still_ends_the_run() {
-    let input = Input::Bytes(vec![b'x'; 4 << 20]);
+    let input = Input::Bytes(vec![b'x'; 4 << 20].into());
     let started = Instant::now();
 
     let finished = run_sh("exit 0", &kept().stdin(input));
