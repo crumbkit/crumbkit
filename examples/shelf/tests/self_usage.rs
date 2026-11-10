@@ -1,4 +1,5 @@
-//! End-to-end tests of `shelf self usage` and `shelf self figures list`. Each test runs the built binary
+//! End-to-end tests of `shelf self usage`, `shelf self figures list` and
+//! `shelf self runs list`. Each test runs the built binary
 //! with XDG directories in a temporary directory of its own. Most tests run
 //! shelf first, so those runs write the log that `self usage` reads
 //! (ADR-0029).
@@ -108,6 +109,56 @@ fn self_figures_list_prints_the_figures_of_each_command_in_the_log_that_log_name
     .stderr_eq("");
 }
 
+#[test]
+fn self_runs_list_prints_each_run_of_a_fixed_log_grouped_by_session() {
+    let dir = tempfile::tempdir().unwrap();
+
+    shelf(
+        dir.path(),
+        &[
+            "self", "runs", "list", "--log", FIXTURE, "--since", "100y", "--limit", "5",
+        ],
+    )
+    .success()
+    .stdout_eq(file!["golden/self-runs-list.txt"].raw())
+    .stderr_eq(file!["golden/self-runs-list.stderr"].raw());
+}
+
+#[test]
+fn self_runs_list_prints_every_field_of_each_run_of_a_fixed_log_as_json() {
+    let dir = tempfile::tempdir().unwrap();
+
+    shelf(
+        dir.path(),
+        &[
+            "self", "runs", "list", "--json", "--full", "--log", FIXTURE, "--since", "100y",
+            "--limit", "3",
+        ],
+    )
+    .success()
+    .stdout_eq(file!["golden/self-runs-list-json.json"].raw());
+}
+
+#[test]
+fn self_runs_list_prints_no_session_or_command_line_hash() {
+    let dir = tempfile::tempdir().unwrap();
+    wasteful_runs(dir.path());
+    let output = shelf(dir.path(), &["self", "runs", "list", "--json", "--all"])
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let output = String::from_utf8_lossy(&output);
+
+    for line in fs::read_to_string(log(dir.path())).unwrap().lines() {
+        let line: Value = serde_json::from_str(line).unwrap();
+        for field in ["session", "args"] {
+            let hash = line[field].as_str().unwrap();
+            assert!(!output.contains(hash), "{field} {hash}");
+        }
+    }
+}
+
 /// Returns the hashes and trace ids in the usage log under `home`.
 fn hashes(home: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let mut hashes = Vec::new();
@@ -195,7 +246,7 @@ fn records_edited_to_hold_other_text_are_left_out_and_counted() {
 
     assert!(text.starts_with("1 run in 1 session since "), "{text}");
     assert!(
-        text.contains(" 4 records were skipped because they name a command, flag, code or caller that the tool does not write.\n"),
+        text.contains(" 4 records were skipped because they name a command, flag, code, caller or trace id that the tool does not write.\n"),
         "{text}"
     );
     assert!(!text.contains("PLANTED"), "{text}");

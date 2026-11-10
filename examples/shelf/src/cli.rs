@@ -11,7 +11,9 @@ use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::tool::RefusalContext;
 use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
-use crumbkit_usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
+use crumbkit_usage::{
+    SELF_FIGURES_LIST, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns, SelfUsage,
+};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -158,6 +160,16 @@ pub const TOOL: Tool = Tool::new()
                     ])
                     .effects(Effects::read_only())
                     .document(SELF_FIGURES_LIST),
+                Leaf::new(&["self", "runs", "list"])
+                    .examples(&[
+                        Example::new(&[], "Print each run of the last 7 days, grouped by session"),
+                        Example::new(
+                            &["--since", "1d", "--all"],
+                            "Print every run of the last day",
+                        ),
+                    ])
+                    .effects(Effects::read_only())
+                    .document(SELF_RUNS_LIST),
             ])
             .topics(&[Topic::new(
                 "catalogue",
@@ -250,6 +262,12 @@ pub(crate) enum SelfCommand {
         #[command(subcommand)]
         command: FiguresCommand,
     },
+    /// Work with each run in shelf's usage log.
+    Runs {
+        /// What to do with the runs.
+        #[command(subcommand)]
+        command: RunsCommand,
+    },
 }
 
 /// The commands for the figures in shelf's usage log.
@@ -257,6 +275,13 @@ pub(crate) enum SelfCommand {
 pub(crate) enum FiguresCommand {
     /// List the figures of each command in shelf's usage log.
     List(SelfFigures),
+}
+
+/// The commands for the runs in shelf's usage log.
+#[derive(Debug, Subcommand)]
+pub(crate) enum RunsCommand {
+    /// List each run in shelf's usage log, grouped by session.
+    List(SelfRuns),
 }
 
 /// The commands for a person's aliases.

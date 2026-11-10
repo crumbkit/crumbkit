@@ -1,0 +1,7 @@
+11 runs in 1 session since 1 Jan: unknown 11.
+SESSION  STEP  COMMAND     EXIT  MS  OUT_BYTES
+1        1     shelf       0     5   -
+1        2     books       0     5   -
+1        3     books list  0     5   -
+1        4     books show  0     5   86
+1        5     books show  0     5   74

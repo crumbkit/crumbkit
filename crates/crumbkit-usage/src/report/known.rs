@@ -32,7 +32,9 @@ const LONGEST_CODE: usize = 128;
 ///   `-` and `:`, which covers crumbkit's spelling of a
 ///   [`Code`](crumbkit::Code), and keeps out whitespace and any other
 ///   character;
-/// - the caller is an agent id from is-ai-agent, `person` or `unknown`.
+/// - the caller is an agent id from is-ai-agent, `person` or `unknown`;
+/// - the trace id is 32 lowercase hex digits, and the run's and the
+///   parent's span ids are 16, as the writer formats them (ADR-0030).
 pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
     let Some(path) = path(tool, entry.command.as_deref()) else {
         return false;
@@ -46,6 +48,20 @@ pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
         && entry.code.as_deref().is_none_or(is_code)
         && entry.tolerated.iter().all(|code| is_code(code))
         && is_caller(&entry.caller)
+        && is_hex(&entry.trace, 32)
+        && is_hex(&entry.run, 16)
+        && entry
+            .parent
+            .as_deref()
+            .is_none_or(|parent| is_hex(parent, 16))
+}
+
+/// Returns whether `text` is `digits` lowercase hex digits.
+fn is_hex(text: &str, digits: usize) -> bool {
+    text.len() == digits
+        && text
+            .bytes()
+            .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
 }
 
 /// Returns `tool` and the subcommands that `command` names below it by

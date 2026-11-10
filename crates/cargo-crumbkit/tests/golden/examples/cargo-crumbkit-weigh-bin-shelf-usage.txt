@@ -8,9 +8,11 @@ shelf books remove       716         114     1900        0     0
 shelf commands           367         -       843         0     0
 shelf commands list      702         2823    4368        0     0
 shelf schemas            424         -       900         0     0
-shelf schemas list       502         1376    2778        0     0
+shelf schemas list       502         1534    2936        0     0
 shelf schemas show       484         3426    4810        0     0
-shelf self               417         -       893         0     0
-shelf self usage         594         -       1487        0     0
-shelf self figures       390         -       1283        0     0
-shelf self figures list  741         -       2024        0     0
+shelf self               468         -       944         0     0
+shelf self usage         594         -       1538        0     0
+shelf self figures       390         -       1334        0     0
+shelf self figures list  741         -       2075        0     0
+shelf self runs          363         -       1307        0     0
+shelf self runs list     726         -       2033        0     0

@@ -38,7 +38,7 @@ use clap::{Args, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::report::{Figures, Finding, Kind, Report, Tally, read};
+use super::report::{Entry, Figures, Finding, Kind, Report, Tally, read};
 use crumbkit::{Call, Document, Listing, Run, Tool};
 
 #[cfg(test)]
@@ -110,12 +110,21 @@ pub(super) struct CommandFigures {
     refused: u64,
     /// The runs that failed.
     failed: u64,
+    /// The median of the runs' wall time in milliseconds, by the
+    /// nearest-rank method, or null when every run printed help.
+    p50_ms: Option<u64>,
     /// The 95th percentile of the runs' wall time in milliseconds, or null
     /// when every run printed help.
     p95_ms: Option<u64>,
+    /// The median of the bytes that the runs wrote to standard output, by
+    /// the nearest-rank method, or null when no run printed a result.
+    p50_out_bytes: Option<u64>,
     /// The 95th percentile of the bytes that the runs wrote to standard
     /// output, or null when no run printed a result.
     p95_out_bytes: Option<u64>,
+    /// The runs whose output a listing or stream cut short, because it
+    /// showed fewer rows than its total or the output budget stopped it.
+    cut_short: u64,
     /// The runs that typed `--full`.
     typed_full: u64,
     /// The runs that typed `--all`.
@@ -156,7 +165,7 @@ pub struct UsageSummary {
     /// The day in UTC on which the report starts, such as 2026-09-30.
     since: String,
     /// The records that the report left out, because they named a command,
-    /// flag, code or caller that the tool does not write.
+    /// flag, code, caller or trace id that the tool does not write.
     skipped: u64,
     /// The codes of the failures that runs reported and carried on past,
     /// with the runs that tolerated each, the most first, at most 10.
@@ -190,7 +199,7 @@ struct CallerRuns {
 /// It reads the file that `--log` names, or else `usage.jsonl` in the
 /// tool's directory under the directory where [`start`](super::start)
 /// writes it, once, a line at a time. A record that names a command path,
-/// flag, failure code or caller that the tool's usage log could not have
+/// flag, failure code, caller or trace id that the tool's usage log could not have
 /// written is left out and counted in the summary, so a hand-edited line
 /// cannot put its text in the report. A code counts when it is 1 to 128
 /// ASCII letters, digits, `_`, `-` and `:`, which covers crumbkit's spelling
@@ -250,7 +259,7 @@ fn report_from(
     since: Duration,
     now: SystemTime,
 ) -> Listing<FindingRow, UsageSummary> {
-    let (report, summary) = summarize(tool_name, tool, log, since, now);
+    let (report, summary) = summarize(tool_name, tool, log, since, now, |_| {});
     let rows: Vec<FindingRow> = report
         .findings
         .iter()
@@ -269,13 +278,16 @@ fn report_from(
 /// Returns the report of the runs in `log` that ended in the `since`
 /// duration before `now`, checked against `tool`, and its summary. A run
 /// that exited with the code that `tool` gives a refused command line
-/// counts as refused.
+/// counts as refused. Each record that the report adds is then passed to
+/// `each`, in the order of the log, so a caller can keep the runs from the
+/// same pass.
 pub(super) fn summarize(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
     since: Duration,
     now: SystemTime,
+    each: impl FnMut(Entry),
 ) -> (Report, UsageSummary) {
     // A start before 1970 reads from 1970, because no record is older and
     // humantime panics on a time before the epoch.
@@ -285,7 +297,7 @@ pub(super) fn summarize(
     });
     let mut tally = Tally::new(tool.failure_exit(&crumbkit::codes::CLI_USAGE));
     if let Some(log) = log {
-        read(log, start_ms, tool_name, &mut tally);
+        read(log, start_ms, tool_name, &mut tally, each);
     }
     let mut report = tally.report();
     let summary = UsageSummary {
@@ -405,8 +417,11 @@ impl CommandFigures {
             help_before: figures.help_before,
             refused: figures.refused,
             failed: figures.failed,
+            p50_ms: figures.p50_ms,
             p95_ms: figures.p95_ms,
+            p50_out_bytes: figures.p50_out_bytes,
             p95_out_bytes: figures.p95_out_bytes,
+            cut_short: figures.cut_short,
             typed_full: figures.full,
             typed_all: figures.all,
             typed_long: figures.long,
@@ -422,8 +437,11 @@ impl CommandFigures {
             help_before: 0,
             refused: 0,
             failed: 0,
+            p50_ms: None,
             p95_ms: None,
+            p50_out_bytes: None,
             p95_out_bytes: None,
+            cut_short: 0,
             typed_full: 0,
             typed_all: 0,
             typed_long: 0,
@@ -465,7 +483,7 @@ impl fmt::Display for UsageSummary {
         if self.skipped > 0 {
             write!(
                 f,
-                " {} {} skipped because they name a command, flag, code or caller that the tool does not write.",
+                " {} {} skipped because they name a command, flag, code, caller or trace id that the tool does not write.",
                 grouped(self.skipped),
                 plural(self.skipped, "record was", "records were")
             )?;

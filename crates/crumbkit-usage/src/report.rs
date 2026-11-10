@@ -19,7 +19,7 @@ use clap::Command;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use self::entry::Entry;
+pub(super) use self::entry::Entry;
 pub(super) use self::tally::Tally;
 use super::record::MAX_LINE;
 
@@ -33,16 +33,23 @@ const LONGEST: usize = MAX_LINE + 1;
 
 /// Adds to `tally` every record of `log` whose run ended at or after
 /// `since`, in milliseconds since the Unix epoch, and that names only what
-/// the writer could have produced for `tool`, as [`known::known`] checks.
-/// `tool` is the tool's command after `Command::build`. A record that
-/// names anything else is counted as skipped and adds nothing more.
+/// the writer could have produced for `tool`, as [`known::known`] checks,
+/// and then passes the record to `each`. `tool` is the tool's command after
+/// `Command::build`. A record that names anything else is counted as
+/// skipped, adds nothing more and never reaches `each`.
 ///
 /// It reads one line at a time and keeps at most [`LONGEST`] bytes of it.
 /// A line that is not a whole record, such as the last line of a run that
 /// ended while it wrote, is skipped. Reading stops at the first I/O error,
 /// and the tally keeps the records read before it, because a usage-log
 /// failure stays silent (ADR-0029).
-pub(super) fn read(mut log: impl BufRead, since: u64, tool: &Command, tally: &mut Tally) {
+pub(super) fn read(
+    mut log: impl BufRead,
+    since: u64,
+    tool: &Command,
+    tally: &mut Tally,
+    mut each: impl FnMut(Entry),
+) {
     let mut line = Vec::with_capacity(LONGEST);
     loop {
         line.clear();
@@ -70,6 +77,7 @@ pub(super) fn read(mut log: impl BufRead, since: u64, tool: &Command, tally: &mu
         }
         if known::known(tool, &entry) {
             tally.add(&entry);
+            each(entry);
         } else {
             tally.skip();
         }
@@ -83,7 +91,7 @@ pub(super) struct Report {
     pub(super) runs: u64,
     /// The number of sessions that the runs came from.
     pub(super) sessions: u64,
-    /// The number of records that named a command, flag, code or caller
+    /// The number of records that named a command, flag, code, caller or trace id
     /// that the writer could not have produced, which the report leaves
     /// out.
     pub(super) skipped: u64,
@@ -193,12 +201,20 @@ pub(super) struct Figures {
     /// The runs that exited with each code from 3, and the code, in code
     /// order. The tool declares these codes (ADR-0002).
     pub(super) exits: Vec<(u8, u64)>,
+    /// The median of the runs' wall time in milliseconds, or `None` when
+    /// every run printed help.
+    pub(super) p50_ms: Option<u64>,
     /// The 95th percentile of the runs' wall time in milliseconds, or `None`
     /// when every run printed help.
     pub(super) p95_ms: Option<u64>,
+    /// The median of the bytes that the runs wrote to standard output, or
+    /// `None` when no run reached `finish`.
+    pub(super) p50_out_bytes: Option<u64>,
     /// The 95th percentile of the bytes that the runs wrote to standard
     /// output, or `None` when no run reached `finish`.
     pub(super) p95_out_bytes: Option<u64>,
+    /// The runs whose line says a listing or stream cut their output short.
+    pub(super) cut_short: u64,
     /// The runs that typed `--full`.
     pub(super) full: u64,
     /// The runs that typed `--all`.

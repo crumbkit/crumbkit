@@ -22,6 +22,16 @@
       "budget": null
     },
     {
+      "rule": "examples/run",
+      "applies_to": "shelf self runs list",
+      "reason": "The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    },
+    {
       "rule": "names/personal-aliases",
       "applies_to": "shelf",
       "reason": "A person who runs shelf by hand sees the aliases they wrote on the root's help, and the help checks print it without them.",

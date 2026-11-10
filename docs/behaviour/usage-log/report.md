@@ -2,10 +2,12 @@
 
 `self usage` reads a tool's [usage log](README.md) and reports the patterns
 where callers waste effort. `self figures list` prints the figures of every
-command in the log. Both are part of the crumbkit-usage crate. The rustdoc of
-[`self_usage`](../../../crates/crumbkit-usage/src/self_usage.rs) and
-[`self_figures`](../../../crates/crumbkit-usage/src/self_figures.rs) shows
-the wiring and an example of each output, and shelf mounts both commands.
+command in the log, and `self runs list` prints each run, grouped by
+session. All three are part of the crumbkit-usage crate. The rustdoc of
+[`self_usage`](../../../crates/crumbkit-usage/src/self_usage.rs),
+[`self_figures`](../../../crates/crumbkit-usage/src/self_figures.rs) and
+[`self_runs`](../../../crates/crumbkit-usage/src/self_runs.rs) shows the
+wiring and an example of each output, and shelf mounts all three commands.
 
 ## Mounting the commands
 
@@ -20,7 +22,10 @@ handler passes the result of `usage::figures` to `finish` with the document
 `SELF_FIGURES_LIST`. `cargo crumbkit weigh --usage` runs it, as the
 [weight](../help/weight.md) page describes.
 
-Why: ADR-0034, ADR-0033.
+A tool mounts `self runs list` the same way, as a `runs` resource, with
+`crumbkit_usage::runs` and `SELF_RUNS_LIST`.
+
+Why: ADR-0034, ADR-0033, ADR-0190.
 
 ## What the report reads
 
@@ -89,11 +94,13 @@ counts it, so a hand-edited line cannot put its text in the report.
 - A code and each tolerated code must be 1 to 128 ASCII letters, digits, `_`,
   `-` and `:`. A code with whitespace or any other character fails.
 - A caller must be `person`, `unknown` or an id that is-ai-agent gives.
+- The trace id must be 32 lowercase hex digits, and the run's and the
+  parent's span ids 16, as the writer formats them.
 
 A record that fails a check is left out and counted in the summary's
 `skipped`.
 
-Why: ADR-0034.
+Why: ADR-0034, ADR-0190.
 
 ## Output
 
@@ -108,7 +115,7 @@ JSON is the `<tool>/self-usage/v1` document, checked in as
 `crates/crumbkit-usage/schemas/self-usage-v1.json`. Its `summary` holds the runs,
 sessions, callers, since day, skipped count and the 10 codes that the most
 runs tolerated. With `--json --full`, each row also holds the figures of its
-command, such as its runs, failures and 95th percentiles, and the `Next:`
+command, such as its runs, failures, medians and 95th percentiles, and the `Next:`
 line points there. A command without a finding has no row, so `--full`
 gives no figures for it.
 
@@ -120,8 +127,11 @@ Two figures need a definition.
 - `exits` counts the runs that exited with each code from 3, with the
   meaning that the tool record declares for that command or null. `failed` still
   counts exit 1 only.
+- `p50_ms` and `p50_out_bytes` are medians, and `p95_ms` and
+  `p95_out_bytes` 95th percentiles, by the nearest-rank method.
+- `cut_short` counts the runs whose line says `truncated`.
 
-Why: ADR-0034, ADR-0016, ADR-0037.
+Why: ADR-0034, ADR-0016, ADR-0037, ADR-0190.
 
 ## self figures list
 
@@ -132,7 +142,23 @@ record checks and prints the same summary. Its document is
 `<tool>/self-figures-list/v1`, checked in as
 `crates/crumbkit-usage/schemas/self-figures-list-v1.json`.
 
-Why: ADR-0034.
+Why: ADR-0034, ADR-0190.
+
+## self runs list
+
+`self runs list` prints one row for each run in the `--since` window,
+grouped by session in the order of each session's first run, and in log
+order within a session. Its flags, checks and summary are those of
+`self figures list`. Its document is
+`<tool>/self-runs-list/v1`, checked in as
+`crates/crumbkit-usage/schemas/self-runs-list-v1.json`.
+
+A row names its session by an ordinal from 1, never by the keyed hash. It
+gives the run's end to the second in UTC and the W3C trace ids. The
+listing holds every run in the window in memory, about 29,000 for a 10 MB
+log.
+
+Why: ADR-0190.
 
 ## Tests
 
@@ -140,7 +166,8 @@ shelf's tests write a log of wasteful runs through the binary and compare
 the text and `--json --full` output with golden files. One test checks that
 the report holds no value that the runs typed and no hash. Another plants
 four edited records and checks that the summary counts them as skipped.
-shelf opts out of `check_examples` for `self usage` and `self figures list`,
-because their output names the current day.
+shelf opts out of `check_examples` for `self usage`, `self figures list`
+and `self runs list`, because their output names the current day. A test
+checks that `self runs list` prints no session or command-line hash.
 
 Why: ADR-0034.
