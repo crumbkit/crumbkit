@@ -71,17 +71,90 @@ pub(super) fn stale_stdin(tool_name: &str, tool: &Tool, dir: &Path, problems: &m
     }
 }
 
+/// Returns the spellings of `path` that a tool's output may hold: the text
+/// of `path` itself and, when that text starts with the `\\?\` prefix that
+/// Windows gives a canonical path, the text without it. A tool prints a path
+/// through `crumbkit::files::display`, which drops the prefix, so the
+/// redaction needs both. The strip is that function's, so the two agree on a
+/// verbatim UNC path, which keeps its prefix.
+pub(super) fn spellings(path: &Path) -> Vec<String> {
+    let full = path.display().to_string();
+    let shown = crumbkit::files::display(path);
+    if shown == full {
+        vec![full]
+    } else {
+        vec![full, shown]
+    }
+}
+
+/// The redactions of one example run, with the placeholder of each
+/// redacted directory.
+pub(super) struct RunRedactions {
+    values: Redactions,
+    placeholders: Vec<&'static str>,
+}
+
+impl RunRedactions {
+    /// Returns `text` with each redacted path replaced by its placeholder,
+    /// and the rest of each path under a placeholder written with `/` as
+    /// [`slash_paths_under`] does, so a golden written on Unix matches the
+    /// output of a run on Windows.
+    pub(super) fn redact(&self, text: &str) -> String {
+        slash_paths_under(&self.values.redact(text), &self.placeholders)
+    }
+}
+
 /// Returns the redactions of a run: the path of each of the run's XDG
 /// directories in `xdg` under its placeholder, such as `[XDG_CONFIG_HOME]`,
-/// and each path of the fresh directory `work` under `[ROOT]`.
-pub(super) fn redactions(xdg: &Xdg, work: &WorkDir) -> Redactions {
-    let mut run = Redactions::new();
+/// and each path of the fresh directory `work` under `[ROOT]`, each in every
+/// spelling that [`spellings`] returns.
+pub(super) fn redactions(xdg: &Xdg, work: &WorkDir) -> RunRedactions {
+    let mut values = Redactions::new();
+    let mut placeholders = Vec::new();
     // The placeholders are fixed and valid, so `insert` cannot fail.
     for (placeholder, path) in xdg.placeholders() {
-        let _ = run.insert(placeholder, path.display().to_string());
+        placeholders.push(placeholder);
+        for spelling in spellings(path) {
+            let _ = values.insert(placeholder, spelling);
+        }
     }
+    placeholders.push("[ROOT]");
     for path in work.fresh_paths() {
-        let _ = run.insert("[ROOT]", path.display().to_string());
+        for spelling in spellings(&path) {
+            let _ = values.insert("[ROOT]", spelling);
+        }
     }
-    run
+    RunRedactions {
+        values,
+        placeholders,
+    }
+}
+
+/// Returns `text` with each `\` written as `/` in the rest of every path
+/// that follows one of `placeholders` directly with a `\`, such as
+/// `[XDG_CONFIG_HOME]\fish\shelf.fish`. The path ends at whitespace or at a
+/// character that a Windows path cannot hold, such as a quote. Every other
+/// `\` in `text` stays as it is.
+pub(super) fn slash_paths_under(text: &str, placeholders: &[&str]) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some((start, placeholder)) = placeholders
+        .iter()
+        .filter_map(|placeholder| rest.find(placeholder).map(|start| (start, *placeholder)))
+        .min()
+    {
+        let after = start + placeholder.len();
+        out.push_str(&rest[..after]);
+        rest = &rest[after..];
+        if !rest.starts_with('\\') {
+            continue;
+        }
+        let end = rest
+            .find(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '`' | '<' | '>' | '|'))
+            .unwrap_or(rest.len());
+        out.extend(rest[..end].chars().map(|c| if c == '\\' { '/' } else { c }));
+        rest = &rest[end..];
+    }
+    out.push_str(rest);
+    out
 }
