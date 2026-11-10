@@ -1,7 +1,7 @@
 # ADR-0195. A program marks its runs, and the reports can leave them out
 
 - Date: 2026-11-10
-- Status: accepted. It amends ADR-0029 with a new record field and one warning, and ADR-0034 with a filter.
+- Status: accepted. It amends ADR-0029 with a new record field and one warning, ADR-0034 with a filter, and ADR-0079, whose crumbkit warnings all started with `warning: <tool> left out `.
 
 ## Context
 
@@ -16,10 +16,14 @@ caller as a person's, and then cannot remove them from what it shows.
   `program` field, and the record keeps its `v1` id (ADR-0007).
 - A name is 1 to 32 lowercase ASCII letters, digits, `-` and `_`, starting
   with a letter. The reader skips a record whose name fails that rule.
-- A set, non-empty value that fails the rule prints one `warning:` line on
-  standard error that names the variable and the rule but not the value,
-  and the run is recorded without the field. An unset or empty variable
-  prints nothing.
+- The log reads the variable once, when `parse` gives it the tool's name,
+  so a run that never reaches `parse` reads none. A set, non-empty value
+  that fails the rule prints one `warning:` line on standard error then,
+  before the tool's output and never from the signal thread. It names the
+  variable and the rule but not the value, and the run's line, when one is
+  written, has no field. An unset or empty variable prints nothing. The
+  example checks ignore this warning, which does not start with
+  `warning: <tool> left out `.
 - `self usage`, `self figures list` and `self runs list` take a repeatable
   `--exclude-program <NAME>` and leave those runs out before counting.
 

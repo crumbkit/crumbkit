@@ -5,8 +5,8 @@ use clap::Parser;
 use serde_json::{Value, json};
 
 use super::{SelfRuns, runs_from};
-use crate::self_usage::Window;
-use crate::testing::{line, marked_log, now, tree, window, without_flightdeck};
+use crate::self_usage::Selection;
+use crate::testing::{line, marked_log, now, selection, tree, without_flightdeck};
 use crumbkit::Tool;
 
 /// The keyed hash of the second session in [`log`].
@@ -40,7 +40,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>, Value) {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(86_400), now()),
+        &selection(Duration::from_secs(86_400), now()),
         limit,
     );
     let rows = listing
@@ -162,13 +162,13 @@ fn the_checked_in_schema_matches_the_runs_document_schema() {
 }
 
 /// Returns the command of each row of the runs of [`marked_log`] over
-/// `window`.
-fn commands(window: &Window<'_>) -> Vec<String> {
+/// `selection`.
+fn commands(selection: &Selection) -> Vec<String> {
     let listing = runs_from(
         &tree(),
         &Tool::new(),
         Some(Cursor::new(marked_log())),
-        window,
+        selection,
         None,
     );
     listing
@@ -190,7 +190,7 @@ fn the_runs_leave_out_those_of_an_excluded_program_and_keep_those_of_another() {
         ["books list", "books show"]
     );
     assert_eq!(
-        commands(&window(Duration::from_secs(86_400), now())),
+        commands(&selection(Duration::from_secs(86_400), now())),
         ["books list", "books list", "books show"]
     );
 }

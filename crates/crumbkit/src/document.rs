@@ -164,7 +164,8 @@ impl<T> Document<T> {
     }
 
     /// Reports whether [`Document::built_in`] marked the document. It is
-    /// hidden because only crumbkit and crumbkit-test read it.
+    /// hidden because only crumbkit's `commands list` and the tests of
+    /// crumbkit's own crates read it.
     #[doc(hidden)]
     #[must_use]
     pub const fn is_built_in(&self) -> bool {

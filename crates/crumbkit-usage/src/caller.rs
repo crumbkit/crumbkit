@@ -12,8 +12,7 @@ use crumbkit::ToolName;
 #[cfg(test)]
 mod tests;
 
-/// Who ran the tool, the session the run belongs to, and the program that
-/// marked the run.
+/// Who ran the tool, and the session the run belongs to.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Caller {
     /// The agent's id from is-ai-agent, such as `claude-code`; `person`
@@ -26,20 +25,13 @@ pub(super) struct Caller {
     /// Windows Terminal session or the text `windows` on Windows. The usage
     /// log stores only its keyed hash.
     pub(super) session: String,
-    /// The program that started the run and marked it with its name in the
-    /// tool's `<TOOL>_PROGRAM` variable, such as `flightdeck`, or `None`
-    /// when the variable is unset or holds no program name.
-    pub(super) program: Option<Program>,
 }
 
-/// Returns the caller of a run of the tool named `tool`, from the agent that
-/// is-ai-agent finds, whether standard input is a terminal, the platform's
-/// fallback session and the tool's `<TOOL>_PROGRAM` variable, such as
-/// `SHELF_PROGRAM`. A variable that holds a value other than a program name
-/// is ignored, with a one-line warning on standard error. This module owns
-/// those environment, file and standard-input reads and that warning
-/// (RUST-4).
-pub(super) fn detect(tool: ToolName) -> Caller {
+/// Returns the caller of this process, from the agent that is-ai-agent
+/// finds, whether standard input is a terminal, and the platform's fallback
+/// session. This module owns those environment, file and standard-input
+/// reads (RUST-4).
+pub(super) fn detect() -> Caller {
     #[expect(
         clippy::disallowed_methods,
         reason = "the caller module owns the environment reads that detect a coding agent"
@@ -51,6 +43,20 @@ pub(super) fn detect(tool: ToolName) -> Caller {
         reason = "the caller module asks whether standard input is a terminal, to tell a person from a program"
     )]
     let input = io::stdin();
+    identify(agent, input.is_terminal(), platform::fallback_session)
+}
+
+/// Returns the program that marked a run of the tool named `tool`, from the
+/// tool's `<TOOL>_PROGRAM` variable, such as `SHELF_PROGRAM`, or `None` when
+/// the variable is unset, empty or refused.
+///
+/// The recorder calls it once, when `parse` gives it the tool's name, so a
+/// run that never reaches `parse` reads no variable. A variable that holds
+/// a value other than a program name prints a one-line warning on standard
+/// error then, before the tool prints anything, and never on the thread
+/// that answers a signal (ADR-0195). This module owns that environment read
+/// and that warning (RUST-4).
+pub(super) fn program(tool: ToolName) -> Option<Program> {
     #[expect(
         clippy::disallowed_methods,
         reason = "the caller module owns the environment read of the program that marked the run"
@@ -66,12 +72,7 @@ pub(super) fn detect(tool: ToolName) -> Caller {
         // usage-log failure is (ADR-0029).
         let _ = error.write_all(warning.as_bytes());
     }
-    identify(
-        agent,
-        input.is_terminal(),
-        platform::fallback_session,
-        mark.program(),
-    )
+    mark.program()
 }
 
 /// What the tool's `<TOOL>_PROGRAM` variable says about a run.
@@ -121,24 +122,20 @@ fn marked(tool: ToolName, env: impl FnOnce(&str) -> Result<String, VarError>) ->
 }
 
 /// Returns the caller from the detected `agent`, whether standard input is
-/// a `terminal`, the `fallback` session and the `program` that marked the
-/// run, as [`detect`] reads them.
+/// a `terminal`, and the `fallback` session, as [`detect`] reads them.
 fn identify(
     agent: Option<is_ai_agent::Agent>,
     terminal: bool,
     fallback: impl FnOnce() -> String,
-    program: Option<Program>,
 ) -> Caller {
     match agent {
         Some(agent) => Caller {
             name: agent.id.as_str(),
             session: agent.session_id.unwrap_or_else(fallback),
-            program,
         },
         None => Caller {
             name: if terminal { "person" } else { "unknown" },
             session: fallback(),
-            program,
         },
     }
 }

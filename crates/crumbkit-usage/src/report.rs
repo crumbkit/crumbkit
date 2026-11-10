@@ -40,8 +40,9 @@ const LONGEST: usize = MAX_LINE + 1;
 /// whose program is none of `exclude`, and then passes the record to
 /// `each`. `tool` is the tool's command after `Command::build`. A record
 /// that names anything else is counted as skipped, adds nothing more and
-/// never reaches `each`. A record that an excluded program marked adds
-/// nothing at all, not even to the skipped records.
+/// never reaches `each`, whatever its program. A valid record that an
+/// excluded program marked adds nothing at all, not even to the skipped
+/// records.
 ///
 /// It reads one line at a time and keeps at most [`LONGEST`] bytes of it.
 /// A line that is not a whole record, such as the last line of a run that

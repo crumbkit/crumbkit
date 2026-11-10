@@ -37,7 +37,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::report::Entry;
-use super::self_usage::{SelfUsage, UsageSummary, Window, open, summarize};
+use super::self_usage::{Selection, SelfUsage, UsageSummary, open, summarize};
 use crumbkit::{Document, Listing, Page, Run, Tool};
 
 #[cfg(test)]
@@ -158,18 +158,18 @@ pub fn runs(run: &mut Run, tool: &Tool, args: &SelfRuns) -> Listing<RunRow, Usag
         tool_name,
         tool,
         open(tool_name, &args.usage),
-        &args.usage.window(SystemTime::now()),
+        &args.usage.selection(SystemTime::now()),
         args.page.limit(),
     )
 }
 
-/// Returns the runs in `log` that fall in `window`, checked against `tool`,
+/// Returns the runs in `log` that fall in `selection`, checked against `tool`,
 /// with at most `limit` rows, as [`runs`] describes for `tool`.
 fn runs_from(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
-    window: &Window<'_>,
+    selection: &Selection,
     limit: Option<usize>,
 ) -> Listing<RunRow, UsageSummary> {
     let name = tool_name.get_name();
@@ -177,7 +177,7 @@ fn runs_from(
     // rows. The hash stays in the map and never reaches a row.
     let mut ordinals: HashMap<String, usize> = HashMap::new();
     let mut sessions: Vec<Vec<RunRow>> = Vec::new();
-    let (_, summary) = summarize(tool_name, tool, log, window, |entry| {
+    let (_, summary) = summarize(tool_name, tool, log, selection, |entry| {
         let index = *ordinals.entry(entry.session.clone()).or_insert_with(|| {
             sessions.push(Vec::new());
             sessions.len() - 1

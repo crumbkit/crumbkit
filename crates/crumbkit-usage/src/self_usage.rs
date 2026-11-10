@@ -234,29 +234,28 @@ pub fn findings(run: &mut Run, tool: &Tool, args: &SelfUsage) -> Listing<Finding
         tool_name,
         tool,
         open(tool_name, args),
-        &args.window(SystemTime::now()),
+        &args.selection(SystemTime::now()),
     )
 }
 
-/// The runs that a report reads: those that ended after a start, and that
-/// no excluded program marked.
-pub(super) struct Window<'a> {
+/// The runs that a report reads: those that ended in a period before a
+/// time, less those that an excluded program marked.
+pub(super) struct Selection {
     /// How far back from `now` the report reads.
     pub(super) since: Duration,
     /// The time that the report counts back from.
     pub(super) now: SystemTime,
     /// The programs whose runs the report leaves out.
-    pub(super) exclude: &'a [Program],
+    pub(super) exclude: Vec<Program>,
 }
 
 impl SelfUsage {
-    /// Returns the window of runs that the arguments ask for, counted back
-    /// from `now`.
-    pub(super) fn window(&self, now: SystemTime) -> Window<'_> {
-        Window {
+    /// Returns the runs that the arguments select, counted back from `now`.
+    pub(super) fn selection(&self, now: SystemTime) -> Selection {
+        Selection {
             since: self.since,
             now,
-            exclude: &self.exclude_program,
+            exclude: self.exclude_program.clone(),
         }
     }
 }
@@ -296,15 +295,15 @@ fn day_of(time: SystemTime) -> String {
     stamp.get(..10).unwrap_or_default().to_owned()
 }
 
-/// Returns the findings in `log` for the runs in `window`, checked against
+/// Returns the findings in `log` for the runs in `selection`, checked against
 /// `tool`, as [`findings`] describes for `tool`.
 fn report_from(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
-    window: &Window<'_>,
+    selection: &Selection,
 ) -> Listing<FindingRow, UsageSummary> {
-    let (report, summary) = summarize(tool_name, tool, log, window, |_| {});
+    let (report, summary) = summarize(tool_name, tool, log, selection, |_| {});
     let rows: Vec<FindingRow> = report
         .findings
         .iter()
@@ -320,7 +319,7 @@ fn report_from(
         )
 }
 
-/// Returns the report of the runs in `log` that fall in `window`, checked
+/// Returns the report of the runs in `log` that fall in `selection`, checked
 /// against `tool`, and its summary. A run that exited with the code that
 /// `tool` gives a refused command line counts as refused. Each record that
 /// the report adds is then passed to `each`, in the order of the log, so a
@@ -329,14 +328,14 @@ pub(super) fn summarize(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
-    window: &Window<'_>,
+    selection: &Selection,
     each: impl FnMut(Entry),
 ) -> (Report, UsageSummary) {
     // A start before 1970 reads from 1970, because no record is older and
     // humantime panics on a time before the epoch.
-    let start = window
+    let start = selection
         .now
-        .checked_sub(window.since)
+        .checked_sub(selection.since)
         .unwrap_or(UNIX_EPOCH)
         .max(UNIX_EPOCH);
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
@@ -344,7 +343,14 @@ pub(super) fn summarize(
     });
     let mut tally = Tally::new(tool.failure_exit(&crumbkit::codes::CLI_USAGE));
     if let Some(log) = log {
-        read(log, start_ms, tool_name, window.exclude, &mut tally, each);
+        read(
+            log,
+            start_ms,
+            tool_name,
+            &selection.exclude,
+            &mut tally,
+            each,
+        );
     }
     let mut report = tally.report();
     let summary = UsageSummary {

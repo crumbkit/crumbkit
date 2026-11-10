@@ -8,10 +8,10 @@ use std::time::Duration;
 use clap::Command;
 
 use super::typed;
-use super::{is_child, log_lines, run_child};
+use super::{is_child, log_lines, run_child, run_child_with};
 use crate::recorder::start;
 use crate::testing::TempDir;
-use crumbkit::Spelling;
+use crumbkit::{Spelling, ToolName};
 
 #[test]
 fn a_signal_writes_an_interrupted_line_and_then_ends_the_process_as_the_signal_does() {
@@ -43,6 +43,51 @@ fn the_signal_test_s_child_starts_the_log_and_raises_sigterm() {
         &["signalled".into()],
         Spelling::COLONS,
     );
+    signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
+    // The signal ends the process, so the test never gets past the wait.
+    std::thread::sleep(Duration::from_secs(10));
+    panic!("SIGTERM did not end the process");
+}
+
+#[test]
+fn a_refused_program_variable_warns_once_when_parse_names_the_tool_and_never_on_the_signal_path() {
+    let state = TempDir::new("signal-program");
+
+    let output = run_child_with(
+        "recorder::tests::processes::unix::the_program_warning_test_s_child_reaches_parse_and_raises_sigterm",
+        &state,
+        &[("SIGNALLED_PROGRAM", "Not A Name")],
+    );
+
+    assert_eq!(output.status.signal(), Some(signal_hook::consts::SIGTERM));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    let warning = stderr
+        .find("warning: SIGNALLED_PROGRAM was ignored")
+        .unwrap();
+    let marker = stderr.find("CHILD-REACHED-PARSE").unwrap();
+    assert!(warning < marker, "{stderr}");
+    assert_eq!(stderr.matches("warning: SIGNALLED_PROGRAM").count(), 1);
+    let lines = log_lines(&state, "signalled");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["interrupted"], true);
+    assert_eq!(lines[0].get("program"), None);
+}
+
+/// Runs only as the child of the program warning test. It starts the log,
+/// gives it the tool's name as `parse` does, which reads the program
+/// variable, prints a marker on standard error and raises SIGTERM.
+#[test]
+fn the_program_warning_test_s_child_reaches_parse_and_raises_sigterm() {
+    if !is_child() {
+        return;
+    }
+    let _log = start();
+    typed(
+        &Command::new("signalled"),
+        &["signalled".into()],
+        Spelling::COLONS.for_tool(ToolName::new("signalled")),
+    );
+    eprintln!("CHILD-REACHED-PARSE");
     signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
     // The signal ends the process, so the test never gets past the wait.
     std::thread::sleep(Duration::from_secs(10));

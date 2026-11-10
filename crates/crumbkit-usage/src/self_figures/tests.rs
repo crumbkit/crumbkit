@@ -5,8 +5,8 @@ use clap::Parser;
 use serde_json::{Value, json};
 
 use super::{SelfFigures, figures_from};
-use crate::self_usage::Window;
-use crate::testing::{line, marked_log, now, tree, window, without_flightdeck};
+use crate::self_usage::Selection;
+use crate::testing::{line, marked_log, now, selection, tree, without_flightdeck};
 use crumbkit::Tool;
 
 /// A log of a help page of the root, two runs of `books list` and one of
@@ -36,7 +36,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>) {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(86_400), now()),
+        &selection(Duration::from_secs(86_400), now()),
         limit,
     );
     let rows = listing
@@ -112,13 +112,13 @@ fn the_checked_in_schema_matches_the_usage_figures_document_schema() {
 }
 
 /// Returns each command and its runs in the figures of [`marked_log`] over
-/// `window`.
-fn command_runs(window: &Window<'_>) -> Vec<(String, u64)> {
+/// `selection`.
+fn command_runs(selection: &Selection) -> Vec<(String, u64)> {
     let listing = figures_from(
         &tree(),
         &Tool::new(),
         Some(Cursor::new(marked_log())),
-        window,
+        selection,
         None,
     );
     listing
@@ -141,7 +141,7 @@ fn the_figures_leave_out_the_runs_of_an_excluded_program_and_keep_those_of_anoth
         [("books list".to_owned(), 1), ("books show".to_owned(), 1)]
     );
     assert_eq!(
-        command_runs(&window(Duration::from_secs(86_400), now())),
+        command_runs(&selection(Duration::from_secs(86_400), now())),
         [("books list".to_owned(), 2), ("books show".to_owned(), 1)]
     );
 }

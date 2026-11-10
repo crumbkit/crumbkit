@@ -45,5 +45,5 @@ already require the leaf.
 
 Considered: a list of crumbkit's group names, which misclasses a tool's
 own command under those groups; a marker on the clap command, which the
-tool builds and crumbkit never sees; a public builder, which would let a
-tool mark its own documents as crumbkit's.
+tool builds and crumbkit never sees; a documented public builder, which
+would invite a tool to mark its own documents as crumbkit's.

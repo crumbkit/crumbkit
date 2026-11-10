@@ -63,6 +63,24 @@ fn run_child(test: &str, state: &TempDir) -> std::process::ExitStatus {
     child.status().unwrap()
 }
 
+/// Runs the test named `test` as [`run_child`] does, with the variables
+/// `env` added, and returns its output.
+#[cfg(unix)]
+fn run_child_with(test: &str, state: &TempDir, env: &[(&str, &str)]) -> std::process::Output {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "a signal test runs this test binary again as the child that receives the signal"
+    )]
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap());
+    child
+        .args(["--exact", test, "--nocapture", "--test-threads", "1"])
+        .env(CHILD, "1")
+        .env("XDG_STATE_HOME", state.path())
+        .envs(env.iter().copied());
+    std::os::unix::process::CommandExt::process_group(&mut child, 0);
+    child.output().unwrap()
+}
+
 /// Returns the lines of the log of the tool `tool` under `state`.
 fn log_lines(state: &TempDir, tool: &str) -> Vec<Value> {
     let log = fs::read_to_string(state.path().join(tool).join("usage.jsonl")).unwrap();

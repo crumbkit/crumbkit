@@ -6,7 +6,7 @@ use clap::Parser;
 use serde_json::json;
 
 use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
-use crate::testing::{line, marked_log, now, tree, window, without_flightdeck};
+use crate::testing::{line, marked_log, now, selection, tree, without_flightdeck};
 use crumbkit::Tool;
 use crumbkit::tool::{Exit, Failures};
 
@@ -105,7 +105,7 @@ fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(60), now()),
+        &selection(Duration::from_secs(60), now()),
     );
 
     let summary = serde_json::to_value(listing.get_summary()).unwrap();
@@ -141,7 +141,7 @@ fn rows(log: &str) -> Vec<(String, u64, String, String)> {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(7 * 86_400), now()),
+        &selection(Duration::from_secs(7 * 86_400), now()),
     );
     listing
         .rows()
@@ -222,7 +222,7 @@ fn a_finding_row_carries_the_figures_of_its_command() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(60), now()),
+        &selection(Duration::from_secs(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -266,7 +266,7 @@ fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_tool_declares
         &tree(),
         &TOOL,
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(60), now()),
+        &selection(Duration::from_secs(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -297,7 +297,7 @@ fn a_finding_row_gives_an_exit_inside_a_declared_range_the_meaning_of_the_range(
         &tree(),
         &TOOL,
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(60), now()),
+        &selection(Duration::from_secs(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -323,7 +323,7 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(86_400), now()),
+        &selection(Duration::from_secs(86_400), now()),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -337,7 +337,7 @@ fn without_a_log_the_report_has_no_runs_and_no_findings() {
         &tree(),
         &Tool::new(),
         None::<Cursor<&str>>,
-        &window(Duration::from_secs(60), now()),
+        &selection(Duration::from_secs(60), now()),
     );
 
     assert_eq!(listing.rows().len(), 0);
@@ -355,7 +355,7 @@ fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
         &tree(),
         &Tool::new(),
         None::<Cursor<&str>>,
-        &window(Duration::from_secs(60), far),
+        &selection(Duration::from_secs(60), far),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -412,7 +412,7 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &window(Duration::from_secs(100 * 365 * 86_400), now()),
+        &selection(Duration::from_secs(100 * 365 * 86_400), now()),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -450,7 +450,7 @@ fn a_slow_command_that_mostly_waited_has_a_row_that_names_no_fact_of_the_tool() 
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log.clone())),
-        &window(Duration::from_secs(60), now()),
+        &selection(Duration::from_secs(60), now()),
     );
 
     assert_eq!(
@@ -476,18 +476,18 @@ fn a_slow_command_that_mostly_waited_has_a_row_that_names_no_fact_of_the_tool() 
 
 #[test]
 fn exclude_program_leaves_out_that_program_s_runs_and_keeps_every_other_run() {
-    let summary = |window| {
+    let summary = |selection| {
         let listing = report_from(
             &tree(),
             &Tool::new(),
             Some(Cursor::new(marked_log())),
-            &window,
+            &selection,
         );
         serde_json::to_value(listing.get_summary()).unwrap()
     };
 
     let excluded = summary(without_flightdeck());
-    let kept = summary(window(Duration::from_secs(86_400), now()));
+    let kept = summary(selection(Duration::from_secs(86_400), now()));
 
     assert_eq!(excluded["runs"], 2);
     assert_eq!(excluded["skipped"], 0);

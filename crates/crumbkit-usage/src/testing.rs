@@ -9,10 +9,8 @@ use clap::{Arg, ArgAction, Command};
 use serde_json::{Value, json};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use std::sync::LazyLock;
-
 use crate::program::Program;
-use crate::self_usage::Window;
+use crate::self_usage::Selection;
 
 /// The number of temporary directories that this process has created, which
 /// gives each new directory a number of its own.
@@ -80,13 +78,13 @@ pub(super) fn now() -> SystemTime {
     humantime::parse_rfc3339("2026-10-11T12:00:00Z").unwrap()
 }
 
-/// Returns the window of the runs that ended in the `since` duration before
+/// Returns the selection of the runs that ended in the `since` duration before
 /// `now`, with no excluded program.
-pub(super) fn window(since: Duration, now: SystemTime) -> Window<'static> {
-    Window {
+pub(super) fn selection(since: Duration, now: SystemTime) -> Selection {
+    Selection {
         since,
         now,
-        exclude: &[],
+        exclude: Vec::new(),
     }
 }
 
@@ -128,14 +126,11 @@ pub(super) fn marked_log() -> String {
     .concat()
 }
 
-/// Returns the window of the last day that leaves out flightdeck's runs.
-pub(super) fn without_flightdeck() -> Window<'static> {
-    /// The programs that the window leaves out.
-    static FLIGHTDECK: LazyLock<[Program; 1]> =
-        LazyLock::new(|| [Program::new("flightdeck").unwrap()]);
-    Window {
+/// Returns the selection of the last day that leaves out flightdeck's runs.
+pub(super) fn without_flightdeck() -> Selection {
+    Selection {
         since: Duration::from_secs(86_400),
         now: now(),
-        exclude: &*FLIGHTDECK,
+        exclude: vec![Program::new("flightdeck").unwrap()],
     }
 }

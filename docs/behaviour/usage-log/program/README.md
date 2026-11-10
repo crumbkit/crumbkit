@@ -11,8 +11,8 @@ tool, uses this to keep its own runs out of the figures it shows.
 The program sets the tool's variable `<TOOL>_PROGRAM` to its own name, such
 as `SHELF_PROGRAM=flightdeck`. The prefix is spelled as the prefix of
 `<TOOL>_OUTPUT_BUDGET` is, and `ToolName::variable("PROGRAM")` returns the
-whole name. The log reads the variable when it writes the run's line, and
-records the name in the line's optional `program` field, which the
+whole name. The log records the name in the line's optional `program`
+field, which the
 checked-in [`usage-v1.json`](../../../../crates/crumbkit-usage/schemas/usage-v1.json)
 describes. The record keeps its `v1` id.
 
@@ -30,10 +30,13 @@ Why: ADR-0195, ADR-0029, ADR-0079.
 
 ## A value that is not a program name
 
-When the variable is unset or empty, the line has no `program` field and the
-run prints nothing about it. When the variable holds any other value that is
-not a program name, or a value that is not UTF-8, the run prints one line on
-standard error when it writes its log line, such as:
+The log reads the variable once, when `parse` gives it the tool's name, so
+a run that never reaches `parse` reads none. When the variable is unset or
+empty, the run has no `program` and prints nothing about it. When the
+variable holds any other value that is not a program name, or a value that
+is not UTF-8, the run prints one line on standard error then, before the
+tool prints anything and never from the thread that answers a signal, such
+as:
 
 ```text
 warning: SHELF_PROGRAM was ignored, because a program name is 1 to 32 lowercase letters, digits, `-` and `_`, starting with a letter, such as flightdeck; the run is recorded without a program
@@ -41,10 +44,14 @@ warning: SHELF_PROGRAM was ignored, because a program name is 1 to 32 lowercase 
 
 The warning names the variable and the rule, and never the value, which may
 hold anything. It goes to standard error, so `--json` output on standard
-output stays one document. The run's line is still written, without a
-`program` field, and every report counts the run. This is the one case in
-which the usage log prints anything, because a program that misspells its
-name would otherwise see its runs counted with no sign of why.
+output stays one document. The run is recorded without a `program` field
+whenever the log writes its line, and every report counts it. A run whose
+line is dropped, such as one without a state directory, still prints the
+warning. This is the one case in which the usage log prints anything,
+because a program that misspells its name would otherwise see its runs
+counted with no sign of why. crumbkit-test's example checks ignore the
+warning, because only warnings that start with `warning: <tool> left out `
+fail them.
 
 Why: ADR-0195.
 
