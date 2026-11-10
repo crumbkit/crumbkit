@@ -84,7 +84,7 @@ fn every_command_line_of_the_drafted_skill_passes_skill_check() {
     assert_eq!(output.status.code(), Some(0), "{stdout}");
     assert_eq!(
         stdout,
-        format!("Checked 10 shelf command lines in {DRAFTED}, and 0 failed.\n")
+        format!("Checked 11 shelf command lines in {DRAFTED}, and 0 failed.\n")
     );
 }
 

@@ -14,38 +14,34 @@ mod tests;
 /// Returns the agent skills directories that the process's environment
 /// names, as [`agent_dirs`] describes.
 ///
-/// It reads `HOME`, and on Windows `USERPROFILE` when `HOME` is unset,
-/// and `CODEX_HOME`. It never asks the operating system for the home
-/// directory, such as with `std::env::home_dir`, which reads the password
-/// database when `HOME` is unset. A test or an example run clears the
-/// environment, and that lookup would then install into the real home
-/// (ADR-0027).
+/// The home directory comes from [`crumbkit::files::home`], which reads
+/// `HOME`, or `USERPROFILE` on Windows, and never the password database
+/// (ADR-0027). This function reads `CODEX_HOME`.
 pub(crate) fn agent_dirs_from_env() -> Option<Vec<PathBuf>> {
     #[expect(
         clippy::disallowed_methods,
-        reason = "this module owns the environment reads that find the agent skills directories"
+        reason = "this module owns the read of CODEX_HOME that finds Codex's skills directory"
     )]
-    let read = |name: &str| std::env::var_os(name);
-    let home = read("HOME");
-    #[cfg(windows)]
-    let home = home.or_else(|| read("USERPROFILE"));
-    agent_dirs(home, read("CODEX_HOME"))
+    let codex_home = std::env::var_os("CODEX_HOME");
+    agent_dirs(crumbkit::files::home(), codex_home)
 }
 
 /// Returns the agent skills directories in the order `install` tries them,
 /// when the home directory is `home` and `CODEX_HOME` is `codex_home`:
 /// `~/.claude/skills`, `~/.agents/skills` and `$CODEX_HOME/skills`, where
-/// `CODEX_HOME` defaults to `~/.codex`. Each of `home` and `codex_home`
-/// counts only when it is an absolute path. It returns `None` when there
-/// is no home directory, even when `CODEX_HOME` is set.
+/// `CODEX_HOME` defaults to `~/.codex`. `home` is an absolute path, as
+/// [`crumbkit::files::home`] returns it, and `codex_home` counts only when
+/// it is an absolute path. It returns `None` when there is no home
+/// directory, even when `CODEX_HOME` is set.
 pub(crate) fn agent_dirs(
-    home: Option<OsString>,
+    home: Option<PathBuf>,
     codex_home: Option<OsString>,
 ) -> Option<Vec<PathBuf>> {
-    let absolute =
-        |value: Option<OsString>| value.map(PathBuf::from).filter(|path| path.is_absolute());
-    let home = absolute(home)?;
-    let codex = absolute(codex_home).unwrap_or_else(|| home.join(".codex"));
+    let home = home?;
+    let codex = codex_home
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .unwrap_or_else(|| home.join(".codex"));
     Some(vec![
         home.join(".claude").join("skills"),
         home.join(".agents").join("skills"),
@@ -202,29 +198,10 @@ pub(crate) fn place(real: &Path, name: &str) -> Place {
     }
 }
 
-/// Returns `path` as a string for a row, with any bytes that are not UTF-8
-/// replaced and without the `\\?\` prefix that Windows gives a canonical
-/// path.
+/// Returns `path` as a string for a row, as [`crumbkit::files::display`]
+/// writes it.
 pub(crate) fn shown(path: &Path) -> String {
-    without_verbatim(path.display().to_string())
-}
-
-/// Returns `text` without a leading `\\?\` when a drive letter follows it,
-/// as in `\\?\C:\Users`. Windows gives a canonical path that prefix, and
-/// the path reads the same without it. A verbatim UNC path, `\\?\UNC\`,
-/// keeps the prefix, because it names a share in another form without it.
-/// No Unix path starts with the prefix, so this runs on every platform.
-///
-/// RUST-10: the dunce crate also checks that the path stays valid without
-/// the prefix, such as one longer than 260 characters or one that names a
-/// reserved device. This strip only changes how a row shows the path, and
-/// no file access reads the result, so it skips those checks. dunce
-/// replaces it if a stripped path is ever opened.
-pub(crate) fn without_verbatim(text: String) -> String {
-    match text.strip_prefix(r"\\?\") {
-        Some(rest) if rest.as_bytes().get(1) == Some(&b':') => rest.to_owned(),
-        _ => text,
-    }
+    crumbkit::files::display(path)
 }
 
 /// Returns the paths of `dirs` as strings for a row.

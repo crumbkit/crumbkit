@@ -5,6 +5,10 @@ use std::path::PathBuf;
 use clap::error::ErrorKind;
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
+use crumbkit::completion::{
+    COMPLETION_CHECK, COMPLETION_INSTALL, COMPLETION_PRINT, CompletionCheck, CompletionInstall,
+    CompletionPrint,
+};
 use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf, Topic};
 use crumbkit::pick::{Choices, Menu};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
@@ -66,8 +70,9 @@ fn list_books(context: &RefusalContext<'_>) -> Vec<Call> {
 /// shelf's goal headings, leaves and help topics. shelf gives goal headings
 /// only to its root, and the group is compact, so `shelf -h` names `books`
 /// after `Browse the catalogue:`, `commands` and `schemas` after `Explore the
-/// commands:`, `self` after `Review how shelf is used:` and `skills` after
-/// `Install shelf's skill:`, one line each, and
+/// commands:`, `self` after `Review how shelf is used:`, `skills` after
+/// `Install shelf's skill:` and `completion` after `Set up shell completion:`,
+/// one line each, and
 /// `shelf --help` lists each command with its description under those headings.
 /// `shelf books -h` keeps clap's `Commands:` list. The help of each leaf lists
 /// its examples, and the `--help` of a leaf that prints rows describes their
@@ -87,6 +92,7 @@ pub const TOOL: Tool = Tool::new()
                     Goal::new("Explore the commands", &["commands", "schemas"]),
                     Goal::new("Review how shelf is used", &["self"]),
                     Goal::new("Install shelf's skill", &["skills"]),
+                    Goal::new("Set up shell completion", &["completion"]),
                 ],
             )
             .compact()])
@@ -210,6 +216,30 @@ pub const TOOL: Tool = Tool::new()
                     .examples(&[Example::new(&[], "Print shelf's skill")])
                     .effects(Effects::read_only())
                     .document(SKILLS_PRINT),
+                Leaf::new(&["completion", "install"])
+                    .examples(&[
+                        Example::new(&["--shell", "fish"], "Install shelf's completion for fish"),
+                        Example::new(
+                            &["--shell", "zsh", "--force"],
+                            "Install it for zsh, replacing a file or a link that install did not write",
+                        ),
+                    ])
+                    .effects(Effects::additive().idempotent())
+                    .document(COMPLETION_INSTALL),
+                Leaf::new(&["completion", "check"])
+                    .examples(&[Example::new(
+                        &["--shell", "zsh"],
+                        "Report zsh's completion file when it is missing or differs",
+                    )])
+                    .effects(Effects::read_only())
+                    .document(COMPLETION_CHECK),
+                Leaf::new(&["completion", "print"])
+                    .examples(&[Example::new(
+                        &["--shell", "fish"],
+                        "Print the registration script for fish",
+                    )])
+                    .effects(Effects::read_only())
+                    .document(COMPLETION_PRINT),
             ])
             .topics(&[Topic::new(
                 "catalogue",
@@ -261,6 +291,12 @@ pub(crate) enum Resource {
         /// What to do with the skill.
         #[command(subcommand)]
         command: SkillsCommand,
+    },
+    /// Set up shelf's completion in a shell.
+    Completion {
+        /// What to do with the completion.
+        #[command(subcommand)]
+        command: CompletionCommand,
     },
     /// Work with a person's aliases for shelf's commands.
     // The group is hidden, because aliases are for people, and an agent
@@ -349,6 +385,17 @@ pub(crate) enum SkillsCommand {
     Check(SkillsCheck),
     /// Print shelf's skill.
     Print,
+}
+
+/// The commands for shelf's shell completion.
+#[derive(Debug, Subcommand)]
+pub(crate) enum CompletionCommand {
+    /// Install shelf's completion where the shell loads it.
+    Install(CompletionInstall),
+    /// Check that shelf's installed completion file matches this shelf.
+    Check(CompletionCheck),
+    /// Print shelf's completion registration script for a shell.
+    Print(CompletionPrint),
 }
 
 /// The commands for a person's aliases.

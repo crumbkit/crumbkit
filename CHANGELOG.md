@@ -8,6 +8,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit: the `complete` feature adds `completion install`, `check` and
+  `print`, which write the registration where fish, bash or zsh loads it,
+  report a stale file and print the script. crumbkit-skills shares the new
+  `crumbkit::files` ([behaviour/parsing/completion]).
 - cargo-crumbkit: `cargo crumbkit skill draft --bin <NAME>` rewrites the
   generated sections of a tool's SKILL.md, including the most-used commands
   from exported usage, and `--check` exits with 1 when a draft would change

@@ -2,10 +2,10 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
-use super::{Place, Target, agent_dirs, merge, named_dir, place, without_verbatim};
+use super::{Place, Target, agent_dirs, merge, named_dir, place};
 
 fn dirs(home: &str, codex: Option<&str>) -> Option<Vec<PathBuf>> {
-    agent_dirs(Some(OsString::from(home)), codex.map(OsString::from))
+    agent_dirs(Some(PathBuf::from(home)), codex.map(OsString::from))
 }
 
 #[test]
@@ -43,12 +43,6 @@ fn no_home_gives_no_agent_dirs_even_with_a_codex_home() {
 }
 
 #[test]
-fn a_relative_or_empty_home_counts_as_no_home() {
-    assert_eq!(dirs("home", None), None);
-    assert_eq!(dirs("", None), None);
-}
-
-#[test]
 fn a_named_dir_resolves_to_its_real_path() {
     let dir = tempfile::tempdir().unwrap();
 
@@ -78,23 +72,6 @@ fn a_named_dir_that_is_a_file_says_it_is_not_a_directory() {
         named_dir(&file),
         Err("the path is not a directory".to_owned())
     );
-}
-
-#[test]
-fn a_verbatim_drive_path_shows_without_its_prefix() {
-    assert_eq!(
-        without_verbatim(r"\\?\C:\Users\ada".to_owned()),
-        r"C:\Users\ada"
-    );
-}
-
-#[test]
-fn a_verbatim_unc_path_and_a_unix_path_keep_their_text() {
-    assert_eq!(
-        without_verbatim(r"\\?\UNC\server\share".to_owned()),
-        r"\\?\UNC\server\share"
-    );
-    assert_eq!(without_verbatim("/home/ada".to_owned()), "/home/ada");
 }
 
 #[test]

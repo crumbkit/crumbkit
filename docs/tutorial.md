@@ -282,8 +282,8 @@ suite, and the [checks docs] describe its inputs.
 - The output budget caps the bytes that one run prints ([output budget docs]).
 - A command that changes something declares its effects, and takes
   [`DryRun`] and [`Yes`] ([effects docs]).
-- The `complete` feature answers a shell's completion request
-  ([completion docs]).
+- The `complete` feature answers a shell's completion request, and its
+  `completion install` writes the registration ([completion docs]).
 - The crumbkit-usage crate keeps a local log of the shape of each run
   ([usage log docs]).
 - crumbkit-test's [README](../crates/crumbkit-test/README.md) lists the

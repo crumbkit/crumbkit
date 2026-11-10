@@ -127,8 +127,10 @@ struct Run {
 /// Runs the built `shelf` binary with `args`, standard input and standard
 /// output on one pseudo-terminal `columns` wide, standard error on another, a cleared
 /// environment with `TERM` and XDG directories in a fresh temporary
-/// directory, and returns what it printed. A run that does not end within
-/// [`TIMEOUT`] is killed and returns a `TimedOut` error.
+/// directory, and returns what it printed with each XDG directory's path
+/// replaced by its placeholder, such as `[XDG_CONFIG_HOME]`, as the example
+/// check replaces it. A run that does not end within [`TIMEOUT`] is killed
+/// and returns a `TimedOut` error.
 fn shelf(args: &[&str], columns: u16) -> io::Result<Run> {
     shelf_with(args, columns, &[])
 }
@@ -168,8 +170,18 @@ fn shelf_with(args: &[&str], columns: u16, env: &[(&str, &str)]) -> io::Result<R
     let stdout = drain(out.main);
     let stderr = drain(err.main);
     let status = wait(&mut child)?;
+    let mut stdout = String::from_utf8_lossy(&collect(stdout)?).into_owned();
+    for (variable, dir) in [
+        ("XDG_CONFIG_HOME", "config"),
+        ("XDG_DATA_HOME", "data"),
+        ("XDG_STATE_HOME", "state"),
+        ("XDG_CACHE_HOME", "cache"),
+    ] {
+        let path = home.path().join(dir).display().to_string();
+        stdout = stdout.replace(&path, &format!("[{variable}]"));
+    }
     Ok(Run {
-        stdout: collect(stdout)?,
+        stdout: stdout.into_bytes(),
         stderr: collect(stderr)?,
         status,
     })

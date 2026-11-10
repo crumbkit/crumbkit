@@ -16,6 +16,9 @@ fn every_crumbkit_code_is_in_all_once_and_spells_with_its_own_component_area_and
         "crumbkit::version::conflict",
         "crumbkit::output::over_budget",
         "crumbkit::report::unchecked",
+        "crumbkit::shell::unset",
+        "crumbkit::shell::unknown",
+        "crumbkit::shell::no_directory",
     ];
     assert_eq!(spelled, expected);
 }

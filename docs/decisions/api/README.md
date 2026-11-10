@@ -18,7 +18,6 @@ its trace context.
 
 - [ADR-0002. Public API and semver](0002-public-api-and-semver.md)
 - [ADR-0027. Aliases](0027-aliases.md)
-- [ADR-0048. Shell completion](0048-completion.md)
 - [ADR-0057. Run observer](0057-run-observer.md)
 - [ADR-0075. Several run observers](0075-several-observers.md)
 - [ADR-0079. The tool's name in place of crumbkit's](0079-tool-names.md)
@@ -27,6 +26,7 @@ its trace context.
 - [ADR-0096. Rows decide their problems](0096-rows-decide-their-problems.md)
 - [ADR-0162. Compile-fail guards for removed items deleted](0162-removed-item-guards-deleted.md)
 - [ADR-0192. Agent skills](0192-agent-skills.md)
+- [ADR-0196. Completion](completion/README.md)
 - [ADR-0054. Adoption](adoption/README.md)
 - [ADR-0055. Failures](failures/README.md)
 - [ADR-0022. Help](help/README.md)

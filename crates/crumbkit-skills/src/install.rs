@@ -13,8 +13,8 @@
 //! }
 //! ```
 
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write as _};
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
 use clap::Args;
@@ -299,7 +299,7 @@ fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: b
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return row(Installed::Failed, Some(error.to_string())),
     }
-    match write_atomically(file, text) {
+    match crumbkit::files::write_atomically(file, text) {
         Ok(()) => row(Installed::Written, None),
         Err(error) => row(Installed::Failed, Some(error.to_string())),
     }
@@ -327,40 +327,4 @@ fn replace_with_folder(path: &Path) -> io::Result<()> {
         fs::remove_dir(path)?;
     }
     fs::create_dir(path)
-}
-
-/// Writes `text` to a temporary file beside `file` and renames it over
-/// `file`, so a reader sees the old text or the new text and never part of
-/// it.
-///
-/// The temporary file must be new, so install never writes through a link
-/// or into a file that someone else left at its name, and a run fails with
-/// that file's error instead. The temporary file is removed when a later
-/// step fails.
-fn write_atomically(file: &Path, text: &str) -> io::Result<()> {
-    let temporary = file.with_file_name(format!(".SKILL.md.{}.tmp", std::process::id()));
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "this module owns the file writes of skills install, which write the skill through a temporary file and a rename"
-    )]
-    let mut handle = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)?;
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "this module owns the file writes of skills install, which rename the temporary file over SKILL.md"
-    )]
-    let result = handle
-        .write_all(text.as_bytes())
-        .and_then(|()| handle.sync_all())
-        .and_then(|()| fs::rename(&temporary, file));
-    if result.is_err() {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "this module owns the file writes of skills install, and removes its own temporary file after a failed write"
-        )]
-        let _ = fs::remove_file(&temporary);
-    }
-    result
 }

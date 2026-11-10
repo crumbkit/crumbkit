@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -23,7 +22,7 @@ struct Home {
 impl Home {
     fn new() -> Self {
         let dir = tempfile::tempdir().unwrap();
-        let agent_dirs = agent_dirs(Some(OsString::from(dir.path())), None);
+        let agent_dirs = agent_dirs(Some(dir.path().to_owned()), None);
         Self { dir, agent_dirs }
     }
 

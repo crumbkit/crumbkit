@@ -60,6 +60,19 @@ pub const OUTPUT_OVER_BUDGET: Code = Code::new("crumbkit", "output", "over_budge
 /// `miette` feature (ADR-0001).
 pub const REPORT_UNCHECKED: Code = Code::new("crumbkit", "report", "unchecked");
 
+/// The code of a completion command that names no shell: no `--shell` and
+/// an unset or empty `SHELL` (ADR-0195).
+pub const SHELL_UNSET: Code = Code::new("crumbkit", "shell", "unset");
+
+/// The code of a completion command whose `SHELL` names a shell that
+/// completion does not serve, such as `tcsh` (ADR-0195).
+pub const SHELL_UNKNOWN: Code = Code::new("crumbkit", "shell", "unknown");
+
+/// The code of a `completion install` or `completion check` for a shell
+/// without a completion directory that install knows, such as elvish
+/// (ADR-0195).
+pub const SHELL_NO_DIRECTORY: Code = Code::new("crumbkit", "shell", "no_directory");
+
 /// The reason of the `Recovery::None` of an unclassified failure that gives
 /// no advice of its own, which `Recovery::no_advice` builds.
 pub(crate) const NO_ADVICE: &str = "the error gives no advice";
@@ -74,4 +87,7 @@ pub const ALL: &[&Code] = &[
     &VERSION_CONFLICT,
     &OUTPUT_OVER_BUDGET,
     &REPORT_UNCHECKED,
+    &SHELL_UNSET,
+    &SHELL_UNKNOWN,
+    &SHELL_NO_DIRECTORY,
 ];

@@ -1,23 +1,27 @@
-PATH                     SHORT_HELP  OUTPUT  PATH_TOTAL  RUNS  HELP_BEFORE
-shelf                    510         -       510         0     0
-shelf books              594         -       1104        0     0
-shelf books list         504         512     2120        0     0
-shelf books show         534         111     1749        0     0
-shelf books summarize    477         101     1682        0     0
-shelf books remove       716         114     1934        0     0
-shelf commands           367         -       877         0     0
-shelf commands list      702         2823    4402        0     0
-shelf schemas            424         -       934         0     0
-shelf schemas list       502         2073    3509        0     0
-shelf schemas show       484         3426    4844        0     0
-shelf self               468         -       978         0     0
-shelf self usage         594         -       1572        0     0
-shelf self figures       390         -       1368        0     0
-shelf self figures list  741         -       2109        0     0
-shelf self runs          440         -       1418        0     0
-shelf self runs list     726         -       2144        0     0
-shelf self runs export   851         54      2323        0     0
-shelf skills             471         -       981         0     0
-shelf skills install     646         80      1707        0     0
-shelf skills check       604         60      1645        0     0
-shelf skills print       262         586     1829        0     0
+PATH                      SHORT_HELP  OUTPUT  PATH_TOTAL  RUNS  HELP_BEFORE
+shelf                     548         -       548         0     0
+shelf books               594         -       1142        0     0
+shelf books list          504         512     2158        0     0
+shelf books show          534         111     1787        0     0
+shelf books summarize     477         101     1720        0     0
+shelf books remove        716         114     1972        0     0
+shelf commands            367         -       915         0     0
+shelf commands list       702         2823    4440        0     0
+shelf schemas             424         -       972         0     0
+shelf schemas list        502         2502    3976        0     0
+shelf schemas show        484         3426    4882        0     0
+shelf self                468         -       1016        0     0
+shelf self usage          594         -       1610        0     0
+shelf self figures        390         -       1406        0     0
+shelf self figures list   741         -       2147        0     0
+shelf self runs           440         -       1456        0     0
+shelf self runs list      726         -       2182        0     0
+shelf self runs export    851         54      2361        0     0
+shelf skills              471         -       1019        0     0
+shelf skills install      646         80      1745        0     0
+shelf skills check        604         60      1683        0     0
+shelf skills print        262         586     1867        0     0
+shelf completion          506         -       1054        0     0
+shelf completion install  723         83      1860        0     0
+shelf completion check    689         43      1786        0     0
+shelf completion print    479         178     1711        0     0

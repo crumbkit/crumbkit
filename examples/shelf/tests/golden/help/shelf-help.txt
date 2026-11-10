@@ -3,17 +3,20 @@ Browse a small catalogue of public-domain books
 Usage: shelf [OPTIONS] <COMMAND>
 
 Browse the catalogue
-  books     Work with the books in the catalogue
+  books       Work with the books in the catalogue
 
 Explore the commands
-  commands  Explore shelf's commands
-  schemas   Explore the JSON documents that shelf prints
+  commands    Explore shelf's commands
+  schemas     Explore the JSON documents that shelf prints
 
 Review how shelf is used
-  self      Review shelf's own use
+  self        Review shelf's own use
 
 Install shelf's skill
-  skills    Give coding agents shelf's skill
+  skills      Give coding agents shelf's skill
+
+Set up shell completion
+  completion  Set up shelf's completion in a shell
 
 Options:
       --json

@@ -18,8 +18,8 @@ pub use crate::books::{
     UNREADABLE_IDS_FILE,
 };
 use crate::cli::{
-    AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, RunsCommand, SKILL,
-    SchemasCommand, SelfCommand, SkillsCommand,
+    AliasesCommand, BooksCommand, CommandsCommand, CompletionCommand, FiguresCommand, Resource,
+    RunsCommand, SKILL, SchemasCommand, SelfCommand, SkillsCommand,
 };
 pub use crate::cli::{Cli, TOOL};
 
@@ -151,20 +151,8 @@ where
                 command: RunsCommand::Export(args),
             } => crumbkit_usage::export(run, &args),
         },
-        Resource::Skills { command } => match command {
-            SkillsCommand::Install(args) => {
-                let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&SKILL, &args));
-                crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
-            }
-            SkillsCommand::Check(args) => {
-                let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&SKILL, &args));
-                crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
-            }
-            SkillsCommand::Print => {
-                let result = Ok::<_, crumbkit::Error>(crumbkit_skills::print(&SKILL));
-                crumbkit::finish(run, crumbkit_skills::SKILLS_PRINT, result)
-            }
-        },
+        Resource::Skills { command } => skills(run, command),
+        Resource::Completion { command } => completion(run, command),
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {
                 let result = crumbkit_aliases::list(&mut run, file.as_deref(), &args);
@@ -172,5 +160,43 @@ where
                 crumbkit::finish(run, document, result)
             }
         },
+    }
+}
+
+/// Runs one of shelf's `completion` commands, which crumbkit's `complete`
+/// feature provides (ADR-0195), and returns the process's exit code.
+fn completion(run: crumbkit::Run, command: CompletionCommand) -> ExitCode {
+    match command {
+        CompletionCommand::Install(args) => {
+            let result = crumbkit::completion::install(Cli::command, &args);
+            crumbkit::finish(run, crumbkit::completion::COMPLETION_INSTALL, result)
+        }
+        CompletionCommand::Check(args) => {
+            let result = crumbkit::completion::check(Cli::command, &args);
+            crumbkit::finish(run, crumbkit::completion::COMPLETION_CHECK, result)
+        }
+        CompletionCommand::Print(args) => {
+            let result = crumbkit::completion::print(Cli::command, &args);
+            crumbkit::finish(run, crumbkit::completion::COMPLETION_PRINT, result)
+        }
+    }
+}
+
+/// Runs one of shelf's `skills` commands, which crumbkit-skills provides
+/// (ADR-0192), and returns the process's exit code.
+fn skills(run: crumbkit::Run, command: SkillsCommand) -> ExitCode {
+    match command {
+        SkillsCommand::Install(args) => {
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&SKILL, &args));
+            crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
+        }
+        SkillsCommand::Check(args) => {
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&SKILL, &args));
+            crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
+        }
+        SkillsCommand::Print => {
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::print(&SKILL));
+            crumbkit::finish(run, crumbkit_skills::SKILLS_PRINT, result)
+        }
     }
 }
