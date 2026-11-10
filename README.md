@@ -10,7 +10,7 @@ your own `main`, and you adopt only the parts you want.
 
 ## Crates
 
-The nine crates are published on crates.io at version 0.3, and their API
+The ten crates share version 0.3 on crates.io, and their API
 reference is on [docs.rs](https://docs.rs/crumbkit). The crumbkit crate README's
 [Adding it](crates/crumbkit/README.md#adding-it) section shows the
 dependencies that a tool needs.
@@ -25,6 +25,8 @@ dependencies that a tool needs.
   own command aliases.
 - [crumbkit-usage](crates/crumbkit-usage/README.md) keeps the local usage
   log.
+- [crumbkit-skills](crates/crumbkit-skills/README.md) installs a tool's
+  agent skill into the skills directories that coding agents read.
 - [crumbkit-child](crates/crumbkit-child/README.md) hands the terminal to
   another program.
 - [crumbkit-process](crates/crumbkit-process/README.md) runs another

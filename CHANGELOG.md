@@ -6,6 +6,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- crumbkit-skills: the new crate gives a tool `skills install`, `skills check`
+  and `skills print`, which install its embedded agent skill and check the
+  installed copies ([crumbkit-skills]).
+
 ## [0.3.0] - 2026-11-10
 
 ### Added
@@ -1584,6 +1590,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Examples`]: crates/crumbkit-test/src/examples/settings.rs
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
+[crumbkit-skills]: crates/crumbkit-skills/README.md
 [crumbkit-usage]: crates/crumbkit-usage/README.md
 [crumbkit-child]: crates/crumbkit-child/README.md
 [crumbkit-derive]: crates/crumbkit-derive/README.md

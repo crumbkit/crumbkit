@@ -1,11 +1,11 @@
 # Releases
 
-The nine published crates, crumbkit-derive, crumbkit, crumbkit-child,
+The ten published crates, crumbkit-derive, crumbkit, crumbkit-child,
 crumbkit-process, crumbkit-test, crumbkit-aliases, crumbkit-usage,
-crumbkit-markdown and cargo-crumbkit, share one version and one root
-`CHANGELOG.md`. Each release has one tag, `v` and the version, for all nine.
-They release together, because crumbkit re-exports crumbkit-derive's macro
-and six others depend on crumbkit. crumbkit-process depends on no other
+crumbkit-skills, crumbkit-markdown and cargo-crumbkit, share one version and
+one root `CHANGELOG.md`. Each release has one tag, `v` and the version, for
+all ten. They release together, because crumbkit re-exports
+crumbkit-derive's macro and seven others depend on crumbkit. crumbkit-process depends on no other
 crumbkit crate and shares the version so that one changelog and one tag
 cover every crate. `release-plz.toml` gives the changelog and the tag to crumbkit
 alone.

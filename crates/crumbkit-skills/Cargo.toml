@@ -1,0 +1,36 @@
+[package]
+name = "crumbkit-skills"
+description = "Install a crumbkit tool's agent skill into agent skills directories, check the installed copies and print the skill"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "agents", "skills"]
+categories = ["command-line-interface"]
+include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[dependencies]
+# `install` and `check` return crumbkit's `Listing` of rows, and `print`
+# returns crumbkit's `Prose`.
+crumbkit = { workspace = true }
+# `SkillsInstall`, `SkillsCheck` and `SkillsPrint` derive `clap::Args`.
+clap = { workspace = true, features = ["derive"] }
+# The rows, the skill text and the argument types derive `Serialize`, as a
+# tool's own results do.
+serde = { workspace = true, features = ["derive"] }
+# `Row` and `Document` require `JsonSchema`, which the rows, the skill text
+# and the argument types derive (ADR-0007).
+schemars = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+# Each test installs into agent skills directories under a temporary home of
+# its own, which tempfile removes when the test ends.
+tempfile = { workspace = true }
+# The schema tests write the generated schema as JSON to compare it with the
+# checked-in file.
+serde_json = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

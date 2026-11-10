@@ -1,18 +1,22 @@
 PATH                     SHORT_HELP  OUTPUT  PATH_TOTAL
-shelf                    476         -       476
-shelf books              594         -       1070
-shelf books list         504         512     2086
-shelf books show         534         111     1715
-shelf books summarize    477         101     1648
-shelf books remove       716         114     1900
-shelf commands           367         -       843
-shelf commands list      702         2823    4368
-shelf schemas            424         -       900
-shelf schemas list       502         1534    2936
-shelf schemas show       484         3426    4810
-shelf self               468         -       944
-shelf self usage         594         -       1538
-shelf self figures       390         -       1334
-shelf self figures list  741         -       2075
-shelf self runs          363         -       1307
-shelf self runs list     726         -       2033
+shelf                    510         -       510
+shelf books              594         -       1104
+shelf books list         504         512     2120
+shelf books show         534         111     1749
+shelf books summarize    477         101     1682
+shelf books remove       716         114     1934
+shelf commands           367         -       877
+shelf commands list      702         2823    4402
+shelf schemas            424         -       934
+shelf schemas list       502         1941    3377
+shelf schemas show       484         3426    4844
+shelf self               468         -       978
+shelf self usage         594         -       1572
+shelf self figures       390         -       1368
+shelf self figures list  741         -       2109
+shelf self runs          363         -       1341
+shelf self runs list     726         -       2067
+shelf skills             471         -       981
+shelf skills install     646         157     1784
+shelf skills check       604         106     1691
+shelf skills print       262         586     1829
