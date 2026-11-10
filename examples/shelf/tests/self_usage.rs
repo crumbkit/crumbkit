@@ -1,5 +1,5 @@
-//! End-to-end tests of `shelf self usage`, `shelf self figures list` and
-//! `shelf self runs list`. Each test runs the built binary
+//! End-to-end tests of `shelf self usage`, `shelf self figures list`,
+//! `shelf self runs list` and `shelf self runs export`. Each test runs the built binary
 //! with XDG directories in a temporary directory of its own. Most tests run
 //! shelf first, so those runs write the log that `self usage` reads
 //! (ADR-0029).
@@ -157,6 +157,106 @@ fn self_runs_list_prints_no_session_or_command_line_hash() {
             assert!(!output.contains(hash), "{field} {hash}");
         }
     }
+}
+
+#[test]
+fn self_runs_export_prints_each_line_of_a_fixed_log_with_its_position() {
+    let dir = tempfile::tempdir().unwrap();
+
+    shelf(dir.path(), &["self", "runs", "export", "--log", FIXTURE])
+        .success()
+        .stdout_eq(file!["golden/self-runs-export.txt"].raw())
+        .stderr_eq("");
+}
+
+/// Returns the `data` of each line that `shelf self runs export --json`
+/// prints under `home` with `args` after it.
+fn exported(home: &Path, args: &[&str]) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let args = [&["self", "runs", "export", "--json"][..], args].concat();
+    let output = shelf(home, &args).success().get_output().stdout.clone();
+    let mut lines = Vec::new();
+    for line in String::from_utf8(output)?.lines() {
+        let mut line: Value = serde_json::from_str(line)?;
+        lines.push(line["data"].take());
+    }
+    Ok(lines)
+}
+
+// The fixture's records name the component crumbkit, which no golden file
+// of shelf may hold, so the test compares them with the fixture itself.
+#[test]
+fn self_runs_export_prints_the_lines_after_a_position_with_their_stored_records_as_json() {
+    let dir = tempfile::tempdir().unwrap();
+    let stored: Vec<Value> = fs::read_to_string(FIXTURE)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+
+    let lines = exported(
+        dir.path(),
+        &[
+            "--log",
+            FIXTURE,
+            "--after",
+            "6912d6386190b62d@2026-10-01T09:00:02.000Z",
+        ],
+    )
+    .unwrap();
+
+    let records: Vec<&Value> = lines.iter().map(|line| &line["record"]).collect();
+    assert_eq!(records, stored[3..].iter().collect::<Vec<_>>());
+    assert_eq!(
+        lines[0]["position"],
+        "4758387b6f714969@2026-10-01T09:00:03.000Z"
+    );
+    assert!(lines.iter().all(|line| line["gap"] == false));
+}
+
+#[test]
+fn self_runs_export_after_a_trimmed_run_marks_the_first_line_after_a_gap() {
+    let dir = tempfile::tempdir().unwrap();
+    let lines = exported(
+        dir.path(),
+        &[
+            "--log",
+            FIXTURE,
+            "--after",
+            "0123456789abcdef@2026-10-01T09:00:02.000Z",
+        ],
+    )
+    .unwrap();
+
+    let gaps: Vec<&Value> = lines.iter().map(|line| &line["gap"]).collect();
+    assert_eq!(gaps.first(), Some(&&Value::Bool(true)));
+    assert!(gaps[1..].iter().all(|gap| **gap == Value::Bool(false)));
+    assert_eq!(lines[0]["record"]["at"], "2026-10-01T09:00:02.000Z");
+}
+
+#[test]
+fn self_runs_export_prints_the_stored_lines_of_shelfs_own_log_and_continues_from_the_last_position()
+{
+    let dir = tempfile::tempdir().unwrap();
+    wasteful_runs(dir.path());
+    let stored = fs::read_to_string(log(dir.path())).unwrap();
+    let first = exported(dir.path(), &[]).unwrap();
+    let printed: Vec<&Value> = first.iter().map(|line| &line["record"]).collect();
+    let stored: Vec<Value> = stored
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(printed, stored.iter().collect::<Vec<_>>());
+    let last = first.last().unwrap()["position"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+
+    // The export above appended its own line to the log, and the next
+    // export prints only that line.
+    let next = exported(dir.path(), &["--after", &last]).unwrap();
+    assert_eq!(next.len(), 1, "{next:?}");
+    assert_eq!(next[0]["record"]["command"], "self runs export");
+    assert_eq!(next[0]["gap"], false);
 }
 
 /// Returns the hashes and trace ids in the usage log under `home`.

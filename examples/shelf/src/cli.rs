@@ -12,7 +12,8 @@ use crumbkit::tool::RefusalContext;
 use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
 use crumbkit_usage::{
-    SELF_FIGURES_LIST, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns, SelfUsage,
+    SELF_FIGURES_LIST, SELF_RUNS_EXPORT, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns,
+    SelfRunsExport, SelfUsage,
 };
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -170,6 +171,20 @@ pub const TOOL: Tool = Tool::new()
                     ])
                     .effects(Effects::read_only())
                     .document(SELF_RUNS_LIST),
+                Leaf::new(&["self", "runs", "export"])
+                    .examples(&[
+                        Example::new(&["--json"], "Print every line of the usage log as JSON"),
+                        Example::new(
+                            &[
+                                "--json",
+                                "--after",
+                                "00f067aa0ba902b7@2026-10-11T11:56:40.120Z",
+                            ],
+                            "Print the lines after the position that an earlier export printed last",
+                        ),
+                    ])
+                    .effects(Effects::read_only())
+                    .stream(SELF_RUNS_EXPORT),
             ])
             .topics(&[Topic::new(
                 "catalogue",
@@ -282,6 +297,8 @@ pub(crate) enum FiguresCommand {
 pub(crate) enum RunsCommand {
     /// List each run in shelf's usage log, grouped by session.
     List(SelfRuns),
+    /// Print the lines of shelf's usage log after a position, oldest first.
+    Export(SelfRunsExport),
 }
 
 /// The commands for a person's aliases.

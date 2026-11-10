@@ -62,6 +62,11 @@
       "declaration": "refusal-alternatives",
       "applies_to": "shelf books show",
       "declares": "A refused command line for this command also offers the tool's own alternatives."
+    },
+    {
+      "declaration": "text-line",
+      "applies_to": "shelf self runs export",
+      "declares": "The text prints each row as the line <POSITION>  <COMMAND>  <EXIT>  [after a gap] in place of a table row."
     }
   ]
 }

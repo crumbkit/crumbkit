@@ -1,0 +1,18 @@
+Print the lines of shelf's usage log after a position, oldest first
+
+Usage: shelf self runs export [OPTIONS]
+
+Options:
+      --after <RUN@AT>  Print only the lines after this position, which each line gives, such as 00f067aa0ba902b7@2026-10-11T11:56:40.120Z
+      --log <FILE>      Read this usage log instead of the tool's own
+  -h, --help            Print help (see more with '--help')
+
+Examples:
+  shelf self runs export --json
+  shelf self runs export --json --after 00f067aa0ba902b7@2026-10-11T11:56:40.120Z
+
+Effects: read-only, closed-world.
+Output: one row per line as each arrives, and --json prints one JSON document per line.
+Text: one line per row, <POSITION>  <COMMAND>  <EXIT>  [after a gap]; --fields prints a table.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `shelf self runs export --help` describes them.
+Next: shelf self runs export --help explains each column.

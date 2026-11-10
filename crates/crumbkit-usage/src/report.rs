@@ -14,12 +14,14 @@ mod session;
 mod tally;
 
 use std::io::{BufRead, Read as _};
+use std::ops::ControlFlow;
 
 use clap::Command;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-pub(super) use self::entry::Entry;
+pub(super) use self::entry::{Entry, millis_of};
+pub(super) use self::known::is_hex;
 pub(super) use self::tally::Tally;
 use super::record::MAX_LINE;
 
@@ -44,12 +46,37 @@ const LONGEST: usize = MAX_LINE + 1;
 /// and the tally keeps the records read before it, because a usage-log
 /// failure stays silent (ADR-0029).
 pub(super) fn read(
-    mut log: impl BufRead,
+    log: impl BufRead,
     since: u64,
     tool: &Command,
     tally: &mut Tally,
     mut each: impl FnMut(Entry),
 ) {
+    lines(log, |line| {
+        let Some(entry) = Entry::parse(line) else {
+            return ControlFlow::Continue(());
+        };
+        if entry.at < since {
+            return ControlFlow::Continue(());
+        }
+        if known::known(tool, &entry) {
+            tally.add(&entry);
+            each(entry);
+        } else {
+            tally.skip();
+        }
+        ControlFlow::Continue(())
+    });
+}
+
+/// Passes each line of `log` to `each`, with its newline when it has one,
+/// until `each` returns `ControlFlow::Break` or the log ends.
+///
+/// It reads one line at a time and keeps at most [`LONGEST`] bytes of it.
+/// A line longer than that is damaged, because the usage log never writes
+/// one, and it is skipped unread. Reading stops at the first I/O error,
+/// because a usage-log failure stays silent (ADR-0029).
+pub(super) fn lines(mut log: impl BufRead, mut each: impl FnMut(&[u8]) -> ControlFlow<()>) {
     let mut line = Vec::with_capacity(LONGEST);
     loop {
         line.clear();
@@ -69,17 +96,8 @@ pub(super) fn read(
             }
             continue;
         }
-        let Some(entry) = Entry::parse(&line) else {
-            continue;
-        };
-        if entry.at < since {
-            continue;
-        }
-        if known::known(tool, &entry) {
-            tally.add(&entry);
-            each(entry);
-        } else {
-            tally.skip();
+        if each(&line).is_break() {
+            return;
         }
     }
 }

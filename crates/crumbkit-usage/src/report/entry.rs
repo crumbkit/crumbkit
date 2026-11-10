@@ -130,11 +130,16 @@ impl Entry {
 /// milliseconds since the Unix epoch.
 fn millis<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
     let text = String::deserialize(deserializer)?;
-    let time = humantime::parse_rfc3339(&text).map_err(serde::de::Error::custom)?;
-    let since_epoch = time
-        .duration_since(UNIX_EPOCH)
-        .map_err(serde::de::Error::custom)?;
-    u64::try_from(since_epoch.as_millis()).map_err(serde::de::Error::custom)
+    millis_of(&text).ok_or_else(|| serde::de::Error::custom("not an RFC 3339 time after 1970"))
+}
+
+/// Returns the RFC 3339 time `text`, such as `2026-10-07T12:01:07.120Z`, as
+/// milliseconds since the Unix epoch, or `None` when it is not such a time
+/// or is before 1970.
+pub(crate) fn millis_of(text: &str) -> Option<u64> {
+    let time = humantime::parse_rfc3339(text).ok()?;
+    let since_epoch = time.duration_since(UNIX_EPOCH).ok()?;
+    u64::try_from(since_epoch.as_millis()).ok()
 }
 
 /// Reads a field that is present with any string value as `true`.
