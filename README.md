@@ -10,7 +10,7 @@ your own `main`, and you adopt only the parts you want.
 
 ## Crates
 
-The nine crates are published on crates.io at version 0.2, and their API
+The nine crates are published on crates.io at version 0.3, and their API
 reference is on [docs.rs](https://docs.rs/crumbkit). The crumbkit crate README's
 [Adding it](crates/crumbkit/README.md#adding-it) section shows the
 dependencies that a tool needs.

@@ -13,7 +13,7 @@ A tool adds crumbkit-child beside crumbkit:
 
 ```toml
 [dependencies]
-crumbkit-child = "0.2"
+crumbkit-child = "0.3"
 ```
 
 ## Example

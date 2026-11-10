@@ -6,6 +6,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-10
+
 ### Added
 
 - crumbkit: `Recovery::Terminal` says a person must run a command in a
@@ -1502,7 +1504,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flags. The word `help` reported a `help` flag before
   ([behaviour/parsing]).
 
-[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/crumbkit/crumbkit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...v0.2.0
 [0.1.1]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...a85fa49c767a4313bbfa3261b84c4f6b4cbc73c1
 [0.1.0]: https://github.com/crumbkit/crumbkit/releases/tag/v0.1.0

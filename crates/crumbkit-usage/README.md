@@ -12,7 +12,7 @@ A tool adds crumbkit-usage beside crumbkit:
 
 ```toml
 [dependencies]
-crumbkit-usage = "0.2"
+crumbkit-usage = "0.3"
 ```
 
 The crate builds on Unix and Windows.
