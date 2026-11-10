@@ -133,7 +133,8 @@ pub const SCHEMAS_LIST: Document<Listing<SchemaRow>> = Document::new(
     "schemas-list",
     1,
     "The JSON documents that the tool prints, with a description of each.",
-);
+)
+.built_in();
 
 /// The document that `schemas show` prints: the JSON Schema of each id
 /// given, and a failure for each id that names no document. Its schema is
@@ -143,7 +144,8 @@ pub const SCHEMAS_SHOW: Document<Batch<SchemaShowRow, Error>> = Document::new(
     "schemas-show",
     1,
     "The JSON Schema of each document id given.",
-);
+)
+.built_in();
 
 /// The path from the root to `schemas list`, which the recovery of an
 /// unknown id runs.

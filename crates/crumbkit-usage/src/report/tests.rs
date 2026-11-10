@@ -7,6 +7,7 @@ use serde_json::json;
 
 use super::entry::Entry;
 use super::{LONGEST, Report, Tally, read};
+use crate::program::Program;
 use crate::testing::tree;
 
 /// Returns one line of the log for a run of `command` that ended `at`
@@ -33,7 +34,14 @@ fn line(at: u64, command: &str) -> String {
 /// seconds after the Unix epoch.
 fn report(log: &[u8], since: u64) -> Report {
     let mut tally = Tally::new(2);
-    read(Cursor::new(log), since * 1000, &tree(), &mut tally, |_| {});
+    read(
+        Cursor::new(log),
+        since * 1000,
+        &tree(),
+        &[],
+        &mut tally,
+        |_| {},
+    );
     tally.report()
 }
 
@@ -116,6 +124,53 @@ fn a_record_that_names_what_the_tool_lacks_is_counted_as_skipped_and_left_out() 
     assert_eq!(report.callers.len(), 1);
 }
 
+/// Returns `line` with `program` as the program that marked its run.
+fn marked(line: &str, program: &str) -> String {
+    let mut record: serde_json::Value = serde_json::from_str(line).unwrap();
+    record["program"] = json!(program);
+    format!("{record}\n")
+}
+
+#[test]
+fn the_reader_leaves_out_the_runs_of_an_excluded_program_before_it_counts_anything() {
+    let log = [
+        line(1, "books list"),
+        marked(&line(2, "books show"), "flightdeck"),
+        marked(&line(3, "books show"), "weigh"),
+    ]
+    .concat();
+    let exclude = [Program::new("flightdeck").unwrap()];
+    let mut tally = Tally::new(2);
+    let mut read_back = Vec::new();
+
+    read(
+        Cursor::new(log.as_str()),
+        0,
+        &tree(),
+        &exclude,
+        &mut tally,
+        |entry| {
+            read_back.push(entry.program);
+        },
+    );
+
+    let report = tally.report();
+    assert_eq!(report.runs, 2);
+    assert_eq!(report.skipped, 0);
+    assert_eq!(read_back, [None, Some("weigh".to_owned())]);
+}
+
+#[test]
+fn without_an_excluded_program_the_reader_keeps_every_marked_run() {
+    let log = [
+        line(1, "books list"),
+        marked(&line(2, "books show"), "flightdeck"),
+    ]
+    .concat();
+
+    assert_eq!(report(log.as_bytes(), 0).runs, 2);
+}
+
 #[test]
 fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
     let log = [line(1, "books list"), line(2, "books show")].concat();
@@ -125,6 +180,7 @@ fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
         BufReader::with_capacity(7, log.as_bytes()),
         0,
         &tree(),
+        &[],
         &mut tally,
         |_| {},
     );
@@ -279,8 +335,8 @@ proptest! {
     ) {
         let mut tally = Tally::new(2);
         let tool = tree();
-        read(Cursor::new(log_of(&runs[..split])), 0, &tool, &mut tally, |_| {});
-        read(Cursor::new(log_of(&runs[split..])), 0, &tool, &mut tally, |_| {});
+        read(Cursor::new(log_of(&runs[..split])), 0, &tool, &[], &mut tally, |_| {});
+        read(Cursor::new(log_of(&runs[split..])), 0, &tool, &[], &mut tally, |_| {});
 
         prop_assert_eq!(tally.report(), report(log_of(&runs).as_bytes(), 0));
     }

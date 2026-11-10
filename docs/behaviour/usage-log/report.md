@@ -33,7 +33,8 @@ Why: ADR-0034, ADR-0033, ADR-0190.
 defaults to `7d`. The report reads the runs that ended in that duration
 before now, and the summary names the UTC day on which the duration starts.
 `--log <FILE>` reads that file in place of the tool's own log, such as a
-copy from another machine.
+copy from another machine. `--exclude-program <NAME>` leaves out a
+[program's runs](program/README.md).
 
 The report reads the log once, a line at a time. It holds at most 1,025
 bytes of a line, which is the longest record and its newline, and skips a

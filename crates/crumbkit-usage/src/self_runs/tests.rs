@@ -5,7 +5,8 @@ use clap::Parser;
 use serde_json::{Value, json};
 
 use super::{SelfRuns, runs_from};
-use crate::testing::{line, now, tree};
+use crate::self_usage::Selection;
+use crate::testing::{line, marked_log, now, selection, tree, without_flightdeck};
 use crumbkit::Tool;
 
 /// The keyed hash of the second session in [`log`].
@@ -39,8 +40,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>, Value) {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        Duration::from_secs(86_400),
-        now(),
+        &selection(Duration::from_secs(86_400), now()),
         limit,
     );
     let rows = listing
@@ -158,5 +158,39 @@ fn the_checked_in_schema_matches_the_runs_document_schema() {
     assert_eq!(
         checked_in, generated,
         "schemas/self-runs-list-v1.json differs from the generated schema; replace the file with the generated schema"
+    );
+}
+
+/// Returns the command of each row of the runs of [`marked_log`] over
+/// `selection`.
+fn commands(selection: &Selection) -> Vec<String> {
+    let listing = runs_from(
+        &tree(),
+        &Tool::new(),
+        Some(Cursor::new(marked_log())),
+        selection,
+        None,
+    );
+    listing
+        .rows()
+        .iter()
+        .map(|row| {
+            serde_json::to_value(row).unwrap()["command"]
+                .as_str()
+                .unwrap()
+                .to_owned()
+        })
+        .collect()
+}
+
+#[test]
+fn the_runs_leave_out_those_of_an_excluded_program_and_keep_those_of_another() {
+    assert_eq!(
+        commands(&without_flightdeck()),
+        ["books list", "books show"]
+    );
+    assert_eq!(
+        commands(&selection(Duration::from_secs(86_400), now())),
+        ["books list", "books list", "books show"]
     );
 }

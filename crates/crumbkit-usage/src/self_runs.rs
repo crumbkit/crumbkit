@@ -37,7 +37,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::report::Entry;
-use super::self_usage::{SelfUsage, UsageSummary, open, summarize};
+use super::self_usage::{Selection, SelfUsage, UsageSummary, open, summarize};
 use crumbkit::{Document, Listing, Page, Run, Tool};
 
 #[cfg(test)]
@@ -52,7 +52,8 @@ pub const SELF_RUNS_LIST: Document<Listing<RunRow, UsageSummary>> = Document::ne
     "self-runs-list",
     1,
     "Each run in the usage log, grouped by session and in order within each session, and a summary of the runs read.",
-);
+)
+.built_in();
 
 /// The arguments of `<tool> self runs list`: the arguments of
 /// [`SelfUsage`], and how many rows to print.
@@ -141,7 +142,8 @@ impl crumbkit::Row for RunRow {
 /// [`finish`](crumbkit::finish) with [`SELF_RUNS_LIST`].
 ///
 /// It reads the log that [`findings`](super::findings) reads, in the same
-/// way, and leaves out and counts the same records. The rows are grouped
+/// way, leaves out and counts the same records, and leaves out the runs of
+/// each program that `--exclude-program` names. The rows are grouped
 /// by session, the session whose first run came first in the log first,
 /// and follow the log's order within each session. `tool` is the tool
 /// record, which gives the exit code of a refused command line for the
@@ -156,21 +158,18 @@ pub fn runs(run: &mut Run, tool: &Tool, args: &SelfRuns) -> Listing<RunRow, Usag
         tool_name,
         tool,
         open(tool_name, &args.usage),
-        args.usage.since,
-        SystemTime::now(),
+        &args.usage.selection(SystemTime::now()),
         args.page.limit(),
     )
 }
 
-/// Returns the runs in `log` that ended in the `since` duration before
-/// `now`, checked against `tool`, with at most `limit` rows, as [`runs`]
-/// describes for `tool`.
+/// Returns the runs in `log` that fall in `selection`, checked against `tool`,
+/// with at most `limit` rows, as [`runs`] describes for `tool`.
 fn runs_from(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
-    since: Duration,
-    now: SystemTime,
+    selection: &Selection,
     limit: Option<usize>,
 ) -> Listing<RunRow, UsageSummary> {
     let name = tool_name.get_name();
@@ -178,7 +177,7 @@ fn runs_from(
     // rows. The hash stays in the map and never reaches a row.
     let mut ordinals: HashMap<String, usize> = HashMap::new();
     let mut sessions: Vec<Vec<RunRow>> = Vec::new();
-    let (_, summary) = summarize(tool_name, tool, log, since, now, |entry| {
+    let (_, summary) = summarize(tool_name, tool, log, selection, |entry| {
         let index = *ordinals.entry(entry.session.clone()).or_insert_with(|| {
             sessions.push(Vec::new());
             sessions.len() - 1

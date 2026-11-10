@@ -77,9 +77,12 @@ problem it reports. These rules matter most to a tool's author:
   `Examples`, from crumbkit's failure document or from its `code:` line.
 - A run whose standard error holds a warning that crumbkit prints in a
   debug build fails, because such a warning marks a mistake in the tool.
-  crumbkit's warnings start with `warning: <tool> left out `, such as
-  `warning: shelf left out a recovery of the failure ...`. A tool's own
-  warning, such as `warning: shelf cache is stale`, does not fail the run.
+  crumbkit's debug-build warnings start with `warning: <tool> left out `,
+  such as `warning: shelf left out a recovery of the failure ...`. A tool's
+  own warning, such as `warning: shelf cache is stale`, does not fail the
+  run, and neither does the usage log's warning about a `<TOOL>_PROGRAM`
+  value that is not a program name, which every build prints
+  ([program](../usage-log/program/README.md)).
 - `Allow::example` opts out of one example by its words, for an example
   whose output no redaction can make stable. It is stale when its command
   has no example with those words.

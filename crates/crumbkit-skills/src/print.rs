@@ -31,7 +31,8 @@ pub const SKILLS_PRINT: Document<Prose<SkillText>> = Document::new(
     1,
     "The tool's agent skill: its name, its version and the text of its SKILL.md.",
 )
-.always_print_first();
+.always_print_first()
+.built_in();
 
 /// A tool's skill as `skills print` prints it. The text output is the
 /// skill's text, and the JSON document holds the tool's name and version

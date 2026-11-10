@@ -50,6 +50,7 @@ mod file;
 mod key;
 mod observer;
 mod platform;
+mod program;
 mod record;
 mod recorder;
 mod report;

@@ -9,6 +9,9 @@ use clap::{Arg, ArgAction, Command};
 use serde_json::{Value, json};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::program::Program;
+use crate::self_usage::Selection;
+
 /// The number of temporary directories that this process has created, which
 /// gives each new directory a number of its own.
 static CREATED: AtomicUsize = AtomicUsize::new(0);
@@ -75,6 +78,16 @@ pub(super) fn now() -> SystemTime {
     humantime::parse_rfc3339("2026-10-11T12:00:00Z").unwrap()
 }
 
+/// Returns the selection of the runs that ended in the `since` duration before
+/// `now`, with no excluded program.
+pub(super) fn selection(since: Duration, now: SystemTime) -> Selection {
+    Selection {
+        since,
+        now,
+        exclude: Vec::new(),
+    }
+}
+
 /// Returns one line of the log for a person's run of `command` in session
 /// `s1` that ended `secs` seconds before [`now`], with `fields` added.
 pub(super) fn line(secs: u64, command: &str, fields: &Value) -> String {
@@ -99,4 +112,25 @@ pub(super) fn line(secs: u64, command: &str, fields: &Value) -> String {
         record[field] = value.clone();
     }
     format!("{record}\n")
+}
+
+/// Returns a log of a person's run of `books list`, a run of `books list`
+/// that flightdeck marked and a run of `books show` that weigh marked, in
+/// the last hour.
+pub(super) fn marked_log() -> String {
+    [
+        line(300, "books list", &json!({})),
+        line(200, "books list", &json!({"program": "flightdeck"})),
+        line(100, "books show", &json!({"program": "weigh"})),
+    ]
+    .concat()
+}
+
+/// Returns the selection of the last day that leaves out flightdeck's runs.
+pub(super) fn without_flightdeck() -> Selection {
+    Selection {
+        since: Duration::from_secs(86_400),
+        now: now(),
+        exclude: vec![Program::new("flightdeck").unwrap()],
+    }
 }

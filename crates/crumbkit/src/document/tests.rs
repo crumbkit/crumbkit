@@ -240,3 +240,14 @@ fn a_listing_document_declares_no_long_note_until_the_tool_sets_long_noted_and_u
     assert!(noted.has_long_note());
     assert!(noted.untyped().has_long_note());
 }
+
+#[test]
+fn a_document_is_built_in_only_when_crumbkit_marks_it_and_untyped_keeps_the_mark() {
+    let tool: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
+    let own: Document<u8> = Document::new("crumbkit", "commands-list", 1, "Commands.").built_in();
+
+    assert!(!tool.is_built_in());
+    assert!(own.is_built_in());
+    assert!(own.untyped().is_built_in());
+    assert!(own.with_component("shelf").is_built_in());
+}

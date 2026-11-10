@@ -91,6 +91,8 @@ row the same way.
   three. `--fields prints_no_result` writes `null` for a row without the
   field, as it does for `goals`
   ([commands that print no result](../output/shapes/README.md#a-command-that-prints-no-result)).
+- `built_in` is `true` for a command that crumbkit provides
+  ([built-in commands](built-in/README.md)).
 
 The text table shows only each command's path and about text, because the
 nested lists would print as compact JSON in a table cell, and it ends with a
@@ -102,4 +104,4 @@ formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
 Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064,
-ADR-0065, ADR-0103, ADR-0120, ADR-0168, ADR-0169.
+ADR-0065, ADR-0103, ADR-0120, ADR-0168, ADR-0169, ADR-0198.

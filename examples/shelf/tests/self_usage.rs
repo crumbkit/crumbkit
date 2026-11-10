@@ -375,7 +375,7 @@ fn records_edited_to_hold_other_text_are_left_out_and_counted() {
 
     assert!(text.starts_with("1 run in 1 session since "), "{text}");
     assert!(
-        text.contains(" 4 records were skipped because they name a command, flag, code, caller or trace id that the tool does not write.\n"),
+        text.contains(" 4 records were skipped because they name a command, flag, code, caller, program or trace id that the tool does not write.\n"),
         "{text}"
     );
     assert!(!text.contains("PLANTED"), "{text}");

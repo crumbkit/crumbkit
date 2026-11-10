@@ -210,8 +210,8 @@ fn no_line_holds_a_value_that_the_caller_typed() {
 
     // The caller's trace context: a planted TRACEPARENT, which starts a new
     // trace, and a planted TRACESTATE beside both an invalid and a valid
-    // TRACEPARENT.
-    let contexts: [&[(&str, &str)]; 3] = [
+    // TRACEPARENT. Then a program's mark that is no program name.
+    let contexts: [&[(&str, &str)]; 4] = [
         &[("TRACEPARENT", "00-s3cr3t-traceparent-PLANTED-01")],
         &[
             ("TRACEPARENT", "s3cr3t-PLANTED"),
@@ -224,6 +224,7 @@ fn no_line_holds_a_value_that_the_caller_typed() {
             ),
             ("TRACESTATE", "vendor=s3cr3t-tracestate-PLANTED"),
         ],
+        &[("SHELF_PROGRAM", "s3cr3t-program-PLANTED")],
     ];
 
     for args in runs {
@@ -232,12 +233,63 @@ fn no_line_holds_a_value_that_the_caller_typed() {
     for env in contexts {
         let _ = shelf_with(home, &["books", "list"], env);
     }
+    // A run that a program marked, with a planted argument value.
+    let _ = shelf_with(
+        home,
+        &["books", "show", "s3cr3t-marked-PLANTED"],
+        &[("SHELF_PROGRAM", "flightdeck")],
+    );
 
     let log = fs::read_to_string(home.join("state").join("shelf").join("usage.jsonl")).unwrap();
-    assert_eq!(log.lines().count(), runs.len() + contexts.len());
+    assert_eq!(log.lines().count(), runs.len() + contexts.len() + 1);
     for line in log.lines() {
         assert!(!line.contains("PLANTED"), "{line}");
     }
+    let programs: Vec<Value> = lines(home)
+        .unwrap()
+        .into_iter()
+        .filter_map(|line| line.get("program").cloned())
+        .collect();
+    assert_eq!(programs, [json!("flightdeck")]);
+}
+
+#[test]
+fn a_program_variable_that_is_no_program_name_warns_on_standard_error_and_the_run_still_counts() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    let refused = shelf_with(
+        home,
+        &["books", "list", "--json"],
+        &[("SHELF_PROGRAM", "Flight Deck s3cr3t-PLANTED")],
+    )
+    .success();
+    let empty = shelf_with(home, &["books", "list", "--json"], &[("SHELF_PROGRAM", "")]).success();
+
+    let output = refused.get_output();
+    let stderr = String::from_utf8(output.stderr.clone()).unwrap();
+    assert_eq!(
+        stderr,
+        "warning: SHELF_PROGRAM was ignored, because a program name is 1 to 32 lowercase letters, digits, `-` and `_`, starting with a letter, such as flightdeck; the run is recorded without a program\n"
+    );
+    let _: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(empty.get_output().stderr, b"");
+    let lines = lines(home).unwrap();
+    assert_eq!(lines.len(), 2);
+    assert!(lines.iter().all(|line| line.get("program").is_none()));
+}
+
+#[test]
+fn a_run_that_a_program_marked_records_the_program_s_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    shelf_with(home, &["books", "list"], &[("SHELF_PROGRAM", "flightdeck")]).success();
+    shelf(home, &["books", "list"]).success();
+
+    let lines = lines(home).unwrap();
+    assert_eq!(lines[0]["program"], "flightdeck");
+    assert_eq!(lines[1].get("program"), None);
 }
 
 #[test]

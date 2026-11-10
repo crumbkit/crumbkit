@@ -17,6 +17,7 @@ use super::file::{self, LIMITS, Limits};
 use super::key;
 use super::observer::UsageLog;
 use super::platform;
+use super::program::Program;
 use super::record::{self, Hash, Help, Name, Record, Run};
 use super::shape;
 use clap::Command;
@@ -103,6 +104,10 @@ pub(super) struct Recorder {
     /// The tool's own extensions of the record, which [`crate::extend`]
     /// changes.
     pub(super) extensions: Extensions,
+    /// The program that marked the run with the tool's `<TOOL>_PROGRAM`
+    /// variable, which the recorder reads once `parse` gives it the tool's
+    /// name.
+    pub(super) program: Option<Program>,
 }
 
 /// The guard that [`start`] returns. It writes the run's line when it
@@ -299,6 +304,7 @@ impl Recorder {
             run: Run::default(),
             signalled: false,
             extensions: Extensions::default(),
+            program: None,
         }
     }
 
@@ -306,7 +312,14 @@ impl Recorder {
     /// `args`, the command line that `parse` received, whose words after the
     /// program name the line holds as a keyed hash, and `spelling`, in which
     /// the line spells tolerated codes.
+    ///
+    /// The first call also reads the tool's `<TOOL>_PROGRAM` variable, and
+    /// warns on standard error when it holds no program name, so the
+    /// warning comes before the tool's output and once per run.
     pub(super) fn typed(&mut self, command: &Command, args: &[OsString], spelling: Spelling) {
+        if self.tool.is_none() {
+            self.program = caller::program(spelling.tool());
+        }
         self.tool = Some(Name::command(command));
         self.version = Name::version(command);
         self.words = args.get(1..).unwrap_or_default().to_vec();
@@ -341,6 +354,13 @@ impl Recorder {
         }
     }
 
+    /// Returns the name of the tool, which spells the record's id, from the
+    /// spelling that `parse` gives. A run that never reached `parse` has
+    /// crumbkit's name, and writes no line.
+    fn tool_name(&self) -> ToolName {
+        self.spelling.map_or(ToolName::CRUMBKIT, Spelling::tool)
+    }
+
     /// Returns the run's record, as it ended at `now`, with the hashes keyed
     /// with `key`, or `None` when the run never reached `parse`.
     fn finish(
@@ -350,6 +370,7 @@ impl Recorder {
         interrupted: bool,
         caller: &Caller,
     ) -> Option<Record> {
+        let schema = self.tool_name().schema_id(record::SCHEMA);
         let mut run = self.run;
         if let Some(spelling) = self.spelling {
             run.tolerated = self
@@ -359,15 +380,13 @@ impl Recorder {
                 .collect();
         }
         Some(Record {
-            schema: self
-                .spelling
-                .map_or(ToolName::CRUMBKIT, Spelling::tool)
-                .schema_id(record::SCHEMA),
+            schema,
             tool: self.tool?,
             version: self.version,
             at: humantime::format_rfc3339_millis(now).to_string(),
             ms: u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX),
             caller: caller.name,
+            program: self.program,
             session: Hash::new(key, [caller.session.as_bytes()]),
             args: Hash::new(key, self.words.iter().map(|word| word.as_encoded_bytes())),
             trace: self.context.ids,

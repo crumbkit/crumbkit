@@ -35,6 +35,13 @@ mod tests;
 /// `prints_no_result` field that is `true`. Every other row leaves the field
 /// out, so a caller tells such a command from one whose leaf declares no
 /// document, although both rows have the form `null` (ADR-0169).
+///
+/// Every row has a `built_in` field. It is `true` for a command whose leaf
+/// declares a document or stream that crumbkit or one of its add-on crates
+/// marks as its own, such as `commands list` or `self usage`, and for a
+/// group whose visible commands below it number at least one and are all
+/// built in. It is `false` for every other row, such as the tool's own
+/// command under its `self` group.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
     // The `JsonSchema` impl in `schema.rs` describes each field of this struct and of
@@ -54,6 +61,7 @@ pub struct CommandRow {
     writes: Option<Guards>,
     goals: Vec<CommandGoal>,
     prints_no_result: bool,
+    built_in: bool,
 }
 
 /// One argument of a command, as the command's help shows it.
@@ -117,7 +125,8 @@ impl CommandRow {
     /// whose row then lists every global argument it has, including those
     /// it inherits. `tool` holds the leaf whose examples and columns the
     /// row lists, the exit codes that cover the command and the group whose
-    /// goal headings the row lists.
+    /// goal headings the row lists. `built_in` says whether crumbkit
+    /// provides the command, as [`built_in`] decides.
     ///
     /// The row reads only the command's name, about texts and arguments,
     /// and the tool record. It never reads a command's help template,
@@ -131,6 +140,7 @@ impl CommandRow {
         command: &Command,
         parent: Option<&Command>,
         tool: &Tool,
+        built_in: bool,
     ) -> Self {
         let line = std::iter::once(tool_name)
             .chain(path.iter().copied())
@@ -224,8 +234,26 @@ impl CommandRow {
             writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),
             goals,
             prints_no_result: leaf.is_some_and(Leaf::get_prints_no_result),
+            built_in,
         }
     }
+}
+
+/// Reports whether `command`, a leaf at `path` below the root of `tool`'s
+/// tree, is one that crumbkit or one of its add-on crates provides: its
+/// leaf in `tool` declares a document or stream that
+/// [`Document::built_in`](crate::Document::built_in) marks. A command
+/// without a leaf, or whose leaf declares no document, is not.
+///
+/// A group's mark comes from the commands below it, which
+/// [`list`](super::list) works out as it visits them.
+pub(super) fn built_in(path: &[&str], tool: &Tool) -> bool {
+    tool.get_help()
+        .get_leaves()
+        .iter()
+        .find(|leaf| leaf.path() == path)
+        .and_then(Leaf::get_document)
+        .is_some_and(|document| document.document().is_built_in())
 }
 
 /// Returns the form of the document that `leaf` declares, as `commands
@@ -442,7 +470,7 @@ impl Row for CommandRow {
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let fields = 13 + usize::from(!self.goals.is_empty()) + usize::from(self.prints_no_result);
+        let fields = 14 + usize::from(!self.goals.is_empty()) + usize::from(self.prints_no_result);
         let mut row = serializer.serialize_struct("CommandRow", fields)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
@@ -457,6 +485,7 @@ impl Serialize for CommandRow {
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
         row.serialize_field("writes", &self.writes)?;
+        row.serialize_field("built_in", &self.built_in)?;
         if !self.goals.is_empty() {
             row.serialize_field("goals", &self.goals)?;
         }

@@ -115,6 +115,24 @@ fn a_caller_is_known_only_when_the_log_writes_it() {
 }
 
 #[test]
+fn a_record_is_known_only_when_its_program_is_a_program_name_or_absent() {
+    let tool = tree();
+    let program = |name: Option<&str>| {
+        let mut entry = run("books show", &[]);
+        entry.program = name.map(ToOwned::to_owned);
+        known(&tool, &entry)
+    };
+
+    assert!(program(None));
+    assert!(program(Some("flightdeck")));
+    assert!(program(Some("cargo-crumbkit")));
+    assert!(!program(Some("")));
+    assert!(!program(Some("Flightdeck")));
+    assert!(!program(Some("--password=hunter2")));
+    assert!(!program(Some(&"a".repeat(33))));
+}
+
+#[test]
 fn a_record_whose_trace_ids_are_lowercase_hex_of_the_right_length_is_known() {
     let tool = tree();
     let mut child = run("books show", &[]);

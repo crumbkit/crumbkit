@@ -1,8 +1,9 @@
 //! The record of one run, which the usage log holds as one line of JSON.
 //!
-//! Every field is a name from the tool's own vocabulary, a count, a flag, a
-//! time, a keyed hash or a hex trace id, so no field can hold an argument's
-//! value (ADR-0029).
+//! Every field is a name from the tool's own vocabulary, the name that the
+//! program which started the run gave itself, a count, a flag, a time, a
+//! keyed hash or a hex trace id, so no field can hold an argument's value
+//! (ADR-0029).
 
 use std::fmt::Write as _;
 use std::hash::Hasher as _;
@@ -13,6 +14,7 @@ use serde::Serialize;
 use siphasher::sip::SipHasher24;
 
 use super::facts::Written;
+use super::program::Program;
 use crumbkit::{Code, Spelling};
 
 #[cfg(test)]
@@ -53,6 +55,13 @@ pub(super) struct Record {
     /// person when no agent is detected and standard input is a terminal;
     /// and unknown otherwise.
     pub(super) caller: &'static str,
+    /// The name of the program that started the run and marked it with the
+    /// tool's `<TOOL>_PROGRAM` variable, such as flightdeck. It is present
+    /// only when the variable held 1 to 32 lowercase ASCII letters, digits,
+    /// `-` and `_`, starting with a letter.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "Program")]
+    pub(super) program: Option<Program>,
     /// The keyed hash of the agent's session id, or, when the agent gives no
     /// session id, of the parent process id on Unix and of the Windows
     /// Terminal session or the text `windows` on Windows.

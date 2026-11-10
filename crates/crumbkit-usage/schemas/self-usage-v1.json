@@ -420,7 +420,7 @@
           "type": "string"
         },
         "skipped": {
-          "description": "The records that the report left out, because they named a command,\nflag, code, caller or trace id that the tool does not write.",
+          "description": "The records that the report left out, because they named a command,\nflag, code, caller, program or trace id that the tool does not write.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0

@@ -79,6 +79,9 @@ pub struct Document<T> {
     /// What the text of a listing does beyond its columns, which the tool
     /// chose with `only_problems` and `long_noted`.
     listing: ListingText,
+    /// Whether crumbkit or one of its add-on crates owns the document, which
+    /// [`Document::built_in`] sets.
+    built_in: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -139,8 +142,34 @@ impl<T> Document<T> {
                 only_problems: false,
                 long_note: false,
             },
+            built_in: false,
             result: PhantomData,
         }
+    }
+
+    /// Returns the same document marked as one that crumbkit or one of its
+    /// add-on crates provides, such as `commands list`'s or `self usage`'s.
+    /// `commands list` marks the row of a command whose leaf declares such
+    /// a document with `built_in`, so a program that reads the tree tells
+    /// crumbkit's commands from the tool's own without comparing names.
+    ///
+    /// It is hidden because only crumbkit's crates call it, where they
+    /// define their documents. A tool never marks its own documents
+    /// (ADR-0198).
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn built_in(mut self) -> Self {
+        self.built_in = true;
+        self
+    }
+
+    /// Reports whether [`Document::built_in`] marked the document. It is
+    /// hidden because only crumbkit's `commands list` and the tests of
+    /// crumbkit's own crates read it.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn is_built_in(&self) -> bool {
+        self.built_in
     }
 
     /// Returns the same document with its first answer always printed: a
@@ -263,8 +292,8 @@ impl<T> Document<T> {
     }
 
     /// Returns the same id, description, choice of envelope, budget
-    /// settings, empty note, text form, choice of rows and long note as a
-    /// `Document<()>`, which no
+    /// settings, empty note, text form, choice of rows, long note and
+    /// built-in mark as a `Document<()>`, which no
     /// longer names the result type, so one list can hold the documents of
     /// results of different types. crumbkit's
     /// help leaves keep their documents in this form.
@@ -281,6 +310,7 @@ impl<T> Document<T> {
             headed: self.headed,
             bytes_of: None,
             listing: self.listing,
+            built_in: self.built_in,
             result: PhantomData,
         }
     }

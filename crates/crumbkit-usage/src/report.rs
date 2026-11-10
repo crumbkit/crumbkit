@@ -23,6 +23,7 @@ use serde::Serialize;
 pub(super) use self::entry::Entry;
 pub(super) use self::known::is_hex;
 pub(super) use self::tally::Tally;
+use super::program::Program;
 use super::record::MAX_LINE;
 
 #[cfg(test)]
@@ -34,11 +35,14 @@ mod tests;
 const LONGEST: usize = MAX_LINE + 1;
 
 /// Adds to `tally` every record of `log` whose run ended at or after
-/// `since`, in milliseconds since the Unix epoch, and that names only what
-/// the writer could have produced for `tool`, as [`known::known`] checks,
-/// and then passes the record to `each`. `tool` is the tool's command after
-/// `Command::build`. A record that names anything else is counted as
-/// skipped, adds nothing more and never reaches `each`.
+/// `since`, in milliseconds since the Unix epoch, that names only what the
+/// writer could have produced for `tool`, as [`known::known`] checks, and
+/// whose program is none of `exclude`, and then passes the record to
+/// `each`. `tool` is the tool's command after `Command::build`. A record
+/// that names anything else is counted as skipped, adds nothing more and
+/// never reaches `each`, whatever its program. A valid record that an
+/// excluded program marked adds nothing at all, not even to the skipped
+/// records.
 ///
 /// It reads one line at a time and keeps at most [`LONGEST`] bytes of it.
 /// A line that is not a whole record, such as the last line of a run that
@@ -49,6 +53,7 @@ pub(super) fn read(
     log: impl BufRead,
     since: u64,
     tool: &Command,
+    exclude: &[Program],
     tally: &mut Tally,
     mut each: impl FnMut(Entry),
 ) {
@@ -59,11 +64,11 @@ pub(super) fn read(
         if entry.at < since {
             return ControlFlow::Continue(());
         }
-        if known::known(tool, &entry) {
+        if !known::known(tool, &entry) {
+            tally.skip();
+        } else if !entry.marked_by(exclude) {
             tally.add(&entry);
             each(entry);
-        } else {
-            tally.skip();
         }
         ControlFlow::Continue(())
     });
@@ -109,9 +114,9 @@ pub(super) struct Report {
     pub(super) runs: u64,
     /// The number of sessions that the runs came from.
     pub(super) sessions: u64,
-    /// The number of records that named a command, flag, code, caller or trace id
-    /// that the writer could not have produced, which the report leaves
-    /// out.
+    /// The number of records that named a command, flag, code, caller,
+    /// program or trace id that the writer could not have produced, which
+    /// the report leaves out.
     pub(super) skipped: u64,
     /// The runs of each caller, such as `claude-code`, the most first.
     pub(super) callers: Vec<Count>,

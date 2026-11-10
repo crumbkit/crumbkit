@@ -12,6 +12,7 @@ use super::{
 use crate::caller::Caller;
 use crate::context::Context;
 use crate::file::LIMITS;
+use crate::program::Program;
 use crate::record::Help;
 use crate::testing::TempDir;
 use crate::{Extension, Facts, Key};
@@ -161,6 +162,31 @@ fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashe
             .unwrap()
             .contains("s3cr3t")
     );
+}
+
+#[test]
+fn a_saved_line_holds_the_program_that_marked_the_run_and_a_line_without_one_leaves_it_out() {
+    let marked = TempDir::new("marked");
+    let unmarked = TempDir::new("unmarked");
+    let mut flightdeck = parsed();
+    flightdeck.program = Program::new("flightdeck");
+
+    let marked = saved(&marked, flightdeck, false);
+    let unmarked = saved(&unmarked, parsed(), false);
+
+    assert_eq!(marked[0]["program"], "flightdeck");
+    assert_eq!(unmarked[0].get("program"), None);
+}
+
+#[test]
+fn a_recorder_that_never_reached_parse_has_no_program() {
+    assert_eq!(started(None).program, None);
+}
+
+#[test]
+fn the_recorder_names_the_tool_whose_name_spells_the_record_s_id() {
+    assert_eq!(parsed().tool_name(), ToolName::new("shelf"));
+    assert_eq!(started(None).tool_name(), ToolName::CRUMBKIT);
 }
 
 #[test]

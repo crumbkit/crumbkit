@@ -12,6 +12,7 @@ use crate::help::{Example, Goal, Group, Help, Leaf};
 use crate::{Document, Error, Listing, Row, Run, Sink, Tool, finish_to};
 
 mod arguments;
+mod built_in;
 mod exits;
 mod goals;
 mod no_result;
@@ -303,7 +304,7 @@ fn one_of_names_visible_required_group_members_and_conflicts_of_required_argumen
                 .required(true),
         )
         .group(ArgGroup::new("loose").args(["ids", "quiet"]));
-    let row = CommandRow::new("shelf", &["show"], &command, None, &Tool::new());
+    let row = CommandRow::new("shelf", &["show"], &command, None, &Tool::new(), false);
     let row = serde_json::to_value(row).unwrap();
 
     let one_of: Value = row["arguments"]
@@ -352,6 +353,7 @@ fn a_row_holds_its_leaf_s_examples_as_quoted_command_lines_and_its_columns() {
             "exits": [],
             "effects": null,
             "writes": null,
+            "built_in": false,
         }])
     );
 }

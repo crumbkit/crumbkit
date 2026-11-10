@@ -343,3 +343,8 @@ fn a_subcommand_without_a_doc_comment_takes_no_description_from_the_list_argumen
     assert_eq!(command.get_about(), None);
     assert_eq!(command.get_long_about(), None);
 }
+
+#[test]
+fn aliases_list_s_document_is_marked_as_crumbkit_s_own() {
+    assert!(ALIASES_LIST.is_built_in());
+}

@@ -31,3 +31,4 @@ that each path through a tool's help costs.
 - [ADR-0137. A row type describes its child lines in help](0137-a-row-type-describes-its-child-lines-in-help.md)
 - [ADR-0166. Goal headings](headings/README.md)
 - [ADR-0194. Skill draft](skill/README.md)
+- [ADR-0198. `commands list` marks crumbkit's own commands](0198-commands-list-marks-crumbkit-s-own-commands.md)

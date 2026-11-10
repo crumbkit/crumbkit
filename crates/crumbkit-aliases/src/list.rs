@@ -26,7 +26,8 @@ pub const ALIASES_LIST: Document<Listing<AliasRow>> = Document::new(
     "aliases-list",
     1,
     "The built-in aliases and the entries of the aliases file, with the problem of each entry that does not work.",
-);
+)
+.built_in();
 
 /// The problem of an entry whose name a real command takes.
 const SHADOWED: &str = "the tool has a command or built-in alias of this name, which wins";

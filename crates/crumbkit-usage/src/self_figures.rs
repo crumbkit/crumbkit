@@ -31,13 +31,13 @@
 //! the bytes of its help and output.
 
 use std::io::BufRead;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use clap::{Args, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::self_usage::{CommandFigures, SelfUsage, UsageSummary, open, summarize};
+use super::self_usage::{CommandFigures, Selection, SelfUsage, UsageSummary, open, summarize};
 use crumbkit::{Document, Listing, Page, Run, Tool};
 
 #[cfg(test)]
@@ -52,7 +52,8 @@ pub const SELF_FIGURES_LIST: Document<Listing<FiguresRow, UsageSummary>> = Docum
     "self-figures-list",
     1,
     "The figures of each command in the usage log, and a summary of the runs read.",
-);
+)
+.built_in();
 
 /// The arguments of `<tool> self figures list`: the arguments of
 /// [`SelfUsage`], and how many rows to print.
@@ -108,7 +109,8 @@ impl crumbkit::Row for FiguresRow {
 /// the tool to pass to [`finish`](crumbkit::finish) with [`SELF_FIGURES_LIST`].
 ///
 /// It reads the log that [`findings`](super::findings) reads, in the same
-/// way, and leaves out and counts the same records. The rows follow the
+/// way, leaves out and counts the same records, and leaves out the runs of
+/// each program that `--exclude-program` names. The rows follow the
 /// order of the command paths, with the root first under the tool's name.
 /// A command that the log does not name has no row. `tool` is the
 /// tool record, whose exit codes give the meaning of each exit from 3.
@@ -123,24 +125,21 @@ pub fn figures(
         tool_name,
         tool,
         open(tool_name, &args.usage),
-        args.usage.since,
-        SystemTime::now(),
+        &args.usage.selection(SystemTime::now()),
         args.page.limit(),
     )
 }
 
-/// Returns the figures in `log` for the runs that ended in the `since`
-/// duration before `now`, checked against `tool`, with at most `limit`
-/// rows, as [`figures`] describes for `tool`.
+/// Returns the figures in `log` for the runs in `selection`, checked against
+/// `tool`, with at most `limit` rows, as [`figures`] describes for `tool`.
 fn figures_from(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
-    since: Duration,
-    now: SystemTime,
+    selection: &Selection,
     limit: Option<usize>,
 ) -> Listing<FiguresRow, UsageSummary> {
-    let (report, summary) = summarize(tool_name, tool, log, since, now, |_| {});
+    let (report, summary) = summarize(tool_name, tool, log, selection, |_| {});
     let rows = report
         .commands
         .iter()

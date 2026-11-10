@@ -233,6 +233,10 @@ impl JsonSchema for CommandRow {
                 },
                 "effects": effects::schema(),
                 "writes": effects::writes_schema(),
+                "built_in": {
+                    "description": "true for a command that crumbkit or one of its add-on crates provides, because the tool record's leaf for the command declares a document that crumbkit marks as its own, such as `commands list` or `self usage`, and for a group whose visible commands below it number at least one and are all built in. false for every other command, such as the tool's own command under its `self` group.",
+                    "type": "boolean",
+                },
                 "goals": {
                     "description": "The goal headings that the command's help page lists its subcommands under, in the page's order. Only the row of a command whose help page prints goal headings for its group, which needs at least one goal that names a visible subcommand, has this field.",
                     "type": "array",
@@ -243,7 +247,7 @@ impl JsonSchema for CommandRow {
                     "const": true,
                 },
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "children", "children_help", "exits", "effects", "writes"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "children", "children_help", "exits", "effects", "writes", "built_in"],
         })
     }
 }

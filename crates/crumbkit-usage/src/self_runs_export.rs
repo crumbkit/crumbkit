@@ -55,7 +55,8 @@ const DESCRIPTION: &str =
 /// one line.
 pub const SELF_RUNS_EXPORT: Document<Stream<RunLine>> =
     Document::new("crumbkit", "self-runs-export", 1, DESCRIPTION)
-        .when_empty("the usage log holds no runs after the one named");
+        .when_empty("the usage log holds no runs after the one named")
+        .built_in();
 
 /// The arguments of `<tool> self runs export`: the run to print the records
 /// after, and the log to read when the caller names one.
