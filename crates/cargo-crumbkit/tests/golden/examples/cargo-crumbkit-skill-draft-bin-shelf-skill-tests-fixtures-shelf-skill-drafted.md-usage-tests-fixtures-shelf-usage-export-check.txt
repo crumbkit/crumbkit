@@ -1,0 +1,5 @@
+Checked tests/fixtures/shelf-skill-drafted.md for shelf from 18 runs, and ignored 2 that name a command shelf no longer has or another tool.
+SECTION      STATUS
+description  unchanged
+jobs         unchanged
+usage        unchanged

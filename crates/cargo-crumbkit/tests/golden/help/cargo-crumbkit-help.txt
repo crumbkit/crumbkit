@@ -8,8 +8,8 @@ Measure a tool's help
 Write a tool's reference
   docs      Write a Markdown reference of every command of a tool to a file
 
-Check a tool's agent skill
-  skill     Check a tool's agent skill against its commands
+Draft and check a tool's agent skill
+  skill     Draft a tool's agent skill and check it against its commands
 
 Explore the commands
   commands  Explore cargo crumbkit's commands

@@ -1,5 +1,5 @@
-//! The failures of `cargo crumbkit weigh`, `cargo crumbkit docs` and
-//! `cargo crumbkit skill check`, and the failures of building and running a
+//! The failures of `cargo crumbkit weigh`, `cargo crumbkit docs`,
+//! `cargo crumbkit skill check` and `cargo crumbkit skill draft`, and the failures of building and running a
 //! tool's binary that they share.
 
 use std::fmt;
@@ -52,6 +52,17 @@ const WRITE_FAILED: Code = Code::new("crumbkit", "docs", "write_failed");
 
 /// The code of a failure whose skill file cannot be read.
 const SKILL_UNREADABLE: Code = Code::new("crumbkit", "skill", "unreadable");
+
+/// The code of a failure whose skill file has a section marker without its
+/// end marker.
+const UNCLOSED_SECTION: Code = Code::new("crumbkit", "skill", "unclosed_section");
+
+/// The code of a failure whose skill file cannot be written.
+const SKILL_WRITE_FAILED: Code = Code::new("crumbkit", "skill", "write_failed");
+
+/// The code of a failure whose usage directory or one of its files cannot
+/// be read.
+const USAGE_UNREADABLE: Code = Code::new("crumbkit", "usage", "unreadable");
 
 /// A failure to build a tool's binary or to run it for its command tree,
 /// which `weigh` and `docs` share. Each failure's next step is advice,
@@ -320,7 +331,8 @@ impl std::error::Error for DocsError {
     }
 }
 
-/// A failure of `cargo crumbkit skill check`. Each failure's next step is
+/// A failure of `cargo crumbkit skill check` or `cargo crumbkit skill
+/// draft`. Each failure's next step is
 /// advice, because each one needs a change outside cargo crumbkit: to the
 /// workspace, to the tool or to the file system.
 #[derive(Debug, Failure)]
@@ -335,6 +347,41 @@ pub(crate) enum SkillError {
     )]
     Unreadable {
         /// The path of the file.
+        path: PathBuf,
+        /// Why it cannot be read.
+        error: io::Error,
+    },
+    /// A section's start marker has no end marker after it.
+    #[failure(
+        code = UNCLOSED_SECTION,
+        hint = "add the line <!-- /crumbkit:generated {section} --> where the section ends",
+    )]
+    Unclosed {
+        /// The path of the skill file.
+        path: PathBuf,
+        /// The section's name, such as `jobs`.
+        section: &'static str,
+        /// The line of the start marker, counted from 1.
+        line: usize,
+    },
+    /// The skill file cannot be written.
+    #[failure(
+        code = SKILL_WRITE_FAILED,
+        hint = "make the file's directory writable, or pass --skill another file",
+    )]
+    WriteFailed {
+        /// The path of the file.
+        path: PathBuf,
+        /// Why it cannot be written.
+        error: io::Error,
+    },
+    /// The usage directory or one of its files cannot be read.
+    #[failure(
+        code = USAGE_UNREADABLE,
+        hint = "make the path readable, or pass --usage another directory",
+    )]
+    UsageUnreadable {
+        /// The path of the directory or file.
         path: PathBuf,
         /// Why it cannot be read.
         error: io::Error,
@@ -357,6 +404,21 @@ impl fmt::Display for SkillError {
             Self::Unreadable { path, .. } => {
                 write!(f, "the skill file {} cannot be read", path.display())
             }
+            Self::Unclosed {
+                path,
+                section,
+                line,
+            } => write!(
+                f,
+                "the {section} section that starts on line {line} of {} has no end marker",
+                path.display()
+            ),
+            Self::WriteFailed { path, .. } => {
+                write!(f, "the skill file {} cannot be written", path.display())
+            }
+            Self::UsageUnreadable { path, .. } => {
+                write!(f, "the usage at {} cannot be read", path.display())
+            }
         }
     }
 }
@@ -366,7 +428,10 @@ impl std::error::Error for SkillError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Tool(error) => error.source(),
-            Self::Unreadable { error, .. } => Some(error),
+            Self::Unreadable { error, .. }
+            | Self::WriteFailed { error, .. }
+            | Self::UsageUnreadable { error, .. } => Some(error),
+            Self::Unclosed { .. } => None,
         }
     }
 }

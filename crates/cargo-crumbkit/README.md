@@ -5,8 +5,9 @@ describes a tool built with crumbkit. `cargo crumbkit weigh` counts the
 bytes that an agent reads on each path through the tool's help: each
 command's `-h` and `--help` pages, the output of its examples, and the total
 from the root down to the command. `cargo crumbkit docs` writes a Markdown
-reference of every command. `cargo crumbkit skill check` checks the command
-lines in the tool's agent skill against its commands.
+reference of every command. `cargo crumbkit skill draft` writes the
+generated sections of the tool's agent skill, and `cargo crumbkit skill
+check` checks the command lines in the skill against its commands.
 
 ## Adding it
 
@@ -63,12 +64,23 @@ lists its values. Placeholders such as `ID` or `<id>` count as values. The
 text prints `<FILE>:<LINE>: <SPAN>: <REASON>` for each failing line, and the
 run exits with 1 when any line fails, so CI can run it.
 
+## Drafting the agent skill
+
+`cargo crumbkit skill draft --bin shelf` rewrites the lines between
+`<!-- crumbkit:generated NAME -->` markers in shelf's `skill/SKILL.md`, or
+in the file that `--skill` names, and leaves the author's text alone. It
+writes the description, a table of the jobs that the help's goal headings
+name, and, with `--usage <DIR>` of exported usage, the most-used commands.
+`--check` writes nothing and exits with 1 when a draft would change the
+file.
+
 ## Where to read more
 
 - `cargo crumbkit weigh --help` describes each column.
-- The [weigh docs], the [command reference docs] and the [skill check docs]
-  describe `weigh`, the command reference and `skill check`, and
-  [ADR-0033], [ADR-0044] and [ADR-0193] record their reasons.
+- The [weigh docs], the [command reference docs], the [skill check docs]
+  and the [skill draft docs] describe `weigh`, the command reference,
+  `skill check` and `skill draft`, and [ADR-0033], [ADR-0044], [ADR-0193]
+  and [ADR-0194] record their reasons.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -81,4 +93,6 @@ option.
 [weigh docs]: ../../docs/behaviour/help/weight.md
 [command reference docs]: ../../docs/behaviour/help/reference.md
 [skill check docs]: ../../docs/behaviour/help/skill-check/README.md
-[ADR-0193]: ../../docs/decisions/api/help/0193-skill-check.md
+[ADR-0193]: ../../docs/decisions/api/help/skill/0193-skill-check.md
+[skill draft docs]: ../../docs/behaviour/help/skill-draft/README.md
+[ADR-0194]: ../../docs/decisions/api/help/skill/README.md

@@ -1,6 +1,6 @@
 [package]
 name = "cargo-crumbkit"
-description = "Cargo subcommand that measures what each path through a crumbkit tool's help costs an agent to read, and writes its command reference and checks its agent skill"
+description = "Cargo subcommand that measures what each path through a crumbkit tool's help costs an agent to read, and writes its command reference and drafts and checks its agent skill"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

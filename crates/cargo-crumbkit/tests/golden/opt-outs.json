@@ -14,7 +14,7 @@
     {
       "rule": "recoveries/follow",
       "applies_to": "cargo",
-      "reason": "Each failure of weigh, docs and skill check comes from cargo, a build, the tool that it runs or the file system, so a test provokes one only by building a broken workspace or breaking a file.",
+      "reason": "Each failure of weigh, docs, skill check and skill draft comes from cargo, a build, the tool that it runs, the file system or a broken skill file, so a test provokes one only by building a broken workspace or breaking a file.",
       "costs": [
         "No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs."
       ],

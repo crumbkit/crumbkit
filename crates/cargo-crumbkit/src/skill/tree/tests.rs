@@ -49,3 +49,36 @@ fn output_that_is_not_a_commands_document_or_lists_no_command_gives_none() {
         None
     );
 }
+
+#[test]
+fn a_command_keeps_its_about_text_and_goal_headings() {
+    let document = DOCUMENT.replace(
+        r#""about":"Browse","#,
+        r#""about":"Browse","goals":[{"heading":"Browse the catalogue","commands":["books"]}],"#,
+    );
+    let tree = Tree::read(document.as_bytes()).unwrap();
+
+    assert_eq!(tree.root().about.as_deref(), Some("Browse"));
+    assert_eq!(tree.root().goals[0].heading, "Browse the catalogue");
+    assert_eq!(tree.root().goals[0].commands, ["books"]);
+    assert_eq!(tree.command("shelf books").unwrap().goals, []);
+    let paths: Vec<&str> = tree
+        .commands()
+        .map(|command| command.path.as_str())
+        .collect();
+    assert_eq!(paths, ["shelf", "shelf books", "shelf books show"]);
+}
+
+#[test]
+fn a_flag_resolves_on_its_command_or_as_a_global_of_a_command_above_it() {
+    let tree = Tree::read(DOCUMENT.as_bytes()).unwrap();
+
+    let from = tree.flag("shelf books show", "-f").unwrap();
+    assert_eq!(from.name, "--from");
+    assert_eq!(
+        tree.flag("shelf books show", "--json").unwrap().name,
+        "--json"
+    );
+    assert!(tree.flag("shelf books show", "--all").is_none());
+    assert!(tree.flag("shelf books", "--from").is_none());
+}
