@@ -121,6 +121,9 @@ tracing-core = { workspace = true }
 # `Failure` trait. The tests live here, so crumbkit-derive needs no
 # dependency on the crate that re-exports it.
 crumbkit-derive = { workspace = true }
+# The completion and files tests install into a temporary home of their
+# own, which tempfile removes when the test ends.
+tempfile = { workspace = true }
 
 # docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
 # the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.

@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "crumbkit/completion-install/v1",
+  "description": "What install did with the shell's completion file: written, unchanged, skipped or failed.",
+  "type": "object",
+  "properties": {
+    "cut": {
+      "description": "Present when the output budget cut the result short, so data holds only its first rows.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "description": "The most bytes that the run printed on standard output.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "code": {
+          "description": "The over-budget code.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "budget"
+      ]
+    },
+    "data": {
+      "description": "The rows of the page, up to the limit.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InstallRow"
+      }
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "next": {
+      "description": "The next steps, in the order the text prints them. It is absent when there are none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "description": "The commands that carry out the step, in order.",
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "call": {
+                      "description": "A command line of this tool.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "call"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "description": "A command line of another program.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "run"
+                  ]
+                }
+              ]
+            }
+          },
+          "text": {
+            "description": "The sentence or phrase that the text prints for the step.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "text",
+          "commands"
+        ]
+      }
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "crumbkit/completion-install/v1"
+    },
+    "total": {
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count the rows.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "description": "True when the document leaves out rows that matched, because of the limit or the output budget, and false when data holds every row.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "truncated"
+  ],
+  "$defs": {
+    "InstallRow": {
+      "description": "The completion file of one shell, and what install did with it.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "The completion file that install wrote or left. When the file is a link to a file that install wrote, the path of that file.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/shelf.fish`, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shell": {
+          "description": "The shell: bash, elvish, fish, powershell or zsh.",
+          "enum": [
+            "bash",
+            "elvish",
+            "fish",
+            "powershell",
+            "zsh"
+          ]
+        },
+        "state": {
+          "description": "What install did: failed, skipped, written or unchanged.",
+          "enum": [
+            "failed",
+            "skipped",
+            "written",
+            "unchanged"
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "shell",
+        "path",
+        "reason"
+      ]
+    }
+  }
+}

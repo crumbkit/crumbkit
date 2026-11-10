@@ -19,6 +19,7 @@ description: "Browse a small catalogue of public-domain books"
 | Explore the commands | `shelf schemas` | Explore the JSON documents that shelf prints |
 | Review how shelf is used | `shelf self` | Review shelf's own use |
 | Install shelf's skill | `shelf skills` | Give coding agents shelf's skill |
+| Set up shell completion | `shelf completion` | Set up shelf's completion in a shell |
 <!-- /crumbkit:generated jobs -->
 
 <!-- crumbkit:generated usage -->

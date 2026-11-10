@@ -40,7 +40,7 @@ fn row<'a>(rows: &'a [Value], path: &str) -> Option<&'a Value> {
 }
 
 #[test]
-fn the_root_row_lists_the_four_goals_of_shelf_s_help_in_help_order_with_their_commands() {
+fn the_root_row_lists_the_five_goals_of_shelf_s_help_in_help_order_with_their_commands() {
     let rows = rows().unwrap();
 
     assert_eq!(
@@ -50,6 +50,7 @@ fn the_root_row_lists_the_four_goals_of_shelf_s_help_in_help_order_with_their_co
             { "heading": "Explore the commands", "commands": ["commands", "schemas"] },
             { "heading": "Review how shelf is used", "commands": ["self"] },
             { "heading": "Install shelf's skill", "commands": ["skills"] },
+            { "heading": "Set up shell completion", "commands": ["completion"] },
         ])
     );
 }

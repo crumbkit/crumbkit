@@ -52,6 +52,39 @@ calls clap_complete directly.
 
 Why: ADR-0048, ADR-0029, ADR-0057.
 
+## Installing the registration
+
+A tool built with the `complete` feature can mount `completion install`,
+`completion check` and `completion print` from `crumbkit::completion`, as
+shelf does. Each acts on one shell: the one that `--shell` names, or the
+one whose file stem `SHELL` holds. An unset or unknown `SHELL` fails with
+`<tool>::shell::unset` or `<tool>::shell::unknown`, and the hint names
+`--shell`.
+
+`print` prints clap_complete's registration script, which runs the tool by
+the name that the person types, so the shell finds it on `PATH`. `install`
+writes that script where the shell loads completions without a startup-file
+edit: fish's `$XDG_CONFIG_HOME/fish/completions/<tool>.fish`, bash's
+`$XDG_DATA_HOME/bash-completion/completions/<tool>`, and zsh's `_<tool>` in
+the first `FPATH` directory inside the home directory, or in `~/.zfunc`
+with a note that gives the `fpath` line to add before `compinit`. The XDG
+directories default to `~/.config` and `~/.local/share`. Elvish and
+PowerShell have no completion directory, so `install` and `check` fail
+with `<tool>::shell::no_directory` and `print` serves them.
+
+The home directory comes from `HOME`, or `USERPROFILE` on Windows, and
+never from the password database, so a run with a cleared environment
+writes only under the XDG directories that it names. Install marks its
+file with a comment that names the tool, after zsh's `#compdef` line, and
+replaces only a marked file. It skips any other file, or a link to one,
+unless `--force` replaces the file or the link itself. It writes through a
+new temporary file and a rename, and a file already at the temporary name
+fails the row. The zsh file also calls its completion function, so the
+first Tab press of a session completes. `check` lists only a missing,
+differing or unreadable file and exits with 1 when there is one.
+
+Why: ADR-0195, ADR-0192, ADR-0027.
+
 ## Hidden names
 
 The candidates follow clap_complete's rule for hidden items. A hidden
@@ -73,7 +106,8 @@ may change what the `complete` feature offers and how a shell registers it
 
 crumbkit has no help topic for completion, because completion serves a
 person at a shell and a topic would add a name to every root help page that
-agents read. A tool tells its users the registration line. crumbkit's tests
+agents read. A tool tells its users to run `completion install`, or gives
+them the registration line. crumbkit's tests
 complete shelf's tree and check that hidden commands and aliases are left
 out, and crumbkit-test has no completion check for tools.
 

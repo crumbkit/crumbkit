@@ -3,6 +3,10 @@
 - Date: 2026-10-12
 - Status: accepted
 
+## Children
+
+- [ADR-0195. Completion install](0195-completion-install.md)
+
 ## Context
 
 People at a shell expect Tab completion, and completion that offers

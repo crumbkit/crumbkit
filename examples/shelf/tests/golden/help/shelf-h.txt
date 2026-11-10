@@ -6,6 +6,7 @@ Browse the catalogue:      books
 Explore the commands:      commands, schemas
 Review how shelf is used:  self
 Install shelf's skill:     skills
+Set up shell completion:   completion
 
 Options:
   -h, --help     Print help (see more with '--help')

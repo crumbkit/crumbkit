@@ -13,6 +13,7 @@ Browse a small catalogue of public-domain books
 - [`shelf schemas`](#shelf-schemas): Explore the JSON documents that shelf prints
 - [`shelf self`](#shelf-self): Review shelf's own use
 - [`shelf skills`](#shelf-skills): Give coding agents shelf's skill
+- [`shelf completion`](#shelf-completion): Set up shelf's completion in a shell
 
 ### Arguments
 
@@ -546,6 +547,91 @@ Print shelf's skill.
 
 ```sh
 shelf skills print
+```
+
+Effects: read-only, closed-world.
+
+## `shelf completion`
+
+Set up shelf's completion in a shell
+
+### Commands
+
+- [`shelf completion install`](#shelf-completion-install): Install shelf's completion where the shell loads it
+- [`shelf completion check`](#shelf-completion-check): Check that shelf's installed completion file matches this shelf
+- [`shelf completion print`](#shelf-completion-print): Print shelf's completion registration script for a shell
+
+## `shelf completion install`
+
+Install shelf's completion where the shell loads it
+
+### Arguments
+
+- `--shell <SHELL>`: Install for this shell in place of the one that SHELL names. One of `bash`, `elvish`, `fish`, `powershell`, `zsh`.
+- `--force`: Replace a file or a link that install did not write; a link's target stays as it is
+
+### Examples
+
+Install shelf's completion for fish.
+
+```sh
+shelf completion install --shell fish
+```
+
+Install it for zsh, replacing a file or a link that install did not write.
+
+```sh
+shelf completion install --shell zsh --force
+```
+
+### Columns
+
+- `state`: What install did: failed, skipped, written or unchanged.
+- `shell`: The shell: bash, elvish, fish, powershell or zsh.
+- `path`: The completion file that install wrote or left. When the file is a link to a file that install wrote, the path of that file.
+- `reason`: Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/shelf.fish`, or null.
+
+Effects: additive, idempotent, closed-world.
+
+## `shelf completion check`
+
+Check that shelf's installed completion file matches this shelf
+
+### Arguments
+
+- `--shell <SHELL>`: Check the file of this shell in place of the one that SHELL names. One of `bash`, `elvish`, `fish`, `powershell`, `zsh`.
+
+### Examples
+
+Report zsh's completion file when it is missing or differs.
+
+```sh
+shelf completion check --shell zsh
+```
+
+### Columns
+
+- `state`: Whether the file holds the script that install writes: missing, differs, unreadable, linked or current.
+- `shell`: The shell: bash, elvish, fish, powershell or zsh.
+- `path`: The completion file that was checked. When the file is a link to a file that install wrote, the path of that file.
+- `reason`: Why the file differs, cannot be read or is linked, such as `linked to /src/shelf/shelf.fish`, or null.
+
+Effects: read-only, closed-world.
+
+## `shelf completion print`
+
+Print shelf's completion registration script for a shell
+
+### Arguments
+
+- `--shell <SHELL>`: Print the script of this shell in place of the one that SHELL names. One of `bash`, `elvish`, `fish`, `powershell`, `zsh`.
+
+### Examples
+
+Print the registration script for fish.
+
+```sh
+shelf completion print --shell fish
 ```
 
 Effects: read-only, closed-world.

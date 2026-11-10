@@ -38,8 +38,8 @@ static DECLARED: OnceLock<&'static str> = OnceLock::new();
 
 /// Returns the name of the completion variable of this process: the name
 /// that the tool declared with [`complete_with`], or [`VAR`] when it
-/// declared none.
-fn variable() -> &'static str {
+/// declared none. The registration that `completion install` writes sets it.
+pub(crate) fn variable() -> &'static str {
     #[cfg(feature = "complete")]
     if let Some(declared) = DECLARED.get() {
         return declared;

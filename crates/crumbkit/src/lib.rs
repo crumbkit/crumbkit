@@ -48,6 +48,8 @@ mod code;
 pub mod codes;
 pub mod commands;
 mod complete;
+#[cfg(feature = "complete")]
+pub mod completion;
 #[cfg(test)]
 mod conforms;
 mod document;
@@ -58,6 +60,7 @@ mod expect;
 mod failure;
 mod fetch;
 mod field;
+pub mod files;
 pub mod help;
 mod listing;
 mod output;
