@@ -189,13 +189,16 @@ pub struct CompletionPrint {
 ///
 /// - Fish: `$XDG_CONFIG_HOME/fish/completions/<tool>.fish`, with
 ///   `XDG_CONFIG_HOME` defaulting to `~/.config`.
-/// - Bash: `$XDG_DATA_HOME/bash-completion/completions/<tool>`, with
+/// - Bash: `$BASH_COMPLETION_USER_DIR/completions/<tool>`, or
+///   `$XDG_DATA_HOME/bash-completion/completions/<tool>` with
 ///   `XDG_DATA_HOME` defaulting to `~/.local/share`.
-/// - Zsh: `_<tool>` in the first directory of `FPATH` that is inside the
-///   home directory and exists, or in `~/.zfunc`. Zsh exports `FPATH` only
+/// - Zsh: `_<tool>` in `~/.zfunc` when it is on `FPATH`, or else in the
+///   first directory of `FPATH` that is inside the home directory and
+///   exists, or else in `~/.zfunc`. Zsh exports `FPATH` only
 ///   when the person's startup file does, so install usually writes
 ///   `~/.zfunc/_<tool>`, and the listing's note then gives the `fpath`
-///   line to add before `compinit` in `~/.zshrc`.
+///   line to add before `compinit` in `~/.zshrc` when install writes the
+///   file.
 ///
 /// The home directory is `HOME`, or `USERPROFILE` on Windows when `HOME` is
 /// unset, and an XDG variable counts only when it is an absolute path. With

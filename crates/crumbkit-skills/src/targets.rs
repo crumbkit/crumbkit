@@ -23,23 +23,25 @@ pub(crate) fn agent_dirs_from_env() -> Option<Vec<PathBuf>> {
         reason = "this module owns the read of CODEX_HOME that finds Codex's skills directory"
     )]
     let codex_home = std::env::var_os("CODEX_HOME");
-    agent_dirs(crumbkit::files::home().map(OsString::from), codex_home)
+    agent_dirs(crumbkit::files::home(), codex_home)
 }
 
 /// Returns the agent skills directories in the order `install` tries them,
 /// when the home directory is `home` and `CODEX_HOME` is `codex_home`:
 /// `~/.claude/skills`, `~/.agents/skills` and `$CODEX_HOME/skills`, where
-/// `CODEX_HOME` defaults to `~/.codex`. Each of `home` and `codex_home`
-/// counts only when it is an absolute path. It returns `None` when there
-/// is no home directory, even when `CODEX_HOME` is set.
+/// `CODEX_HOME` defaults to `~/.codex`. `home` is an absolute path, as
+/// [`crumbkit::files::home`] returns it, and `codex_home` counts only when
+/// it is an absolute path. It returns `None` when there is no home
+/// directory, even when `CODEX_HOME` is set.
 pub(crate) fn agent_dirs(
-    home: Option<OsString>,
+    home: Option<PathBuf>,
     codex_home: Option<OsString>,
 ) -> Option<Vec<PathBuf>> {
-    let absolute =
-        |value: Option<OsString>| value.map(PathBuf::from).filter(|path| path.is_absolute());
-    let home = absolute(home)?;
-    let codex = absolute(codex_home).unwrap_or_else(|| home.join(".codex"));
+    let home = home?;
+    let codex = codex_home
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .unwrap_or_else(|| home.join(".codex"));
     Some(vec![
         home.join(".claude").join("skills"),
         home.join(".agents").join("skills"),

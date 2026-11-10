@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use super::{Place, Target, agent_dirs, merge, named_dir, place};
 
 fn dirs(home: &str, codex: Option<&str>) -> Option<Vec<PathBuf>> {
-    agent_dirs(Some(OsString::from(home)), codex.map(OsString::from))
+    agent_dirs(Some(PathBuf::from(home)), codex.map(OsString::from))
 }
 
 #[test]
@@ -40,12 +40,6 @@ fn a_relative_codex_home_is_ignored() {
 #[test]
 fn no_home_gives_no_agent_dirs_even_with_a_codex_home() {
     assert_eq!(agent_dirs(None, Some(OsString::from("/opt/codex"))), None);
-}
-
-#[test]
-fn a_relative_or_empty_home_counts_as_no_home() {
-    assert_eq!(dirs("home", None), None);
-    assert_eq!(dirs("", None), None);
 }
 
 #[test]

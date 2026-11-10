@@ -65,9 +65,11 @@ one whose file stem `SHELL` holds. An unset or unknown `SHELL` fails with
 the name that the person types, so the shell finds it on `PATH`. `install`
 writes that script where the shell loads completions without a startup-file
 edit: fish's `$XDG_CONFIG_HOME/fish/completions/<tool>.fish`, bash's
+`$BASH_COMPLETION_USER_DIR/completions/<tool>` or
 `$XDG_DATA_HOME/bash-completion/completions/<tool>`, and zsh's `_<tool>` in
-the first `FPATH` directory inside the home directory, or in `~/.zfunc`
-with a note that gives the `fpath` line to add before `compinit`. The XDG
+`~/.zfunc` when it is on `FPATH`, else in the first `FPATH` directory inside
+the home directory, else in `~/.zfunc` with a note, printed when install
+writes the file, that gives the `fpath` line to add before `compinit`. The XDG
 directories default to `~/.config` and `~/.local/share`. Elvish and
 PowerShell have no completion directory, so `install` and `check` fail
 with `<tool>::shell::no_directory` and `print` serves them.

@@ -34,8 +34,11 @@ pub(crate) fn install_in(
     let script = registration(shell, variable, command).map_err(Error::unclassified)?;
     let text = installed(shell, command, &script);
     let row = write(shell, bin, &target.file, &text, args.force);
+    // The note tells the person how to make the shell load a file that
+    // install just wrote, so an unchanged, skipped or failed row has none.
+    let note = target.note.filter(|_| row.state == Installed::Written);
     let listing = Listing::from_all(vec![row], None).described("completion files");
-    Ok(match target.note {
+    Ok(match note {
         Some(note) => listing.note(note),
         None => listing,
     })

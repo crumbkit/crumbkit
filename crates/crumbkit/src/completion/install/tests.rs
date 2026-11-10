@@ -117,6 +117,17 @@ fn install_into_zfunc_adds_the_note_with_the_fpath_line() {
 }
 
 #[test]
+fn an_unchanged_zfunc_file_gives_no_fpath_note() {
+    let home = Home::new();
+    home.install(Shell::Zsh, false);
+
+    let listing = home.install(Shell::Zsh, false);
+
+    assert_eq!(only(&listing).state, Installed::Unchanged);
+    assert_eq!(listing.get_note(), None);
+}
+
+#[test]
 fn a_second_install_leaves_the_file_unchanged() {
     let home = Home::new();
     home.install(Shell::Fish, false);

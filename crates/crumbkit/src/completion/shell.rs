@@ -73,6 +73,9 @@ pub(crate) struct Env {
     /// The value of `FPATH`, which zsh exports only when the person's
     /// startup file exports it.
     pub(crate) fpath: Option<OsString>,
+    /// The first absolute directory of `BASH_COMPLETION_USER_DIR`, which
+    /// bash-completion reads before `XDG_DATA_HOME`.
+    pub(crate) bash_user_dir: Option<PathBuf>,
 }
 
 impl Env {
@@ -82,7 +85,7 @@ impl Env {
     pub(crate) fn read() -> Self {
         #[expect(
             clippy::disallowed_methods,
-            reason = "the completion module owns the reads of SHELL, XDG_CONFIG_HOME, XDG_DATA_HOME and FPATH that find the shell and its completion directory"
+            reason = "the completion module owns the reads of SHELL, XDG_CONFIG_HOME, XDG_DATA_HOME, BASH_COMPLETION_USER_DIR and FPATH that find the shell and its completion directory"
         )]
         let read = |name: &str| std::env::var_os(name);
         Self {
@@ -91,8 +94,15 @@ impl Env {
             config_home: absolute(read("XDG_CONFIG_HOME")),
             data_home: absolute(read("XDG_DATA_HOME")),
             fpath: read("FPATH"),
+            bash_user_dir: first_absolute(read("BASH_COMPLETION_USER_DIR")),
         }
     }
+}
+
+/// Returns the first absolute directory of `value`, a list of directories
+/// separated as `PATH` separates them, or `None` when it holds none.
+pub(crate) fn first_absolute(value: Option<OsString>) -> Option<PathBuf> {
+    std::env::split_paths(&value?).find(|dir| dir.is_absolute())
 }
 
 /// Returns the shell that a run serves: the one that `--shell` names, or
@@ -133,11 +143,14 @@ pub(crate) struct Target {
 ///
 /// - Fish: `$XDG_CONFIG_HOME/fish/completions/<bin>.fish`, with
 ///   `XDG_CONFIG_HOME` defaulting to `~/.config`.
-/// - Bash: `$XDG_DATA_HOME/bash-completion/completions/<bin>`, with
-///   `XDG_DATA_HOME` defaulting to `~/.local/share`.
-/// - Zsh: `<dir>/_<bin>` in the first directory of `FPATH` that is inside
-///   the home directory and exists, or in `~/.zfunc` with a note that says
-///   how to add it to `fpath`.
+/// - Bash: `$BASH_COMPLETION_USER_DIR/completions/<bin>`, or
+///   `$XDG_DATA_HOME/bash-completion/completions/<bin>` when
+///   `BASH_COMPLETION_USER_DIR` is unset, with `XDG_DATA_HOME` defaulting
+///   to `~/.local/share`, in the order that bash-completion reads them.
+/// - Zsh: `~/.zfunc/_<bin>` when `~/.zfunc` is on `FPATH`, or else
+///   `<dir>/_<bin>` in the first directory of `FPATH` that is inside the
+///   home directory and exists, or else `~/.zfunc/_<bin>` with a note that
+///   says how to add it to `fpath`.
 ///
 /// Elvish and PowerShell have no completion directory, so `install` and
 /// `check` refuse them.
@@ -156,10 +169,15 @@ pub(crate) fn target(shell: Shell, bin: &str, env: &Env) -> Result<Option<Target
                 }),
         )),
         Shell::Bash => Ok(plain(
-            env.data_home
+            env.bash_user_dir
                 .clone()
-                .or_else(|| under_home(".local/share"))
-                .map(|dir| dir.join("bash-completion").join("completions").join(bin)),
+                .or_else(|| {
+                    env.data_home
+                        .clone()
+                        .or_else(|| under_home(".local/share"))
+                        .map(|dir| dir.join("bash-completion"))
+                })
+                .map(|dir| dir.join("completions").join(bin)),
         )),
         Shell::Zsh => Ok(env
             .home
@@ -181,18 +199,27 @@ pub(crate) fn target(shell: Shell, bin: &str, env: &Env) -> Result<Option<Target
 // replaces this once a person asks for those directories.
 fn zsh(home: &Path, fpath: Option<&OsStr>, bin: &str) -> Target {
     let name = format!("_{bin}");
-    let on_fpath = fpath
-        .map(|fpath| std::env::split_paths(fpath).collect::<Vec<_>>())
-        .unwrap_or_default()
-        .into_iter()
-        .find(|dir| dir.is_absolute() && dir.starts_with(home) && dir.is_dir());
+    let zfunc = home.join(".zfunc");
+    let fpath: Vec<PathBuf> = fpath
+        .map(|fpath| std::env::split_paths(fpath).collect())
+        .unwrap_or_default();
+    // A plugin manager's checkout, such as `~/.oh-my-zsh/plugins/git`, can
+    // come before `~/.zfunc` on `FPATH`, so `~/.zfunc` wins whenever it is
+    // there.
+    let on_fpath = if fpath.contains(&zfunc) {
+        Some(zfunc.clone())
+    } else {
+        fpath
+            .into_iter()
+            .find(|dir| dir.is_absolute() && dir.starts_with(home) && dir.is_dir())
+    };
     if let Some(dir) = on_fpath {
         return Target {
             file: dir.join(name),
             note: None,
         };
     }
-    let dir = home.join(".zfunc");
+    let dir = zfunc;
     let note = format!(
         "zsh loads completions only from a directory on fpath; add `fpath=({} $fpath)` before `compinit` in ~/.zshrc.",
         files::display(&dir)

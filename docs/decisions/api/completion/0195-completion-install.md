@@ -21,10 +21,13 @@ completion in practice.
   or the file stem of `SHELL`. An unset or unknown `SHELL` fails with
   `crumbkit::shell::unset` or `crumbkit::shell::unknown`, whose hint names
   `--shell`.
-- `install` writes fish's file under `XDG_CONFIG_HOME`, bash's under
-  `XDG_DATA_HOME` and zsh's in a directory of `FPATH` inside the home
-  directory, or in `~/.zfunc` with a note that gives the `fpath` line. It
-  edits no startup file, and elvish and PowerShell fail with
+- `install` writes fish's file under `XDG_CONFIG_HOME`, and bash's under
+  `BASH_COMPLETION_USER_DIR` or `XDG_DATA_HOME`, the order bash-completion
+  reads them. Zsh's goes in `~/.zfunc` when it is on `FPATH`, because a
+  plugin manager's checkout can come first there; else in the first `FPATH`
+  directory inside the home directory, which a person who exports `FPATH`
+  chose; else in `~/.zfunc` with a note, printed only when install writes
+  the file, that gives the `fpath` line. It edits no startup file, and elvish and PowerShell fail with
   `crumbkit::shell::no_directory`, because neither loads completions from a
   directory.
 - The script runs the tool by the name that the person types, in place of

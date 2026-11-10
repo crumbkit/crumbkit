@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
@@ -26,7 +25,7 @@ impl Home {
         for path in [".claude", ".claude/skills", ".agents", ".agents/skills"] {
             fs::create_dir(dir.path().join(path)).unwrap();
         }
-        let agent_dirs = agent_dirs(Some(OsString::from(dir.path())), None);
+        let agent_dirs = agent_dirs(Some(dir.path().to_owned()), None);
         Self { dir, agent_dirs }
     }
 

@@ -161,3 +161,54 @@ fn elvish_and_powershell_have_no_completion_directory() {
         );
     }
 }
+
+#[test]
+fn bash_completions_go_under_bash_completion_user_dir_before_xdg_data_home() {
+    let env = Env {
+        home: Some("/home/ada".into()),
+        data_home: Some("/xdg/data".into()),
+        bash_user_dir: Some("/home/ada/bash".into()),
+        ..Env::default()
+    };
+
+    assert_eq!(
+        file(Shell::Bash, &env),
+        Path::new("/home/ada/bash/completions/shelf")
+    );
+}
+
+#[test]
+fn the_first_absolute_entry_of_bash_completion_user_dir_counts() {
+    let user_dir = std::env::join_paths(["relative", "/first", "/second"]).unwrap();
+    let env = Env {
+        bash_user_dir: super::first_absolute(Some(user_dir)),
+        ..Env::default()
+    };
+
+    assert_eq!(
+        file(Shell::Bash, &env),
+        Path::new("/first/completions/shelf")
+    );
+}
+
+#[test]
+fn zsh_completions_go_in_zfunc_whenever_it_is_on_fpath() {
+    let home = tempfile::tempdir().unwrap();
+    let plugin = home.path().join(".oh-my-zsh/plugins/git");
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test creates a plugin directory on FPATH"
+    )]
+    fs::create_dir_all(&plugin).unwrap();
+    let zfunc = home.path().join(".zfunc");
+    let fpath = std::env::join_paths([plugin, zfunc.clone()]).unwrap();
+    let env = Env {
+        fpath: Some(fpath),
+        ..env(home.path())
+    };
+
+    let target = target(Shell::Zsh, "shelf", &env).unwrap().unwrap();
+
+    assert_eq!(target.file, zfunc.join("_shelf"));
+    assert_eq!(target.note, None);
+}
