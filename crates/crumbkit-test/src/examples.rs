@@ -9,8 +9,8 @@ use std::time::Duration;
 use clap::Command;
 use crumbkit::help::Example;
 use crumbkit::{Tool, ToolName};
+use snapbox::Assert;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
-use snapbox::{Assert, Redactions};
 
 use crate::allow::{Allowances, Rule};
 use crate::failures::{self, Reader};
@@ -394,7 +394,7 @@ fn run_example(
     args: &[&str],
     stdin: Option<&[u8]>,
     timeout: Duration,
-) -> Result<(Output, Redactions), String> {
+) -> Result<(Output, inputs::RunRedactions), String> {
     let xdg = Xdg::new("example", examples.xdg_fixture())?;
     let work = WorkDir::new("example-dir", examples.working_dir())?;
     let place = Place {

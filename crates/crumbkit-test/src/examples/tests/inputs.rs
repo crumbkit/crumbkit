@@ -8,7 +8,7 @@ use crumbkit::Tool;
 use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 
-use super::super::inputs::spellings;
+use super::super::inputs::{slash_paths_under, spellings};
 use super::{FILES, TOOL, examples, run};
 use crate::allow::Allow;
 use crate::temp::TempDir;
@@ -152,4 +152,30 @@ fn a_verbatim_unc_path_keeps_its_prefix_and_has_one_spelling() {
 #[test]
 fn a_plain_path_has_one_spelling() {
     assert_eq!(spellings(std::path::Path::new("/tmp/work")), ["/tmp/work"]);
+}
+
+#[test]
+fn a_windows_path_under_a_redacted_directory_is_written_with_forward_slashes() {
+    let found = slash_paths_under(
+        "written  fish   [XDG_CONFIG_HOME]\\fish\\completions\\shelf.fish\n",
+        &["[XDG_CONFIG_HOME]", "[ROOT]"],
+    );
+
+    assert_eq!(
+        found,
+        "written  fish   [XDG_CONFIG_HOME]/fish/completions/shelf.fish\n"
+    );
+}
+
+#[test]
+fn a_backslash_outside_a_path_under_a_redacted_directory_stays() {
+    let found = slash_paths_under(
+        "`[ROOT]\\books.toml` and C:\\other\\file, [ROOT] \\n [XDG_DATA_HOME]x\\y",
+        &["[XDG_DATA_HOME]", "[ROOT]"],
+    );
+
+    assert_eq!(
+        found,
+        "`[ROOT]/books.toml` and C:\\other\\file, [ROOT] \\n [XDG_DATA_HOME]x\\y"
+    );
 }

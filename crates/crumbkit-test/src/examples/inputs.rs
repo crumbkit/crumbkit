@@ -87,22 +87,74 @@ pub(super) fn spellings(path: &Path) -> Vec<String> {
     }
 }
 
+/// The redactions of one example run, with the placeholder of each
+/// redacted directory.
+pub(super) struct RunRedactions {
+    values: Redactions,
+    placeholders: Vec<&'static str>,
+}
+
+impl RunRedactions {
+    /// Returns `text` with each redacted path replaced by its placeholder,
+    /// and the rest of each path under a placeholder written with `/` as
+    /// [`slash_paths_under`] does, so a golden written on Unix matches the
+    /// output of a run on Windows.
+    pub(super) fn redact(&self, text: &str) -> String {
+        slash_paths_under(&self.values.redact(text), &self.placeholders)
+    }
+}
+
 /// Returns the redactions of a run: the path of each of the run's XDG
 /// directories in `xdg` under its placeholder, such as `[XDG_CONFIG_HOME]`,
 /// and each path of the fresh directory `work` under `[ROOT]`, each in every
 /// spelling that [`spellings`] returns.
-pub(super) fn redactions(xdg: &Xdg, work: &WorkDir) -> Redactions {
-    let mut run = Redactions::new();
+pub(super) fn redactions(xdg: &Xdg, work: &WorkDir) -> RunRedactions {
+    let mut values = Redactions::new();
+    let mut placeholders = Vec::new();
     // The placeholders are fixed and valid, so `insert` cannot fail.
     for (placeholder, path) in xdg.placeholders() {
+        placeholders.push(placeholder);
         for spelling in spellings(path) {
-            let _ = run.insert(placeholder, spelling);
+            let _ = values.insert(placeholder, spelling);
         }
     }
+    placeholders.push("[ROOT]");
     for path in work.fresh_paths() {
         for spelling in spellings(&path) {
-            let _ = run.insert("[ROOT]", spelling);
+            let _ = values.insert("[ROOT]", spelling);
         }
     }
-    run
+    RunRedactions {
+        values,
+        placeholders,
+    }
+}
+
+/// Returns `text` with each `\` written as `/` in the rest of every path
+/// that follows one of `placeholders` directly with a `\`, such as
+/// `[XDG_CONFIG_HOME]\fish\shelf.fish`. The path ends at whitespace or at a
+/// character that a Windows path cannot hold, such as a quote. Every other
+/// `\` in `text` stays as it is.
+pub(super) fn slash_paths_under(text: &str, placeholders: &[&str]) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some((start, placeholder)) = placeholders
+        .iter()
+        .filter_map(|placeholder| rest.find(placeholder).map(|start| (start, *placeholder)))
+        .min()
+    {
+        let after = start + placeholder.len();
+        out.push_str(&rest[..after]);
+        rest = &rest[after..];
+        if !rest.starts_with('\\') {
+            continue;
+        }
+        let end = rest
+            .find(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '`' | '<' | '>' | '|'))
+            .unwrap_or(rest.len());
+        out.extend(rest[..end].chars().map(|c| if c == '\\' { '/' } else { c }));
+        rest = &rest[end..];
+    }
+    out.push_str(rest);
+    out
 }
