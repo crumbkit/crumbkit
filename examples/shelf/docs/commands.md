@@ -378,6 +378,7 @@ Work with each run in shelf's usage log
 ### Commands
 
 - [`shelf self runs list`](#shelf-self-runs-list): List each run in shelf's usage log, grouped by session
+- [`shelf self runs export`](#shelf-self-runs-export): Print the records of shelf's usage log after a run, oldest first
 
 ## `shelf self runs list`
 
@@ -426,3 +427,37 @@ shelf self runs list --since 1d --all
 - `parent`: The span id of the run's caller, as 16 lowercase hex digits, or null when the run started a new trace.
 
 Effects: read-only, closed-world.
+
+## `shelf self runs export`
+
+Print the records of shelf's usage log after a run, oldest first
+
+### Arguments
+
+- `--after <RUN>`: Print only the records after the run with this span id, the `run` of the last record an earlier export printed
+- `--log <FILE>`: Read this usage log instead of the tool's own
+
+### Examples
+
+Print every line of the usage log as JSON.
+
+```sh
+shelf self runs export --json
+```
+
+Print the records after the last run that an earlier export printed.
+
+```sh
+shelf self runs export --json --after 00f067aa0ba902b7
+```
+
+### Columns
+
+- `gap`: Whether records may be missing before this one, because the run that `--after` named is no longer in the log, so the export printed every record the log holds. Only the first line of an export can be true.
+- `record`: The record with every field and value that the usage log stores, including the run's span id under `run`, which `--after` takes, and the keyed hashes of the run's session and command line.
+
+Effects: read-only, closed-world.
+
+Output: one row per line as each arrives, and --json prints one JSON document per line.
+
+Text: one line per row, `<RUN>  <COMMAND>  <EXIT>  [after a gap]`; --fields prints a table.

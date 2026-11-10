@@ -15,6 +15,10 @@
 //! [`RunRow`]: crate::RunRow
 //! [`SelfRuns`]: crate::SelfRuns
 //! [`runs`]: crate::runs()
+//! [`SELF_RUNS_EXPORT`]: crate::SELF_RUNS_EXPORT
+//! [`RunLine`]: crate::RunLine
+//! [`SelfRunsExport`]: crate::SelfRunsExport
+//! [`export`]: crate::export()
 //! [`UsageSummary`]: crate::UsageSummary
 //! [`Extension`]: crate::Extension
 //! [`extend`]: crate::extend()
@@ -32,6 +36,7 @@
 //! [ADR-0144]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0144-a-tool-adds-value-free-facts-to-the-usage-record.md
 //! [ADR-0145]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0145-self-usage-finds-slow-commands-that-mostly-wait.md
 //! [ADR-0190]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0190-self-runs-list-shows-each-sessions-runs-in-order.md
+//! [ADR-0191]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0191-self-runs-export-prints-the-usage-log-after-a-position.md
 //! [usage log docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/README.md
 //! [trace context docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/trace-context.md
 //! [usage report docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/report.md
@@ -50,6 +55,7 @@ mod recorder;
 mod report;
 mod self_figures;
 mod self_runs;
+mod self_runs_export;
 mod self_usage;
 mod shape;
 #[cfg(test)]
@@ -64,6 +70,7 @@ pub use self::file::log_path;
 pub use self::recorder::{Log, start, start_under};
 pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures};
 pub use self::self_runs::{RunRow, SELF_RUNS_LIST, SelfRuns, runs};
+pub use self::self_runs_export::{RunLine, SELF_RUNS_EXPORT, SelfRunsExport, export};
 pub use self::self_usage::{FindingRow, SELF_USAGE, SelfUsage, UsageSummary, findings};
 
 // The log's platform module has a Unix half and a Windows half, so the

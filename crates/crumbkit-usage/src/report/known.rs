@@ -58,7 +58,7 @@ pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
 }
 
 /// Returns whether `text` is `digits` lowercase hex digits.
-fn is_hex(text: &str, digits: usize) -> bool {
+pub(crate) fn is_hex(text: &str, digits: usize) -> bool {
     text.len() == digits
         && text
             .bytes()

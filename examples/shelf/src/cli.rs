@@ -12,7 +12,8 @@ use crumbkit::tool::RefusalContext;
 use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
 use crumbkit_usage::{
-    SELF_FIGURES_LIST, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns, SelfUsage,
+    SELF_FIGURES_LIST, SELF_RUNS_EXPORT, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns,
+    SelfRunsExport, SelfUsage,
 };
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -170,6 +171,16 @@ pub const TOOL: Tool = Tool::new()
                     ])
                     .effects(Effects::read_only())
                     .document(SELF_RUNS_LIST),
+                Leaf::new(&["self", "runs", "export"])
+                    .examples(&[
+                        Example::new(&["--json"], "Print every line of the usage log as JSON"),
+                        Example::new(
+                            &["--json", "--after", "00f067aa0ba902b7"],
+                            "Print the records after the last run that an earlier export printed",
+                        ),
+                    ])
+                    .effects(Effects::read_only())
+                    .stream(SELF_RUNS_EXPORT),
             ])
             .topics(&[Topic::new(
                 "catalogue",
@@ -282,6 +293,8 @@ pub(crate) enum FiguresCommand {
 pub(crate) enum RunsCommand {
     /// List each run in shelf's usage log, grouped by session.
     List(SelfRuns),
+    /// Print the records of shelf's usage log after a run, oldest first.
+    Export(SelfRunsExport),
 }
 
 /// The commands for a person's aliases.

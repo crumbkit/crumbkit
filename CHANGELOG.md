@@ -6,6 +6,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- crumbkit-usage: `self runs export` prints the stored usage records after
+  the run that `--after` names, with their keyed hashes, and marks a
+  possible gap after a trim. shelf mounts it ([behaviour/usage-log/export]).
+
 ## [0.3.0] - 2026-11-10
 
 ### Added
@@ -1672,6 +1678,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/schemas]: docs/behaviour/schemas/README.md
 [behaviour/schemas/commands]: docs/behaviour/schemas/commands.md
 [behaviour/usage-log]: docs/behaviour/usage-log/README.md
+[behaviour/usage-log/export]: docs/behaviour/usage-log/export/README.md
 [behaviour/usage-log/report]: docs/behaviour/usage-log/report.md
 [behaviour/usage-log/trace-context]: docs/behaviour/usage-log/trace-context.md
 [project/dependencies]: docs/project/dependencies.md

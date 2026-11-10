@@ -60,20 +60,28 @@ A tool adds `self usage` with [`SelfUsage`] and [`findings`],
 crumbkit's `finish` with the document [`SELF_USAGE`],
 [`SELF_FIGURES_LIST`] or [`SELF_RUNS_LIST`]. Their rows are
 [`FindingRow`], [`FiguresRow`] and [`RunRow`], and [`UsageSummary`] sums
-the runs read. shelf's [`cli.rs`] and [`lib.rs`] show all three.
+the runs read.
+
+A tool adds `self runs export` with [`SelfRunsExport`] and [`export`],
+which takes the `Run` and prints the stream [`SELF_RUNS_EXPORT`] of
+[`RunLine`] rows: each stored record after a run, oldest first, with
+its keyed hashes. The tool sends nothing anywhere, and the person who runs
+the export decides where its output goes. shelf's [`cli.rs`] and
+[`lib.rs`] show all four commands.
 
 ## Where to read more
 
 - [`start`] describes the log, and [`Extension`] the tool's own facts.
-- [`SelfUsage`], [`SelfFigures`] and [`SelfRuns`] describe the three
-  commands.
+- [`SelfUsage`], [`SelfFigures`], [`SelfRuns`] and [`SelfRunsExport`]
+  describe the four commands.
 - The [schemas] describe the `<tool>/usage/v1`, `<tool>/self-usage/v1`,
-  `<tool>/self-figures-list/v1` and `<tool>/self-runs-list/v1` documents.
+  `<tool>/self-figures-list/v1`, `<tool>/self-runs-list/v1` and
+  `<tool>/self-runs-export/v1` documents.
 - The [usage log docs], [trace context docs] and [usage report docs]
-  describe the log, its trace context and the three commands, and the
+  describe the log, its trace context and the four commands, and the
   [run observer docs] describe how crumbkit reports each run to the log.
   [ADR-0029], [ADR-0030], [ADR-0034], [ADR-0095], [ADR-0144],
-  [ADR-0145] and [ADR-0190] record why they work this way.
+  [ADR-0145], [ADR-0190] and [ADR-0191] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -99,6 +107,10 @@ option.
 [`RunRow`]: src/self_runs.rs
 [`SelfRuns`]: src/self_runs.rs
 [`runs`]: src/self_runs.rs
+[`SELF_RUNS_EXPORT`]: src/self_runs_export.rs
+[`RunLine`]: src/self_runs_export.rs
+[`SelfRunsExport`]: src/self_runs_export.rs
+[`export`]: src/self_runs_export.rs
 [`cli.rs`]: ../../examples/shelf/src/cli.rs
 [`lib.rs`]: ../../examples/shelf/src/lib.rs
 [schemas]: schemas
@@ -109,6 +121,7 @@ option.
 [ADR-0144]: ../../docs/decisions/api/usage/0144-a-tool-adds-value-free-facts-to-the-usage-record.md
 [ADR-0145]: ../../docs/decisions/api/usage/0145-self-usage-finds-slow-commands-that-mostly-wait.md
 [ADR-0190]: ../../docs/decisions/api/usage/0190-self-runs-list-shows-each-sessions-runs-in-order.md
+[ADR-0191]: ../../docs/decisions/api/usage/0191-self-runs-export-prints-the-usage-log-after-a-position.md
 [usage log docs]: ../../docs/behaviour/usage-log/README.md
 [trace context docs]: ../../docs/behaviour/usage-log/trace-context.md
 [usage report docs]: ../../docs/behaviour/usage-log/report.md

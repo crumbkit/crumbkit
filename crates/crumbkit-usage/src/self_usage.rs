@@ -31,7 +31,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{Args, Command};
@@ -225,11 +225,18 @@ pub fn findings(run: &mut Run, tool: &Tool, args: &SelfUsage) -> Listing<Finding
 /// read it, or returns `None` when it cannot. A tool without a name has no
 /// log, because the reader checks each record against the tool's commands.
 pub(super) fn open(tool: &Command, args: &SelfUsage) -> Option<BufReader<File>> {
+    open_log(tool, args.log.as_deref())
+}
+
+/// Opens the usage log at `log`, or else the log of `tool`, to read it, or
+/// returns `None` when it cannot or when `tool` has no name, as [`open`]
+/// describes.
+pub(super) fn open_log(tool: &Command, log: Option<&Path>) -> Option<BufReader<File>> {
     if tool.get_name().is_empty() {
         return None;
     }
-    let path = match &args.log {
-        Some(path) => path.clone(),
+    let path = match log {
+        Some(path) => path.to_owned(),
         None => super::file::log_path(tool.get_name())?,
     };
     File::open(path).ok().map(BufReader::new)

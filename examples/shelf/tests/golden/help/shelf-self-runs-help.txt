@@ -3,7 +3,8 @@ Work with each run in shelf's usage log
 Usage: shelf self runs [OPTIONS] <COMMAND>
 
 Commands:
-  list  List each run in shelf's usage log, grouped by session
+  list    List each run in shelf's usage log, grouped by session
+  export  Print the records of shelf's usage log after a run, oldest first
 
 Options:
       --json

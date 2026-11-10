@@ -1,0 +1,18 @@
+Print the records of shelf's usage log after a run, oldest first
+
+Usage: shelf self runs export [OPTIONS]
+
+Options:
+      --after <RUN>  Print only the records after the run with this span id, the `run` of the last record an earlier export printed
+      --log <FILE>   Read this usage log instead of the tool's own
+  -h, --help         Print help (see more with '--help')
+
+Examples:
+  shelf self runs export --json
+  shelf self runs export --json --after 00f067aa0ba902b7
+
+Effects: read-only, closed-world.
+Output: one row per line as each arrives, and --json prints one JSON document per line.
+Text: one line per row, <RUN>  <COMMAND>  <EXIT>  [after a gap]; --fields prints a table.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `shelf self runs export --help` describes them.
+Next: shelf self runs export --help explains each column.
