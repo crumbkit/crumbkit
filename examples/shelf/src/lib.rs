@@ -18,8 +18,8 @@ pub use crate::books::{
     UNREADABLE_IDS_FILE,
 };
 use crate::cli::{
-    AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, RunsCommand,
-    SchemasCommand, SelfCommand,
+    AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, RunsCommand, SKILL,
+    SchemasCommand, SelfCommand, SkillsCommand,
 };
 pub use crate::cli::{Cli, TOOL};
 
@@ -150,6 +150,20 @@ where
             SelfCommand::Runs {
                 command: RunsCommand::Export(args),
             } => crumbkit_usage::export(run, &args),
+        },
+        Resource::Skills { command } => match command {
+            SkillsCommand::Install(args) => {
+                let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&SKILL, &args));
+                crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
+            }
+            SkillsCommand::Check(args) => {
+                let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&SKILL, &args));
+                crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
+            }
+            SkillsCommand::Print => {
+                let result = Ok::<_, crumbkit::Error>(crumbkit_skills::print(&SKILL));
+                crumbkit::finish(run, crumbkit_skills::SKILLS_PRINT, result)
+            }
         },
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {

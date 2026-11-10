@@ -268,6 +268,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "crumbkit-skills"
+version = "0.3.0"
+dependencies = [
+ "clap",
+ "crumbkit",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "crumbkit-test"
 version = "0.3.0"
 dependencies = [
@@ -836,6 +848,7 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-aliases",
+ "crumbkit-skills",
  "crumbkit-test",
  "crumbkit-usage",
  "etcetera",

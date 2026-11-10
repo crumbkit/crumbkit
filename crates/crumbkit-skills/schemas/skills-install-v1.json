@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "crumbkit/skills-install/v1",
+  "description": "What install did in each skills directory: written, unchanged, skipped or failed.",
+  "type": "object",
+  "properties": {
+    "cut": {
+      "description": "Present when the output budget cut the result short, so data holds only its first rows.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "description": "The most bytes that the run printed on standard output.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "code": {
+          "description": "The over-budget code.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "budget"
+      ]
+    },
+    "data": {
+      "description": "The rows of the page, up to the limit.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InstallRow"
+      }
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "next": {
+      "description": "The next steps, in the order the text prints them. It is absent when there are none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "description": "The commands that carry out the step, in order.",
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "call": {
+                      "description": "A command line of this tool.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "call"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "description": "A command line of another program.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "run"
+                  ]
+                }
+              ]
+            }
+          },
+          "text": {
+            "description": "The sentence or phrase that the text prints for the step.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "text",
+          "commands"
+        ]
+      }
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "crumbkit/skills-install/v1"
+    },
+    "total": {
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count the rows.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "description": "True when the document leaves out rows that matched, because of the limit or the output budget, and false when data holds every row.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "truncated"
+  ],
+  "$defs": {
+    "InstallRow": {
+      "description": "One skills directory, or several that resolve to the same place, and\nwhat install did there.",
+      "type": "object",
+      "properties": {
+        "dirs": {
+          "description": "The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "path": {
+          "description": "The SKILL.md file that install wrote or left, at its real path.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/skill`, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "description": "What install did: failed, skipped, written or unchanged.",
+          "$ref": "#/$defs/Installed"
+        }
+      },
+      "required": [
+        "state",
+        "dirs",
+        "reason"
+      ]
+    },
+    "Installed": {
+      "description": "What install did in one skills directory.",
+      "oneOf": [
+        {
+          "description": "Install could not read or write the directory.",
+          "type": "string",
+          "const": "failed"
+        },
+        {
+          "description": "Install left a file or a link that it did not write.",
+          "type": "string",
+          "const": "skipped"
+        },
+        {
+          "description": "Install wrote the skill.",
+          "type": "string",
+          "const": "written"
+        },
+        {
+          "description": "The directory already held this version of the skill.",
+          "type": "string",
+          "const": "unchanged"
+        }
+      ]
+    }
+  }
+}

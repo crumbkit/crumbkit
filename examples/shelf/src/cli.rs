@@ -11,6 +11,9 @@ use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::tool::RefusalContext;
 use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
+use crumbkit_skills::{
+    SKILLS_CHECK, SKILLS_INSTALL, SKILLS_PRINT, Skill, SkillsCheck, SkillsInstall,
+};
 use crumbkit_usage::{
     SELF_FIGURES_LIST, SELF_RUNS_EXPORT, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns,
     SelfRunsExport, SelfUsage,
@@ -63,7 +66,8 @@ fn list_books(context: &RefusalContext<'_>) -> Vec<Call> {
 /// shelf's goal headings, leaves and help topics. shelf gives goal headings
 /// only to its root, and the group is compact, so `shelf -h` names `books`
 /// after `Browse the catalogue:`, `commands` and `schemas` after `Explore the
-/// commands:` and `self` after `Review how shelf is used:`, one line each, and
+/// commands:`, `self` after `Review how shelf is used:` and `skills` after
+/// `Install shelf's skill:`, one line each, and
 /// `shelf --help` lists each command with its description under those headings.
 /// `shelf books -h` keeps clap's `Commands:` list. The help of each leaf lists
 /// its examples, and the `--help` of a leaf that prints rows describes their
@@ -82,6 +86,7 @@ pub const TOOL: Tool = Tool::new()
                     Goal::new("Browse the catalogue", &["books"]),
                     Goal::new("Explore the commands", &["commands", "schemas"]),
                     Goal::new("Review how shelf is used", &["self"]),
+                    Goal::new("Install shelf's skill", &["skills"]),
                 ],
             )
             .compact()])
@@ -181,6 +186,30 @@ pub const TOOL: Tool = Tool::new()
                     ])
                     .effects(Effects::read_only())
                     .stream(SELF_RUNS_EXPORT),
+                Leaf::new(&["skills", "install"])
+                    .examples(&[
+                        Example::new(
+                            &[],
+                            "Install shelf's skill into each agent skills directory that exists",
+                        ),
+                        Example::new(
+                            &["--force"],
+                            "Install it, replacing a file or a link that install did not write",
+                        ),
+                    ])
+                    .effects(Effects::additive().idempotent())
+                    .document(SKILLS_INSTALL),
+                Leaf::new(&["skills", "check"])
+                    .examples(&[Example::new(
+                        &[],
+                        "Report each agent skills directory whose copy is missing or differs",
+                    )])
+                    .effects(Effects::read_only())
+                    .document(SKILLS_CHECK),
+                Leaf::new(&["skills", "print"])
+                    .examples(&[Example::new(&[], "Print shelf's skill")])
+                    .effects(Effects::read_only())
+                    .document(SKILLS_PRINT),
             ])
             .topics(&[Topic::new(
                 "catalogue",
@@ -190,6 +219,14 @@ pub const TOOL: Tool = Tool::new()
             .personal_aliases(crumbkit_aliases::names),
     )
     .picker(&MENU);
+
+/// shelf's agent skill, which `shelf skills install` writes into the agent
+/// skills directories.
+pub(crate) const SKILL: Skill = Skill::new(
+    "shelf",
+    env!("SHELF_VERSION"),
+    include_str!("../skill/SKILL.md"),
+);
 
 /// The resources that shelf serves.
 #[derive(Debug, Subcommand)]
@@ -218,6 +255,12 @@ pub(crate) enum Resource {
         /// What to review.
         #[command(subcommand)]
         command: SelfCommand,
+    },
+    /// Give coding agents shelf's skill.
+    Skills {
+        /// What to do with the skill.
+        #[command(subcommand)]
+        command: SkillsCommand,
     },
     /// Work with a person's aliases for shelf's commands.
     // The group is hidden, because aliases are for people, and an agent
@@ -295,6 +338,17 @@ pub(crate) enum RunsCommand {
     List(SelfRuns),
     /// Print the records of shelf's usage log after a run, oldest first.
     Export(SelfRunsExport),
+}
+
+/// The commands for shelf's agent skill.
+#[derive(Debug, Subcommand)]
+pub(crate) enum SkillsCommand {
+    /// Install shelf's skill into each agent skills directory that exists.
+    Install(SkillsInstall),
+    /// Check that each installed copy of shelf's skill matches this shelf.
+    Check(SkillsCheck),
+    /// Print shelf's skill.
+    Print,
 }
 
 /// The commands for a person's aliases.

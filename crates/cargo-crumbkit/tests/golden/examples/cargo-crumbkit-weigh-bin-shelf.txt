@@ -1,19 +1,23 @@
 PATH                     SHORT_HELP  OUTPUT  PATH_TOTAL
-shelf                    476         -       476
-shelf books              594         -       1070
-shelf books list         504         512     2086
-shelf books show         534         111     1715
-shelf books summarize    477         101     1648
-shelf books remove       716         114     1900
-shelf commands           367         -       843
-shelf commands list      702         2823    4368
-shelf schemas            424         -       900
-shelf schemas list       502         1658    3060
-shelf schemas show       484         3426    4810
-shelf self               468         -       944
-shelf self usage         594         -       1538
-shelf self figures       390         -       1334
-shelf self figures list  741         -       2075
-shelf self runs          440         -       1384
-shelf self runs list     726         -       2110
-shelf self runs export   851         54      2289
+shelf                    510         -       510
+shelf books              594         -       1104
+shelf books list         504         512     2120
+shelf books show         534         111     1749
+shelf books summarize    477         101     1682
+shelf books remove       716         114     1934
+shelf commands           367         -       877
+shelf commands list      702         2823    4402
+shelf schemas            424         -       934
+shelf schemas list       502         2073    3509
+shelf schemas show       484         3426    4844
+shelf self               468         -       978
+shelf self usage         594         -       1572
+shelf self figures       390         -       1368
+shelf self figures list  741         -       2109
+shelf self runs          440         -       1418
+shelf self runs list     726         -       2144
+shelf self runs export   851         54      2323
+shelf skills             471         -       981
+shelf skills install     646         80      1707
+shelf skills check       604         60      1645
+shelf skills print       262         586     1829

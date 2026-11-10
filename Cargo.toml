@@ -5,6 +5,7 @@ members = [
     "crates/crumbkit-derive",
     "crates/crumbkit-aliases",
     "crates/crumbkit-usage",
+    "crates/crumbkit-skills",
     "crates/crumbkit-child",
     "crates/crumbkit-process",
     "crates/crumbkit-markdown",
@@ -43,6 +44,9 @@ crumbkit-aliases = { version = "0.3.0", path = "crates/crumbkit-aliases" }
 # shelf keeps a usage log with crumbkit-usage, which takes a version beside
 # the path for the same reason.
 crumbkit-usage = { version = "0.3.0", path = "crates/crumbkit-usage" }
+# shelf installs its agent skill with crumbkit-skills, which takes a version
+# beside the path for the same reason.
+crumbkit-skills = { version = "0.3.0", path = "crates/crumbkit-skills" }
 # crumbkit-usage tests that the log runs under crumbkit-process's `forward`
 # feature, so crumbkit-process takes a version beside the path for the same
 # reason.

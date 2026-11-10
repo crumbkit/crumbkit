@@ -1,0 +1,15 @@
+Check that each installed copy of shelf's skill matches this shelf
+
+Usage: shelf skills check [OPTIONS]
+
+Options:
+      --dir <DIR>  Check this skills directory in place of the agent skills directories
+  -h, --help       Print help (see more with '--help')
+
+Examples:
+  shelf skills check
+
+Effects: read-only, closed-world.
+Rows: the default text lists only the rows that report a problem, and --long, --fields or --json lists every row.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `shelf skills check --help` describes them.
+Next: shelf skills check --help explains each column.
