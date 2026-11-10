@@ -20,4 +20,4 @@ children, and the report that `self usage` reads from the log.
 - [ADR-0144. A tool adds value-free facts of its own to the usage record](0144-a-tool-adds-value-free-facts-to-the-usage-record.md)
 - [ADR-0145. `self usage` finds slow commands that mostly wait](0145-self-usage-finds-slow-commands-that-mostly-wait.md)
 - [ADR-0190. `self runs list` shows each session's runs in order](0190-self-runs-list-shows-each-sessions-runs-in-order.md)
-- [ADR-0191. `self runs export` prints the usage log after a position](0191-self-runs-export-prints-the-usage-log-after-a-position.md)
+- [ADR-0191. `self runs export` prints the usage log after a run](0191-self-runs-export-prints-the-usage-log-after-a-position.md)

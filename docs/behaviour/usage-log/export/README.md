@@ -1,7 +1,7 @@
 # Usage export
 
 `self runs export` prints the records of a tool's [usage log](../README.md)
-after a position, so a job that the person runs can gather them from many
+after a run, so a job that the person runs can gather them from many
 machines. It is part of the crumbkit-usage crate, and the rustdoc of
 [`self_runs_export`](../../../../crates/crumbkit-usage/src/self_runs_export.rs)
 shows the wiring, and shelf mounts it.
@@ -20,23 +20,27 @@ It prints only lines that end with a newline and takes no lock, so it never
 prints the half line of a run that is still writing and never makes a run
 wait.
 
-Each line has three fields.
+Each line has two fields.
 
-- `position` is `RUN@AT`, the run's span id and its end time to the
-  millisecond, such as `00f067aa0ba902b7@2026-10-11T11:56:40.120Z`.
 - `gap` is true on the first line when records may be missing before it.
 - `record` is the stored record with every field the log holds, including
-  the keyed session and command-line hashes. Its keys are ordered by name.
+  the run's span id under `run` and the keyed session and command-line
+  hashes. Its keys are ordered by name.
 
-`--after <RUN@AT>` prints the records after the run at that position, so a
-caller that keeps the last position it read exports only what is new. When
-that run is no longer in the log, because a trim removed it, the export
-prints every record that ended at or after the position's time and sets
-`gap` on the first line. Such an export may repeat a run that ended in the
-same millisecond as the position, and a reader drops it by its span id.
-`--log <FILE>` reads another log, as it does for the report.
+`--after <RUN>` takes a span id, 16 lowercase hex digits, and prints the
+records after the run with that id. A caller that keeps the `run` of the
+last record it read exports only what is new. A span id is random, so a
+log holds no two runs with the same one in practice.
 
-The text prints `<POSITION>  <COMMAND>  <EXIT>` for each record, with
+When the run that `--after` names is no longer in the log, because a trim
+removed it, the export prints every record in the log and sets `gap` on the
+first line. A trim keeps the newest lines, which were all appended after
+the removed run, so the export repeats no record. The records appended
+between the removed run and the oldest kept line are lost, and `gap` tells
+the reader so. The export does not fail. `--log <FILE>` reads another log,
+as it does for the report.
+
+The text prints `<RUN>  <COMMAND>  <EXIT>` for each record, with
 `after a gap` at the end of the first line when `gap` is true. The JSON is
 one `<tool>/self-runs-export/v1` document per line, checked in as
 `crates/crumbkit-usage/schemas/self-runs-export-v1.json`.
@@ -44,7 +48,7 @@ one `<tool>/self-runs-export/v1` document per line, checked in as
 The export prints within the tool's output budget, 1 MiB unless the tool
 record sets another. When the next line would pass it, the stream prints
 the over-budget failure and exits with 1, and the caller exports again
-after the last position it read.
+after the last run it read.
 
 The tool sends nothing anywhere. The person who runs the export decides
 where its output goes.
@@ -53,9 +57,10 @@ Why: ADR-0191, ADR-0041.
 
 ## Tests
 
-Tests of `self runs export` read a fixed log after a position and after a
+Tests of `self runs export` read a fixed log after a run and after a
 trimmed run. Another checks that an export of shelf's own log prints its
-stored records, and that the next export after the last position prints
-only the newer line.
+stored records, and that the next export after the last run prints only the
+newer line. Another lowers the output budget, checks that the export stops
+with the over-budget failure, and resumes after the last run it printed.
 
 Why: ADR-0191.

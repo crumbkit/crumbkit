@@ -175,12 +175,8 @@ pub const TOOL: Tool = Tool::new()
                     .examples(&[
                         Example::new(&["--json"], "Print every line of the usage log as JSON"),
                         Example::new(
-                            &[
-                                "--json",
-                                "--after",
-                                "00f067aa0ba902b7@2026-10-11T11:56:40.120Z",
-                            ],
-                            "Print the lines after the position that an earlier export printed last",
+                            &["--json", "--after", "00f067aa0ba902b7"],
+                            "Print the records after the last run that an earlier export printed",
                         ),
                     ])
                     .effects(Effects::read_only())
@@ -297,7 +293,7 @@ pub(crate) enum FiguresCommand {
 pub(crate) enum RunsCommand {
     /// List each run in shelf's usage log, grouped by session.
     List(SelfRuns),
-    /// Print the lines of shelf's usage log after a position, oldest first.
+    /// Print the records of shelf's usage log after a run, oldest first.
     Export(SelfRunsExport),
 }
 

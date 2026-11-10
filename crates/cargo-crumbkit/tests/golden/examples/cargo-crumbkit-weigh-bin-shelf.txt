@@ -8,12 +8,12 @@ shelf books remove       716         114     1900
 shelf commands           367         -       843
 shelf commands list      702         2823    4368
 shelf schemas            424         -       900
-shelf schemas list       502         1676    3078
+shelf schemas list       502         1658    3060
 shelf schemas show       484         3426    4810
 shelf self               468         -       944
 shelf self usage         594         -       1538
 shelf self figures       390         -       1334
 shelf self figures list  741         -       2075
-shelf self runs          443         -       1387
-shelf self runs list     726         -       2113
-shelf self runs export   897         53      2337
+shelf self runs          440         -       1384
+shelf self runs list     726         -       2110
+shelf self runs export   851         54      2289

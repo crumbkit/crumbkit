@@ -160,7 +160,7 @@ fn self_runs_list_prints_no_session_or_command_line_hash() {
 }
 
 #[test]
-fn self_runs_export_prints_each_line_of_a_fixed_log_with_its_position() {
+fn self_runs_export_prints_each_line_of_a_fixed_log_with_its_run() {
     let dir = tempfile::tempdir().unwrap();
 
     shelf(dir.path(), &["self", "runs", "export", "--log", FIXTURE])
@@ -185,7 +185,7 @@ fn exported(home: &Path, args: &[&str]) -> Result<Vec<Value>, Box<dyn std::error
 // The fixture's records name the component crumbkit, which no golden file
 // of shelf may hold, so the test compares them with the fixture itself.
 #[test]
-fn self_runs_export_prints_the_lines_after_a_position_with_their_stored_records_as_json() {
+fn self_runs_export_prints_the_records_after_a_run_as_they_are_stored_as_json() {
     let dir = tempfile::tempdir().unwrap();
     let stored: Vec<Value> = fs::read_to_string(FIXTURE)
         .unwrap()
@@ -195,47 +195,34 @@ fn self_runs_export_prints_the_lines_after_a_position_with_their_stored_records_
 
     let lines = exported(
         dir.path(),
-        &[
-            "--log",
-            FIXTURE,
-            "--after",
-            "6912d6386190b62d@2026-10-01T09:00:02.000Z",
-        ],
+        &["--log", FIXTURE, "--after", "6912d6386190b62d"],
     )
     .unwrap();
 
     let records: Vec<&Value> = lines.iter().map(|line| &line["record"]).collect();
     assert_eq!(records, stored[3..].iter().collect::<Vec<_>>());
-    assert_eq!(
-        lines[0]["position"],
-        "4758387b6f714969@2026-10-01T09:00:03.000Z"
-    );
+    assert_eq!(lines[0]["record"]["run"], "4758387b6f714969");
     assert!(lines.iter().all(|line| line["gap"] == false));
 }
 
 #[test]
-fn self_runs_export_after_a_trimmed_run_marks_the_first_line_after_a_gap() {
+fn self_runs_export_after_a_trimmed_run_prints_every_record_and_marks_the_first_after_a_gap() {
     let dir = tempfile::tempdir().unwrap();
     let lines = exported(
         dir.path(),
-        &[
-            "--log",
-            FIXTURE,
-            "--after",
-            "0123456789abcdef@2026-10-01T09:00:02.000Z",
-        ],
+        &["--log", FIXTURE, "--after", "0123456789abcdef"],
     )
     .unwrap();
 
     let gaps: Vec<&Value> = lines.iter().map(|line| &line["gap"]).collect();
     assert_eq!(gaps.first(), Some(&&Value::Bool(true)));
     assert!(gaps[1..].iter().all(|gap| **gap == Value::Bool(false)));
-    assert_eq!(lines[0]["record"]["at"], "2026-10-01T09:00:02.000Z");
+    assert_eq!(lines.len(), 11);
+    assert_eq!(lines[0]["record"]["run"], "04bdd5e48d990113");
 }
 
 #[test]
-fn self_runs_export_prints_the_stored_lines_of_shelfs_own_log_and_continues_from_the_last_position()
-{
+fn self_runs_export_prints_the_stored_lines_of_shelfs_own_log_and_continues_from_the_last_run() {
     let dir = tempfile::tempdir().unwrap();
     wasteful_runs(dir.path());
     let stored = fs::read_to_string(log(dir.path())).unwrap();
@@ -246,7 +233,7 @@ fn self_runs_export_prints_the_stored_lines_of_shelfs_own_log_and_continues_from
         .map(|line| serde_json::from_str(line).unwrap())
         .collect();
     assert_eq!(printed, stored.iter().collect::<Vec<_>>());
-    let last = first.last().unwrap()["position"]
+    let last = first.last().unwrap()["record"]["run"]
         .as_str()
         .unwrap()
         .to_owned();
@@ -257,6 +244,48 @@ fn self_runs_export_prints_the_stored_lines_of_shelfs_own_log_and_continues_from
     assert_eq!(next.len(), 1, "{next:?}");
     assert_eq!(next[0]["record"]["command"], "self runs export");
     assert_eq!(next[0]["gap"], false);
+}
+
+#[test]
+fn an_export_that_the_output_budget_stops_resumes_after_the_last_run_it_printed() {
+    let dir = tempfile::tempdir().unwrap();
+    let stored: Vec<Value> = fs::read_to_string(FIXTURE)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    let output = Command::new(env!("CARGO_BIN_EXE_shelf"))
+        .args(["self", "runs", "export", "--json", "--log", FIXTURE])
+        .env_clear()
+        .env("XDG_CONFIG_HOME", dir.path().join("config"))
+        .env("XDG_STATE_HOME", dir.path().join("state"))
+        .env("SHELF_OUTPUT_BUDGET", "1500")
+        .assert()
+        .code(1)
+        .get_output()
+        .stdout
+        .clone();
+    let printed: Vec<Value> = String::from_utf8(output)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    let (failure, lines) = printed.split_last().unwrap();
+    assert!(
+        failure.to_string().contains("shelf::output::over_budget"),
+        "{failure}"
+    );
+    assert!(!lines.is_empty() && lines.len() < stored.len(), "{lines:?}");
+    let last = lines.last().unwrap()["data"]["record"]["run"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+
+    let rest = exported(dir.path(), &["--log", FIXTURE, "--after", &last]).unwrap();
+
+    let mut records: Vec<&Value> = lines.iter().map(|line| &line["data"]["record"]).collect();
+    records.extend(rest.iter().map(|line| &line["record"]));
+    assert_eq!(records, stored.iter().collect::<Vec<_>>());
 }
 
 /// Returns the hashes and trace ids in the usage log under `home`.

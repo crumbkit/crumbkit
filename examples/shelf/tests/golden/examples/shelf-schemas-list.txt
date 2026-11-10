@@ -10,4 +10,4 @@ shelf/schemas-show/v1       output  document  The JSON Schema of each document i
 shelf/self-usage/v1         output  document  The patterns in the usage log where callers waste effort, and a summary of the runs read.
 shelf/self-figures-list/v1  output  document  The figures of each command in the usage log, and a summary of the runs read.
 shelf/self-runs-list/v1     output  document  Each run in the usage log, grouped by session and in order within each session, and a summary of the runs read.
-shelf/self-runs-export/v1   output  stream    Each line of the usage log after a position, oldest first, with the record that the log stores.
+shelf/self-runs-export/v1   output  stream    Each record of the usage log after a run, oldest first, as the log stores it.

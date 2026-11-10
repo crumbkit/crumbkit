@@ -9,8 +9,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - crumbkit-usage: `self runs export` prints the stored usage records after
-  a position, `RUN@AT`, with their keyed hashes, and marks a possible gap
-  after a trim. shelf mounts it ([behaviour/usage-log/export]).
+  the run that `--after` names, with their keyed hashes, and marks a
+  possible gap after a trim. shelf mounts it ([behaviour/usage-log/export]).
 
 ## [0.3.0] - 2026-11-10
 

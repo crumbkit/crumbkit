@@ -64,7 +64,7 @@ the runs read.
 
 A tool adds `self runs export` with [`SelfRunsExport`] and [`export`],
 which takes the `Run` and prints the stream [`SELF_RUNS_EXPORT`] of
-[`RunLine`] rows: each stored record after a position, oldest first, with
+[`RunLine`] rows: each stored record after a run, oldest first, with
 its keyed hashes. The tool sends nothing anywhere, and the person who runs
 the export decides where its output goes. shelf's [`cli.rs`] and
 [`lib.rs`] show all four commands.

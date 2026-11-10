@@ -163,7 +163,7 @@ Why: ADR-0190.
 ## self runs export
 
 [`self runs export`](export/README.md) prints the stored records after a
-position.
+run.
 
 ## Tests
 

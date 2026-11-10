@@ -20,7 +20,7 @@ use clap::Command;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-pub(super) use self::entry::{Entry, millis_of};
+pub(super) use self::entry::Entry;
 pub(super) use self::known::is_hex;
 pub(super) use self::tally::Tally;
 use super::record::MAX_LINE;

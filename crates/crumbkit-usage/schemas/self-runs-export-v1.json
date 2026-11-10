@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "crumbkit/self-runs-export/v1",
-  "description": "Each line of the usage log after a position, oldest first, with the record that the log stores.",
+  "description": "Each record of the usage log after a run, oldest first, as the log stores it.",
   "type": "object",
   "properties": {
     "data": {
@@ -235,24 +235,19 @@
       ]
     },
     "RunLine": {
-      "description": "One line of the usage log as `self runs export` prints it.",
+      "description": "One record of the usage log as `self runs export` prints it.",
       "type": "object",
       "properties": {
         "gap": {
-          "description": "Whether lines may be missing before this one, because the run that\n`--after` named is no longer in the log, and the export started at\nthat run's end time instead. Only the first line of an export can be\ntrue.",
+          "description": "Whether records may be missing before this one, because the run that\n`--after` named is no longer in the log, so the export printed every\nrecord the log holds. Only the first line of an export can be true.",
           "type": "boolean"
         },
-        "position": {
-          "description": "The line's position, RUN@AT: the run's span id and its end time to\nthe millisecond, such as `00f067aa0ba902b7@2026-10-11T11:56:40.120Z`.\n`--after` takes it to print the lines that follow this one.",
-          "type": "string"
-        },
         "record": {
-          "description": "The line's record with every field and value that the usage log\nstores, including the keyed hashes of the run's session and command\nline.",
+          "description": "The record with every field and value that the usage log stores,\nincluding the run's span id under `run`, which `--after` takes, and\nthe keyed hashes of the run's session and command line.",
           "$ref": "#/$defs/Record"
         }
       },
       "required": [
-        "position",
         "gap",
         "record"
       ]

@@ -32,4 +32,4 @@ refusal-alternatives: shelf books show
   Declares: A refused command line for this command also offers the tool's own alternatives.
 
 text-line: shelf self runs export
-  Declares: The text prints each row as the line <POSITION>  <COMMAND>  <EXIT>  [after a gap] in place of a table row.
+  Declares: The text prints each row as the line <RUN>  <COMMAND>  <EXIT>  [after a gap] in place of a table row.

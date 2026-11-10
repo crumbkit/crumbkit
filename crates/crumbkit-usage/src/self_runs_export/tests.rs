@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use clap::Parser;
 use serde_json::{Value, json};
 
-use super::{Position, RunLine, SelfRunsExport, each_line};
+use super::{RunLine, SelfRunsExport, each_line, span_id};
 use crate::testing::line;
 use crumbkit::Row as _;
 
@@ -27,9 +27,8 @@ fn log() -> String {
 
 /// Returns the lines that an export of `log` prints after `after`.
 fn export(log: &str, after: Option<&str>) -> Vec<RunLine> {
-    let after = after.map(|text| text.parse::<Position>().unwrap());
     let mut lines = Vec::new();
-    each_line("shelf", Cursor::new(log), after.as_ref(), |line| {
+    each_line("shelf", Cursor::new(log), after, |line| {
         lines.push(line);
         ControlFlow::Continue(())
     });
@@ -57,15 +56,6 @@ fn runs(log: &str, after: Option<&str>) -> Vec<(String, bool)> {
             )
         })
         .collect()
-}
-
-/// Returns the position of the run `run` that ended `secs` seconds before
-/// the tests' time.
-fn position(secs: u64, run: &str) -> String {
-    let at = humantime::format_rfc3339_millis(
-        crate::testing::now() - std::time::Duration::from_secs(secs),
-    );
-    format!("{run}@{at}")
 }
 
 #[test]
@@ -97,18 +87,8 @@ fn each_line_holds_the_record_as_the_log_stores_it_with_its_hashes() {
 }
 
 #[test]
-fn each_line_gives_its_position_as_its_run_and_its_end_to_the_millisecond() {
-    let lines = json(&log(), None);
-
-    assert_eq!(
-        lines[1]["position"],
-        "000000000000000b@2026-10-11T11:56:40.000Z"
-    );
-}
-
-#[test]
 fn an_export_after_a_run_prints_only_the_records_that_follow_it() {
-    let runs = runs(&log(), Some(&position(300, "000000000000000a")));
+    let runs = runs(&log(), Some("000000000000000a"));
 
     assert_eq!(
         runs,
@@ -121,32 +101,38 @@ fn an_export_after_a_run_prints_only_the_records_that_follow_it() {
 
 #[test]
 fn an_export_after_the_last_run_prints_nothing() {
-    let runs = runs(&log(), Some(&position(100, "000000000000000c")));
+    let runs = runs(&log(), Some("000000000000000c"));
 
     assert_eq!(runs, []);
 }
 
 #[test]
-fn an_export_after_a_run_that_was_trimmed_prints_the_records_from_its_time_and_marks_the_first_after_a_gap()
- {
-    // The run `x` ended 250 seconds before the tests' time, and a trim
-    // removed it, so the log starts with `a`, which ended before it.
-    let runs = runs(&log(), Some(&position(250, "000000000000000f")));
+fn an_export_after_a_run_that_was_trimmed_prints_every_record_and_marks_the_first_after_a_gap() {
+    let runs = runs(&log(), Some("000000000000000f"));
 
     assert_eq!(
         runs,
         [
-            ("000000000000000b".to_owned(), true),
+            ("000000000000000a".to_owned(), true),
+            ("000000000000000b".to_owned(), false),
             ("000000000000000c".to_owned(), false),
         ]
     );
 }
 
 #[test]
-fn a_run_found_at_another_time_is_a_different_position() {
-    let runs = runs(&log(), Some(&position(150, "000000000000000a")));
+fn an_export_after_a_trimmed_run_prints_a_record_that_ended_earlier_but_was_appended_later() {
+    // A run waits for the lock after it ends, so the log's order is not
+    // the order of the end times.
+    let log = [
+        run_line(100, "books list", "000000000000000a"),
+        run_line(200, "books show", "000000000000000b"),
+    ]
+    .concat();
 
-    assert_eq!(runs, [("000000000000000c".to_owned(), true)]);
+    let runs = runs(&log, Some("000000000000000f"));
+
+    assert_eq!(runs.len(), 2);
 }
 
 #[test]
@@ -157,6 +143,15 @@ fn a_last_line_without_a_newline_is_a_write_in_progress_and_does_not_print() {
     let runs = runs(log, None);
 
     assert_eq!(runs.len(), 2);
+}
+
+#[test]
+fn a_record_whose_span_id_is_not_16_lowercase_hex_digits_is_skipped() {
+    let log = [run_line(400, "books list", "NOT-A-SPAN-ID"), log()].concat();
+
+    let runs = runs(&log, None);
+
+    assert_eq!(runs.len(), 3);
 }
 
 #[test]
@@ -185,38 +180,28 @@ fn an_export_stops_reading_when_the_stream_stops() {
 }
 
 #[test]
-fn a_line_prints_its_position_command_and_exit_as_text() {
-    let lines = export(&log(), Some(&position(250, "000000000000000f")));
+fn a_line_prints_its_run_command_and_exit_as_text() {
+    let lines = export(&log(), Some("000000000000000f"));
 
     assert_eq!(
         lines[0].text_line().unwrap(),
-        "000000000000000b@2026-10-11T11:56:40.000Z  books show  0  after a gap"
+        "000000000000000a  books list  0  after a gap"
     );
-    assert_eq!(
-        lines[1].text_line().unwrap(),
-        "000000000000000c@2026-10-11T11:58:20.000Z  shelf  0"
-    );
+    assert_eq!(lines[2].text_line().unwrap(), "000000000000000c  shelf  0");
 }
 
 #[test]
-fn a_position_is_a_run_and_an_end_time_joined_by_an_at_sign() {
-    let position: Position = "00f067aa0ba902b7@2026-10-11T11:56:40.120Z".parse().unwrap();
-
+fn a_run_is_its_span_id_of_16_lowercase_hex_digits() {
     assert_eq!(
-        position.to_string(),
-        "00f067aa0ba902b7@2026-10-11T11:56:40.120Z"
+        span_id("00f067aa0ba902b7").as_deref(),
+        Ok("00f067aa0ba902b7")
     );
-}
-
-#[test]
-fn a_position_without_a_run_of_16_lowercase_hex_digits_or_an_rfc_3339_time_is_refused() {
     for text in [
-        "00f067aa0ba902b7",
-        "00F067AA0BA902B7@2026-10-11T11:56:40.120Z",
-        "00f067aa0ba902@2026-10-11T11:56:40.120Z",
-        "00f067aa0ba902b7@yesterday",
+        "00F067AA0BA902B7",
+        "00f067aa0ba902",
+        "00f067aa0ba902b7@2026-10-11T11:56:40.120Z",
     ] {
-        assert!(text.parse::<Position>().is_err(), "{text}");
+        assert!(span_id(text).is_err(), "{text}");
     }
 }
 
@@ -228,20 +213,11 @@ struct Cli {
 }
 
 #[test]
-fn self_runs_export_takes_a_position_after_and_a_log() {
-    let tool = Cli::try_parse_from([
-        "tool",
-        "--after",
-        "00f067aa0ba902b7@2026-10-11T11:56:40.120Z",
-        "--log",
-        "copy.jsonl",
-    ])
-    .unwrap();
+fn self_runs_export_takes_a_run_after_and_a_log() {
+    let tool = Cli::try_parse_from(["tool", "--after", "00f067aa0ba902b7", "--log", "copy.jsonl"])
+        .unwrap();
 
-    assert_eq!(
-        tool.args.after.map(|after| after.to_string()).as_deref(),
-        Some("00f067aa0ba902b7@2026-10-11T11:56:40.120Z")
-    );
+    assert_eq!(tool.args.after.as_deref(), Some("00f067aa0ba902b7"));
 }
 
 #[test]
