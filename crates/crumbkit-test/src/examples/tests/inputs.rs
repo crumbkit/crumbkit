@@ -8,6 +8,7 @@ use crumbkit::Tool;
 use crumbkit::help::{Example, Help, Leaf};
 use snapbox::assert::Action;
 
+use super::super::inputs::spellings;
 use super::{FILES, TOOL, examples, run};
 use crate::allow::Allow;
 use crate::temp::TempDir;
@@ -124,4 +125,31 @@ fn an_opted_out_example_keeps_its_stdin_file() {
     run(&TOOL, &examples(&dir).allow(ALLOW), Action::Overwrite);
 
     assert_eq!(dir.names(), [FILES[0], "sh-c-echo-books.stdin", FILES[2]]);
+}
+
+#[test]
+fn a_verbatim_drive_path_is_redacted_in_its_spelling_without_the_prefix_too() {
+    let found = spellings(std::path::Path::new(
+        r"\\?\C:\Users\run\Temp\crumbkit-test-1",
+    ));
+
+    assert_eq!(
+        found,
+        [
+            r"\\?\C:\Users\run\Temp\crumbkit-test-1",
+            r"C:\Users\run\Temp\crumbkit-test-1",
+        ]
+    );
+}
+
+#[test]
+fn a_verbatim_unc_path_keeps_its_prefix_and_has_one_spelling() {
+    let found = spellings(std::path::Path::new(r"\\?\UNC\server\share\dir"));
+
+    assert_eq!(found, [r"\\?\UNC\server\share\dir"]);
+}
+
+#[test]
+fn a_plain_path_has_one_spelling() {
+    assert_eq!(spellings(std::path::Path::new("/tmp/work")), ["/tmp/work"]);
 }

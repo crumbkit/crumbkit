@@ -71,17 +71,38 @@ pub(super) fn stale_stdin(tool_name: &str, tool: &Tool, dir: &Path, problems: &m
     }
 }
 
+/// Returns the spellings of `path` that a tool's output may hold: the text
+/// of `path` itself and, when that text starts with the `\\?\` prefix that
+/// Windows gives a canonical path, the text without it. A tool prints a path
+/// through `crumbkit::files::display`, which drops the prefix, so the
+/// redaction needs both. The strip is that function's, so the two agree on a
+/// verbatim UNC path, which keeps its prefix.
+pub(super) fn spellings(path: &Path) -> Vec<String> {
+    let full = path.display().to_string();
+    let shown = crumbkit::files::display(path);
+    if shown == full {
+        vec![full]
+    } else {
+        vec![full, shown]
+    }
+}
+
 /// Returns the redactions of a run: the path of each of the run's XDG
 /// directories in `xdg` under its placeholder, such as `[XDG_CONFIG_HOME]`,
-/// and each path of the fresh directory `work` under `[ROOT]`.
+/// and each path of the fresh directory `work` under `[ROOT]`, each in every
+/// spelling that [`spellings`] returns.
 pub(super) fn redactions(xdg: &Xdg, work: &WorkDir) -> Redactions {
     let mut run = Redactions::new();
     // The placeholders are fixed and valid, so `insert` cannot fail.
     for (placeholder, path) in xdg.placeholders() {
-        let _ = run.insert(placeholder, path.display().to_string());
+        for spelling in spellings(path) {
+            let _ = run.insert(placeholder, spelling);
+        }
     }
     for path in work.fresh_paths() {
-        let _ = run.insert("[ROOT]", path.display().to_string());
+        for spelling in spellings(&path) {
+            let _ = run.insert("[ROOT]", spelling);
+        }
     }
     run
 }

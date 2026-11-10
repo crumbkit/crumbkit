@@ -20,6 +20,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   whose visible commands are all such commands
   ([behaviour/help/built-in]).
 
+### Fixed
+
+- crumbkit-test: the example check redacts a Windows temporary path in the
+  form that a tool prints, without the `\\?\` prefix, as well as in the
+  verbatim form, so `[XDG_CONFIG_HOME]` and `[ROOT]` replace it
+  ([behaviour/checks]).
+
 ## [0.3.1](https://github.com/crumbkit/crumbkit/compare/v0.3.0...v0.3.1) - 2026-11-10
 ### Added
 
