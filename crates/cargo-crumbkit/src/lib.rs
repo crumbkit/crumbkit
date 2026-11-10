@@ -8,12 +8,15 @@
 //! [ADR-0044]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0044-command-reference.md
 //! [weigh docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/weight.md
 //! [command reference docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/reference.md
+//! [skill check docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/skill-check/README.md
+//! [ADR-0193]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0193-skill-check.md
 #![doc = include_str!("../README.md")]
 
 mod cargo;
 mod cli;
 mod docs;
 mod error;
+mod skill;
 mod tool;
 mod weigh;
 
@@ -23,7 +26,7 @@ use std::process::ExitCode;
 // tests, so they stay out of the documentation.
 #[doc(hidden)]
 pub use crate::cli::{ALLOW, Cli, TOOL};
-use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand};
+use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand, SkillCommand};
 
 #[cfg(test)]
 mod tests;
@@ -48,6 +51,11 @@ pub fn run() -> ExitCode {
                 crumbkit::finish(output, weigh::WEIGH, weigh::weigh(&args))
             }
             CrumbkitCommand::Docs(args) => crumbkit::finish(output, docs::DOCS, docs::docs(&args)),
+            CrumbkitCommand::Skill { command } => match command {
+                SkillCommand::Check(args) => {
+                    crumbkit::finish(output, skill::SKILL_CHECK, skill::check(&args))
+                }
+            },
             CrumbkitCommand::Commands { command } => match command {
                 // `commands list` reads the command tree through
                 // `&mut output`, so it runs before `finish`.

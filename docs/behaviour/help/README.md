@@ -6,8 +6,8 @@ goal headings, runtime leaves, the word `help` and help topics. The other
 pages in this directory cover [goal headings](headings/README.md),
 [leaf examples and columns](examples.md),
 [`commands list`](commands-list.md), the
-[command reference](reference.md), [help weight](weight.md) and the
-[help checks](checks.md).
+[command reference](reference.md), [help weight](weight.md), the
+[skill check](skill-check/README.md) and the [help checks](checks.md).
 
 ## Lines crumbkit adds to a help page
 

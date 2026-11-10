@@ -172,7 +172,7 @@ impl Tool {
     }
 
     /// Returns the failure of a `commands list` run that gives no document.
-    fn no_commands_list(&self) -> ToolError {
+    pub(crate) fn no_commands_list(&self) -> ToolError {
         ToolError::NoCommandsList {
             line: self.commands_line(),
         }
@@ -302,7 +302,7 @@ fn used(stdout: &[u8]) -> Option<Vec<Used>> {
 /// as `shelf/commands-list/v1` for crumbkit's `commands-list/v1`. A tool's
 /// output gives crumbkit's documents the tool's name as their component
 /// (ADR-0079).
-fn names<T>(id: &str, document: &Document<T>) -> bool {
+pub(crate) fn names<T>(id: &str, document: &Document<T>) -> bool {
     let name = format!("{}/v{}", document.name(), document.version());
     id.split_once('/').is_some_and(|(_, rest)| rest == name)
 }
