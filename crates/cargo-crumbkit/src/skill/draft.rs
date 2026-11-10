@@ -109,7 +109,7 @@ pub(crate) struct Summary {
     usage: Option<String>,
     /// The runs of the tool that the usage directory holds, each span id once.
     runs: u64,
-    /// The runs that the ranking ignored, because they name another tool or a command that the tool no longer has.
+    /// The runs that the ranking would have ranked but ignored, because they name another tool or a command that the tool no longer has. Runs that print a help page and runs of a root command count in neither.
     ignored: u64,
     /// The non-empty lines of the usage files that are not an exported usage record.
     unreadable: u64,
@@ -129,6 +129,7 @@ impl fmt::Display for Summary {
                 ", and {dir} holds no runs of {}, so its usage section keeps its text.",
                 self.tool
             )?,
+            Some(_) if self.ignored == 0 => write!(f, " from {} runs.", self.runs)?,
             Some(_) => write!(
                 f,
                 " from {} runs, and ignored {} that name a command {} no longer has or another tool.",
@@ -155,7 +156,9 @@ struct Draft {
     rows: Vec<Drafted>,
     /// The runs of the tool in the usage.
     runs: u64,
-    /// The runs that the ranking ignored.
+    /// The runs that the ranking would have ranked but ignored, because
+    /// they name another tool or a command that the tool no longer has.
+    /// Help pages and runs of a root command count in neither.
     ignored: u64,
 }
 
@@ -184,9 +187,10 @@ pub(crate) fn draft(args: &SkillDraftArgs) -> Result<Listing<Drafted, Summary>, 
         Err(error) => return Err(SkillError::Unreadable { path: file, error }),
     };
     let usage = match &args.usage {
-        Some(dir) => {
-            usage::read(dir).map_err(|(path, error)| SkillError::UsageUnreadable { path, error })?
-        }
+        Some(dir) => Some(
+            usage::read(dir)
+                .map_err(|(path, error)| SkillError::UsageUnreadable { path, error })?,
+        ),
         None => None,
     };
     let tool = Tool::new(&built.executable, &std::env::temp_dir())?;
@@ -244,7 +248,14 @@ fn drafted(
     let name = tree.name();
     let all = usage.map_or(&[][..], |usage| usage.runs.as_slice());
     let ours: Vec<usage::Run> = all.iter().filter(|run| run.tool == name).cloned().collect();
-    let mut ignored = count(all.len() - ours.len());
+    // A run of another tool counts as ignored only where a run of this tool
+    // would be ranked, as `usage::rank` decides, so the count means the same
+    // for both kinds of ignored run.
+    let mut ignored = count(
+        all.iter()
+            .filter(|run| run.tool != name && !run.help && run.command.is_some())
+            .count(),
+    );
     let mut ranked = Vec::new();
     for command in usage::rank(&ours) {
         let path = format!("{name} {}", command.command);

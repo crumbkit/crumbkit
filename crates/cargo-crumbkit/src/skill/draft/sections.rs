@@ -8,6 +8,13 @@
 //! comment would be a value, the markers are YAML comments:
 //! `# crumbkit:generated description` and
 //! `# /crumbkit:generated description`. Spaces around a marker are allowed.
+//!
+//! The YAML form counts only inside the frontmatter, which starts with a
+//! `---` first line and ends at the next `---` line, and the HTML form only
+//! outside it, because `# ...` in the body is a heading. A marker inside a
+//! fenced code block is an example and does not count.
+
+use crate::skill::check::markdown::{self, Fence};
 
 #[cfg(test)]
 mod tests;
@@ -38,30 +45,43 @@ pub(crate) struct Unclosed {
 ///
 /// Returns [`Unclosed`] when a start marker has no end marker after it.
 pub(crate) fn rewrite(text: &str, name: &str, body: &str) -> Result<Rewrite, Unclosed> {
-    let starts = [
+    let html = (
         format!("<!-- crumbkit:generated {name} -->"),
-        format!("# crumbkit:generated {name}"),
-    ];
-    let ends = [
         format!("<!-- /crumbkit:generated {name} -->"),
+    );
+    let yaml = (
+        format!("# crumbkit:generated {name}"),
         format!("# /crumbkit:generated {name}"),
-    ];
+    );
     let mut out = String::with_capacity(text.len());
-    let mut open: Option<(usize, usize)> = None;
+    // The open section: the line of its start marker, the offset where its
+    // body starts, and the body with the start marker's line ending.
+    let mut open: Option<(usize, usize, String)> = None;
+    let mut place = Place::Body;
     let mut marked = false;
     let mut changed = false;
     let mut offset = 0;
     for (index, line) in text.split_inclusive('\n').enumerate() {
         let trimmed = line.trim();
-        match open {
+        let markers = match place {
+            Place::Body => Some(&html),
+            Place::Frontmatter => Some(&yaml),
+            Place::Fenced(_) => None,
+        };
+        match &open {
             None => {
                 out.push_str(line);
-                if starts.iter().any(|start| start == trimmed) {
-                    open = Some((index + 1, offset + line.len()));
+                if markers.is_some_and(|(start, _)| start == trimmed) {
+                    let body = if line.ends_with("\r\n") {
+                        body.replace('\n', "\r\n")
+                    } else {
+                        body.to_owned()
+                    };
+                    open = Some((index + 1, offset + line.len(), body));
                 }
             }
-            Some((_, from)) if ends.iter().any(|end| end == trimmed) => {
-                changed |= &text[from..offset] != body;
+            Some((_, from, body)) if markers.is_some_and(|(_, end)| end == trimmed) => {
+                changed |= &text[*from..offset] != body;
                 marked = true;
                 out.push_str(body);
                 out.push_str(line);
@@ -69,9 +89,10 @@ pub(crate) fn rewrite(text: &str, name: &str, body: &str) -> Result<Rewrite, Unc
             }
             Some(_) => {}
         }
+        place = place.after(index, line);
         offset += line.len();
     }
-    if let Some((line, _)) = open {
+    if let Some((line, _, _)) = open {
         return Err(Unclosed { line });
     }
     Ok(match (marked, changed) {
@@ -79,4 +100,32 @@ pub(crate) fn rewrite(text: &str, name: &str, body: &str) -> Result<Rewrite, Unc
         (true, false) => Rewrite::Unchanged,
         (true, true) => Rewrite::Changed(out),
     })
+}
+
+/// Where a line of a skill file sits, which decides the markers it may hold.
+#[derive(Clone, Copy)]
+enum Place {
+    /// Inside the YAML frontmatter.
+    Frontmatter,
+    /// In the Markdown body, outside a fenced code block.
+    Body,
+    /// Inside a fenced code block that the fence opened.
+    Fenced(Fence),
+}
+
+impl Place {
+    /// Returns where the line after `line`, the line at `index` counted
+    /// from 0, sits.
+    fn after(self, index: usize, line: &str) -> Self {
+        let line = line.trim_end_matches(['\r', '\n']);
+        let trimmed = line.trim();
+        match self {
+            Self::Body if index == 0 && trimmed == "---" => Self::Frontmatter,
+            Self::Frontmatter if trimmed == "---" => Self::Body,
+            Self::Frontmatter => Self::Frontmatter,
+            Self::Body => markdown::opens(line).map_or(Self::Body, Self::Fenced),
+            Self::Fenced(fence) if markdown::closes(line, fence) => Self::Body,
+            Self::Fenced(fence) => Self::Fenced(fence),
+        }
+    }
 }

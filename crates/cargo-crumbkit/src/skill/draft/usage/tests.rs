@@ -1,6 +1,6 @@
 //! Tests for reading exported usage and ranking its commands.
 
-use super::{Ranked, Run, parse, rank};
+use super::{Ranked, Run, parse, rank, read};
 
 /// Returns a run of `command` in `session` at second `second`, with `exit`
 /// and `flags`.
@@ -133,4 +133,37 @@ fn a_line_that_is_not_an_exported_record_gives_none() {
 
     assert!(parse(stored).is_none());
     assert!(parse("not json").is_none());
+}
+
+#[test]
+fn a_usage_directory_that_does_not_exist_fails_with_its_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let missing = dir.path().join("usage");
+
+    let (path, error) = read(&missing).unwrap_err();
+
+    assert_eq!(path, missing);
+    assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
+}
+
+#[test]
+fn a_usage_directory_reads_jsonl_files_in_subdirectories_each_run_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let line = r#"{"schema":"shelf/self-runs-export/v1","data":{"gap":false,"record":{"tool":"shelf","at":"2026-11-01T09:00:00.000Z","session":"a","run":"04bdd5e48d990113","command":"books list","exit":0}}}"#;
+    let host = dir.path().join("host-a");
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test writes the usage files that it reads"
+    )]
+    {
+        std::fs::create_dir_all(&host).unwrap();
+        std::fs::write(host.join("1.jsonl"), format!("{line}\nnot json\n")).unwrap();
+        std::fs::write(dir.path().join("2.jsonl"), format!("{line}\n")).unwrap();
+        std::fs::write(dir.path().join("notes.txt"), "not read").unwrap();
+    }
+
+    let usage = read(dir.path()).unwrap();
+
+    assert_eq!(usage.runs.len(), 1);
+    assert_eq!(usage.unreadable, 1);
 }

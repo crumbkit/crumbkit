@@ -192,7 +192,7 @@
           "type": "string"
         },
         "ignored": {
-          "description": "The runs that the ranking ignored, because they name another tool or a command that the tool no longer has.",
+          "description": "The runs that the ranking would have ranked but ignored, because they name another tool or a command that the tool no longer has. Runs that print a help page and runs of a root command count in neither.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0

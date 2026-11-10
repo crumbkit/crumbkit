@@ -108,6 +108,10 @@ fn usage_ranks_only_the_tool_s_leaf_commands_and_counts_the_runs_it_ignores() {
             run("02", "shelf", "books lend"),
             run("03", "shelf", "books"),
             run("04", "other", "books list"),
+            Run {
+                help: true,
+                ..run("05", "other", "books list")
+            },
         ],
         unreadable: 0,
     };
@@ -117,8 +121,8 @@ fn usage_ranks_only_the_tool_s_leaf_commands_and_counts_the_runs_it_ignores() {
 
     assert_eq!(draft.runs, 3);
     // The run of another tool and the run of `books lend`, which shelf no
-    // longer has. The run of the group `books` is not ranked and not
-    // ignored.
+    // longer has. The run of the group `books` and the other tool's help
+    // page are not ranked and not ignored.
     assert_eq!(draft.ignored, 2);
     assert!(
         draft
@@ -165,15 +169,16 @@ fn an_unclosed_marker_names_its_section_and_line() {
 
 #[test]
 fn the_summary_says_whether_usage_was_read_and_what_it_ignored() {
-    let summary = |usage: Option<&str>, runs, unreadable| Summary {
+    let counted = |usage: Option<&str>, runs, ignored, unreadable| Summary {
         file: "skill/SKILL.md".to_owned(),
         tool: "shelf".to_owned(),
         check: usage.is_none(),
         usage: usage.map(str::to_owned),
         runs,
-        ignored: 1,
+        ignored,
         unreadable,
     };
+    let summary = |usage, runs, unreadable| counted(usage, runs, 1, unreadable);
 
     assert_eq!(
         summary(None, 0, 0).to_string(),
@@ -186,6 +191,10 @@ fn the_summary_says_whether_usage_was_read_and_what_it_ignored() {
     assert_eq!(
         summary(Some("usage"), 12, 2).to_string(),
         "Drafted skill/SKILL.md for shelf from 12 runs, and ignored 1 that name a command shelf no longer has or another tool. 2 lines of the usage files are not exported usage records."
+    );
+    assert_eq!(
+        counted(Some("usage"), 12, 0, 0).to_string(),
+        "Drafted skill/SKILL.md for shelf from 12 runs."
     );
 }
 

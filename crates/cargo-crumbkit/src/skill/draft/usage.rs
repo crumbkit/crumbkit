@@ -124,17 +124,13 @@ pub(crate) fn parse(line: &str) -> Option<Run> {
 
 /// Reads every `.jsonl` file under `dir` and in its subdirectories, in path
 /// order, and returns their runs with each span id once, because two
-/// exports may hold the same run. It returns `None` when `dir` does not
-/// exist.
+/// exports may hold the same run.
 ///
 /// # Errors
 ///
-/// Returns the path and the I/O error of a directory or file that exists
-/// but cannot be read.
-pub(crate) fn read(dir: &Path) -> Result<Option<Usage>, (PathBuf, io::Error)> {
-    if !dir.exists() {
-        return Ok(None);
-    }
+/// Returns the path and the I/O error of a directory or file that cannot be
+/// read, including a directory that does not exist.
+pub(crate) fn read(dir: &Path) -> Result<Usage, (PathBuf, io::Error)> {
     let mut files = Vec::new();
     collect(dir, &mut files)?;
     files.sort();
@@ -152,7 +148,7 @@ pub(crate) fn read(dir: &Path) -> Result<Option<Usage>, (PathBuf, io::Error)> {
             }
         }
     }
-    Ok(Some(usage))
+    Ok(usage)
 }
 
 /// Adds the `.jsonl` files under `dir` and its subdirectories to `files`.

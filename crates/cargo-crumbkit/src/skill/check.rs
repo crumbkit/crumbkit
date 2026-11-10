@@ -15,7 +15,9 @@ use crate::error::SkillError;
 use crate::skill::tree::Tree;
 use crate::tool::Tool;
 
-mod markdown;
+// `skill draft` reads fences with the same rules, so it skips markers in
+// a fenced example.
+pub(super) mod markdown;
 mod verify;
 mod words;
 

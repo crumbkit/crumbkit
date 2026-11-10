@@ -33,8 +33,16 @@ named `jobs` looks like this:
 Each marker is a line of its own, and spaces around it are allowed. In the
 YAML frontmatter, where an HTML comment would be a value, the markers are
 YAML comments: `# crumbkit:generated description` and
-`# /crumbkit:generated description`. A start marker without its end marker
-fails with `crumbkit::skill::unclosed_section`, which names the line.
+`# /crumbkit:generated description`. The YAML form counts only inside the
+frontmatter, which starts with a `---` first line and ends at the next
+`---` line, and the HTML form counts only after it, because `# ...` in the
+body is a heading. A marker inside a fenced code block, opened by three or
+more backticks or tildes, is an example and does not count, so a skill can
+show the markers. A start marker without its end marker fails with
+`crumbkit::skill::unclosed_section`, which names the line.
+
+The generated text takes the line ending of its start marker's line, so a
+file with CRLF line endings keeps them.
 
 The draft writes three sections:
 
@@ -61,7 +69,9 @@ sections.
 `*.jsonl` file under the directory and its subdirectories, so a directory
 laid out as `<host>/<day>.jsonl` holds the exports of several machines. A
 run whose span id it has already read is skipped, and a non-empty line that
-is not an exported record is counted as unreadable.
+is not an exported record is counted as unreadable. A directory that does
+not exist, or a file that cannot be read, fails with
+`crumbkit::usage::unreadable`.
 
 The draft ranks each command by its runs × (1 + the share of its runs that
 were wasted), which equals its runs plus its wasted runs. A run is wasted
@@ -73,7 +83,9 @@ at `-h` and a second try count as a retry. Only commands without
 subcommands are ranked. Equal scores rank by command path.
 
 Runs of another tool, and runs of a command that the tool no longer has,
-are ignored, and the summary counts them. `--top <N>` caps the section at
+are ignored, and the summary counts them. The count leaves out help pages
+and runs of a root command, which are never ranked, so it counts only runs
+that the ranking would otherwise have ranked. `--top <N>` caps the section at
 `N` commands, 10 by default.
 
 Each entry is one code span with the command and up to three of its most
@@ -86,8 +98,8 @@ common flags in help notation, followed by the command's about text:
 A flag that the command no longer accepts is left out. The skill check
 reads the span, so each entry names real commands and flags.
 
-Without `--usage`, or when the directory is missing or holds no run of a
-ranked command, the `usage` section keeps its text and is reported as
+Without `--usage`, or when the directory holds no run of a ranked
+command, the `usage` section keeps its text and is reported as
 `kept`. A draft in CI without the exports then leaves the section that a
 draft with them wrote.
 
@@ -98,7 +110,8 @@ The result is the `crumbkit/skill-draft/v1` document, which
 describes. It holds one row for each section, with its name and its status:
 `written`, `unchanged`, `would-change`, `kept` or `unmarked`. The summary
 names the file and the tool, and counts the runs that the usage holds, the
-runs it ignored and the unreadable lines.
+runs it ignored and the unreadable lines. The text leaves out the ignored
+runs when there are none.
 
 ```text
 Drafted skill/SKILL.md for shelf from 18 runs, and ignored 2 that name a command shelf no longer has or another tool.

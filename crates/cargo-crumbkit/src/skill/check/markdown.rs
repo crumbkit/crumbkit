@@ -16,7 +16,7 @@ pub(crate) struct Code {
 
 /// An open fenced code block: the character of its fence, a backtick or a
 /// tilde, and the length of the fence.
-type Fence = (char, usize);
+pub(crate) type Fence = (char, usize);
 
 /// Returns every inline code span and every non-empty line of every fenced
 /// code block in `text`, in the order of the file.
@@ -64,7 +64,7 @@ pub(crate) fn code(text: &str) -> Vec<Code> {
 }
 
 /// Returns the fence that `line` opens, or `None` when it opens none.
-fn opens(line: &str) -> Option<Fence> {
+pub(crate) fn opens(line: &str) -> Option<Fence> {
     let (mark, length, rest) = fence_run(line)?;
     // A backtick fence's info string holds no backtick, so a line such as
     // ```` ```a``` ```` is an inline span.
@@ -72,7 +72,7 @@ fn opens(line: &str) -> Option<Fence> {
 }
 
 /// Reports whether `line` closes the block that `open` opened.
-fn closes(line: &str, open: Fence) -> bool {
+pub(crate) fn closes(line: &str, open: Fence) -> bool {
     fence_run(line).is_some_and(|(mark, length, rest)| {
         mark == open.0 && length >= open.1 && rest.trim().is_empty()
     })
