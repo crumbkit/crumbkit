@@ -1,6 +1,7 @@
 //! Tests of the Unix waiter with real children that job control stops and
 //! continues.
 
+use std::io::BufRead as _;
 use std::os::unix::process::ExitStatusExt as _;
 use std::process::Stdio;
 use std::time::{Duration, Instant};
@@ -30,6 +31,27 @@ fn within(limit: Duration, mut check: impl FnMut() -> bool) -> bool {
     true
 }
 
+/// Starts `sh` with `script` in a group of its own, with standard input
+/// and output as pipes, and returns once the script has begun to run.
+///
+/// macOS sometimes discards a SIGSTOP sent in a short window after the
+/// child's start returns, while a SIGTERM sent in the same window arrives.
+/// The crate never sends SIGSTOP, so only these tests meet it. A test that
+/// stops the child therefore waits until the script has written its first
+/// line, which the child can only do after that window has closed.
+fn running(script: &str) -> (Child, Pid) {
+    let mut command = sh(&format!("echo started; {script}"));
+    command.stdin(Stdio::piped()).stdout(Stdio::piped());
+    let mut child = Child::spawn(command, Scope::Group).unwrap();
+    let pid = Pid::from_raw(child.id().try_into().unwrap()).unwrap();
+    let mut line = String::new();
+    std::io::BufReader::new(child.take_stdout().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    assert_eq!(line, "started\n");
+    (child, pid)
+}
+
 /// Returns true when `ps` shows the process `pid` stopped.
 fn stopped(pid: Pid) -> bool {
     let output = sh(&format!("ps -o stat= -p {}", pid.as_raw_nonzero()))
@@ -40,10 +62,7 @@ fn stopped(pid: Pid) -> bool {
 
 #[test]
 fn a_waiter_blocks_again_after_its_child_is_stopped_and_continued_and_still_sees_the_exit() {
-    let mut command = sh("read line; exit 4");
-    command.stdin(Stdio::piped());
-    let mut child = Child::spawn(command, Scope::Group).unwrap();
-    let pid = Pid::from_raw(child.id().try_into().unwrap()).unwrap();
+    let (mut child, pid) = running("read line; exit 4");
     let waiter = child.waiter();
     let waiting = std::thread::spawn(move || waiter.wait());
 
@@ -68,8 +87,7 @@ fn a_waiter_blocks_again_after_its_child_is_stopped_and_continued_and_still_sees
 
 #[test]
 fn a_stopped_child_has_not_exited() {
-    let mut child = Child::spawn(sh("sleep 30"), Scope::Group).unwrap();
-    let pid = Pid::from_raw(child.id().try_into().unwrap()).unwrap();
+    let (mut child, pid) = running("read line");
 
     kill_process(pid, Raw::STOP).unwrap();
     assert!(within(Duration::from_secs(5), || stopped(pid)));
