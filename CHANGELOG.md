@@ -26,6 +26,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-usage: `self runs export` prints the stored usage records after
   the run that `--after` names, with their keyed hashes, and marks a
   possible gap after a trim. shelf mounts it ([behaviour/usage-log/export]).
+- crumbkit-usage: a program marks the runs it starts with `<TOOL>_PROGRAM`,
+  such as `SHELF_PROGRAM=flightdeck`, and the log records it under `program`.
+  An invalid value prints a warning on standard error
+  ([behaviour/usage-log/program]).
+- crumbkit-usage: `self usage`, `self figures list` and `self runs list`
+  take `--exclude-program <NAME>`, which leaves out the runs that the named
+  program marked before anything is counted ([behaviour/usage-log/program]).
+- crumbkit: every `commands list` row has `built_in`, which is `true` for a
+  command that crumbkit or one of its add-on crates provides and for a group
+  whose visible commands are all such commands
+  ([behaviour/help/built-in]).
 
 ## [0.3.0] - 2026-11-10
 
@@ -1671,6 +1682,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/failures/exit-codes]: docs/behaviour/failures/exit-codes.md
 [behaviour/failures/excerpts-and-readers]: docs/behaviour/failures/excerpts-and-readers.md
 [behaviour/help]: docs/behaviour/help/README.md
+[behaviour/help/built-in]: docs/behaviour/help/built-in/README.md
 [behaviour/help/checks]: docs/behaviour/help/checks.md
 [behaviour/help/commands-list]: docs/behaviour/help/commands-list.md
 [behaviour/help/examples]: docs/behaviour/help/examples.md
@@ -1697,6 +1709,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/schemas/commands]: docs/behaviour/schemas/commands.md
 [behaviour/usage-log]: docs/behaviour/usage-log/README.md
 [behaviour/usage-log/export]: docs/behaviour/usage-log/export/README.md
+[behaviour/usage-log/program]: docs/behaviour/usage-log/program/README.md
 [behaviour/usage-log/report]: docs/behaviour/usage-log/report.md
 [behaviour/usage-log/trace-context]: docs/behaviour/usage-log/trace-context.md
 [project/dependencies]: docs/project/dependencies.md

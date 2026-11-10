@@ -39,7 +39,8 @@ pub const SKILLS_CHECK: Document<Listing<CheckRow>> = Document::new(
     "Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.",
 )
 .when_empty("no agent skills directory exists; name one with --dir")
-.only_problems();
+.only_problems()
+.built_in();
 
 /// The arguments of `<tool> skills check`: which skills directory to check.
 #[derive(Args, Clone, Debug, Default, PartialEq, Eq)]

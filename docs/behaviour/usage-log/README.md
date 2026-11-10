@@ -1,13 +1,12 @@
 # Usage log
 
 The usage log appends one JSON line per run of a tool to a file on the
-user's machine. The published crumbkit-usage crate holds it. This page
-covers how a tool turns the log on, what each run
-reports to it, what the line holds and never holds, where the file lives,
-and how the log behaves under concurrent runs and signals. The
-[trace context](trace-context.md) page covers the trace ids in the line, and
-the [usage report](report.md) page covers `self usage` and
-`self figures list`, which read the log.
+user's machine, from the crumbkit-usage crate. This page covers how a tool
+turns the log on, what each run reports, what the line holds and never
+holds, where the file lives, and concurrent runs and signals. The
+[trace context](trace-context.md) page covers the trace ids, the
+[usage report](report.md) page the reports, and the
+[program](program/README.md) page how a program marks its runs.
 
 ## The crate and its platforms
 

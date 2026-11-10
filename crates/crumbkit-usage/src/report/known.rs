@@ -3,13 +3,15 @@
 //!
 //! The usage log is a file that anyone with the user's rights can edit, so
 //! a line may hold any text. The report prints command paths, flags, codes,
-//! callers, and the trace, run and parent span ids, and the check keeps
+//! callers, and the trace, run and parent span ids, and leaves out runs by
+//! their program, and the check keeps
 //! every value that the writer could not have produced out of the report
 //! (ADR-0029).
 
 use clap::{Arg, Command};
 
 use super::entry::Entry;
+use crate::program::is_program;
 
 #[cfg(test)]
 mod tests;
@@ -34,6 +36,8 @@ const LONGEST_CODE: usize = 128;
 ///   [`Code`](crumbkit::Code), and keeps out whitespace and any other
 ///   character;
 /// - the caller is an agent id from is-ai-agent, `person` or `unknown`;
+/// - the program, when there is one, is 1 to 32 lowercase ASCII letters,
+///   digits, `-` and `_`, starting with a letter;
 /// - the trace id is 32 lowercase hex digits, and the run's and the
 ///   parent's span ids are 16, as the writer formats them (ADR-0030).
 pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
@@ -49,6 +53,7 @@ pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
         && entry.code.as_deref().is_none_or(is_code)
         && entry.tolerated.iter().all(|code| is_code(code))
         && is_caller(&entry.caller)
+        && entry.program.as_deref().is_none_or(is_program)
         && is_hex(&entry.trace, 32)
         && is_hex(&entry.run, 16)
         && entry

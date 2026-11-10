@@ -38,6 +38,7 @@ use clap::{Args, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use super::program::{self, Program};
 use super::report::{Entry, Figures, Finding, Kind, Report, Tally, read};
 use crumbkit::{Call, Document, Listing, Run, Tool};
 
@@ -54,10 +55,12 @@ pub const SELF_USAGE: Document<Listing<FindingRow, UsageSummary>> = Document::ne
     1,
     "The patterns in the usage log where callers waste effort, and a summary of the runs read.",
 )
-.when_empty("the usage log holds no findings");
+.when_empty("the usage log holds no findings")
+.built_in();
 
 /// The arguments of `<tool> self usage`: how far back the report reads,
-/// and the log it reads when the caller names one.
+/// the log it reads when the caller names one, and the programs whose
+/// runs it leaves out.
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 // The doc comment is rustdoc, and clap would copy it into the help of a
 // command without a description of its own.
@@ -70,6 +73,15 @@ pub struct SelfUsage {
     /// Read this usage log instead of the tool's own
     #[arg(long, value_name = "FILE")]
     log: Option<PathBuf>,
+
+    /// Leave out the runs that a program with this name marked, such as flightdeck
+    #[arg(
+        long = "exclude-program",
+        value_name = "NAME",
+        value_delimiter = ',',
+        value_parser = program::parse
+    )]
+    exclude_program: Vec<Program>,
 }
 
 /// One finding of `self usage`: a pattern in the runs of one command that
@@ -165,7 +177,7 @@ pub struct UsageSummary {
     /// The day in UTC on which the report starts, such as 2026-09-30.
     since: String,
     /// The records that the report left out, because they named a command,
-    /// flag, code, caller or trace id that the tool does not write.
+    /// flag, code, caller, program or trace id that the tool does not write.
     skipped: u64,
     /// The codes of the failures that runs reported and carried on past,
     /// with the runs that tolerated each, the most first, at most 10.
@@ -199,11 +211,17 @@ struct CallerRuns {
 /// It reads the file that `--log` names, or else `usage.jsonl` in the
 /// tool's directory under the directory where [`start`](super::start)
 /// writes it, once, a line at a time. A record that names a command path,
-/// flag, failure code, caller or trace id that the tool's usage log could not have
+/// flag, failure code, caller, program or trace id that the tool's usage log could not have
 /// written is left out and counted in the summary, so a hand-edited line
 /// cannot put its text in the report. A code counts when it is 1 to 128
 /// ASCII letters, digits, `_`, `-` and `:`, which covers crumbkit's spelling
 /// of a code.
+///
+/// A run whose record names a program that `--exclude-program` names is
+/// left out before anything is counted, so it adds nothing to the runs,
+/// sessions, callers, findings or figures, and the summary does not count
+/// it as skipped. A program marks its runs with the tool's
+/// `<TOOL>_PROGRAM` variable, as the usage log's docs describe.
 ///
 /// A failure to find or read the log stays silent, as every usage-log
 /// failure does, and the report holds the runs read before it. A tool whose
@@ -216,9 +234,31 @@ pub fn findings(run: &mut Run, tool: &Tool, args: &SelfUsage) -> Listing<Finding
         tool_name,
         tool,
         open(tool_name, args),
-        args.since,
-        SystemTime::now(),
+        &args.window(SystemTime::now()),
     )
+}
+
+/// The runs that a report reads: those that ended after a start, and that
+/// no excluded program marked.
+pub(super) struct Window<'a> {
+    /// How far back from `now` the report reads.
+    pub(super) since: Duration,
+    /// The time that the report counts back from.
+    pub(super) now: SystemTime,
+    /// The programs whose runs the report leaves out.
+    pub(super) exclude: &'a [Program],
+}
+
+impl SelfUsage {
+    /// Returns the window of runs that the arguments ask for, counted back
+    /// from `now`.
+    pub(super) fn window(&self, now: SystemTime) -> Window<'_> {
+        Window {
+            since: self.since,
+            now,
+            exclude: &self.exclude_program,
+        }
+    }
 }
 
 /// Opens the usage log that `args` names, or else the log of `tool`, to
@@ -256,17 +296,15 @@ fn day_of(time: SystemTime) -> String {
     stamp.get(..10).unwrap_or_default().to_owned()
 }
 
-/// Returns the findings in `log` for the runs that ended in the `since`
-/// duration before `now`, checked against `tool`, as [`findings`]
-/// describes for `tool`.
+/// Returns the findings in `log` for the runs in `window`, checked against
+/// `tool`, as [`findings`] describes for `tool`.
 fn report_from(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
-    since: Duration,
-    now: SystemTime,
+    window: &Window<'_>,
 ) -> Listing<FindingRow, UsageSummary> {
-    let (report, summary) = summarize(tool_name, tool, log, since, now, |_| {});
+    let (report, summary) = summarize(tool_name, tool, log, window, |_| {});
     let rows: Vec<FindingRow> = report
         .findings
         .iter()
@@ -282,29 +320,31 @@ fn report_from(
         )
 }
 
-/// Returns the report of the runs in `log` that ended in the `since`
-/// duration before `now`, checked against `tool`, and its summary. A run
-/// that exited with the code that `tool` gives a refused command line
-/// counts as refused. Each record that the report adds is then passed to
-/// `each`, in the order of the log, so a caller can keep the runs from the
-/// same pass.
+/// Returns the report of the runs in `log` that fall in `window`, checked
+/// against `tool`, and its summary. A run that exited with the code that
+/// `tool` gives a refused command line counts as refused. Each record that
+/// the report adds is then passed to `each`, in the order of the log, so a
+/// caller can keep the runs from the same pass.
 pub(super) fn summarize(
     tool_name: &Command,
     tool: &Tool,
     log: Option<impl BufRead>,
-    since: Duration,
-    now: SystemTime,
+    window: &Window<'_>,
     each: impl FnMut(Entry),
 ) -> (Report, UsageSummary) {
     // A start before 1970 reads from 1970, because no record is older and
     // humantime panics on a time before the epoch.
-    let start = now.checked_sub(since).unwrap_or(UNIX_EPOCH).max(UNIX_EPOCH);
+    let start = window
+        .now
+        .checked_sub(window.since)
+        .unwrap_or(UNIX_EPOCH)
+        .max(UNIX_EPOCH);
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
     let mut tally = Tally::new(tool.failure_exit(&crumbkit::codes::CLI_USAGE));
     if let Some(log) = log {
-        read(log, start_ms, tool_name, &mut tally, each);
+        read(log, start_ms, tool_name, window.exclude, &mut tally, each);
     }
     let mut report = tally.report();
     let summary = UsageSummary {
@@ -490,7 +530,7 @@ impl fmt::Display for UsageSummary {
         if self.skipped > 0 {
             write!(
                 f,
-                " {} {} skipped because they name a command, flag, code, caller or trace id that the tool does not write.",
+                " {} {} skipped because they name a command, flag, code, caller, program or trace id that the tool does not write.",
                 grouped(self.skipped),
                 plural(self.skipped, "record was", "records were")
             )?;

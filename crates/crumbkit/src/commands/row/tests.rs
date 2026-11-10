@@ -11,7 +11,7 @@ use crate::help::{Effects, Help, Leaf};
 /// Returns the JSON of the row of `shelf books remove` with `tool`.
 fn row(tool: &Tool) -> Value {
     let command = Command::new("remove").about("Remove books");
-    let row = CommandRow::new("shelf", &["books", "remove"], &command, None, tool);
+    let row = CommandRow::new("shelf", &["books", "remove"], &command, None, tool, false);
     serde_json::to_value(row).unwrap()
 }
 
@@ -40,7 +40,7 @@ fn a_row_holds_the_writes_of_a_replacing_leaf_and_whether_the_command_takes_expe
             Leaf::new(&["books", "remove"]).effects(Effects::replacing().all_or_none()),
         ]));
     let command = crate::Expect::augment_args(Command::new("remove"));
-    let with_expect = CommandRow::new("shelf", &["books", "remove"], &command, None, &TOOL);
+    let with_expect = CommandRow::new("shelf", &["books", "remove"], &command, None, &TOOL, false);
 
     assert_eq!(
         serde_json::to_value(with_expect).unwrap()["writes"],

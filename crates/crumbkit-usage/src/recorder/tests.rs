@@ -12,6 +12,7 @@ use super::{
 use crate::caller::Caller;
 use crate::context::Context;
 use crate::file::LIMITS;
+use crate::program::Program;
 use crate::record::Help;
 use crate::testing::TempDir;
 use crate::{Extension, Facts, Key};
@@ -49,14 +50,21 @@ fn person() -> Caller {
     Caller {
         name: "person",
         session: "4242".to_owned(),
+        program: None,
     }
 }
 
 /// Saves the line of `recorder` under `state`, and returns the lines of the
 /// tool's log.
 fn saved(state: &TempDir, recorder: Recorder, interrupted: bool) -> Vec<Value> {
+    saved_by(state, recorder, interrupted, &person())
+}
+
+/// Saves the line of `recorder` under `state` for `caller`, and returns the
+/// lines of the tool's log.
+fn saved_by(state: &TempDir, recorder: Recorder, interrupted: bool, caller: &Caller) -> Vec<Value> {
     let now = SystemTime::UNIX_EPOCH + Duration::from_millis(1_791_374_467_120);
-    save(state.path(), recorder, now, interrupted, &person(), &LIMITS).unwrap();
+    save(state.path(), recorder, now, interrupted, caller, &LIMITS).unwrap();
     let log = fs::read_to_string(state.path().join("shelf").join("usage.jsonl")).unwrap();
     log.lines()
         .map(|line| serde_json::from_str(line).unwrap())
@@ -161,6 +169,26 @@ fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashe
             .unwrap()
             .contains("s3cr3t")
     );
+}
+
+#[test]
+fn a_saved_line_holds_the_program_that_marked_the_run_and_a_line_without_one_leaves_it_out() {
+    let marked = TempDir::new("marked");
+    let unmarked = TempDir::new("unmarked");
+    let mut flightdeck = person();
+    flightdeck.program = Program::new("flightdeck");
+
+    let marked = saved_by(&marked, parsed(), false, &flightdeck);
+    let unmarked = saved(&unmarked, parsed(), false);
+
+    assert_eq!(marked[0]["program"], "flightdeck");
+    assert_eq!(unmarked[0].get("program"), None);
+}
+
+#[test]
+fn the_recorder_names_the_tool_whose_variables_mark_the_run() {
+    assert_eq!(parsed().tool_name(), ToolName::new("shelf"));
+    assert_eq!(started(None).tool_name(), ToolName::CRUMBKIT);
 }
 
 #[test]

@@ -90,7 +90,8 @@ pub const COMMANDS_LIST: Document<Listing<CommandRow>> = Document::new(
     "commands-list",
     1,
     "One branch of the tool's commands with their arguments, examples and columns.",
-);
+)
+.built_in();
 
 /// The path from the root to `commands list`, which the recovery of a
 /// `PATH` that names no visible command runs.
@@ -223,7 +224,7 @@ pub fn list(run: &mut Run, tool: &Tool, args: &CommandsList) -> Result<Listing<C
     // The branch's first row has no parent, so it lists the global
     // arguments that it inherits from the commands above the branch.
     let mut visits = Vec::new();
-    visit(node, None, path, &mut visits);
+    visit(node, None, path, tool, &mut visits);
     let total = visits.len();
     let shown = args.page.limit().unwrap_or(total);
     let rows = visits
@@ -236,6 +237,7 @@ pub fn list(run: &mut Run, tool: &Tool, args: &CommandsList) -> Result<Listing<C
                 visit.command,
                 visit.parent,
                 tool,
+                visit.built_in,
             )
         })
         .collect();
@@ -252,31 +254,55 @@ struct Visit<'a> {
     parent: Option<&'a Command>,
     /// The real names of the subcommands from the root to the command.
     path: Vec<&'a str>,
+    /// Whether crumbkit or one of its add-on crates provides the command.
+    built_in: bool,
 }
 
 /// Adds `command`, at `path` below `parent`, to `visits`, and then each
 /// visible command below it in depth-first order, leaving out a hidden
-/// command and everything below it.
+/// command and everything below it. It returns whether `command` is built
+/// in, which it records on the command's visit.
+///
+/// A command without visible subcommands is built in when its leaf in
+/// `tool` declares a document that crumbkit marks, as
+/// [`row::built_in`] decides. A command with visible subcommands is built
+/// in when every one of them is, so the mark comes from the same walk and
+/// costs no second pass over the branch.
 fn visit<'a>(
     command: &'a Command,
     parent: Option<&'a Command>,
     path: Vec<&'a str>,
+    tool: &Tool,
     visits: &mut Vec<Visit<'a>>,
-) {
+) -> bool {
     let below = path.clone();
+    let index = visits.len();
     visits.push(Visit {
         command,
         parent,
         path,
+        built_in: false,
     });
+    let mut visible = 0_usize;
+    let mut all_built_in = true;
     for subcommand in command.get_subcommands() {
         if subcommand.is_hide_set() {
             continue;
         }
         let mut path = below.clone();
         path.push(subcommand.get_name());
-        visit(subcommand, Some(command), path, visits);
+        visible += 1;
+        all_built_in &= visit(subcommand, Some(command), path, tool, visits);
     }
+    let built_in = if visible == 0 {
+        row::built_in(&below, tool)
+    } else {
+        all_built_in
+    };
+    if let Some(visit) = visits.get_mut(index) {
+        visit.built_in = built_in;
+    }
+    built_in
 }
 
 /// A failure of `commands list`.

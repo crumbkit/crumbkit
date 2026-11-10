@@ -6,7 +6,7 @@ use clap::Parser;
 use serde_json::json;
 
 use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
-use crate::testing::{line, now, tree};
+use crate::testing::{line, marked_log, now, tree, window, without_flightdeck};
 use crumbkit::Tool;
 use crumbkit::tool::{Exit, Failures};
 
@@ -66,7 +66,7 @@ fn the_summary_line_of_a_log_without_runs_names_only_the_day() {
 fn the_summary_line_says_how_many_records_were_skipped() {
     assert_eq!(
         summary(2, 1, 1_002).to_string(),
-        "2 runs in 1 session since 30 Sep: person 2. 1,002 records were skipped because they name a command, flag, code, caller or trace id that the tool does not write."
+        "2 runs in 1 session since 30 Sep: person 2. 1,002 records were skipped because they name a command, flag, code, caller, program or trace id that the tool does not write."
     );
 }
 
@@ -105,8 +105,7 @@ fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        Duration::from_secs(60),
-        now(),
+        &window(Duration::from_secs(60), now()),
     );
 
     let summary = serde_json::to_value(listing.get_summary()).unwrap();
@@ -142,8 +141,7 @@ fn rows(log: &str) -> Vec<(String, u64, String, String)> {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        Duration::from_secs(7 * 86_400),
-        now(),
+        &window(Duration::from_secs(7 * 86_400), now()),
     );
     listing
         .rows()
@@ -224,8 +222,7 @@ fn a_finding_row_carries_the_figures_of_its_command() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        Duration::from_secs(60),
-        now(),
+        &window(Duration::from_secs(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -269,8 +266,7 @@ fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_tool_declares
         &tree(),
         &TOOL,
         Some(Cursor::new(log)),
-        Duration::from_secs(60),
-        now(),
+        &window(Duration::from_secs(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -301,8 +297,7 @@ fn a_finding_row_gives_an_exit_inside_a_declared_range_the_meaning_of_the_range(
         &tree(),
         &TOOL,
         Some(Cursor::new(log)),
-        Duration::from_secs(60),
-        now(),
+        &window(Duration::from_secs(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -328,8 +323,7 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        Duration::from_secs(86_400),
-        now(),
+        &window(Duration::from_secs(86_400), now()),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -343,8 +337,7 @@ fn without_a_log_the_report_has_no_runs_and_no_findings() {
         &tree(),
         &Tool::new(),
         None::<Cursor<&str>>,
-        Duration::from_secs(60),
-        now(),
+        &window(Duration::from_secs(60), now()),
     );
 
     assert_eq!(listing.rows().len(), 0);
@@ -362,8 +355,7 @@ fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
         &tree(),
         &Tool::new(),
         None::<Cursor<&str>>,
-        Duration::from_secs(60),
-        far,
+        &window(Duration::from_secs(60), far),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -420,8 +412,7 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        Duration::from_secs(100 * 365 * 86_400),
-        now(),
+        &window(Duration::from_secs(100 * 365 * 86_400), now()),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -459,8 +450,7 @@ fn a_slow_command_that_mostly_waited_has_a_row_that_names_no_fact_of_the_tool() 
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log.clone())),
-        Duration::from_secs(60),
-        now(),
+        &window(Duration::from_secs(60), now()),
     );
 
     assert_eq!(
@@ -482,4 +472,67 @@ fn a_slow_command_that_mostly_waited_has_a_row_that_names_no_fact_of_the_tool() 
     );
     let printed = serde_json::to_string(listing.rows()).unwrap();
     assert!(!printed.contains("s3cr3t"), "{printed}");
+}
+
+#[test]
+fn exclude_program_leaves_out_that_program_s_runs_and_keeps_every_other_run() {
+    let summary = |window| {
+        let listing = report_from(
+            &tree(),
+            &Tool::new(),
+            Some(Cursor::new(marked_log())),
+            &window,
+        );
+        serde_json::to_value(listing.get_summary()).unwrap()
+    };
+
+    let excluded = summary(without_flightdeck());
+    let kept = summary(window(Duration::from_secs(86_400), now()));
+
+    assert_eq!(excluded["runs"], 2);
+    assert_eq!(excluded["skipped"], 0);
+    assert_eq!(
+        excluded["callers"],
+        json!([{"caller": "person", "runs": 2}])
+    );
+    assert_eq!(kept["runs"], 3);
+}
+
+#[test]
+fn exclude_program_takes_repeats_and_commas_and_refuses_a_name_that_is_no_program_name() {
+    let none = Cli::try_parse_from(["tool"]).unwrap();
+    let two = Cli::try_parse_from([
+        "tool",
+        "--exclude-program",
+        "flightdeck",
+        "--exclude-program",
+        "weigh",
+    ])
+    .unwrap();
+    let commas = Cli::try_parse_from(["tool", "--exclude-program", "flightdeck,weigh"]).unwrap();
+    let refused = Cli::try_parse_from(["tool", "--exclude-program", "Flight Deck"]);
+
+    assert_eq!(none.args.exclude_program, []);
+    assert_eq!(
+        two.args
+            .exclude_program
+            .iter()
+            .map(crate::program::Program::as_str)
+            .collect::<Vec<_>>(),
+        ["flightdeck", "weigh"]
+    );
+    assert_eq!(commas.args, two.args);
+    assert!(
+        refused
+            .err()
+            .is_some_and(|error| error.to_string().contains("1 to 32 lowercase letters"))
+    );
+}
+
+#[test]
+fn the_usage_report_documents_are_marked_as_crumbkit_s_own() {
+    assert!(crate::SELF_USAGE.is_built_in());
+    assert!(crate::SELF_FIGURES_LIST.is_built_in());
+    assert!(crate::SELF_RUNS_LIST.is_built_in());
+    assert!(crate::SELF_RUNS_EXPORT.is_built_in());
 }

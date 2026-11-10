@@ -4,6 +4,7 @@ use std::time::UNIX_EPOCH;
 
 use serde::{Deserialize, Deserializer};
 
+use crate::program::Program;
 use crate::record::SCHEMA;
 
 #[cfg(test)]
@@ -28,6 +29,9 @@ pub(crate) struct Entry {
     pub(crate) ms: u64,
     /// The coding agent that ran the tool, `person` or `unknown`.
     pub(crate) caller: String,
+    /// The program that marked the run, when one did.
+    #[serde(default)]
+    pub(crate) program: Option<String>,
     /// The keyed hash of the run's session, which groups the runs of one
     /// session and is never printed.
     pub(crate) session: String,
@@ -120,6 +124,13 @@ impl Entry {
         }
     }
 
+    /// Returns whether one of the programs in `exclude` marked the run.
+    pub(crate) fn marked_by(&self, exclude: &[Program]) -> bool {
+        self.program
+            .as_deref()
+            .is_some_and(|program| exclude.iter().any(|excluded| excluded.as_str() == program))
+    }
+
     /// Returns whether the caller typed `flag`.
     pub(crate) fn typed(&self, flag: &str) -> bool {
         self.flags.iter().any(|typed| typed == flag)
@@ -153,6 +164,7 @@ impl Entry {
             at: at * 1000,
             ms: 10,
             caller: "person".to_owned(),
+            program: None,
             session: session.to_owned(),
             args: format!("{command} {at}"),
             trace: "4bf92f3577b34da6a3ce929d0e0e4736".to_owned(),

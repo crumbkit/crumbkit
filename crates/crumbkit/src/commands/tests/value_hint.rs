@@ -35,6 +35,7 @@ fn row(mut command: Command) -> Value {
         &command,
         None,
         &Tool::new(),
+        false,
     ))
     .unwrap()
 }

@@ -341,6 +341,13 @@ impl Recorder {
         }
     }
 
+    /// Returns the name of the tool, which spells the record's id and the
+    /// tool's variables, from the spelling that `parse` gives. A run that
+    /// never reached `parse` has crumbkit's name, and writes no line.
+    fn tool_name(&self) -> ToolName {
+        self.spelling.map_or(ToolName::CRUMBKIT, Spelling::tool)
+    }
+
     /// Returns the run's record, as it ended at `now`, with the hashes keyed
     /// with `key`, or `None` when the run never reached `parse`.
     fn finish(
@@ -350,6 +357,7 @@ impl Recorder {
         interrupted: bool,
         caller: &Caller,
     ) -> Option<Record> {
+        let schema = self.tool_name().schema_id(record::SCHEMA);
         let mut run = self.run;
         if let Some(spelling) = self.spelling {
             run.tolerated = self
@@ -359,15 +367,13 @@ impl Recorder {
                 .collect();
         }
         Some(Record {
-            schema: self
-                .spelling
-                .map_or(ToolName::CRUMBKIT, Spelling::tool)
-                .schema_id(record::SCHEMA),
+            schema,
             tool: self.tool?,
             version: self.version,
             at: humantime::format_rfc3339_millis(now).to_string(),
             ms: u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX),
             caller: caller.name,
+            program: caller.program.clone(),
             session: Hash::new(key, [caller.session.as_bytes()]),
             args: Hash::new(key, self.words.iter().map(|word| word.as_encoded_bytes())),
             trace: self.context.ids,
@@ -540,15 +546,9 @@ fn write(slot: &Mutex<State>, interrupted: bool) {
     };
     if let Some(state) = platform::state_home() {
         let now = SystemTime::now();
+        let caller = caller::detect(recorder.tool_name());
         // Every failure drops the line without a word (ADR-0029).
-        let _ = save(
-            &state,
-            recorder,
-            now,
-            interrupted,
-            &caller::detect(),
-            &LIMITS,
-        );
+        let _ = save(&state, recorder, now, interrupted, &caller, &LIMITS);
     }
     written(slot);
 }

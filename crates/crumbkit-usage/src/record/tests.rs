@@ -2,6 +2,7 @@ use serde_json::{Value, json};
 
 use super::{Hash, Help, Name, Record, Run, SpanId, TraceId, TraceIds, line};
 use crate::facts::{Extensions, Written};
+use crate::program::{Program, is_program};
 use crate::{Extension, Facts, Key, Label};
 
 const KEY: [u8; 16] = *b"0123456789abcdef";
@@ -22,6 +23,7 @@ fn bare() -> Record {
         at: "2026-10-07T12:01:07.120Z".to_owned(),
         ms: 41,
         caller: "person",
+        program: None,
         session: Hash::new(&KEY, [b"4242".as_slice()]),
         args: Hash::new(&KEY, []),
         trace: TraceIds {
@@ -263,4 +265,52 @@ fn a_record_with_another_documents_id_is_invalid_under_the_checked_in_schema() {
             "{id}"
         );
     }
+}
+
+#[test]
+fn a_record_of_a_marked_run_writes_the_program_beside_the_caller() {
+    let mut record = bare();
+    record.program = Program::new("flightdeck");
+
+    let record = parsed(record);
+
+    assert_eq!(record["program"], "flightdeck");
+    assert_eq!(record["caller"], "person");
+}
+
+#[test]
+fn the_checked_in_schema_admits_exactly_the_program_names_that_the_writer_records() {
+    let schema: Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/schemas/usage-v1.json"
+    )))
+    .unwrap();
+    let program = &schema["$defs"]["Program"];
+    let pattern = regex_lite::Regex::new(program["pattern"].as_str().unwrap()).unwrap();
+    let long = "a".repeat(32);
+    let too_long = "a".repeat(33);
+
+    for name in [
+        "flightdeck",
+        "f",
+        "cargo-crumbkit",
+        "my_tool2",
+        long.as_str(),
+        "",
+        too_long.as_str(),
+        "Flightdeck",
+        "2fa",
+        "-x",
+        "flight deck",
+        "flightdéck",
+    ] {
+        assert_eq!(pattern.is_match(name), is_program(name), "{name}");
+    }
+    assert!(
+        schema["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|field| field != "program")
+    );
 }

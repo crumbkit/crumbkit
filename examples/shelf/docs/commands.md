@@ -294,6 +294,7 @@ Report the patterns in shelf's usage log where callers waste effort
 
 - `--since <DURATION>`: How far back to read the usage log, such as 12h, 7d or 2w. Default: `7d`.
 - `--log <FILE>`: Read this usage log instead of the tool's own
+- `--exclude-program <NAME>`: Leave out the runs that a program with this name marked, such as flightdeck. Takes more than one value.
 
 ### Examples
 
@@ -334,6 +335,7 @@ List the figures of each command in shelf's usage log
 
 - `--since <DURATION>`: How far back to read the usage log, such as 12h, 7d or 2w. Default: `7d`.
 - `--log <FILE>`: Read this usage log instead of the tool's own
+- `--exclude-program <NAME>`: Leave out the runs that a program with this name marked, such as flightdeck. Takes more than one value.
 - `--limit <N>`: Print at most this many rows. Default: `25`.
 - `--all`: Print every row
 
@@ -390,6 +392,7 @@ List each run in shelf's usage log, grouped by session
 
 - `--since <DURATION>`: How far back to read the usage log, such as 12h, 7d or 2w. Default: `7d`.
 - `--log <FILE>`: Read this usage log instead of the tool's own
+- `--exclude-program <NAME>`: Leave out the runs that a program with this name marked, such as flightdeck. Takes more than one value.
 - `--limit <N>`: Print at most this many rows. Default: `25`.
 - `--all`: Print every row
 

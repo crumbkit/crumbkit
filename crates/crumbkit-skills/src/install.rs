@@ -37,7 +37,8 @@ pub const SKILLS_INSTALL: Document<Listing<InstallRow>> = Document::new(
     1,
     "What install did in each skills directory: written, unchanged, skipped or failed.",
 )
-.when_empty("no agent skills directory exists; name one with --dir");
+.when_empty("no agent skills directory exists; name one with --dir")
+.built_in();
 
 /// The arguments of `<tool> skills install`: where to install, and whether
 /// to replace what install did not write.

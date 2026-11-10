@@ -90,6 +90,10 @@
       "format": "uint",
       "minimum": 0
     },
+    "program": {
+      "description": "The name of the program that started the run and marked it with the\ntool's `<TOOL>_PROGRAM` variable, such as flightdeck. It is present\nonly when the variable held 1 to 32 lowercase ASCII letters, digits,\n`-` and `_`, starting with a letter.",
+      "$ref": "#/$defs/Program"
+    },
     "run": {
       "description": "The run's own random span id, which its children name as their\nparent.",
       "$ref": "#/$defs/SpanId"
@@ -211,6 +215,11 @@
     "Name": {
       "description": "A name from the tool's own vocabulary: a command path, a flag, a version\nor a failure code.\n\ncrumbkit reads every name from the tool's clap command tree or its codes,\nand never from a word that the caller typed: each constructor takes a\n`clap::Command`, a `clap::Arg` or a crumbkit `Code`.",
       "type": "string"
+    },
+    "Program": {
+      "description": "The name of a program that marked a run, such as `flightdeck`: 1 to 32\nlowercase ASCII letters, digits, `-` and `_`, starting with a letter.\n\nThe program chooses the name for itself, so the name never holds a value\nthat a caller typed as an argument, and the pattern keeps any other text\nout of the usage log and the reports (ADR-0029).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,31}$"
     },
     "SpanId": {
       "description": "A W3C span id, as 16 lowercase hex digits.",

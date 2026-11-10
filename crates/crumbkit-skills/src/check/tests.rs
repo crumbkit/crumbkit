@@ -226,3 +226,10 @@ fn the_checked_in_schema_matches_the_check_document_schema() {
         "schemas/skills-check-v1.json differs from the generated schema; replace the file with the generated schema"
     );
 }
+
+#[test]
+fn the_skills_documents_are_marked_as_crumbkit_s_own() {
+    assert!(SKILLS_CHECK.is_built_in());
+    assert!(crate::SKILLS_INSTALL.is_built_in());
+    assert!(crate::SKILLS_PRINT.is_built_in());
+}
