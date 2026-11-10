@@ -140,7 +140,7 @@ fn install_in(
         |targets| {
             merged(skill, targets, args.force)
                 .into_iter()
-                .map(|(dirs, plan)| run(skill, &text, &dirs, plan, args.force))
+                .map(|(dirs, real, plan)| run(skill, &text, &dirs, &real, plan, args.force))
                 .collect()
         },
     )
@@ -161,21 +161,22 @@ enum Plan {
     Fail { path: PathBuf, reason: String },
 }
 
-/// Returns the plan of each target, with the targets whose plans write the
-/// same folder merged into one, in the order of each plan's first target.
-fn merged(skill: &Skill, targets: Vec<Target>, force: bool) -> Vec<(Vec<PathBuf>, Plan)> {
-    let mut plans: Vec<(Vec<PathBuf>, Plan)> = Vec::new();
+/// Returns the plan of each target with the target's skills directories and
+/// real path, with the targets whose plans write the same folder merged
+/// into one, in the order of each plan's first target.
+fn merged(skill: &Skill, targets: Vec<Target>, force: bool) -> Vec<(Vec<PathBuf>, PathBuf, Plan)> {
+    let mut plans: Vec<(Vec<PathBuf>, PathBuf, Plan)> = Vec::new();
     for target in targets {
         let plan = plan(skill, &target.real, force);
         let same = plans
             .iter_mut()
-            .find(|(_, earlier)| match (earlier, &plan) {
+            .find(|(_, _, earlier)| match (earlier, &plan) {
                 (Plan::Write { folder: a, .. }, Plan::Write { folder: b, .. }) => a == b,
                 _ => false,
             });
         match same {
-            Some((dirs, _)) => dirs.extend(target.dirs),
-            None => plans.push((target.dirs, plan)),
+            Some((dirs, _, _)) => dirs.extend(target.dirs),
+            None => plans.push((target.dirs, target.real, plan)),
         }
     }
     plans
@@ -210,19 +211,55 @@ fn plan(skill: &Skill, real: &Path, force: bool) -> Plan {
     }
 }
 
-/// Carries out `plan` for the skills directories `dirs`, writing `text`,
-/// and returns its row. `force` replaces a `SKILL.md` that install did not
-/// write.
-fn run(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: bool) -> InstallRow {
-    match plan {
-        Plan::Write { folder } => {
-            match fs::create_dir(&folder) {
-                Ok(()) => {}
-                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
-                Err(error) => return failed(dirs, &folder.join("SKILL.md"), &error.to_string()),
-            }
-            write_file(skill, text, dirs, &folder.join("SKILL.md"), force)
+/// How many times install plans a skills directory again when its skill's
+/// folder changes between the plan and the write. Each new plan reads the
+/// folder afresh, so a second change in that short time fails the row.
+const REPLANS: usize = 2;
+
+/// Carries out `plan` for the skills directories `dirs`, whose real path is
+/// `real`, writing `text`, and returns its row. `force` replaces a
+/// `SKILL.md` that install did not write.
+///
+/// When the folder of a `Write` plan already exists, install plans the
+/// directory again and carries out the new plan when it differs, so a link
+/// that appeared after the first plan is followed or skipped as a plan
+/// decides, and never written through unseen.
+fn run(
+    skill: &Skill,
+    text: &str,
+    dirs: &[PathBuf],
+    real: &Path,
+    mut plan: Plan,
+    force: bool,
+) -> InstallRow {
+    for _ in 0..=REPLANS {
+        let Plan::Write { folder } = &plan else {
+            return carry_out(skill, text, dirs, plan, force);
+        };
+        match fs::create_dir(folder) {
+            Ok(()) => return write_file(skill, text, dirs, &folder.join("SKILL.md"), force),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return failed(dirs, &folder.join("SKILL.md"), &error.to_string()),
         }
+        let again = self::plan(skill, real, force);
+        if again == plan {
+            return write_file(skill, text, dirs, &folder.join("SKILL.md"), force);
+        }
+        plan = again;
+    }
+    failed(
+        dirs,
+        &real.join(skill.name()),
+        "the skill's folder kept changing while install wrote it",
+    )
+}
+
+/// Carries out `plan` for the skills directories `dirs`, writing `text`,
+/// and returns its row. [`run`] handles a `Write` plan's folder first, so
+/// a `Write` here writes into a folder that exists.
+fn carry_out(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: bool) -> InstallRow {
+    match plan {
+        Plan::Write { folder } => write_file(skill, text, dirs, &folder.join("SKILL.md"), force),
         Plan::Replace { path, what } => {
             if let Err(error) = replace_with_folder(&path) {
                 return failed(dirs, &path, &error.to_string());

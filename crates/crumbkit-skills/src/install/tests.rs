@@ -367,6 +367,35 @@ mod links {
     }
 
     #[test]
+    fn a_link_that_appears_after_the_plan_is_planned_again_and_skipped() {
+        let home = Home::new();
+        let agents = home.mkdir(".agents/skills");
+        let real = fs::canonicalize(&agents).unwrap();
+        let plan = super::super::plan(&SKILL, &real, false);
+        assert_eq!(
+            plan,
+            super::super::Plan::Write {
+                folder: real.join("shelf")
+            }
+        );
+        let source = home.mkdir("src/shelf/skill");
+        write(&source.join("SKILL.md"), TEXT);
+        link(&source, &agents.join("shelf"));
+
+        let row = super::super::run(
+            &SKILL,
+            &SKILL.installed(),
+            std::slice::from_ref(&agents),
+            &real,
+            plan,
+            false,
+        );
+
+        assert_eq!(row.state, Installed::Skipped);
+        assert_eq!(fs::read_to_string(source.join("SKILL.md")).unwrap(), TEXT);
+    }
+
+    #[test]
     fn a_broken_tool_link_is_skipped_and_force_replaces_it() {
         let home = Home::new();
         let agents = home.mkdir(".agents/skills");
