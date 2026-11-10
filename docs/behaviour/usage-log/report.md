@@ -160,6 +160,11 @@ log.
 
 Why: ADR-0190.
 
+## self runs export
+
+[`self runs export`](export/README.md) prints the stored records after a
+run.
+
 ## Tests
 
 shelf's tests write a log of wasteful runs through the binary and compare

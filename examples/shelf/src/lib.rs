@@ -147,6 +147,9 @@ where
                 let document = crumbkit_usage::SELF_RUNS_LIST;
                 crumbkit::finish(run, document, result)
             }
+            SelfCommand::Runs {
+                command: RunsCommand::Export(args),
+            } => crumbkit_usage::export(run, &args),
         },
         Resource::Skills { command } => match command {
             SkillsCommand::Install(args) => {

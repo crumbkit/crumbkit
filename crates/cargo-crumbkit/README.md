@@ -5,7 +5,8 @@ describes a tool built with crumbkit. `cargo crumbkit weigh` counts the
 bytes that an agent reads on each path through the tool's help: each
 command's `-h` and `--help` pages, the output of its examples, and the total
 from the root down to the command. `cargo crumbkit docs` writes a Markdown
-reference of every command.
+reference of every command. `cargo crumbkit skill check` checks the command
+lines in the tool's agent skill against its commands.
 
 ## Adding it
 
@@ -51,12 +52,23 @@ crumbkit's example tool is [shelf's reference]. crumbkit-test's
 `check_command_reference` fails a test when the checked-in file no longer
 matches the tool's help.
 
+## Checking the agent skill
+
+`cargo crumbkit skill check --bin shelf` builds `shelf` as `weigh` does and
+reads `skill/SKILL.md` in shelf's package, or the file that `--skill` names.
+Each inline code span and each line of a fenced block that starts with
+`shelf` must name real commands, flags that those commands accept, a value
+for each flag that takes one, and an accepted value where the argument
+lists its values. Placeholders such as `ID` or `<id>` count as values. The
+text prints `<FILE>:<LINE>: <SPAN>: <REASON>` for each failing line, and the
+run exits with 1 when any line fails, so CI can run it.
+
 ## Where to read more
 
 - `cargo crumbkit weigh --help` describes each column.
-- The [weigh docs] and the [command reference docs] describe `weigh` and
-  the command reference, and [ADR-0033] and [ADR-0044] record their
-  reasons.
+- The [weigh docs], the [command reference docs] and the [skill check docs]
+  describe `weigh`, the command reference and `skill check`, and
+  [ADR-0033], [ADR-0044] and [ADR-0193] record their reasons.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -68,3 +80,5 @@ option.
 [ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md
 [weigh docs]: ../../docs/behaviour/help/weight.md
 [command reference docs]: ../../docs/behaviour/help/reference.md
+[skill check docs]: ../../docs/behaviour/help/skill-check/README.md
+[ADR-0193]: ../../docs/decisions/api/help/0193-skill-check.md

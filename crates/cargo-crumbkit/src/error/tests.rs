@@ -7,7 +7,7 @@ use crumbkit::{Failure as _, Recovery};
 
 use crumbkit_markdown::render;
 
-use super::{DocsError, ToolError, WeighError};
+use super::{DocsError, SkillError, ToolError, WeighError};
 
 /// Returns the message and the hint of `error`.
 fn rendered(error: &impl crumbkit::Failure) -> (String, String) {
@@ -140,20 +140,43 @@ fn every_failure_of_docs_names_what_failed_and_hints_at_what_to_change() {
 }
 
 #[test]
-fn a_failure_to_build_or_run_the_tool_keeps_its_code_and_message_in_weigh_and_docs() {
+fn a_skill_file_that_cannot_be_read_names_the_file_and_hints_at_another() {
+    let error = SkillError::Unreadable {
+        path: PathBuf::from("skill/SKILL.md"),
+        error: not_found(),
+    };
+
+    assert_eq!(
+        crumbkit::Spelling::COLONS.spell(error.code()),
+        "crumbkit::skill::unreadable"
+    );
+    assert_eq!(
+        rendered(&error),
+        (
+            "the skill file skill/SKILL.md cannot be read".to_owned(),
+            "make the file readable, or pass --skill another file".to_owned()
+        )
+    );
+}
+
+#[test]
+fn a_failure_to_build_or_run_the_tool_keeps_its_code_and_message_in_weigh_docs_and_skill_check() {
     let tool = || ToolError::NoBinary {
         bin: "shelf".to_owned(),
     };
     let weigh = WeighError::from(tool());
     let docs = DocsError::from(tool());
+    let skill = SkillError::from(tool());
 
     for (code, message) in [
         (weigh.code(), weigh.to_string()),
         (docs.code(), docs.to_string()),
+        (skill.code(), skill.to_string()),
     ] {
         assert_eq!(code, tool().code());
         assert_eq!(message, "cargo built no executable for the binary shelf");
     }
     assert_eq!(rendered(&weigh), rendered(&tool()));
     assert_eq!(rendered(&docs), rendered(&tool()));
+    assert_eq!(rendered(&skill), rendered(&tool()));
 }

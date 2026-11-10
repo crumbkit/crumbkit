@@ -30,3 +30,4 @@ that each path through a tool's help costs.
 - [ADR-0124. A refusal's help call names a command with a help page](0124-the-help-call-names-a-command-with-a-help-page.md)
 - [ADR-0137. A row type describes its child lines in help](0137-a-row-type-describes-its-child-lines-in-help.md)
 - [ADR-0166. Goal headings](headings/README.md)
+- [ADR-0193. Skill check](0193-skill-check.md)

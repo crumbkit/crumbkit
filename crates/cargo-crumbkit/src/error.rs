@@ -1,5 +1,6 @@
-//! The failures of `cargo crumbkit weigh` and `cargo crumbkit docs`, and
-//! the failures of building and running a tool's binary that the two share.
+//! The failures of `cargo crumbkit weigh`, `cargo crumbkit docs` and
+//! `cargo crumbkit skill check`, and the failures of building and running a
+//! tool's binary that they share.
 
 use std::fmt;
 use std::io;
@@ -48,6 +49,9 @@ const UNRENDERABLE: Code = Code::new("crumbkit", "docs", "unrenderable");
 
 /// The code of a failure whose reference file cannot be written.
 const WRITE_FAILED: Code = Code::new("crumbkit", "docs", "write_failed");
+
+/// The code of a failure whose skill file cannot be read.
+const SKILL_UNREADABLE: Code = Code::new("crumbkit", "skill", "unreadable");
 
 /// A failure to build a tool's binary or to run it for its command tree,
 /// which `weigh` and `docs` share. Each failure's next step is advice,
@@ -312,6 +316,57 @@ impl std::error::Error for DocsError {
             Self::Tool(error) => error.source(),
             Self::Unrenderable { error, .. } => Some(error),
             Self::WriteFailed { error, .. } => Some(error),
+        }
+    }
+}
+
+/// A failure of `cargo crumbkit skill check`. Each failure's next step is
+/// advice, because each one needs a change outside cargo crumbkit: to the
+/// workspace, to the tool or to the file system.
+#[derive(Debug, Failure)]
+pub(crate) enum SkillError {
+    /// The binary cannot be built or run for its command tree.
+    #[failure(forward)]
+    Tool(ToolError),
+    /// The skill file cannot be read.
+    #[failure(
+        code = SKILL_UNREADABLE,
+        hint = "make the file readable, or pass --skill another file",
+    )]
+    Unreadable {
+        /// The path of the file.
+        path: PathBuf,
+        /// Why it cannot be read.
+        error: io::Error,
+    },
+}
+
+/// `skill check` returns a failure to build or run the tool as its own.
+impl From<ToolError> for SkillError {
+    fn from(error: ToolError) -> Self {
+        Self::Tool(error)
+    }
+}
+
+/// Prints what failed, such as `the skill file skill/SKILL.md cannot be
+/// read`.
+impl fmt::Display for SkillError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Tool(error) => error.fmt(f),
+            Self::Unreadable { path, .. } => {
+                write!(f, "the skill file {} cannot be read", path.display())
+            }
+        }
+    }
+}
+
+/// The I/O error is the failure's source, which prints as its cause.
+impl std::error::Error for SkillError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Tool(error) => error.source(),
+            Self::Unreadable { error, .. } => Some(error),
         }
     }
 }

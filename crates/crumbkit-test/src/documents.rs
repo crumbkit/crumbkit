@@ -16,13 +16,14 @@ mod tests;
 /// the name of the document each prints in the component `crumbkit`, and
 /// the path the tool mounts it at (ADR-0015). An agent that knows one
 /// crumbkit tool runs these commands in every other one by the same words.
-pub(crate) const MOUNTS: [(&str, &[&str]); 7] = [
+pub(crate) const MOUNTS: [(&str, &[&str]); 8] = [
     ("commands-list", &["commands", "list"]),
     ("schemas-list", &["schemas", "list"]),
     ("schemas-show", &["schemas", "show"]),
     ("self-usage", &["self", "usage"]),
     ("self-figures-list", &["self", "figures", "list"]),
     ("self-runs-list", &["self", "runs", "list"]),
+    ("self-runs-export", &["self", "runs", "export"]),
     ("aliases-list", &["aliases", "list"]),
 ];
 
@@ -121,9 +122,9 @@ pub(crate) fn declared_name(
 /// another path (ADR-0015).
 ///
 /// crumbkit's commands are `commands list`, `schemas list`, `schemas show`,
-/// `self usage`, `self figures list`, `self runs list` and `aliases list`.
-/// The check knows a leaf as one of them by the document it declares, such as
-/// `<tool>/schemas-list/v1`. It misses a command that takes crumbkit's
+/// `self usage`, `self figures list`, `self runs list`, `self runs export`
+/// and `aliases list`. The check knows a leaf as one of them by the document
+/// it declares, such as `<tool>/schemas-list/v1`. It misses a command that takes crumbkit's
 /// arguments type without a leaf that declares the document, because a
 /// command tree does not record the Rust type of a command's arguments, so
 /// review covers that case. As in [`check_document_ids`], the path of a

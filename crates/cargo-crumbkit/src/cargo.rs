@@ -1,5 +1,6 @@
-//! Builds the binary that `weigh` measures and `docs` describes with cargo, and finds its
-//! executable and its package in cargo's JSON build messages.
+//! Builds the binary that `weigh` measures, `docs` describes and `skill
+//! check` checks with cargo, and finds its executable and its package in
+//! cargo's JSON build messages.
 
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};

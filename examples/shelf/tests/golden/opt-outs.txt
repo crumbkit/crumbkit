@@ -26,7 +26,10 @@ path-budget/path: every path through shelf
   Reason: shelf's longest path, schemas show, reads about 4,850 bytes, so 5,300 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below the default.
 
-shelf has 1 declaration, which needs no reason.
+shelf has 2 declarations, which need no reason.
 
 refusal-alternatives: shelf books show
   Declares: A refused command line for this command also offers the tool's own alternatives.
+
+text-line: shelf self runs export
+  Declares: The text prints each row as the line <RUN>  <COMMAND>  <EXIT>  [after a gap] in place of a table row.
