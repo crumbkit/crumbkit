@@ -53,7 +53,7 @@ fn a_declared_code_whose_failure_offers_no_run_retry_or_hint_is_a_dead_end_unles
         Some(
             "the tool's recoveries break crumbkit's recovery rules:\n\
              tool books show 7: the step `tool books list` fails with tool::books::unreadable, \
-             whose failure offers no run, retry or hint step, so an agent has no next step. \
+             whose failure offers no run, terminal, retry or hint step, so an agent has no next step. \
              The failure can offer a recovery, or an opt-out from `recoveries/next-step` names \
              `tool books list` with a reason"
         )

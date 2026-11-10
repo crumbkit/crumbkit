@@ -68,6 +68,8 @@ A failure prints with `--json` as the `<tool>/failure/v1` document.
   such as `left_out`. The step then runs its call once with every value of
   that field, each as its own word, in place of the argument's placeholder,
   such as `<ID>...` ([output budget](../output/budget/README.md#batches)).
+- A `terminal` step holds `call`, a command that a person must run in a
+  terminal ([failures](../failures/README.md#recoveries-and-alternatives)).
 - The document and each batch failure hold `fields` after `cause` when the
   failure names at least one field, as one object of names to values in the
   order the failure gave them. A value is a string, an integer, a boolean,

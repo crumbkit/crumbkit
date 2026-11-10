@@ -41,7 +41,8 @@ that the first of them reads.
   that has any, as a batch prints them.
 - A failed example's problem names the code and steps that the check read.
 
-`check_recoveries` follows the `Recovery::Run` recoveries that it reads. When
+`check_recoveries` follows the `Recovery::Run` and `Recovery::Terminal`
+recoveries that it reads. When
 the reader reads no failure from a run that failed, and the run prints no
 failure document and no `code:` line, the check stops with one problem. The
 problem says that the tool's reader reads the failure, or names the root in an

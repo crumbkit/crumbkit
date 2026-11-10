@@ -365,7 +365,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
 /// for each error in the failure's `source()` chain, and a `url:` line
 /// follows the `code:` line when the failure has a url. A
-/// [`Recovery::Run`](crate::Recovery::Run) call is rendered against the
+/// [`Recovery::Run`](crate::Recovery::Run) or
+/// [`Recovery::Terminal`](crate::Recovery::Terminal) call is rendered against the
 /// command tree that `run` holds, and prints as `no next step: the
 /// suggested command is not available` when the call does not resolve. With
 /// `--json`, the failure prints to the output writer as one

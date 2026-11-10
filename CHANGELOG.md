@@ -8,6 +8,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit: `Recovery::Terminal` says a person must run a command in a
+  terminal. Text prints a `help:` line naming the command and the terminal,
+  and JSON prints `{"kind":"terminal","call":"..."}` ([behaviour/failures]).
 - crumbkit: each argument of a `commands list` row has `value_hint`, the
   kebab-case name of clap's `ValueHint`, which is `any-path` for a `PathBuf`
   argument and `null` when clap reports none

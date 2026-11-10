@@ -10,8 +10,8 @@ states the rules of the check. The rustdoc of `check_recoveries`,
 ## Starts and steps
 
 The tool's test lists the command lines that fail, each with the code it
-fails with. The check follows each `run` recovery and alternative that the
-failures print, up to 3 steps after the start by default, which
+fails with. The check follows each `run` and `terminal` recovery and
+alternative that the failures print, up to 3 steps after the start by default, which
 `Recoveries::steps` changes. A run that prints several failures, such as a
 batch, starts one branch for each. A start passes when any of its failures
 carries its code, because a batch reports every id that failed. A start
@@ -27,8 +27,16 @@ A step fails the check in these cases:
   id `recoveries/same-code`, names the command that such a step runs, and
   marks a step that a person or an agent must complete by hand first.
 
+The check treats a `terminal` step as a `run` step, so the call must resolve
+and the check runs it without a person. A `terminal` step that holds a
+placeholder fails the check, even when a field of the failure could fill it,
+because a terminal runs the call exactly as it prints. A quoted literal such as
+`'<draft>'` is a value and is no placeholder. A step that waits for a person, such
+as one that opens an editor, needs an opt-out from `Rule::Recoveries`, id
+`recoveries/follow`, that names the command.
+
 A failure with one of the tool's declared codes that offers no `run`,
-`retry` or `hint` step fails the check, at the start and after any step,
+`terminal`, `retry` or `hint` step fails the check, at the start and after any step,
 because an agent that reads it has nothing to act on. A `none` step with a
 reason counts as no next step. An opt-out from `Rule::NextStep`, id
 `recoveries/next-step`, that names the failing command declares the

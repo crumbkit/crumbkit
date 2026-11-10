@@ -15,6 +15,7 @@ use crate::{
 mod alternatives;
 mod fields;
 mod roles;
+mod terminal;
 mod usage;
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -44,6 +45,10 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     List,
+    Show {
+        /// The ids to show.
+        ids: Vec<String>,
+    },
 }
 
 /// An error in a failure's `source()` chain, with the next error below it.

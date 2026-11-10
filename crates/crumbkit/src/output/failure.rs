@@ -46,7 +46,8 @@ const FAILURE: Document<()> = Document::new(
 /// as `schemas list` serves it.
 pub(crate) const DOCUMENT: Document<()> = FAILURE;
 
-/// The reason a failure prints when its `Recovery::Run` call cannot be
+/// The reason a failure prints when its `Recovery::Run` or
+/// `Recovery::Terminal` call cannot be
 /// rendered, because the call does not resolve.
 const UNAVAILABLE: &str = "the suggested command is not available";
 

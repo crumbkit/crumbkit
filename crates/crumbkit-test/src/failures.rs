@@ -227,7 +227,8 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
                     field: field.to_owned(),
                 },
                 (Some("run"), Some(call), None) => RecoveryStep::Run(call.to_owned()),
-                (Some("run"), None, _) => RecoveryStep::None(String::new()),
+                (Some("terminal"), Some(call), _) => RecoveryStep::Terminal(call.to_owned()),
+                (Some("run" | "terminal"), None, _) => RecoveryStep::None(String::new()),
                 (Some("retry"), ..) => RecoveryStep::Retry,
                 (Some("hint"), ..) => RecoveryStep::Hint(text(step, "text")),
                 _ => RecoveryStep::None(text(step, "reason")),
@@ -281,6 +282,7 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
             RecoveryStep::RunAll { call, field } => {
                 format!("run `{call}` with every value of {field}")
             }
+            RecoveryStep::Terminal(call) => format!("run `{call}` in a terminal"),
             RecoveryStep::Retry => "retry".to_owned(),
             RecoveryStep::Hint(text) => format!("hint: {text}"),
             RecoveryStep::None(reason) if reason.is_empty() => "no next step".to_owned(),

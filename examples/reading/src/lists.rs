@@ -199,7 +199,7 @@ pub fn lists_in(dir: &Path) -> Vec<List> {
                 return None;
             }
             let name = path.file_stem()?.to_str()?.to_owned();
-            if !is_dashed(&name) || name == "help" || Resource::has_subcommand(&name) {
+            if !has_own_commands(&name) {
                 return None;
             }
             let about = about(&path).ok()?;
@@ -234,6 +234,13 @@ pub(crate) fn choices_in(dir: &Path) -> Vec<Choice> {
             Choice::new(list.name, label)
         })
         .collect()
+}
+
+/// Returns whether a list's file called `name` gets the list's own commands
+/// at the root, such as `reading <NAME> edit`. A name that is not dashed, or
+/// that a built-in command already takes, gets none.
+fn has_own_commands(name: &str) -> bool {
+    is_dashed(name) && name != "help" && !Resource::has_subcommand(name)
 }
 
 /// Returns whether `name` is lowercase ASCII letters and digits in words
@@ -414,7 +421,9 @@ impl std::error::Error for EntriesError {
 /// A missing list's next step is `reading commands list`, which lists the
 /// command of each list. An unreadable list's next step is advice about its
 /// file, and an export that cannot open its file names the file's path. A
-/// position past the end's next step lists every entry of the list.
+/// position past the end's next step lists every entry of the list. An
+/// unreadable list also offers its `edit` command, which a person runs in a
+/// terminal because it opens their editor.
 impl Failure for EntriesError {
     fn code(&self) -> &'static Code {
         match self {
@@ -435,6 +444,18 @@ impl Failure for EntriesError {
                 path.display()
             )),
             Self::OutOfRange { name, .. } => Recovery::Run(every_entry(name)),
+        }
+    }
+
+    fn alternatives(&self) -> Vec<Recovery> {
+        match self {
+            Self::Unreadable { name, .. } if has_own_commands(name) => {
+                vec![Recovery::Terminal(Call::typed(vec![
+                    name.clone(),
+                    "edit".to_owned(),
+                ]))]
+            }
+            _ => Vec::new(),
         }
     }
 }
