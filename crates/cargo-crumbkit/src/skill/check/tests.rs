@@ -47,7 +47,7 @@ fn row(line: u64, span: &str, reason: Option<&str>) -> Checked {
 fn every_command_line_of_the_tool_gets_a_row_with_the_failing_ones_first() {
     let tree = Tree::read(DOCUMENT.as_bytes()).unwrap();
 
-    let checked = listing(Path::new("skill/SKILL.md"), SKILL, &tree);
+    let checked = listing(Path::new("skill/SKILL.md"), SKILL, &tree, "shelf");
 
     assert_eq!(
         checked.rows(),
@@ -101,5 +101,31 @@ fn the_checked_in_schema_matches_the_skill_check_document_schema() {
     assert_eq!(
         checked_in, generated,
         "schemas/skill-check-v1.json differs from the generated schema; replace the file with the generated schema"
+    );
+}
+
+#[test]
+fn a_tool_that_runs_under_another_program_checks_only_lines_that_name_its_subcommands() {
+    // cargo-crumbkit's root is `cargo`, so `cargo test` is cargo's own
+    // command and `cargo crumbkit weigh` is the tool's.
+    let document = DOCUMENT
+        .replace("shelf", "cargo")
+        .replace("cargo books", "cargo crumbkit");
+    let tree = Tree::read(document.as_bytes()).unwrap();
+    let text = "Run `cargo test`, then `cargo crumbkit list --limit`.\n";
+
+    let checked = listing(Path::new("SKILL.md"), text, &tree, "cargo-crumbkit");
+
+    let spans: Vec<(&str, Option<&str>)> = checked
+        .rows()
+        .iter()
+        .map(|row| (row.span.as_str(), row.reason.as_deref()))
+        .collect();
+    assert_eq!(
+        spans,
+        [(
+            "cargo crumbkit list --limit",
+            Some("`--limit` needs a value")
+        )]
     );
 }

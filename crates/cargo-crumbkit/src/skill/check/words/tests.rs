@@ -65,6 +65,10 @@ fn an_angle_bracket_placeholder_stays_one_word() {
         words("shelf books show <id> --from <file name>"),
         ["shelf", "books", "show", "<id>", "--from", "<file name>"]
     );
+    assert_eq!(
+        words("shelf books list --format=<FORMAT>"),
+        ["shelf", "books", "list", "--format=<FORMAT>"]
+    );
 }
 
 #[test]

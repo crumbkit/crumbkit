@@ -16,7 +16,8 @@ const UNCLOSED: &str = "the command line has an unclosed quote";
 /// `\`, `$` and a backtick, and a backslash outside quotes keeps the next
 /// character. An unquoted `|`, `&` or `;` ends the command, and so does a `#`
 /// that starts a word. A word that starts with `<` and a letter runs to the
-/// next `>`, so a placeholder such as `<file name>` stays one word. Any other
+/// next `>`, so a placeholder such as `<file name>` stays one word, and so
+/// does one after `=`, as in `--format=<FORMAT>`. Any other
 /// unquoted `<` or `>` starts a redirection and ends the command, and a word
 /// of digits just before a `>`, such as the `2` of `2>/dev/null`, is a file
 /// descriptor and is dropped.
@@ -71,15 +72,17 @@ pub(crate) fn split(line: &str) -> Result<Vec<String>, &'static str> {
             }
             '|' | '&' | ';' => break,
             '#' if word.is_none() => break,
-            '<' if word.is_none() && chars.peek().is_some_and(char::is_ascii_alphabetic) => {
-                let mut text = String::from('<');
+            '<' if word.as_deref().is_none_or(|text| text.ends_with('='))
+                && chars.peek().is_some_and(char::is_ascii_alphabetic) =>
+            {
+                let text = word.get_or_insert_with(String::new);
+                text.push('<');
                 for c in chars.by_ref() {
                     text.push(c);
                     if c == '>' {
                         break;
                     }
                 }
-                word = Some(text);
             }
             '<' | '>' => {
                 if word

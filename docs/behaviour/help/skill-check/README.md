@@ -20,13 +20,18 @@ cannot be read fails with `crumbkit::skill::unreadable`.
 The check reads every inline code span and every non-empty line of every
 fenced code block. A piece of code is a command line when its first word is
 the name of the tool's root command, such as `shelf`, after an optional
-`$ ` prompt. Other code, such as `cargo test`, is not checked.
+`$ ` prompt. Other code, such as `git status`, is not checked. When the
+root's name differs from the binary's name, the tool runs under another
+program, as cargo-crumbkit's root is `cargo`. A command line then also needs
+a second word that names a subcommand of the root, so `cargo crumbkit weigh`
+is checked and `cargo test` is not.
 
 The check splits a command line into words as a POSIX shell does: single
 and double quotes and backslashes join words, and an unquoted `|`, `&`,
 `;`, a `#` that starts a word, or a redirection such as `> out.txt` or
 `2>/dev/null` ends the command. A word that starts with `<` and a letter
-runs to the next `>`, so `<file name>` is one word. An unclosed quote
+runs to the next `>`, so `<file name>` is one word, and so does a `<`
+after `=`, as in `--format=<FORMAT>`. An unclosed quote
 fails the command line.
 
 The reader skips indented code blocks and code spans that run over a line
@@ -62,8 +67,11 @@ Placeholders and help notation follow these rules:
 
 A missing required argument passes, because a skill names a command in
 prose without its arguments. The check also accepts a line that clap would
-refuse for a rule across arguments, such as two conflicting flags, and it
-refuses a command alias, because `commands list` lists neither.
+refuse for a rule across arguments, such as two conflicting flags, or for
+a flag given twice. It refuses a command alias, a bare flag whose value is
+optional, and several words after a flag that takes many values, because
+`commands list` does not say which commands have aliases or how many values
+an argument takes.
 
 ## Output
 

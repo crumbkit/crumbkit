@@ -17,17 +17,21 @@ command or flag is renamed, and nothing tells the author.
   binary's package, or the file that `--skill` names.
 - A command line is an inline code span, or a line of a fenced block, whose
   first word is the name of the tree's root, after an optional `$ ` prompt.
-  The check splits it into words as a POSIX shell does and stops at a pipe,
-  a list operator, a comment or a redirection.
+  When the root's name differs from the binary's, as cargo-crumbkit's root
+  `cargo` does, the second word must also name a subcommand of the root, so
+  `cargo test` is not checked. The check splits a command line into words
+  as a POSIX shell does and stops at a pipe, a list operator, a comment or a
+  redirection.
 - Each word must name a subcommand, a flag of the command or a global flag
   of a command above it, or a value for a positional argument the command
   still has room for. A flag that takes a value must get one, and a value
-  must be one of the argument's possible values when it lists them. A word
-  in capitals such as `NAME`, or in angle brackets such as `<name>`, counts
-  as any value. `[OPTIONS]`, an optional placeholder such as `[ID]`, and
-  `...` count as nothing, the brackets of `[--limit N]` are dropped, and
-  `--` ends the check. A missing required argument passes, because prose
-  names a command without its arguments.
+  must be one of the argument's possible values when it lists them.
+- A word in capitals such as `NAME`, or in angle brackets such as `<name>`,
+  counts as any value. `[OPTIONS]`, an optional placeholder such as `[ID]`
+  and `...` count as nothing, and the brackets of `[--limit N]` are dropped.
+  `--` ends the check.
+- A missing required argument passes, because prose names a command without
+  its arguments.
 - The result is the `crumbkit/skill-check/v1` listing, one row per command
   line with `file`, `line`, `span` and `reason`, failing rows first. The
   default text prints only failing rows as `<FILE>:<LINE>: <SPAN>: <REASON>`

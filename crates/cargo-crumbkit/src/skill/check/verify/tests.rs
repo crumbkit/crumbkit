@@ -57,19 +57,21 @@ fn tree() -> Tree {
         short: Some("-n".to_owned()),
         ..flag("--limit", &["N"])
     };
-    Tree::new(vec![
+    Tree::new(
         command("shelf", vec![json, fields]),
-        command("shelf books", vec![quiet]),
-        command("shelf books list", vec![limit, flag("--all", &[]), format]),
-        command(
-            "shelf books show",
-            vec![positional("ID", true), flag("--from", &["FILE"])],
-        ),
-        command(
-            "shelf books move",
-            vec![positional("ID", false), positional("SHELF", false)],
-        ),
-    ])
+        vec![
+            command("shelf books", vec![quiet]),
+            command("shelf books list", vec![limit, flag("--all", &[]), format]),
+            command(
+                "shelf books show",
+                vec![positional("ID", true), flag("--from", &["FILE"])],
+            ),
+            command(
+                "shelf books move",
+                vec![positional("ID", false), positional("SHELF", false)],
+            ),
+        ],
+    )
 }
 
 /// Returns the reason that `line` fails against [`tree`], or `None` when it
@@ -161,9 +163,10 @@ fn a_value_outside_the_possible_values_fails_and_a_placeholder_passes() {
     assert_eq!(reason("shelf books list --format markdown"), None);
     assert_eq!(reason("shelf books list --format FORMAT"), None);
     assert_eq!(reason("shelf books list --format <format>"), None);
+    assert_eq!(reason("shelf books list --format=<FORMAT>"), None);
     assert_eq!(
         reason("shelf books list --format html").as_deref(),
-        Some("`--format` takes text or markdown, and `html` is neither")
+        Some("`--format` takes one of text, markdown, not `html`")
     );
 }
 
@@ -199,6 +202,15 @@ fn placeholders_count_as_values_and_help_notation_is_skipped() {
     assert_eq!(
         reason("shelf books list [--author NAME]").as_deref(),
         Some("`shelf books list` has no flag `--author`")
+    );
+}
+
+#[test]
+fn a_negative_number_is_a_value_and_infinity_is_not_a_number() {
+    assert_eq!(reason("shelf books move -1.5 attic"), None);
+    assert_eq!(
+        reason("shelf books move -inf attic").as_deref(),
+        Some("`shelf books move` has no flag `-i`")
     );
 }
 

@@ -38,18 +38,22 @@ const HELP: &str = "help";
 /// Returns the reason for the first word that fails, such as ``"`lists` is
 /// not a command of `shelf books`"``.
 //
-// RUST-10: the check reads what a `commands list` row says, so it misses
-// the rules that clap applies across arguments: conflicts, groups that need
-// one member, and a value count other than one per value name. A command
-// alias is no subcommand to it either, because the rows do not list
-// aliases. A row that lists them replaces this.
+// RUST-10: the check reads what a `commands list` row says, and a row does
+// not say which clap action or value count an argument has. So the check
+// misses the rules that clap applies across arguments, such as conflicts
+// and groups that need one member, and a flag repeated when clap allows it
+// once. It requires a value for a flag whose value is optional, such as
+// `--color[=WHEN]`, which clap accepts bare. It splits the value of every
+// argument that accepts many at commas, which is crumbkit's convention but
+// wrong for an `ArgAction::Append` flag without a value delimiter, and it
+// takes one word per value name, so `--tags a b` for a flag with
+// `num_args(1..)` fails on `b`. A command alias is no subcommand to it
+// either, because the rows do not list aliases. A row that gives the
+// action, the value count and the aliases replaces this.
 pub(crate) fn verify(tree: &Tree, words: &[String]) -> Result<(), String> {
-    let Some(root) = tree.command(tree.name()) else {
-        return Ok(());
-    };
     let mut walk = Walk {
         tree,
-        command: root,
+        command: tree.root(),
         globals: Vec::new(),
         positional: 0,
     };
@@ -209,15 +213,10 @@ fn value_of(argument: &Argument, name: &str, value: &str) -> Result<(), String> 
         .find(|part| !possible.iter().any(|p| p == *part))
     {
         None => Ok(()),
-        Some(part) => {
-            let (list, none) = match possible.as_slice() {
-                [one] => (one.clone(), "not it"),
-                [first, second] => (format!("{first} or {second}"), "neither"),
-                [init @ .., last] => (format!("{} or {last}", init.join(", ")), "none of them"),
-                [] => (String::new(), "none of them"),
-            };
-            Err(format!("`{name}` takes {list}, and `{part}` is {none}"))
-        }
+        Some(part) => Err(format!(
+            "`{name}` takes one of {}, not `{part}`",
+            possible.join(", ")
+        )),
     }
 }
 
@@ -261,5 +260,9 @@ fn is_placeholder(word: &str) -> bool {
 /// Reports whether `word` is a negative number, such as `-5`, which is a
 /// value and not a short flag.
 fn is_number(word: &str) -> bool {
-    word[1..].parse::<f64>().is_ok()
+    let digits = &word[1..];
+    digits.parse::<f64>().is_ok()
+        && digits
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || byte == b'.')
 }

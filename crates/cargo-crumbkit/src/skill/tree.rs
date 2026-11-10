@@ -11,8 +11,10 @@ mod tests;
 /// Every visible command of a tool with its arguments.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Tree {
-    /// The commands in depth-first order from the root.
-    commands: Vec<Command>,
+    /// The root command.
+    root: Command,
+    /// The commands below the root in depth-first order.
+    below: Vec<Command>,
 }
 
 /// One visible command of the tool and the arguments that its row lists.
@@ -57,10 +59,10 @@ struct Listed {
 }
 
 impl Tree {
-    /// Returns the tree of `commands`, whose first command is the root.
+    /// Returns the tree of `root` and the commands `below` it.
     #[cfg(test)]
-    pub(crate) const fn new(commands: Vec<Command>) -> Self {
-        Self { commands }
+    pub(crate) const fn new(root: Command, below: Vec<Command>) -> Self {
+        Self { root, below }
     }
 
     /// Returns the tree that `stdout`, the output of `commands list --all
@@ -68,27 +70,39 @@ impl Tree {
     /// `<tool>/commands-list/v1` document or lists no command.
     pub(crate) fn read(stdout: &[u8]) -> Option<Self> {
         let document: Listed = serde_json::from_slice(stdout).ok()?;
-        let named = names(&document.schema, &crumbkit::commands::COMMANDS_LIST);
-        (named && !document.data.is_empty()).then_some(Self {
-            commands: document.data,
+        if !names(&document.schema, &crumbkit::commands::COMMANDS_LIST) {
+            return None;
+        }
+        let mut commands = document.data.into_iter();
+        let root = commands.next()?;
+        Some(Self {
+            root,
+            below: commands.collect(),
         })
+    }
+
+    /// Returns the root command.
+    pub(crate) const fn root(&self) -> &Command {
+        &self.root
     }
 
     /// Returns the name that the root command runs as, such as `shelf`.
     pub(crate) fn name(&self) -> &str {
-        self.commands.first().map_or("", |root| root.path.as_str())
+        &self.root.path
     }
 
     /// Returns the command whose command line is `path`, such as `shelf
     /// books list`.
     pub(crate) fn command(&self, path: &str) -> Option<&Command> {
-        self.commands.iter().find(|command| command.path == path)
+        std::iter::once(&self.root)
+            .chain(&self.below)
+            .find(|command| command.path == path)
     }
 
     /// Reports whether the command whose command line is `path` has a
     /// visible subcommand.
     pub(crate) fn has_subcommands(&self, path: &str) -> bool {
-        self.commands.iter().any(|command| {
+        self.below.iter().any(|command| {
             command
                 .path
                 .strip_prefix(path)

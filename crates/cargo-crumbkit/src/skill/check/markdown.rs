@@ -29,8 +29,9 @@ type Fence = (char, usize);
 /// as `CommonMark` says.
 //
 // RUST-10: this reads the two forms of code that a skill file uses for
-// command lines. It misses indented code blocks, a code span that runs over
-// a line break, and the CommonMark rules that turn a backtick into text,
+// command lines. It misses indented code blocks, a fence indented by four
+// or more spaces, as in a code block inside an ordered list, a code span
+// that runs over a line break, and the CommonMark rules that turn a backtick into text,
 // such as a backslash before it or a span inside an HTML block. pulldown-cmark
 // reads all of these and replaces this function if a skill file needs them.
 pub(crate) fn code(text: &str) -> Vec<Code> {

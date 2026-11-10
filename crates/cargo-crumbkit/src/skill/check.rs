@@ -116,28 +116,44 @@ pub(crate) fn check(args: &SkillCheckArgs) -> Result<Listing<Checked, Summary>, 
     let tool = Tool::new(&built.executable, &std::env::temp_dir())?;
     let document = tool.document()?;
     let tree = Tree::read(&document).ok_or_else(|| tool.no_commands_list())?;
-    Ok(listing(&file, &text, &tree))
+    Ok(listing(&file, &text, &tree, &args.bin))
 }
 
-/// Returns the rows and summary of the command lines of `tree`'s tool in
-/// `text`, the skill file at `file`. A command line is an inline code span,
-/// or a line of a fenced block, whose first word is the name of the tool's
-/// root command, after a `$ ` prompt if it has one.
-fn listing(file: &Path, text: &str, tree: &Tree) -> Listing<Checked, Summary> {
+/// Returns the rows and summary of the command lines of `tree`'s tool, whose
+/// binary is `bin`, in `text`, the skill file at `file`.
+///
+/// A command line is an inline code span, or a line of a fenced block, whose
+/// first word is the name of the tool's root command, after a `$ ` prompt if
+/// it has one. When the root's name is not the binary's, the tool runs under
+/// another program, as cargo-crumbkit runs as `cargo crumbkit`, and that
+/// program has commands of its own, such as `cargo test`. A command line
+/// then also needs a second word that names a subcommand of the root.
+fn listing(file: &Path, text: &str, tree: &Tree, bin: &str) -> Listing<Checked, Summary> {
     let name = tree.name();
+    let ours = |second: Option<&str>| {
+        name == bin
+            || second.is_some_and(|second| tree.command(&format!("{name} {second}")).is_some())
+    };
     let file = file.display().to_string();
     let mut rows: Vec<Checked> = markdown::code(text)
         .into_iter()
         .filter_map(|code| {
             let span = code.text.strip_prefix(PROMPT).unwrap_or(&code.text);
             let reason = match words::split(span) {
-                Ok(words) if words.first().is_some_and(|first| first == name) => {
+                Ok(words)
+                    if words.first().is_some_and(|first| first == name)
+                        && ours(words.get(1).map(String::as_str)) =>
+                {
                     verify::verify(tree, &words).err()
                 }
-                Err(reason) if span.split_whitespace().next() == Some(name) => {
+                Err(reason) => {
+                    let mut plain = span.split_whitespace();
+                    if plain.next() != Some(name) || !ours(plain.next()) {
+                        return None;
+                    }
                     Some(reason.to_owned())
                 }
-                Ok(_) | Err(_) => return None,
+                Ok(_) => return None,
             };
             Some(Checked {
                 file: file.clone(),
