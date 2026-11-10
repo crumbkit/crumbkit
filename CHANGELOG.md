@@ -8,6 +8,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- cargo-crumbkit: `cargo crumbkit skill check --bin <NAME>` checks each
+  command line in a tool's SKILL.md against its commands, flags and values,
+  and exits with 1 when one fails ([cargo-crumbkit],
+  [behaviour/help/skill-check]).
 - crumbkit-usage: `self runs export` prints the stored usage records after
   the run that `--after` names, with their keyed hashes, and marks a
   possible gap after a trim. shelf mounts it ([behaviour/usage-log/export]).
@@ -1660,6 +1664,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/help/examples]: docs/behaviour/help/examples.md
 [behaviour/help/headings]: docs/behaviour/help/headings/README.md
 [behaviour/help/reference]: docs/behaviour/help/reference.md
+[behaviour/help/skill-check]: docs/behaviour/help/skill-check/README.md
 [behaviour/help/weight]: docs/behaviour/help/weight.md
 [behaviour/output]: docs/behaviour/output/README.md
 [behaviour/output/values]: docs/behaviour/output/values/README.md

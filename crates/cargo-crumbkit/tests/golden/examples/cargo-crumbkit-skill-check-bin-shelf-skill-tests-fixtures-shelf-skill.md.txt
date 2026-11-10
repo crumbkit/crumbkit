@@ -1,0 +1,1 @@
+Checked 12 shelf command lines in tests/fixtures/shelf-skill.md, and 0 failed.

@@ -9,6 +9,7 @@ use crumbkit::{Tool, ViewFlags};
 use crumbkit_test::{Allow, Rule};
 
 use crate::docs::DOCS;
+use crate::skill::SKILL_CHECK;
 use crate::weigh::WEIGH;
 
 #[cfg(test)]
@@ -33,10 +34,11 @@ pub struct Cli {
 
 /// cargo-crumbkit's goal headings and leaves. It gives goal headings to the
 /// `crumbkit` group, so `cargo crumbkit -h` lists `weigh` under `Measure a
-/// tool's help`, `docs` under `Write a tool's reference` and `commands` under
-/// `Explore the commands`. The help of `cargo crumbkit weigh`, `cargo crumbkit
-/// docs` and `cargo crumbkit commands list` lists their examples, and their
-/// `--help` describes the columns of the rows they print. Its root is
+/// tool's help`, `docs` under `Write a tool's reference`, `skill` under
+/// `Check a tool's agent skill` and `commands` under `Explore the commands`.
+/// The help of `cargo crumbkit weigh`, `cargo crumbkit docs`, `cargo crumbkit
+/// skill check` and `cargo crumbkit commands list` lists their examples, and
+/// their `--help` describes the columns of the rows they print. Its root is
 /// `crumbkit`, because cargo always passes that word, so `cargo crumbkit help`
 /// prints the long help of `cargo crumbkit`, and `cargo crumbkit help
 /// exit-codes` prints a topic.
@@ -48,6 +50,7 @@ pub const TOOL: Tool = Tool::new().help(
             &[
                 Goal::new("Measure a tool's help", &["weigh"]),
                 Goal::new("Write a tool's reference", &["docs"]),
+                Goal::new("Check a tool's agent skill", &["skill"]),
                 Goal::new("Explore the commands", &["commands"]),
             ],
         )])
@@ -69,6 +72,12 @@ pub const TOOL: Tool = Tool::new().help(
                 )])
                 .effects(Effects::additive().idempotent())
                 .document(DOCS),
+            Leaf::new(&["crumbkit", "skill", "check"])
+                .examples(&[Example::new(
+                    &["--bin", "shelf", "--skill", "tests/fixtures/shelf-skill.md"],
+                    "Check every shelf command line in a skill file",
+                )])
+                .document(SKILL_CHECK),
             Leaf::new(&["crumbkit", "commands", "list"])
                 .examples(&[Example::new(&[], "List every command")])
                 .document(COMMANDS_LIST),
@@ -86,7 +95,7 @@ pub const ALLOW: &[Allow] = &[
     Allow::new(
         Rule::Recoveries,
         "",
-        "Each failure of weigh and docs comes from cargo, a build or the tool that it runs, so a test provokes one only by building a broken workspace.",
+        "Each failure of weigh, docs and skill check comes from cargo, a build, the tool that it runs or the file system, so a test provokes one only by building a broken workspace or breaking a file.",
     ),
 ];
 
@@ -109,6 +118,12 @@ pub(crate) enum CrumbkitCommand {
     Weigh(WeighArgs),
     /// Write a Markdown reference of every command of a tool to a file.
     Docs(DocsArgs),
+    /// Check a tool's agent skill against its commands.
+    Skill {
+        /// What to do with the skill.
+        #[command(subcommand)]
+        command: SkillCommand,
+    },
     /// Explore cargo crumbkit's commands.
     Commands {
         /// What to do with the commands.
@@ -122,6 +137,13 @@ pub(crate) enum CrumbkitCommand {
 pub(crate) enum CommandsCommand {
     /// List a branch of cargo crumbkit's commands with their arguments, examples and columns.
     List(CommandsList),
+}
+
+/// The commands for a tool's agent skill.
+#[derive(Debug, Subcommand)]
+pub(crate) enum SkillCommand {
+    /// Check that every command line in a tool's SKILL.md names its real commands and flags.
+    Check(SkillCheckArgs),
 }
 
 /// The arguments of `cargo crumbkit weigh`.
@@ -169,4 +191,16 @@ pub(crate) struct DocsArgs {
     /// Write the reference to this file [default: docs/commands.md in the binary's package]
     #[arg(long, value_name = "FILE")]
     pub(crate) out: Option<PathBuf>,
+}
+
+/// The arguments of `cargo crumbkit skill check`.
+#[derive(Debug, Args)]
+pub(crate) struct SkillCheckArgs {
+    /// Build this binary of the current workspace and check its skill against its commands
+    #[arg(long, value_name = "NAME")]
+    pub(crate) bin: String,
+
+    /// Check this Markdown file [default: skill/SKILL.md in the binary's package]
+    #[arg(long, value_name = "FILE")]
+    pub(crate) skill: Option<PathBuf>,
 }
