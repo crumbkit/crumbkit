@@ -12,6 +12,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   command line in a tool's SKILL.md against its commands, flags and values,
   and exits with 1 when one fails ([cargo-crumbkit],
   [behaviour/help/skill-check]).
+- crumbkit-usage: `self runs export` prints the stored usage records after
+  the run that `--after` names, with their keyed hashes, and marks a
+  possible gap after a trim. shelf mounts it ([behaviour/usage-log/export]).
 
 ## [0.3.0] - 2026-11-10
 
@@ -1680,6 +1683,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/schemas]: docs/behaviour/schemas/README.md
 [behaviour/schemas/commands]: docs/behaviour/schemas/commands.md
 [behaviour/usage-log]: docs/behaviour/usage-log/README.md
+[behaviour/usage-log/export]: docs/behaviour/usage-log/export/README.md
 [behaviour/usage-log/report]: docs/behaviour/usage-log/report.md
 [behaviour/usage-log/trace-context]: docs/behaviour/usage-log/trace-context.md
 [project/dependencies]: docs/project/dependencies.md

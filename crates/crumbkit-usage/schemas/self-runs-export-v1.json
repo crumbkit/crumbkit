@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "crumbkit/self-runs-export/v1",
+  "description": "Each record of the usage log after a run, oldest first, as the log stores it.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "$ref": "#/$defs/RunLine"
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "crumbkit/self-runs-export/v1"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "$defs": {
+    "Facts": {
+      "description": "The tool's own facts about a run: counts, labels from the tool's fixed\nvocabulary, and the time the run spent waiting on another system.",
+      "type": "object",
+      "properties": {
+        "counts": {
+          "description": "Counts by name, such as requests or retries. A count of 0 is left\nout.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 1
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          }
+        },
+        "labels": {
+          "description": "Labels by name, such as the route templates that the run requested,\neach once, in the order the tool wrote them.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Label"
+            },
+            "uniqueItems": true
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          }
+        },
+        "waited_ms": {
+          "description": "The wall-clock milliseconds that the run spent blocked, waiting on\nanother system such as a server, with overlapping waits counted\nonce. It is present only when it is more than 0.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 1
+        }
+      }
+    },
+    "Hash": {
+      "description": "The keyed SipHash-2-4 hash of a list of byte strings, as 16 lowercase hex\ndigits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "Help": {
+      "description": "Which help page the caller asked for.",
+      "oneOf": [
+        {
+          "description": "`-h`.",
+          "type": "string",
+          "const": "short"
+        },
+        {
+          "description": "`--help`, or the help command.",
+          "type": "string",
+          "const": "long"
+        }
+      ]
+    },
+    "Label": {
+      "description": "One label from the tool's fixed vocabulary, such as a route template.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_./:{}-]{1,64}$"
+    },
+    "Name": {
+      "description": "A name from the tool's own vocabulary: a command path, a flag, a version\nor a failure code.\n\ncrumbkit reads every name from the tool's clap command tree or its codes,\nand never from a word that the caller typed: each constructor takes a\n`clap::Command`, a `clap::Arg` or a crumbkit `Code`.",
+      "type": "string"
+    },
+    "Record": {
+      "title": "UsageRecord",
+      "description": "One line of a tool's usage log, which records the shape of one run and never the values of its arguments.",
+      "type": "object",
+      "properties": {
+        "alias": {
+          "description": "Whether a personal alias expanded. It is present only when one did.",
+          "type": "boolean"
+        },
+        "args": {
+          "description": "The keyed hash of the words after the tool's name, so identical\ncommand lines share a hash.",
+          "$ref": "#/$defs/Hash"
+        },
+        "at": {
+          "description": "When the run ended, in RFC 3339 with milliseconds, such as\n2026-10-07T12:01:07.120Z.",
+          "type": "string"
+        },
+        "caller": {
+          "description": "The id of the coding agent that ran the tool, such as claude-code;\nperson when no agent is detected and standard input is a terminal;\nand unknown otherwise.",
+          "type": "string"
+        },
+        "code": {
+          "description": "The code of the run's failure or refusal, such as\n`shelf::books::not_found`. A batch gives the code of its first failure.",
+          "$ref": "#/$defs/Name"
+        },
+        "command": {
+          "description": "The command path below the tool's name, such as books show.",
+          "$ref": "#/$defs/Name"
+        },
+        "empty": {
+          "description": "Whether a listing or a stream had no rows, so its output printed the\nempty note (ADR-0050). It is present only when one had none.",
+          "type": "boolean"
+        },
+        "exit": {
+          "description": "The exit code that `parse` or `finish` returned, or that the tool\nreported with `events::ended`.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "facts": {
+          "description": "The tool's own facts about the run, which its extensions wrote. It is\npresent only when they hold a fact, and it is left out when the line\nwould otherwise pass 1 KiB.",
+          "$ref": "#/$defs/Facts"
+        },
+        "flags": {
+          "description": "The flags typed on the command line, each by its long name, or by its\nshort name when it has no long one, sorted.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Name"
+          }
+        },
+        "help": {
+          "description": "short for -h, and long for --help or the help command.",
+          "$ref": "#/$defs/Help"
+        },
+        "ids": {
+          "description": "How many values the command's positional arguments named ID received.\nIt is present only when the command has such an argument.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "interrupted": {
+          "description": "Whether the line was written when the run ended on SIGINT or SIGTERM.\nIt is present only when that is so.",
+          "type": "boolean"
+        },
+        "ms": {
+          "description": "The run's wall time in milliseconds, from `start` to the line.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "nearest": {
+          "description": "The real flag that clap suggested for a refused flag.",
+          "$ref": "#/$defs/Name"
+        },
+        "out_bytes": {
+          "description": "The bytes that `finish` wrote to standard output, or that the tool\nreported with `events::ended`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "parent": {
+          "description": "The caller's span id from a valid TRACEPARENT. It is left out when the\nrun started a new trace.",
+          "$ref": "#/$defs/SpanId"
+        },
+        "picked": {
+          "description": "How many missing arguments a picker filled in before the command line\nparsed. It is present only when a picker filled one in.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "run": {
+          "description": "The run's own random span id, which its children name as their\nparent.",
+          "$ref": "#/$defs/SpanId"
+        },
+        "schema": {
+          "description": "The id of this record, `<tool>/usage/v1`, with the tool's name as\nits component, such as shelf/usage/v1.",
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+(\\.[a-z0-9_-]+)*/usage/v1$"
+        },
+        "session": {
+          "description": "The keyed hash of the agent's session id, or, when the agent gives no\nsession id, of the parent process id on Unix and of the Windows\nTerminal session or the text `windows` on Windows.",
+          "$ref": "#/$defs/Hash"
+        },
+        "tolerated": {
+          "description": "The codes of the failures that the run met and recovered from, which\nthe tool reported with `events::tolerated`.\nEach code appears once, in report order, and the list holds at most\n8 codes. It is present only when the tool reported one.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Name"
+          }
+        },
+        "tool": {
+          "description": "The name of the tool's root command, such as shelf.",
+          "$ref": "#/$defs/Name"
+        },
+        "trace": {
+          "description": "The id of the trace that the run belongs to: the caller's, from a\nvalid TRACEPARENT, or a new random id.",
+          "$ref": "#/$defs/TraceId"
+        },
+        "truncated": {
+          "description": "Whether a listing showed fewer rows than its total. It is present only\nwhen one did.",
+          "type": "boolean"
+        },
+        "unknown_flags": {
+          "description": "How many flags of a refused command line name no flag of the command.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "version": {
+          "description": "The tool's version, when its command has one.",
+          "$ref": "#/$defs/Name"
+        }
+      },
+      "required": [
+        "schema",
+        "tool",
+        "at",
+        "ms",
+        "caller",
+        "session",
+        "args",
+        "trace",
+        "run"
+      ]
+    },
+    "RunLine": {
+      "description": "One record of the usage log as `self runs export` prints it.",
+      "type": "object",
+      "properties": {
+        "gap": {
+          "description": "Whether records may be missing before this one, because the run that\n`--after` named is no longer in the log, so the export printed every\nrecord the log holds. Only the first line of an export can be true.",
+          "type": "boolean"
+        },
+        "record": {
+          "description": "The record with every field and value that the usage log stores,\nincluding the run's span id under `run`, which `--after` takes, and\nthe keyed hashes of the run's session and command line.",
+          "$ref": "#/$defs/Record"
+        }
+      },
+      "required": [
+        "gap",
+        "record"
+      ]
+    },
+    "SpanId": {
+      "description": "A W3C span id, as 16 lowercase hex digits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "TraceId": {
+      "description": "A W3C trace id, as 32 lowercase hex digits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    }
+  }
+}
