@@ -22,3 +22,4 @@ decided.
 - [ADR-0179. The forwarder ends the tool and runs the usage line](0179-the-forwarder-ends-the-tool-and-runs-the-usage-line.md)
 - [ADR-0187. A run's hook wraps the start of its child](0187-a-hook-wraps-the-start-of-the-child.md)
 - [ADR-0188. A run takes a file as input, copies output and inherits output](0188-a-run-takes-a-file-copies-output-and-inherits-output.md)
+- [ADR-0189. A reap waits until the child's group is empty](0189-a-reap-empties-the-group.md)

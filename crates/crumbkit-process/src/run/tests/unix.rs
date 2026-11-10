@@ -14,6 +14,7 @@ use crate::{Group, Scope, Signal};
 mod around_spawn;
 mod input_file;
 mod output_copy;
+mod reap;
 mod survivors;
 
 /// Keeps up to 1 MiB of each stream whole and stops the child past it.

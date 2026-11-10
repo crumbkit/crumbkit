@@ -171,7 +171,9 @@ because a graceful step would send Ctrl-Break, which needs unsafe code.
 A grace too long for the clock waits for the child's exit without a limit.
 
 Once the child has exited, the run kills what is left of its group, reaps
-the child, and reads the pipes for at most `DRAIN_GRACE`, one second, more.
+the child, waits until the group is empty for at most `REAP_GRACE`, one
+second, after the exit, and reads the pipes for at most `DRAIN_GRACE`, one
+second, more.
 A descendant outside the group that holds a pipe therefore holds the run
 for at most one second after the reap, and keeps running.
 
@@ -182,24 +184,33 @@ its child gives false. The check is off by default because on Linux it reads
 every process in `/proc`. It reports on `Scope::Group` on Linux and macOS alone.
 
 On Unix, for a child that the tool may signal, a run takes at most the
-time to its deadline, plus the graces of its escalation, plus the drain
-grace, plus the time that a hook around the start takes, plus the time that a copy
+time to its deadline, plus the graces of its escalation, plus the reap
+grace, plus the drain grace, plus the time that a hook around the start takes, plus the time that a copy
 function blocks. A child that refuses the tool's signals, such as a setuid program,
 holds the run until it exits. On Windows a reader blocks until its pipe
 closes, so a process outside the job that holds a pipe, as a grandchild of
 a child in `Scope::Child` can, holds the run until it exits.
 
 Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183, ADR-0184,
-ADR-0187, ADR-0188.
+ADR-0187, ADR-0188, ADR-0189.
 
 ## Reaping
 
 On Unix the child's process id is also its group's id, and another process
 can take that id once the child is reaped. The crate therefore waits for
 the child with `waitid` and `WNOWAIT`, which leaves it unreaped, kills what
-is left of the group, and only then reaps it. It never signals the group
-after the reap. macOS refuses a signal to a group whose only process has
-exited, and the crate counts that refusal as sent.
+is left of the group, and only then reaps it. macOS refuses a signal to a
+group whose only process has exited, and the crate counts that refusal as
+sent. On macOS a kill of a group can miss a process that is being forked,
+so the crate kills the group again for as long as signal 0 finds a live
+process in it.
+
+After the reap the crate checks the group with signal 0, which delivers
+nothing, until the kernel finds no process in it, so the processes that the
+kill ended are gone too, including one that waited for its new parent to
+reap it. It never sends another signal after the reap. Both waits end
+`REAP_GRACE` after the child's exit, and a process that outlasts it, such
+as one under an init process that reaps nothing, is left in the group.
 
 macOS also gives a wait for an exit a report that the child stopped, for
 as long as it stays stopped, because `WNOWAIT` leaves that report in place.
@@ -218,7 +229,7 @@ outright or crashes skips this: on Unix the group keeps running, and on
 Windows the job's processes keep running, because process-wrap's std job
 object does not ask Windows to end them when the job's last handle closes.
 
-Why: ADR-0171, ADR-0173.
+Why: ADR-0171, ADR-0173, ADR-0189.
 
 ## Forwarding the tool's signals
 

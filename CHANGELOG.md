@@ -22,9 +22,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: `RunOptions::report_survivors` and
   `ChildFinished::survivors` say whether a process in the child's group outlived
   it ([behaviour/processes]).
+- crumbkit-process: `REAP_GRACE` bounds how long a run on Unix waits for its
+  child's group to be empty ([behaviour/processes]).
 
 ### Changed
 
+- crumbkit-process: on Unix a run returns once its child's group is empty,
+  for at most `REAP_GRACE` after the child exits, and on macOS kills the
+  group again while a live process is left ([behaviour/processes]).
 - crumbkit-process: breaking: `Capture::Lines` has the fields `long` and
   `end`, so a run can skip a line over its limit with `LongLine::Skip` and
   split on a byte other than a newline ([behaviour/processes]).
