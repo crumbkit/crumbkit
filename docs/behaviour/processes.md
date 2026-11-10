@@ -63,27 +63,43 @@ Why: ADR-0187.
 ## Input and output
 
 The child's standard input is the null device, bytes that a thread writes
-and then closes, or the tool's own input. The writer stops early, with no
+and then closes, the tool's own input, or a duplicate of a file or a pipe's
+read end that the tool holds. The writer stops early, with no
 failure, when the child closes its input.
+
+`Input::Bytes` clears its buffer when it drops, so a secret given to a child
+does not stay in the tool's memory. It clears that buffer alone, and the
+`Debug` output of the settings prints only its length.
 
 Each output stream has a `Capture`:
 
 - `Discard` sends the stream to the null device.
+- `Inherit` sends the stream to the tool's own. With `Scope::Child` and
+  `Input::Inherit`, a child that the person answers stays in the tool's
+  foreground group, and the tool carries on when it ends.
 - `Whole` keeps the stream's first `limit` bytes. A longer stream is over
   its limit, and `OverLimit` decides what happens then: `Stop` stops the
   child, and `Sink` reads the rest of the stream and drops it, so the child
   runs to its end.
 - `Tail` reads the whole stream and keeps its last `limit` bytes.
-- `Lines` splits the stream on each newline and pushes each line, without
-  its newline, to a queue from `line_queue` while the child runs. A last
-  line with no newline is pushed when the stream ends. The first time one
-  line passes `line` bytes or the stream passes `total` bytes, the stream
-  is over its limit, and `OverLimit` decides what happens as for `Whole`.
-  No line is pushed after that.
+- `Lines` splits the stream on each `end` byte, such as a newline or a NUL,
+  and pushes each line, without that byte, to a queue from `line_queue` while
+  the child runs. A last line with no end is pushed when the stream ends. The
+  first time the stream passes `total` bytes, it is over its limit, and
+  `OverLimit` decides what happens as for `Whole`. No line is pushed after
+  that. A line that passes `line` bytes does the same with `LongLine::Over`.
+  With `LongLine::Skip` the run drops that line up to its end and delivers
+  the next one, and `Captured::long_line` says that it dropped one.
+
+`RunOptions::stdout_copy` and `stderr_copy` give a function each chunk of the
+stream as the run reads it, whatever the capture keeps, so a tool can show the
+output and keep a bounded copy. A function that blocks holds the reader and so
+the child and the run. A function that panics gets no more chunks, the child
+runs on, and the run ends with `RunError::Run`.
 
 `Captured::over_limit` tells whether the kept bytes, or the lines
-delivered, are all of the stream, and `Captured::long_line` tells whether
-one line passed its limit. `ChildFinished::first_stdout` gives the time from the
+delivered, passed a limit, and `Captured::long_line`
+tells whether one line passed its limit. `ChildFinished::first_stdout` gives the time from the
 start to the first byte of standard output.
 
 The caller takes each line with `Lines::recv` or `Lines::recv_timeout`,
@@ -113,7 +129,7 @@ run starts is joined, even while a descendant outside the group holds a pipe
 open. On Windows a reader blocks until its pipe closes, and ending the job
 closes every pipe that the job's processes held.
 
-Why: ADR-0171, ADR-0176.
+Why: ADR-0171, ADR-0176, ADR-0188.
 
 ## Ending a run
 
@@ -123,6 +139,15 @@ A run ends when the child exits, when its deadline passes, when its
 `Status::Code` or `Status::Signal` for the child's own end, `TimedOut`, and
 `Stopped` with `StopReason::Cancelled` or `StopReason::OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
+
+Any thread may call `Cancel::cancel` at any time. A cancel that arrives once the
+run has seen the child's exit changes nothing, so the run gives the child's own
+end, as does a cancel that the run sees together with the exit. A cancel just
+after the exit, before the run has seen it, gives
+`Stopped(Cancelled)` with the child's own status. The run does not poll a flag
+of the tool's, so a tool whose stop request is a flag polls it on a thread of
+its own and calls `Cancel::cancel` from there. A signal handler must not call
+it, because it takes a lock.
 
 `ChildFinished::status` gives the child's own status as the run reaped it,
 which a timed-out or stopped run has too: `Status::Code` with the exit
@@ -146,27 +171,46 @@ because a graceful step would send Ctrl-Break, which needs unsafe code.
 A grace too long for the clock waits for the child's exit without a limit.
 
 Once the child has exited, the run kills what is left of its group, reaps
-the child, and reads the pipes for at most `DRAIN_GRACE`, one second, more.
+the child, waits until the group is empty for at most `REAP_GRACE`, one
+second, after the exit, and reads the pipes for at most `DRAIN_GRACE`, one
+second, more.
 A descendant outside the group that holds a pipe therefore holds the run
 for at most one second after the reap, and keeps running.
 
+`RunOptions::report_survivors` makes the run check, before that kill, whether
+any other process in the group still runs, and `ChildFinished::survivors` gives
+the answer. It answers for a child that ended by itself, and a run that stopped
+its child gives false. The check is off by default because on Linux it reads
+every process in `/proc`. It reports on `Scope::Group` on Linux and macOS alone.
+
 On Unix, for a child that the tool may signal, a run takes at most the
-time to its deadline, plus the graces of its escalation, plus the drain
-grace, plus the time that a hook around the start takes. A child that refuses the tool's signals, such as a setuid program,
+time to its deadline, plus the graces of its escalation, plus the reap
+grace, plus the drain grace, plus the time that a hook around the start takes, plus the time that a copy
+function blocks. A child that refuses the tool's signals, such as a setuid program,
 holds the run until it exits. On Windows a reader blocks until its pipe
 closes, so a process outside the job that holds a pipe, as a grandchild of
 a child in `Scope::Child` can, holds the run until it exits.
 
-Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183, ADR-0184.
+Why: ADR-0171, ADR-0172, ADR-0174, ADR-0176, ADR-0178, ADR-0183, ADR-0184,
+ADR-0187, ADR-0188, ADR-0189.
 
 ## Reaping
 
 On Unix the child's process id is also its group's id, and another process
 can take that id once the child is reaped. The crate therefore waits for
 the child with `waitid` and `WNOWAIT`, which leaves it unreaped, kills what
-is left of the group, and only then reaps it. It never signals the group
-after the reap. macOS refuses a signal to a group whose only process has
-exited, and the crate counts that refusal as sent.
+is left of the group, and only then reaps it. macOS refuses a signal to a
+group whose only process has exited, and the crate counts that refusal as
+sent. On macOS a kill of a group can miss a process that is being forked,
+so the crate kills the group again for as long as signal 0 finds a live
+process in it.
+
+After the reap the crate checks the group with signal 0, which delivers
+nothing, until the kernel finds no process in it, so the processes that the
+kill ended are gone too, including one that waited for its new parent to
+reap it. It never sends another signal after the reap. Both waits end
+`REAP_GRACE` after the child's exit, and a process that outlasts it, such
+as one under an init process that reaps nothing, is left in the group.
 
 macOS also gives a wait for an exit a report that the child stopped, for
 as long as it stays stopped, because `WNOWAIT` leaves that report in place.
@@ -185,7 +229,7 @@ outright or crashes skips this: on Unix the group keeps running, and on
 Windows the job's processes keep running, because process-wrap's std job
 object does not ask Windows to end them when the job's last handle closes.
 
-Why: ADR-0171, ADR-0173.
+Why: ADR-0171, ADR-0173, ADR-0189.
 
 ## Forwarding the tool's signals
 

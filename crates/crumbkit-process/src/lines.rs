@@ -137,7 +137,7 @@ impl LineQueue {
 }
 
 /// The caller's side of a line queue, which yields each line of the stream
-/// without its newline as the run reads it. Dropping it tells the run that
+/// without its end byte as the run reads it. Dropping it tells the run that
 /// nobody reads the lines, and the run reads the rest of the stream and
 /// drops it.
 pub struct Lines(Arc<Shared>);

@@ -2,10 +2,11 @@
 //! the time at which they stop waiting on a pipe.
 
 use std::io::{self, Read, Write};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use super::output::{Captured, Keeper};
+use super::output::{Captured, Keeper, OutputCopy};
 use crate::sys::{self, Pipe};
 
 /// How long a read or a write waits on a pipe before it checks again
@@ -74,6 +75,7 @@ pub(super) fn read<P>(
     mut pipe: P,
     ends: &Ends,
     mut keeper: Keeper,
+    copy: Option<&OutputCopy>,
     over: impl Fn(),
 ) -> io::Result<Kept>
 where
@@ -81,6 +83,8 @@ where
 {
     let mut first = None;
     let mut chunk = [0; CHUNK];
+    let mut copy = copy;
+    let mut panicked = false;
     while ends.ready(&pipe, false)? {
         let read = match pipe.read(&mut chunk) {
             Ok(0) => break,
@@ -89,9 +93,18 @@ where
             Err(error) => return Err(error),
         };
         first.get_or_insert_with(Instant::now);
+        if let Some(out) = copy
+            && catch_unwind(AssertUnwindSafe(|| out.send(&chunk[..read]))).is_err()
+        {
+            copy = None;
+            panicked = true;
+        }
         if keeper.add(&chunk[..read]) {
             over();
         }
+    }
+    if panicked {
+        return Err(io::Error::other("the copy function panicked"));
     }
     Ok(Kept {
         captured: keeper.finish(),

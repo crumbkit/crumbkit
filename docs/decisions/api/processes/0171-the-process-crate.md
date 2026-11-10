@@ -1,7 +1,7 @@
 # ADR-0171. The process crate
 
 - Date: 2026-11-05
-- Status: amended by ADR-0172
+- Status: amended by ADR-0172, ADR-0188 and ADR-0189
 
 ## Context
 

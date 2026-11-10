@@ -11,9 +11,41 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Recovery::Terminal` says a person must run a command in a
   terminal. Text prints a `help:` line naming the command and the terminal,
   and JSON prints `{"kind":"terminal","call":"..."}` ([behaviour/failures]).
+- crumbkit: each argument of a `commands list` row has `value_hint`, the
+  kebab-case name of clap's `ValueHint`, which is `any-path` for a `PathBuf`
+  argument and `null` when clap reports none
+  ([behaviour/help/commands-list]).
 - crumbkit-process: `RunOptions::around_spawn` runs a hook around the start
   of a run's child, which can fail after the start and have the child stopped
   ([behaviour/processes]).
+- crumbkit-process: [`Cancel`] states that any thread may cancel at any time,
+  how the run reports it, and how a tool bridges a polled flag to it
+  ([behaviour/processes]).
+- crumbkit-process: `RunOptions::stdout_copy` and `stderr_copy` give a function
+  each chunk of a stream while the capture keeps its limit
+  ([behaviour/processes]).
+- crumbkit-process: `Capture::Inherit` sends a stream to the tool's own, so a
+  run can hold an interactive step and return ([behaviour/processes]).
+- crumbkit-process: `RunOptions::report_survivors` and
+  `ChildFinished::survivors` say whether a process in the child's group outlived
+  it ([behaviour/processes]).
+- crumbkit-process: `REAP_GRACE` bounds how long a run on Unix waits for its
+  child's group to be empty ([behaviour/processes]).
+
+### Changed
+
+- crumbkit-process: on Unix a run returns once its child's group is empty,
+  for at most `REAP_GRACE` after the child exits, and on macOS kills the
+  group again while a live process is left ([behaviour/processes]).
+- crumbkit-process: breaking: `Capture::Lines` has the fields `long` and
+  `end`, so a run can skip a line over its limit with `LongLine::Skip` and
+  split on a byte other than a newline ([behaviour/processes]).
+- crumbkit-process: breaking: `Input` has the variant `File`, which gives the
+  child a file or the read end of a pipe, and no longer implements
+  `PartialEq` ([behaviour/processes]).
+- crumbkit-process: breaking: `Input::Bytes` holds a `Zeroizing<Vec<u8>>`, so
+  the bytes are cleared when the settings drop and `Debug` prints only their
+  length ([behaviour/processes]).
 
 ## [0.2.0] - 2026-11-09
 
@@ -1585,6 +1617,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Expect`]: crates/crumbkit/src/expect.rs
 [`run`]: crates/crumbkit-process/src/run.rs
 [`Escalation`]: crates/crumbkit-process/src/escalation.rs
+[`Cancel`]: crates/crumbkit-process/src/cancel.rs
 [`line_queue`]: crates/crumbkit-process/src/lines.rs
 [`start_under`]: crates/crumbkit-usage/src/recorder.rs
 [behaviour/adoption]: docs/behaviour/adoption/README.md

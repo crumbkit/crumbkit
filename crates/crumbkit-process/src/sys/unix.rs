@@ -4,24 +4,25 @@
 //! The child stays unreaped until [`Child::reap`], so its process id, which
 //! is also its group's id, cannot pass to another process while the crate
 //! may still signal it. [`Child::reap`] waits for the child without reaping
-//! it, kills what is left of its group, and only then reaps it.
+//! it, kills what is left of its group, reaps it, and waits until the group
+//! is empty.
 
 use std::io;
 use std::os::fd::AsFd;
 use std::os::unix::process::{CommandExt as _, ExitStatusExt as _};
 use std::process::{ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use rustix::event::{PollFd, PollFlags, Timespec, poll};
 use rustix::io::Errno;
 use rustix::process::{
     Pid, Signal as Raw, WaitId, WaitIdOptions, WaitIdStatus, getpgid, kill_process,
-    kill_process_group, waitid,
+    kill_process_group, test_kill_process_group, waitid,
 };
 
 #[cfg(feature = "forward")]
 use crate::forward::{listed, unlisted};
-use crate::{Scope, Signal, Status};
+use crate::{REAP_GRACE, Scope, Signal, Status};
 
 #[cfg(test)]
 mod tests;
@@ -32,6 +33,10 @@ pub(crate) use std::os::fd::AsFd as Pipe;
 /// How long a wait sleeps before it checks again on a child that job
 /// control stopped or continued, when it found no report to consume.
 const STOPPED_CHECK: Duration = Duration::from_millis(10);
+
+/// How long a reap sleeps before it kills the group again, or checks again
+/// whether the group is empty.
+const EMPTY_CHECK: Duration = Duration::from_millis(1);
 
 /// A stop on Unix sends each signal of its escalation and waits its grace
 /// before the next one.
@@ -64,6 +69,13 @@ impl Child {
             pid,
             scope,
         })
+    }
+
+    /// Returns true when another process in the group still runs. The
+    /// caller knows that the child has exited and is unreaped, so its id
+    /// still names the group.
+    pub(crate) fn others_alive(&self) -> bool {
+        self.scope == Scope::Group && others_in_group(self.pid)
     }
 
     /// Returns the child's process id.
@@ -117,9 +129,19 @@ impl Child {
         Waiter(self.pid)
     }
 
-    /// Waits until the child exits, kills what is left of its group, and
-    /// reaps the child. With [`Scope::Child`] it kills nothing, because the
-    /// group is the caller's.
+    /// Waits until the child exits, kills what is left of its group, reaps
+    /// the child, and waits until the group is empty. With [`Scope::Child`]
+    /// it kills nothing and waits for nothing else, because the group is the
+    /// caller's.
+    ///
+    /// Before the reap it kills the group again for as long as a live
+    /// process is left in it, because macOS can miss a process that is being
+    /// forked when it signals a group. After the reap it only checks the
+    /// group with signal 0, which delivers nothing, until the kernel finds no
+    /// process in it, so a killed process that waits for its new parent to
+    /// reap it is gone too. Both waits end [`REAP_GRACE`] after the child's
+    /// exit, and the reap then returns the child's status with a process of
+    /// the group still left.
     ///
     /// A child that leads a group of its own leaves the `forward` feature's
     /// list under the registry's lock before the reap, so the forwarder
@@ -129,12 +151,29 @@ impl Child {
         if self.scope == Scope::Child {
             return self.process.wait();
         }
+        let pid = self.pid;
+        let give_up = Instant::now().checked_add(REAP_GRACE);
         // The kill finds no process, or on macOS is refused with `EPERM`,
         // when the exited child is the group's only process, and then there
         // is nothing left to kill.
-        let _ = kill_process_group(self.pid, Raw::KILL);
+        until_empty(
+            give_up,
+            || {
+                let _ = kill_process_group(pid, Raw::KILL);
+            },
+            || missed_by_kill(pid),
+        );
         let process = &mut self.process;
-        unlisted(self.pid, || process.wait())
+        let status = unlisted(pid, || process.wait())?;
+        // The group's id cannot pass to another process while any process
+        // is in the group, so the check names no other group until it finds
+        // the group empty.
+        until_empty(
+            give_up,
+            || {},
+            || test_kill_process_group(pid) != Err(Errno::SRCH),
+        );
+        Ok(status)
     }
 }
 
@@ -174,6 +213,89 @@ impl Waiter {
             }
         }
     }
+}
+
+/// Returns true when a live process is in the group that the exited child
+/// `leader` leads.
+///
+/// Linux counts the unreaped leader as a member of its group, so a signal
+/// cannot tell whether anything else is there, and the check reads
+/// `/proc`.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn others_in_group(leader: Pid) -> bool {
+    let Ok(processes) = std::fs::read_dir("/proc") else {
+        return false;
+    };
+    processes.flatten().any(|process| {
+        std::fs::read(process.path().join("stat")).is_ok_and(|stat| {
+            live_in_group(
+                &String::from_utf8_lossy(&stat),
+                leader.as_raw_nonzero().get(),
+            )
+        })
+    })
+}
+
+/// Returns true when the exited child's group has a live process. macOS
+/// skips a process that has exited when it signals a group, and refuses the
+/// signal when no other process is left.
+#[cfg(target_os = "macos")]
+fn others_in_group(leader: Pid) -> bool {
+    test_kill_process_group(leader).is_ok()
+}
+
+/// Returns false.
+///
+/// RUST-10: only Linux and macOS have a checked way to tell a live member
+/// of the group from the exited leader, so another Unix reports no
+/// survivors. A check for that system replaces this when a tool needs it.
+#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
+const fn others_in_group(_leader: Pid) -> bool {
+    false
+}
+
+/// Returns true when a live process is in the group that the exited child
+/// `leader` leads after a kill of the group, which on macOS can miss a
+/// process that is being forked.
+#[cfg(target_os = "macos")]
+fn missed_by_kill(leader: Pid) -> bool {
+    others_in_group(leader)
+}
+
+/// Returns false. Linux delivers a kill of a group to a process that is
+/// being forked, and a check of `/proc` would read every process on each
+/// reap. Another Unix system gets one kill, because no check for it is
+/// tested.
+#[cfg(not(target_os = "macos"))]
+const fn missed_by_kill(_leader: Pid) -> bool {
+    false
+}
+
+/// Calls `step` and then `left` until `left` returns false or the time
+/// `give_up` passes, and sleeps for [`EMPTY_CHECK`] between the passes. A
+/// `give_up` of `None` never passes.
+fn until_empty(give_up: Option<Instant>, mut step: impl FnMut(), mut left: impl FnMut() -> bool) {
+    loop {
+        step();
+        if !left() || give_up.is_some_and(|give_up| Instant::now() >= give_up) {
+            return;
+        }
+        std::thread::sleep(EMPTY_CHECK);
+    }
+}
+
+/// Returns true when `stat`, the text of a `/proc/<id>/stat` file, is a
+/// process in `group` that has not exited. The name in that file can hold
+/// spaces and parentheses, so the fields are read after its last `)`.
+#[cfg(any(target_os = "linux", target_os = "android", test))]
+fn live_in_group(stat: &str, group: i32) -> bool {
+    let Some((_, fields)) = stat.rsplit_once(')') else {
+        return false;
+    };
+    let mut fields = fields.split_ascii_whitespace();
+    let state = fields.next();
+    let in_group = fields.nth(1).and_then(|value| value.parse().ok()) == Some(group);
+    in_group && !matches!(state, Some("Z" | "X" | "x"))
 }
 
 /// Consumes a report that the child `pid` stopped or continued, so that the

@@ -12,6 +12,51 @@ use crate::notice::Notice;
 /// run ends as [`Stopped(Cancelled)`](crate::StopReason::Cancelled). A run that
 /// starts with a cancel that is already cancelled starts no child. Clones
 /// share one state, so any clone cancels, and a cancel stays cancelled.
+///
+/// Any thread may call [`Cancel::cancel`] at any time, before, during or
+/// after a run. A cancel that arrives once the run has seen the child's exit
+/// changes nothing, and the run gives the child's own end. When the run sees
+/// a cancel and the exit together, the exit wins. Otherwise the run gives
+/// `Stopped(Cancelled)`, which a cancel just after the exit can also give.
+/// [`ChildFinished::status`](crate::ChildFinished::status) gives the child's
+/// own status in each case.
+///
+/// The run does not poll a flag of the caller's. A tool whose stop request is a flag, such
+/// as one that a signal handler sets, polls that flag on a thread of its
+/// own and calls [`Cancel::cancel`] from there. A signal handler itself must
+/// not call it, because it takes a lock. Such a tool decides what the stop
+/// means from its own flag, because a status such as `Signal(2)` also
+/// follows a signal that another process sent.
+///
+/// ```
+/// use std::process::Command;
+/// use std::sync::Arc;
+/// use std::sync::atomic::{AtomicBool, Ordering};
+/// use std::time::Duration;
+///
+/// use crumbkit_process::{Cancel, RunOptions, run};
+///
+/// fn run_until(flag: &Arc<AtomicBool>, command: Command) -> bool {
+///     let cancel = Cancel::new();
+///     let done = Arc::new(AtomicBool::new(false));
+///     let poller = std::thread::spawn({
+///         let (flag, cancel, done) = (Arc::clone(flag), cancel.clone(), Arc::clone(&done));
+///         move || {
+///             while !done.load(Ordering::Relaxed) {
+///                 if flag.load(Ordering::Relaxed) {
+///                     cancel.cancel();
+///                     return;
+///                 }
+///                 std::thread::sleep(Duration::from_millis(10));
+///             }
+///         }
+///     });
+///     let finished = run(command, &RunOptions::new().cancel(&cancel));
+///     done.store(true, Ordering::Relaxed);
+///     let _ = poller.join();
+///     finished.is_ok()
+/// }
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct Cancel(Arc<Mutex<Watched>>);
 

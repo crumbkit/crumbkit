@@ -2,15 +2,19 @@
 //! limits and a deadline, stop it when needed, and reap it.
 
 use std::fmt;
+use std::fs::File;
 use std::io;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::thread::{Builder, Scope as Threads, ScopedJoinHandle};
 use std::time::{Duration, Instant};
 
+use zeroize::Zeroizing;
+
 use crate::notice::Notice;
 use crate::{Cancel, Escalation, Group, Outcome, Scope, Signal, Status, StopReason, sys};
 
+mod finished;
 mod output;
 mod pipes;
 mod spawn;
@@ -18,8 +22,9 @@ mod spawn;
 #[cfg(test)]
 mod tests;
 
-use self::output::Keeper;
-pub use self::output::{Capture, Captured, OverLimit};
+pub use self::finished::{ChildFinished, RunError};
+pub use self::output::{Capture, Captured, LongLine, OverLimit};
+use self::output::{Keeper, OutputCopy};
 use self::pipes::{Ends, Kept};
 use self::spawn::AroundSpawn;
 pub use self::spawn::{Spawn, Spawned};
@@ -29,8 +34,16 @@ pub use self::spawn::{Spawn, Spawned};
 /// holds the run no longer than this.
 pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
 
+/// How long after the child exits a run on Unix waits for the child's group
+/// to be empty. On macOS the run also kills the group again while a live
+/// process is left. A process of the group that outlasts it is left behind
+/// and the run goes on to read the pipes: one that waits for a parent that
+/// never reaps it, or a live one that the tool may not signal, such as a
+/// setuid program.
+pub const REAP_GRACE: Duration = Duration::from_secs(1);
+
 /// What the child reads on its standard input.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Default)]
 #[non_exhaustive]
 pub enum Input {
     /// The null device, so the child reads the end of its input at once.
@@ -38,11 +51,39 @@ pub enum Input {
     Null,
     /// These bytes, which a thread of the run writes and then closes. The
     /// thread stops early when the child closes its input.
-    Bytes(Vec<u8>),
+    ///
+    /// The buffer is cleared when it drops, so a secret given to a child
+    /// does not stay in the tool's memory after the settings are gone.
+    /// Each clone of the settings holds and clears its own copy. The
+    /// clearing covers this buffer only: it misses copies that the caller
+    /// made before and the pipe's buffer in the kernel. `Debug` prints the
+    /// length alone.
+    Bytes(Zeroizing<Vec<u8>>),
     /// The tool's own standard input. On Unix a child in a group of its own
     /// that reads a terminal is stopped by SIGTTIN, so a terminal suits
     /// only [`Scope::Child`].
     Inherit,
+    /// A file or the read end of a pipe, which a pipe becomes with
+    /// `File::from(OwnedFd::from(reader))` on Unix and
+    /// `File::from(OwnedHandle::from(reader))` on Windows. The child gets a duplicate that
+    /// shares the file's position, so it reads from the current position
+    /// and moves the position that the caller and any later run see. The
+    /// caller's `File` stays open.
+    File(Arc<File>),
+}
+
+impl fmt::Debug for Input {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Null => f.write_str("Null"),
+            Self::Bytes(bytes) => f
+                .debug_tuple("Bytes")
+                .field(&format_args!("{} bytes", bytes.len()))
+                .finish(),
+            Self::Inherit => f.write_str("Inherit"),
+            Self::File(file) => f.debug_tuple("File").field(file).finish(),
+        }
+    }
 }
 
 /// The settings of one [`run`]: the child's input, what it keeps of each
@@ -64,6 +105,9 @@ pub struct RunOptions {
     escalation: Escalation,
     scope: Scope,
     around_spawn: Option<AroundSpawn>,
+    stdout_copy: Option<OutputCopy>,
+    stderr_copy: Option<OutputCopy>,
+    report_survivors: bool,
 }
 
 impl RunOptions {
@@ -179,6 +223,46 @@ impl RunOptions {
         self
     }
 
+    /// Calls `copy` with each chunk of standard output as the run reads it,
+    /// whatever the capture keeps, so a tool can show the output while the
+    /// run keeps a bounded copy. See [`RunOptions::stderr_copy`].
+    #[must_use]
+    pub fn stdout_copy(mut self, copy: impl Fn(&[u8]) + Send + Sync + 'static) -> Self {
+        self.stdout_copy = Some(OutputCopy::new(copy));
+        self
+    }
+
+    /// Calls `copy` with each chunk of standard error as the run reads it,
+    /// whatever the capture keeps.
+    ///
+    /// A chunk can end in the middle of a line or of a UTF-8 character. The
+    /// run does not read a stream with [`Capture::Inherit`], so its function
+    /// receives nothing.
+    /// Each stream's function runs on that stream's reader thread, so the
+    /// two streams can interleave. A function that blocks holds the reader:
+    /// the child then waits on its full pipe, and the run waits for the
+    /// function past the time bound that [`run`] states. A function that
+    /// panics gets no more chunks, the run reads the rest of the stream so
+    /// the child runs on, and the run ends with [`RunError::Run`].
+    #[must_use]
+    pub fn stderr_copy(mut self, copy: impl Fn(&[u8]) + Send + Sync + 'static) -> Self {
+        self.stderr_copy = Some(OutputCopy::new(copy));
+        self
+    }
+
+    /// Makes the run check, when the child ends by itself and before the run
+    /// kills what is left of the group, whether any other process in the
+    /// group still runs. [`ChildFinished::survivors`] gives the answer. The
+    /// run kills those processes as it always does.
+    ///
+    /// The check is off by default because on Linux it reads every process
+    /// in `/proc`. It reports on [`Scope::Group`] on Linux and macOS alone.
+    #[must_use]
+    pub const fn report_survivors(mut self) -> Self {
+        self.report_survivors = true;
+        self
+    }
+
     /// Tells the queue of each stream delivered as lines that the run began
     /// to stop its child.
     fn stopping(&self) {
@@ -194,93 +278,6 @@ impl RunOptions {
     }
 }
 
-/// How a run's child ended and what the run kept of its output.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ChildFinished {
-    outcome: Outcome,
-    status: Option<Status>,
-    stdout: Captured,
-    stderr: Captured,
-    first_stdout: Option<Duration>,
-}
-
-impl ChildFinished {
-    /// Returns how the child ended.
-    #[must_use]
-    pub const fn outcome(&self) -> Outcome {
-        self.outcome
-    }
-
-    /// Returns the child's own status as the run reaped it, or `None` when
-    /// the run started no child because its cancel was already cancelled.
-    ///
-    /// The status tells how the child ended even when the run stopped it.
-    /// A run whose cancel stopped a child that SIGINT ended gives
-    /// `Outcome::Stopped(StopReason::Cancelled)` and the status `Status::Signal(2)`,
-    /// whose [`Status::shell_code`] is 130. A child that handles the signal
-    /// and exits with a code of its own gives that code.
-    #[must_use]
-    pub const fn status(&self) -> Option<Status> {
-        self.status
-    }
-
-    /// Returns what the run kept of standard output.
-    #[must_use]
-    pub const fn stdout(&self) -> &Captured {
-        &self.stdout
-    }
-
-    /// Returns what the run kept of standard error.
-    #[must_use]
-    pub const fn stderr(&self) -> &Captured {
-        &self.stderr
-    }
-
-    /// Returns what the run kept of standard output and standard error.
-    #[must_use]
-    pub fn into_output(self) -> (Captured, Captured) {
-        (self.stdout, self.stderr)
-    }
-
-    /// Returns the time from the child's start to the first byte of its
-    /// standard output, or `None` when it printed none or the run discarded
-    /// standard output.
-    #[must_use]
-    pub const fn first_stdout(&self) -> Option<Duration> {
-        self.first_stdout
-    }
-}
-
-/// A run that could not start its child or follow it to its end.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum RunError {
-    /// The program does not exist or cannot be started, or the hook of
-    /// [`RunOptions::around_spawn`] returned this error. No child is left
-    /// running.
-    Start(io::Error),
-    /// Waiting for the child, reaping it, reading its output or starting a
-    /// thread failed after it started. The child was stopped and reaped.
-    Run(io::Error),
-}
-
-impl fmt::Display for RunError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Start(_) => "cannot start the program",
-            Self::Run(_) => "cannot follow the program to its end",
-        })
-    }
-}
-
-impl std::error::Error for RunError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Start(error) | Self::Run(error) => Some(error),
-        }
-    }
-}
-
 /// Runs `command` with the settings in `options` and returns how it ended and
 /// what it printed.
 ///
@@ -289,15 +286,17 @@ impl std::error::Error for RunError {
 /// the cancel is cancelled, or a stream whose policy stops the child passes
 /// its limit. In the last three cases it stops the child with the
 /// [`Escalation`]. Once the child has exited, the run kills what is left of
-/// its group, reaps it, and reads its pipes for at most [`DRAIN_GRACE`]
-/// more. A run whose deadline passes after the child exited gives the
+/// its group, reaps it, waits on Unix until the group is empty for at most
+/// [`REAP_GRACE`] after the exit, and reads its pipes for at most
+/// [`DRAIN_GRACE`] more. A run whose deadline passes after the child exited gives the
 /// child's own exit.
 ///
 /// On Unix, for a child that the tool may signal, a run takes at most the
 /// time to its deadline, plus the graces of its escalation, plus
-/// [`DRAIN_GRACE`], plus the time that a hook of
-/// [`RunOptions::around_spawn`] takes. Every thread that it starts is joined before it
-/// returns. On Windows a stop ends the job at once, and a reader waits for
+/// [`REAP_GRACE`], plus [`DRAIN_GRACE`], plus the time that a hook of
+/// [`RunOptions::around_spawn`] takes, plus the time that a function of
+/// [`RunOptions::stdout_copy`] or [`RunOptions::stderr_copy`] blocks. Every
+/// thread that it starts is joined before it returns. On Windows a stop ends the job at once, and a reader waits for
 /// its pipe to close, which ending the job causes for every process in the
 /// job, so a process outside the job that holds a pipe holds the run.
 ///
@@ -313,9 +312,11 @@ impl std::error::Error for RunError {
 ///
 /// # Errors
 ///
-/// Returns [`RunError::Start`] when the program cannot be started or a hook
-/// of [`RunOptions::around_spawn`] fails, and
-/// [`RunError::Run`] when waiting for, reaping or reading the child fails.
+/// Returns [`RunError::Start`] when the program cannot be started, a hook
+/// of [`RunOptions::around_spawn`] fails, or an [`Input::File`] cannot be
+/// duplicated, and
+/// [`RunError::Run`] when waiting for, reaping or reading the child fails
+/// or a copy function panics.
 /// The child is stopped and reaped on every path.
 pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, RunError> {
     let _end = EndLines(options);
@@ -326,17 +327,19 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
             stdout: Captured::default(),
             stderr: Captured::default(),
             first_stdout: None,
+            survivors: false,
         });
     }
     let input = match &options.stdin {
         Input::Null => Stdio::null(),
         Input::Inherit => Stdio::inherit(),
         Input::Bytes(_) => Stdio::piped(),
+        Input::File(file) => Stdio::from(file.try_clone().map_err(RunError::Start)?),
     };
     command
         .stdin(input)
-        .stdout(options.stdout.stdio())
-        .stderr(options.stderr.stdio());
+        .stdout(output_stdio(&options.stdout, options.stdout_copy.as_ref()))
+        .stderr(output_stdio(&options.stderr, options.stderr_copy.as_ref()));
     let spawned = spawn::start(command, options.scope, options.around_spawn.as_ref())
         .map_err(RunError::Start)?;
     let (mut group, started) = spawned.into_parts();
@@ -353,14 +356,26 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
         };
         follow(threads, &mut *unwind.group, &notice, &ends, options)
     });
-    let (outcome, status, stdout, stderr) = followed.map_err(RunError::Run)?;
+    let (outcome, status, stdout, stderr, survivors) = followed.map_err(RunError::Run)?;
     Ok(ChildFinished {
         outcome,
         status: Some(status),
         first_stdout: stdout.first.map(|first| first - started),
+        survivors,
         stdout: stdout.captured,
         stderr: stderr.captured,
     })
+}
+
+/// Returns the standard stream for an output with `capture` and `copy`. A
+/// copy needs a pipe even when the capture keeps nothing. An inherited
+/// stream stays the tool's own, so a copy of it receives nothing.
+fn output_stdio(capture: &Capture, copy: Option<&OutputCopy>) -> Stdio {
+    if copy.is_some() && !matches!(capture, Capture::Inherit) {
+        Stdio::piped()
+    } else {
+        capture.stdio()
+    }
 }
 
 /// Ends the line queues of a run when the run returns, on every path.
@@ -411,7 +426,7 @@ fn follow<'scope>(
     notice: &'scope Notice,
     ends: &'scope Ends,
     options: &'scope RunOptions,
-) -> io::Result<(Outcome, Status, Kept, Kept)> {
+) -> io::Result<(Outcome, Status, Kept, Kept, bool)> {
     let pipes = (group.take_stdin(), group.take_stdout(), group.take_stderr());
     let exit = group.waiter();
     let waiter = match Builder::new().spawn_scoped(threads, move || {
@@ -439,6 +454,8 @@ fn follow<'scope>(
     } else {
         control(group, notice, options)
     };
+    let survivors =
+        options.report_survivors && failure.is_none() && stopped.is_none() && group.others_alive();
     let status = group.reap();
     // The child is gone. The queues drop lines from the middle of the drain,
     // so the reader still has time to read the rest of the pipe and `lost`
@@ -468,6 +485,7 @@ fn follow<'scope>(
         status,
         stdout.transpose()?.unwrap_or_else(unread),
         stderr.transpose()?.unwrap_or_else(unread),
+        survivors,
     ))
 }
 
@@ -488,17 +506,17 @@ fn start_pipes<'scope>(
     let over = || notice.set(|flags| flags.over_limit = true);
     if let Some(stdout) = stdout {
         let keeper = Keeper::new(&options.stdout);
-        started.stdout = Some(
-            Builder::new()
-                .spawn_scoped(threads, move || pipes::read(stdout, ends, keeper, over))?,
-        );
+        let copy = options.stdout_copy.as_ref();
+        started.stdout = Some(Builder::new().spawn_scoped(threads, move || {
+            pipes::read(stdout, ends, keeper, copy, over)
+        })?);
     }
     if let Some(stderr) = stderr {
         let keeper = Keeper::new(&options.stderr);
-        started.stderr = Some(
-            Builder::new()
-                .spawn_scoped(threads, move || pipes::read(stderr, ends, keeper, over))?,
-        );
+        let copy = options.stderr_copy.as_ref();
+        started.stderr = Some(Builder::new().spawn_scoped(threads, move || {
+            pipes::read(stderr, ends, keeper, copy, over)
+        })?);
     }
     if let (Some(stdin), Input::Bytes(bytes)) = (stdin, &options.stdin) {
         started.stdin =

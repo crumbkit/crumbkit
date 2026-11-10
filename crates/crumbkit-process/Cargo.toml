@@ -11,6 +11,11 @@ keywords = ["process", "child", "subprocess", "timeout", "signal"]
 categories = ["os::unix-apis", "os::windows-apis"]
 include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
+[dependencies]
+# zeroize clears `Input::Bytes` when it drops, because a child's input can hold
+# a secret, and safe code cannot stop the compiler removing such a write.
+zeroize.workspace = true
+
 [target.'cfg(unix)'.dependencies]
 # rustix starts the child in a process group of its own, signals the group,
 # waits for the child without reaping it, and polls the child's pipes, all

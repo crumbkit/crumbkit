@@ -12,6 +12,10 @@ use crate::testing::{gone, kill, pid_in, sh};
 use crate::{Group, Scope, Signal};
 
 mod around_spawn;
+mod input_file;
+mod output_copy;
+mod reap;
+mod survivors;
 
 /// Keeps up to 1 MiB of each stream whole and stops the child past it.
 const WHOLE: Capture = Capture::Whole {
@@ -77,15 +81,55 @@ fn a_program_that_cannot_start_is_a_start_error() {
 
 #[test]
 fn stdin_bytes_reach_the_child_and_end_with_the_end_of_its_input() {
-    let finished = run_sh("cat", &kept().stdin(Input::Bytes(b"given\n".to_vec())));
+    let finished = run_sh(
+        "cat",
+        &kept().stdin(Input::Bytes(b"given\n".to_vec().into())),
+    );
 
     assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(0)));
     assert_eq!(finished.stdout().bytes(), b"given\n");
 }
 
+/// Returns the inode of the child's standard output under `capture`, which
+/// the child prints on standard error.
+fn inode_of_stdout(capture: Capture) -> u64 {
+    inode_under(&RunOptions::new().stdout(capture).stderr(WHOLE))
+}
+
+/// Returns the inode of the child's standard output under `options`.
+fn inode_under(options: &RunOptions) -> u64 {
+    let finished = run_sh("ls -iL /dev/fd/3 3>&1 >&2", options);
+    assert_eq!(finished.first_stdout(), None);
+    let printed = String::from_utf8_lossy(finished.stderr().bytes()).into_owned();
+    printed.split_whitespace().next().unwrap().parse().unwrap()
+}
+
+/// Returns the inode of the test's own standard output.
+fn own_inode() -> u64 {
+    use std::os::unix::fs::MetadataExt as _;
+    std::fs::metadata("/dev/fd/1").unwrap().ino()
+}
+
+#[test]
+fn an_inherited_stream_is_the_tools_own_and_the_run_keeps_nothing_of_it() {
+    assert_eq!(inode_of_stdout(Capture::Inherit), own_inode());
+}
+
+#[test]
+fn a_kept_stream_is_a_pipe_of_its_own_and_not_the_tools() {
+    assert_ne!(inode_of_stdout(WHOLE), own_inode());
+}
+
+#[test]
+fn the_debug_form_of_input_bytes_shows_their_length_and_not_the_bytes() {
+    let held = Input::Bytes(b"secret".to_vec().into());
+
+    assert_eq!(format!("{held:?}"), "Bytes(6 bytes)");
+}
+
 #[test]
 fn a_child_that_never_reads_its_large_input_still_ends_the_run() {
-    let input = Input::Bytes(vec![b'x'; 4 << 20]);
+    let input = Input::Bytes(vec![b'x'; 4 << 20].into());
     let started = Instant::now();
 
     let finished = run_sh("exit 0", &kept().stdin(input));
@@ -331,6 +375,35 @@ fn a_run_with_a_cancel_that_is_already_cancelled_starts_no_child() {
     assert_eq!(finished.outcome(), Outcome::Stopped(StopReason::Cancelled));
     assert_eq!(finished.status(), None);
     assert_eq!(finished.stdout().bytes(), b"");
+}
+
+#[test]
+fn a_cancel_from_a_thread_that_polls_a_flag_stops_the_child_and_says_so() {
+    let flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let cancel = Cancel::new();
+    let poller = std::thread::spawn({
+        let (flag, cancel) = (Arc::clone(&flag), cancel.clone());
+        move || {
+            while !flag.load(std::sync::atomic::Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            cancel.cancel();
+            cancel.cancel();
+        }
+    });
+    let setter = std::thread::spawn({
+        let flag = Arc::clone(&flag);
+        move || {
+            std::thread::sleep(Duration::from_millis(200));
+            flag.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+    });
+
+    let finished = run_sh("sleep 30", &kept().cancel(&cancel));
+
+    setter.join().unwrap();
+    poller.join().unwrap();
+    assert_eq!(finished.outcome(), Outcome::Stopped(StopReason::Cancelled));
 }
 
 /// Returns a cancel that is cancelled 200 ms from now, and the thread that

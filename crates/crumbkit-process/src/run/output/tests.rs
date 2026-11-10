@@ -1,4 +1,4 @@
-use super::{Capture, Keeper, OverLimit, SLACK};
+use super::{Capture, Keeper, LongLine, OverLimit, SLACK};
 use crate::{Lines, line_queue};
 
 /// Returns what `capture` kept of `chunks`, and whether any chunk asked to
@@ -83,6 +83,8 @@ fn lines(line: usize, total: usize) -> (Capture, Lines) {
         line,
         total,
         over: OverLimit::Stop,
+        long: LongLine::Over,
+        end: b'\n',
     };
     (capture, lines)
 }
@@ -142,6 +144,8 @@ fn a_stream_of_lines_into_a_sink_never_asks_to_stop() {
         line: 2,
         total: 1024,
         over: OverLimit::Sink,
+        long: LongLine::Over,
+        end: b'\n',
     };
 
     let (_, over, stopped) = keep(&capture, &[b"ab\nabc\nd\n"]);
@@ -149,4 +153,125 @@ fn a_stream_of_lines_into_a_sink_never_asks_to_stop() {
     assert!(over);
     assert!(!stopped);
     assert_eq!(received(&capture, &lines), [b"ab"]);
+}
+
+/// Returns a capture of lines within `line` and `total` bytes that ends each
+/// line at `end` and treats a long line as `long` says, and the queue's
+/// other side.
+fn skipping(line: usize, total: usize, end: u8, long: LongLine) -> (Capture, Lines) {
+    let (queue, lines) = line_queue(16);
+    let capture = Capture::Lines {
+        queue,
+        line,
+        total,
+        over: OverLimit::Stop,
+        long,
+        end,
+    };
+    (capture, lines)
+}
+
+/// Returns what `lines` holds, once its keeper has finished.
+fn drained(lines: &Lines) -> Vec<Vec<u8>> {
+    std::iter::from_fn(|| lines.recv()).collect()
+}
+
+#[test]
+fn a_skipped_long_line_is_dropped_and_the_next_lines_still_arrive() {
+    let (capture, lines) = skipping(3, 1024, b'\n', LongLine::Skip);
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(!keeper.add(b"one\ntoo long\ntwo\n"));
+    let kept = keeper.finish();
+    capture.end();
+
+    assert_eq!(drained(&lines), [b"one".to_vec(), b"two".to_vec()]);
+    assert!(kept.long_line());
+    assert!(!kept.over_limit());
+}
+
+#[test]
+fn a_long_line_split_across_chunks_is_skipped_whole() {
+    let (capture, lines) = skipping(3, 1024, b'\n', LongLine::Skip);
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(!keeper.add(b"abcd"));
+    assert!(!keeper.add(b"efgh"));
+    assert!(!keeper.add(b"ij\nnext\nok\n"));
+    let kept = keeper.finish();
+    capture.end();
+
+    assert_eq!(drained(&lines), [b"ok".to_vec()]);
+    assert!(kept.long_line());
+}
+
+#[test]
+fn a_skipped_line_with_no_end_pushes_nothing_when_the_stream_ends() {
+    let (capture, lines) = skipping(3, 1024, b'\n', LongLine::Skip);
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(!keeper.add(b"one\ntoo long"));
+    let kept = keeper.finish();
+    capture.end();
+
+    assert_eq!(drained(&lines), [b"one".to_vec()]);
+    assert!(kept.long_line());
+    assert!(!kept.over_limit());
+}
+
+#[test]
+fn a_skipped_line_still_counts_towards_the_total_limit() {
+    let (capture, lines) = skipping(3, 8, b'\n', LongLine::Skip);
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(!keeper.add(b"abcd"));
+    assert!(keeper.add(b"efghij\n"));
+    let kept = keeper.finish();
+    capture.end();
+
+    assert_eq!(drained(&lines), Vec::<Vec<u8>>::new());
+    assert!(kept.over_limit());
+}
+
+#[test]
+fn a_line_at_the_limit_is_not_skipped_and_no_long_line_is_reported() {
+    let (capture, lines) = skipping(3, 1024, b'\n', LongLine::Skip);
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(!keeper.add(b"abc\n"));
+    let kept = keeper.finish();
+    capture.end();
+
+    assert_eq!(drained(&lines), [b"abc".to_vec()]);
+    assert!(!kept.long_line());
+}
+
+#[test]
+fn a_custom_end_byte_splits_the_stream_and_a_newline_stays_in_the_line() {
+    let (capture, lines) = skipping(16, 1024, 0, LongLine::Over);
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(!keeper.add(b"a\nb\0c\0last"));
+    let kept = keeper.finish();
+    capture.end();
+
+    assert_eq!(
+        drained(&lines),
+        [b"a\nb".to_vec(), b"c".to_vec(), b"last".to_vec()]
+    );
+    assert!(!kept.over_limit());
+}
+
+#[test]
+fn a_long_line_with_the_over_policy_still_takes_the_stream_over_its_limit() {
+    let (capture, lines) = skipping(3, 1024, b'\n', LongLine::Over);
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(keeper.add(b"too long\nnext\n"));
+    let kept = keeper.finish();
+    capture.end();
+
+    assert_eq!(drained(&lines), Vec::<Vec<u8>>::new());
+    assert!(kept.over_limit());
+    assert!(kept.long_line());
 }

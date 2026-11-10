@@ -178,6 +178,10 @@ tempfile = { version = "3.27.0", default-features = false }
 # process group and polls its pipes with rustix on Unix (ADR-0171), and adds
 # its `process` and `event` features.
 rustix = { version = "1.1.5", default-features = false }
+# zeroize clears the bytes that crumbkit-process writes to a child's standard
+# input when the run's settings drop, which safe code cannot do without the
+# compiler removing the write. No default features, and `alloc` gives `Vec`.
+zeroize = { version = "1.9.1", default-features = false, features = ["alloc"] }
 
 # process-wrap runs crumbkit-process's child in a job object on Windows
 # (ADR-0171). It starts the child suspended and adds it to the job before it

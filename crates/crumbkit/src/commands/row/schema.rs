@@ -46,6 +46,10 @@ fn argument_schema() -> Schema {
                 "type": "array",
                 "items": { "type": "string" },
             },
+            "value_hint": {
+                "description": "The kind of value that the argument takes, as the kebab-case name of clap's `ValueHint`, such as `file-path`, `dir-path` or `any-path`. It is `any-path` for an argument that parses to a `PathBuf` and declares no hint, and null when clap reports no hint.",
+                "type": ["string", "null"],
+            },
             "help": {
                 "description": "The one-line help: the argument's `help`, or its `long_help` when it has no `help`.",
                 "type": ["string", "null"],
@@ -72,6 +76,7 @@ fn argument_schema() -> Schema {
             "many",
             "defaults",
             "possible_values",
+            "value_hint",
             "help",
             "long_help",
             "global",
