@@ -581,4 +581,12 @@ fn commands_list_names_from_as_the_argument_that_can_stand_in_for_the_ids_of_boo
         .find(|argument| argument["name"] == "<ID>")
         .unwrap();
     assert_eq!(ids["one_of"], serde_json::json!(["--from"]));
+    let from = show["arguments"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|argument| argument["name"] == "--from")
+        .unwrap();
+    assert_eq!(from["value_hint"], "file-path");
+    assert_eq!(ids["value_hint"], serde_json::Value::Null);
 }

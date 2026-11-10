@@ -308,7 +308,7 @@ pub(crate) struct BooksShow {
     pub(crate) ids: Vec<u32>,
 
     /// Read the ids from this file, one id per line
-    #[arg(long, value_name = "FILE")]
+    #[arg(long, value_name = "FILE", value_hint = clap::ValueHint::FilePath)]
     pub(crate) from: Option<PathBuf>,
 }
 

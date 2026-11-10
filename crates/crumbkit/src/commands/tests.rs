@@ -15,6 +15,7 @@ mod arguments;
 mod exits;
 mod goals;
 mod no_result;
+mod value_hint;
 
 /// A row type for the leaf whose columns the export lists.
 #[derive(Serialize, JsonSchema)]
@@ -280,74 +281,6 @@ fn a_branch_lists_the_global_arguments_of_the_commands_above_it_once_on_its_firs
     assert_eq!(
         argument_names(&rows, "shelf books show"),
         ["<ID>", "--from"]
-    );
-}
-
-#[test]
-fn an_argument_holds_what_its_help_shows() {
-    let rows = listed(&["books"]);
-
-    assert_eq!(
-        row(&rows, "shelf books list")["arguments"],
-        json!([
-            {
-                "name": "--limit",
-                "short": "-n",
-                "value_names": ["N"],
-                "required": false,
-                "many": false,
-                "defaults": ["4"],
-                "possible_values": [],
-                "help": "Print at most N books",
-                "long_help": "Print at most N books.\n\nThe default is 4.",
-                "global": false,
-                "one_of": [],
-            },
-            {
-                "name": "--form",
-                "short": null,
-                "value_names": ["form"],
-                "required": false,
-                "many": true,
-                "defaults": [],
-                "possible_values": ["novel", "short stories"],
-                "help": null,
-                "long_help": null,
-                "global": false,
-                "one_of": [],
-            },
-        ])
-    );
-    assert_eq!(
-        row(&rows, "shelf books show")["arguments"],
-        json!([
-            {
-                "name": "<ID>",
-                "short": null,
-                "value_names": ["ID"],
-                "required": false,
-                "many": true,
-                "defaults": [],
-                "possible_values": [],
-                "help": null,
-                "long_help": null,
-                "global": false,
-                "one_of": ["--from"],
-            },
-            {
-                "name": "--from",
-                "short": null,
-                "value_names": ["FILE"],
-                "required": false,
-                "many": false,
-                "defaults": [],
-                "possible_values": [],
-                "help": null,
-                "long_help": null,
-                "global": false,
-                "one_of": ["<ID>"],
-            },
-        ])
     );
 }
 

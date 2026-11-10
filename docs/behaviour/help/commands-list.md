@@ -45,6 +45,12 @@ Every row has every field except `goals` and `prints_no_result`, with
 `null` or an empty list for what a command lacks, so a program reads every
 row the same way.
 
+- Each entry of `arguments` has `value_hint`, the kebab-case name of the
+  clap `ValueHint` of the argument, such as `file-path`, `dir-path` or
+  `any-path`, and `null` when clap reports none. clap reports `any-path` for
+  an argument that parses to a `PathBuf`, so such an argument has a hint
+  without any attribute, and `#[arg(value_hint = ValueHint::FilePath)]`
+  narrows it. A program can use the hint to offer a file picker.
 - `effects` holds the leaf's effects, or `null` when it declares none
   ([effects](../effects/README.md#declaring-effects)).
 - `writes` holds the write guards, or `null` for a read-only command or one
