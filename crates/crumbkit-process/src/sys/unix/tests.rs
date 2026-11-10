@@ -98,3 +98,33 @@ fn a_process_in_another_group_is_not_in_it() {
 fn a_name_with_spaces_and_a_parenthesis_does_not_move_the_fields() {
     assert!(super::live_in_group("41 (a) Z 9 (b) R 1 7 7 0", 7));
 }
+
+#[test]
+fn a_wait_for_an_empty_group_stops_as_soon_as_nothing_is_left() {
+    let mut steps = 0;
+    let mut checks = 0;
+
+    super::until_empty(
+        None,
+        || steps += 1,
+        || {
+            checks += 1;
+            checks < 3
+        },
+    );
+
+    assert_eq!((steps, checks), (3, 3));
+}
+
+#[test]
+fn a_wait_for_an_empty_group_gives_up_when_its_time_passes() {
+    let started = Instant::now();
+    let give_up = started + Duration::from_millis(50);
+    let mut steps = 0;
+
+    super::until_empty(Some(give_up), || steps += 1, || true);
+
+    assert!(Instant::now() >= give_up);
+    assert!(started.elapsed() < Duration::from_secs(1));
+    assert!(steps > 1, "the wait stepped once and stopped");
+}

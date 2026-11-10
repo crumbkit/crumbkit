@@ -34,6 +34,14 @@ pub use self::spawn::{Spawn, Spawned};
 /// holds the run no longer than this.
 pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
 
+/// How long after the child exits a run on Unix waits for the child's group
+/// to be empty. On macOS the run also kills the group again while a live
+/// process is left. A process of the group that outlasts it is left behind
+/// and the run goes on to read the pipes: one that waits for a parent that
+/// never reaps it, or a live one that the tool may not signal, such as a
+/// setuid program.
+pub const REAP_GRACE: Duration = Duration::from_secs(1);
+
 /// What the child reads on its standard input.
 #[derive(Clone, Default)]
 #[non_exhaustive]
@@ -278,13 +286,14 @@ impl RunOptions {
 /// the cancel is cancelled, or a stream whose policy stops the child passes
 /// its limit. In the last three cases it stops the child with the
 /// [`Escalation`]. Once the child has exited, the run kills what is left of
-/// its group, reaps it, and reads its pipes for at most [`DRAIN_GRACE`]
-/// more. A run whose deadline passes after the child exited gives the
+/// its group, reaps it, waits on Unix until the group is empty for at most
+/// [`REAP_GRACE`] after the exit, and reads its pipes for at most
+/// [`DRAIN_GRACE`] more. A run whose deadline passes after the child exited gives the
 /// child's own exit.
 ///
 /// On Unix, for a child that the tool may signal, a run takes at most the
 /// time to its deadline, plus the graces of its escalation, plus
-/// [`DRAIN_GRACE`], plus the time that a hook of
+/// [`REAP_GRACE`], plus [`DRAIN_GRACE`], plus the time that a hook of
 /// [`RunOptions::around_spawn`] takes, plus the time that a function of
 /// [`RunOptions::stdout_copy`] or [`RunOptions::stderr_copy`] blocks. Every
 /// thread that it starts is joined before it returns. On Windows a stop ends the job at once, and a reader waits for

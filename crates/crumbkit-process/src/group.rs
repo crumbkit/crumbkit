@@ -53,7 +53,8 @@ pub enum Signal {
 /// On Unix the child stays unreaped until [`Group::reap`], so its process
 /// id cannot pass to another process while a signal could still name it.
 /// [`Group::reap`] waits for the child without reaping it, kills what is
-/// left of the group, and only then reaps the child. A process that left
+/// left of the group, reaps the child, and waits until the group is empty
+/// for at most [`REAP_GRACE`](crate::REAP_GRACE). A process that left
 /// the group, such as one that called `setsid`, is not stopped.
 ///
 /// A group that is dropped before [`Group::reap`] kills the child and every
@@ -163,7 +164,9 @@ impl Group {
     }
 
     /// Waits until the child exits, kills what is left in the group's
-    /// scope, reaps the child and returns its exit status. A second call
+    /// scope, reaps the child and returns its exit status. On Unix it then
+    /// waits until the group is empty for at most
+    /// [`REAP_GRACE`](crate::REAP_GRACE) after the exit. A second call
     /// returns the same status. It waits as long as the child runs, so a
     /// caller that wants the child gone first sends [`Signal::Kill`].
     ///
@@ -183,7 +186,8 @@ impl Group {
 
 impl Drop for Group {
     /// Kills every process in the group's scope and reaps the child, unless
-    /// [`Group::reap`] already reaped it.
+    /// [`Group::reap`] already reaped it. On Unix the drop can therefore
+    /// block for [`REAP_GRACE`](crate::REAP_GRACE).
     fn drop(&mut self) {
         if self.status.is_none() {
             let _ = self.child.signal(Signal::Kill);
