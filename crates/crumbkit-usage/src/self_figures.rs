@@ -20,11 +20,11 @@
 //!
 //! ```text
 //! 11 runs in 1 session since 4 Oct: person 11.
-//! COMMAND     RUNS  HELP_PAGES  HELP_BEFORE  FAILED  P95_OUT_BYTES
-//! shelf       0     1           0            0       -
-//! books       0     1           0            0       -
-//! books list  3     1           0            0       512
-//! books show  5     0           3            2       86
+//! COMMAND     RUNS  HELP_PAGES  HELP_BEFORE  FAILED  P50_OUT_BYTES  P95_OUT_BYTES
+//! shelf       0     1           0            0       -              -
+//! books       0     1           0            0       -              -
+//! books list  3     1           0            0       512            512
+//! books show  5     0           3            2       86             86
 //! ```
 //!
 //! `cargo crumbkit weigh --usage` runs it to join each command's figures to
@@ -88,10 +88,18 @@ impl crumbkit::Row for FiguresRow {
         "help_pages",
         "help_before",
         "failed",
+        "p50_out_bytes",
         "p95_out_bytes",
     ];
-    const LONG_COLUMNS: &'static [&'static str] =
-        &["refused", "p95_ms", "typed_full", "typed_all", "typed_long"];
+    const LONG_COLUMNS: &'static [&'static str] = &[
+        "refused",
+        "p50_ms",
+        "p95_ms",
+        "cut_short",
+        "typed_full",
+        "typed_all",
+        "typed_long",
+    ];
 }
 
 /// Returns the figures of each command in the usage log of the tool whose
@@ -132,7 +140,7 @@ fn figures_from(
     now: SystemTime,
     limit: Option<usize>,
 ) -> Listing<FiguresRow, UsageSummary> {
-    let (report, summary) = summarize(tool_name, tool, log, since, now);
+    let (report, summary) = summarize(tool_name, tool, log, since, now, |_| {});
     let rows = report
         .commands
         .iter()

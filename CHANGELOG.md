@@ -31,9 +31,19 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it ([behaviour/processes]).
 - crumbkit-process: `REAP_GRACE` bounds how long a run on Unix waits for its
   child's group to be empty ([behaviour/processes]).
+- crumbkit-usage: `self runs list`, mounted with `SelfRuns`, `runs` and
+  `SELF_RUNS_LIST`, prints each run in the usage log grouped by session, as
+  the `<tool>/self-runs-list/v1` document ([behaviour/usage-log/report]).
+- crumbkit-usage: the figures of `self figures list` and of
+  `self usage --json --full` give each command `p50_ms`, `p50_out_bytes`
+  and `cut_short`, the runs whose output a listing or stream cut short
+  ([behaviour/usage-log/report]).
 
 ### Changed
 
+- crumbkit-usage: `self usage`, `self figures list` and `self runs list`
+  skip and count a record whose trace id is not 32 lowercase hex digits or
+  whose span ids are not 16 ([behaviour/usage-log/report]).
 - crumbkit-process: on Unix a run returns once its child's group is empty,
   for at most `REAP_GRACE` after the child exits, and on macOS kills the
   group again while a live process is left ([behaviour/processes]).

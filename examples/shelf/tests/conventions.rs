@@ -14,14 +14,15 @@ use crumbkit_test::{
 };
 use shelf::{Cli, TOOL};
 
-/// The reason that the example check skips the examples of `self usage` and
-/// `self figures list`.
+/// The reason that the example check skips the examples of `self usage`,
+/// `self figures list` and `self runs list`.
 const DAILY: &str = "The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.";
 
 /// shelf's opt-outs from crumbkit's conventions, which every check reads.
 const ALLOW: &[Allow] = &[
     Allow::new(Rule::Examples, "self usage", DAILY),
     Allow::new(Rule::Examples, "self figures list", DAILY),
+    Allow::new(Rule::Examples, "self runs list", DAILY),
     Allow::new(
         Rule::PersonalAliases,
         "",

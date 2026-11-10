@@ -113,3 +113,30 @@ fn a_caller_is_known_only_when_the_log_writes_it() {
     assert!(!caller("ada@example.com"));
     assert!(!caller(""));
 }
+
+#[test]
+fn a_record_whose_trace_ids_are_lowercase_hex_of_the_right_length_is_known() {
+    let tool = tree();
+    let mut child = run("books show", &[]);
+    child.parent = Some("b7ad6b7169203331".to_owned());
+
+    assert!(known(&tool, &run("books show", &[])));
+    assert!(known(&tool, &child));
+}
+
+#[test]
+fn a_record_whose_trace_run_or_parent_id_is_not_lowercase_hex_of_the_right_length_is_not_known() {
+    let tool = tree();
+    let mut trace = run("books show", &[]);
+    trace.trace = "4BF92F3577B34DA6A3CE929D0E0E4736".to_owned();
+    let mut short = run("books show", &[]);
+    short.trace = "4bf92f3577b34da6".to_owned();
+    let mut span = run("books show", &[]);
+    span.run = "sk_live_4eC39HqL".to_owned();
+    let mut parent = run("books show", &[]);
+    parent.parent = Some("00f067aa0ba902b".to_owned());
+
+    for entry in [trace, short, span, parent] {
+        assert!(!known(&tool, &entry), "{entry:?}");
+    }
+}

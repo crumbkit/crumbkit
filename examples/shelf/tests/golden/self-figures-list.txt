@@ -1,6 +1,6 @@
 11 runs in 1 session since [..]: unknown 11.
-COMMAND     RUNS  HELP_PAGES  HELP_BEFORE  FAILED  P95_OUT_BYTES
-shelf       0     1           0            0       -
-books       0     1           0            0       -
-books list  3     1           0            0       448
-books show  5     0           3            2       86
+COMMAND     RUNS  HELP_PAGES  HELP_BEFORE  FAILED  P50_OUT_BYTES  P95_OUT_BYTES
+shelf       0     1           0            0       -              -
+books       0     1           0            0       -              -
+books list  3     1           0            0       235            448
+books show  5     0           3            2       74             86

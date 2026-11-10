@@ -66,7 +66,7 @@ fn the_summary_line_of_a_log_without_runs_names_only_the_day() {
 fn the_summary_line_says_how_many_records_were_skipped() {
     assert_eq!(
         summary(2, 1, 1_002).to_string(),
-        "2 runs in 1 session since 30 Sep: person 2. 1,002 records were skipped because they name a command, flag, code or caller that the tool does not write."
+        "2 runs in 1 session since 30 Sep: person 2. 1,002 records were skipped because they name a command, flag, code, caller or trace id that the tool does not write."
     );
 }
 
@@ -239,8 +239,11 @@ fn a_finding_row_carries_the_figures_of_its_command() {
             "help_before": 0,
             "refused": 1,
             "failed": 0,
+            "p50_ms": 10,
             "p95_ms": 10,
+            "p50_out_bytes": 25_000,
             "p95_out_bytes": 25_000,
+            "cut_short": 0,
             "typed_full": 1,
             "typed_all": 1,
             "typed_long": 0,

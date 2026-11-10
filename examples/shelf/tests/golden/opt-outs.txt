@@ -1,4 +1,4 @@
-shelf has 3 opt-outs from the conventions and sets 1 budget.
+shelf has 4 opt-outs from the conventions and sets 1 budget.
 
 examples/run: shelf self usage
   Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.
@@ -6,6 +6,11 @@ examples/run: shelf self usage
   Cost: The command's output weight counts 0 bytes, so its path weight is too low.
 
 examples/run: shelf self figures list
+  Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.
+  Cost: The examples are not run, so help can show an example that fails.
+  Cost: The command's output weight counts 0 bytes, so its path weight is too low.
+
+examples/run: shelf self runs list
   Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.
   Cost: The examples are not run, so help can show an example that fails.
   Cost: The command's output weight counts 0 bytes, so its path weight is too low.

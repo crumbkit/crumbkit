@@ -1,4 +1,4 @@
-use super::{HEAVY_OUTPUT, SLOW, Tally, p95};
+use super::{HEAVY_OUTPUT, SLOW, Tally, percentile};
 use crate::report::entry::Entry;
 use crate::report::{Count, Figures, Finding, Kind, Report};
 
@@ -235,10 +235,60 @@ fn the_95th_percentile_is_the_smallest_value_that_95_percent_are_no_larger_than(
     let mut twenty: Vec<u64> = (1..=20).rev().collect();
     let mut twenty_one: Vec<u64> = (1..=21).collect();
 
-    assert_eq!(p95(&mut []), None);
-    assert_eq!(p95(&mut [7]), Some(7));
-    assert_eq!(p95(&mut twenty), Some(19));
-    assert_eq!(p95(&mut twenty_one), Some(20));
+    assert_eq!(percentile(&mut [], 95), None);
+    assert_eq!(percentile(&mut [7], 95), Some(7));
+    assert_eq!(percentile(&mut twenty, 95), Some(19));
+    assert_eq!(percentile(&mut twenty_one, 95), Some(20));
+}
+
+#[test]
+fn the_median_is_the_smallest_value_that_half_the_values_are_no_larger_than() {
+    let mut four: Vec<u64> = vec![40, 10, 30, 20];
+    let mut five: Vec<u64> = (1..=5).rev().collect();
+
+    assert_eq!(percentile(&mut [], 50), None);
+    assert_eq!(percentile(&mut [7], 50), Some(7));
+    assert_eq!(percentile(&mut four, 50), Some(20));
+    assert_eq!(percentile(&mut five, 50), Some(3));
+}
+
+#[test]
+fn a_command_s_figures_give_the_median_of_its_wall_time_and_output() {
+    let entries: Vec<Entry> = [(5, 100), (30, 300), (10, 200)]
+        .into_iter()
+        .enumerate()
+        .map(|(at, (ms, bytes))| {
+            let mut entry = Entry::run("a", at as u64, "books list");
+            entry.ms = ms;
+            entry.out_bytes = Some(bytes);
+            entry
+        })
+        .collect();
+
+    let report = report(&entries);
+
+    let figures = figures(&report, "books list");
+    assert_eq!(
+        (figures.p50_ms, figures.p50_out_bytes),
+        (Some(10), Some(200))
+    );
+}
+
+#[test]
+fn a_run_whose_output_was_truncated_counts_as_cut_short() {
+    let mut cut = Entry::run("a", 1, "books list");
+    cut.truncated = true;
+
+    let report = report(&[cut]);
+
+    assert_eq!(figures(&report, "books list").cut_short, 1);
+}
+
+#[test]
+fn a_run_whose_output_was_not_truncated_does_not_count_as_cut_short() {
+    let report = report(&[Entry::run("a", 1, "books list")]);
+
+    assert_eq!(figures(&report, "books list").cut_short, 0);
 }
 
 /// Returns the kind, command and runs of each finding of `report`, in order.

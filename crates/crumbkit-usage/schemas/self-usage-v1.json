@@ -155,6 +155,12 @@
       "description": "The figures of one command since the start of the report.",
       "type": "object",
       "properties": {
+        "cut_short": {
+          "description": "The runs whose output a listing or stream cut short, because it\nshowed fewer rows than its total or the output budget stopped it.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
         "exits": {
           "description": "The runs that exited with each code from 3, which the tool declares,\nin code order.",
           "type": "array",
@@ -177,6 +183,24 @@
         "help_pages": {
           "description": "The runs that printed the command's help page.",
           "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "p50_ms": {
+          "description": "The median of the runs' wall time in milliseconds, by the\nnearest-rank method, or null when every run printed help.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "p50_out_bytes": {
+          "description": "The median of the bytes that the runs wrote to standard output, by\nthe nearest-rank method, or null when no run printed a result.",
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0
         },
@@ -235,8 +259,11 @@
         "help_before",
         "refused",
         "failed",
+        "p50_ms",
         "p95_ms",
+        "p50_out_bytes",
         "p95_out_bytes",
+        "cut_short",
         "typed_full",
         "typed_all",
         "typed_long",
@@ -393,7 +420,7 @@
           "type": "string"
         },
         "skipped": {
-          "description": "The records that the report left out, because they named a command,\nflag, code or caller that the tool does not write.",
+          "description": "The records that the report left out, because they named a command,\nflag, code, caller or trace id that the tool does not write.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0

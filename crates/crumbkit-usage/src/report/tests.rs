@@ -33,7 +33,7 @@ fn line(at: u64, command: &str) -> String {
 /// seconds after the Unix epoch.
 fn report(log: &[u8], since: u64) -> Report {
     let mut tally = Tally::new(2);
-    read(Cursor::new(log), since * 1000, &tree(), &mut tally);
+    read(Cursor::new(log), since * 1000, &tree(), &mut tally, |_| {});
     tally.report()
 }
 
@@ -126,6 +126,7 @@ fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
         0,
         &tree(),
         &mut tally,
+        |_| {},
     );
 
     assert_eq!(tally.report(), report(log.as_bytes(), 0));
@@ -278,8 +279,8 @@ proptest! {
     ) {
         let mut tally = Tally::new(2);
         let tool = tree();
-        read(Cursor::new(log_of(&runs[..split])), 0, &tool, &mut tally);
-        read(Cursor::new(log_of(&runs[split..])), 0, &tool, &mut tally);
+        read(Cursor::new(log_of(&runs[..split])), 0, &tool, &mut tally, |_| {});
+        read(Cursor::new(log_of(&runs[split..])), 0, &tool, &mut tally, |_| {});
 
         prop_assert_eq!(tally.report(), report(log_of(&runs).as_bytes(), 0));
     }

@@ -14,3 +14,5 @@ shelf self               Review shelf's own use
 shelf self usage         Report the patterns in shelf's usage log where callers waste effort
 shelf self figures       Work with the figures of each command in shelf's usage log
 shelf self figures list  List the figures of each command in shelf's usage log
+shelf self runs          Work with each run in shelf's usage log
+shelf self runs list     List each run in shelf's usage log, grouped by session

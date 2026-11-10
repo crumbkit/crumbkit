@@ -1,0 +1,18 @@
+List each run in shelf's usage log, grouped by session
+
+Usage: shelf self runs list [OPTIONS]
+
+Options:
+      --since <DURATION>  How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]
+      --log <FILE>        Read this usage log instead of the tool's own
+      --limit <N>         Print at most this many rows [default: 25]
+      --all               Print every row
+  -h, --help              Print help (see more with '--help')
+
+Examples:
+  shelf self runs list
+  shelf self runs list --since 1d --all
+
+Effects: read-only, closed-world.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `shelf self runs list --help` describes them.
+Next: shelf self runs list --help explains each column.

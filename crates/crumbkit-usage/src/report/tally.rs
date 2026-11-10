@@ -75,6 +75,8 @@ struct Command {
     all: u64,
     /// The runs that typed `--long`.
     long: u64,
+    /// The runs whose output a listing or stream cut short.
+    cut_short: u64,
     /// The runs that took at least [`SLOW`] and spent at least half their
     /// wall time waiting on another system.
     waiting: u64,
@@ -149,6 +151,7 @@ impl Tally {
         command.full += u64::from(entry.typed("--full"));
         command.all += u64::from(entry.typed("--all"));
         command.long += u64::from(entry.typed("--long"));
+        command.cut_short += u64::from(entry.truncated);
     }
 
     /// Counts a record that the reader skipped.
@@ -164,9 +167,12 @@ impl Tally {
         let mut findings: Vec<Finding> = self.found.into_findings().collect();
         let mut commands = Vec::with_capacity(self.commands.len());
         for (path, mut command) in self.commands {
-            // `p95` sorts the values, which the findings then count from.
-            let p95_ms = p95(&mut command.ms);
-            let p95_out_bytes = p95(&mut command.out_bytes);
+            // `percentile` sorts the values, which the findings then count
+            // from.
+            let p50_ms = percentile(&mut command.ms, 50);
+            let p95_ms = percentile(&mut command.ms, 95);
+            let p50_out_bytes = percentile(&mut command.out_bytes, 50);
+            let p95_out_bytes = percentile(&mut command.out_bytes, 95);
             let at_least = |values: &[u64], limit: u64| {
                 (values.len() - values.partition_point(|value| *value < limit)) as u64
             };
@@ -202,8 +208,11 @@ impl Tally {
                 nearest: most_first(command.nearest),
                 failed: command.failed,
                 exits: command.exits.into_iter().collect(),
+                p50_ms,
                 p95_ms,
+                p50_out_bytes,
                 p95_out_bytes,
+                cut_short: command.cut_short,
                 full: command.full,
                 all: command.all,
                 long: command.long,
@@ -240,11 +249,12 @@ fn most_first(counts: BTreeMap<String, u64>) -> Vec<Count> {
     counts
 }
 
-/// Returns the 95th percentile of `values` by the nearest-rank method: the
-/// smallest value that at least 95 percent of the values are no larger
-/// than. It sorts `values` in place, and returns `None` when it is empty.
-fn p95(values: &mut [u64]) -> Option<u64> {
+/// Returns the `percent` percentile of `values` by the nearest-rank method:
+/// the smallest value that at least `percent` percent of the values are no
+/// larger than, such as the median for 50. It sorts `values` in place, and
+/// returns `None` when it is empty.
+fn percentile(values: &mut [u64], percent: usize) -> Option<u64> {
     values.sort_unstable();
-    let rank = (values.len() * 95).div_ceil(100);
+    let rank = (values.len() * percent).div_ceil(100);
     values.get(rank.checked_sub(1)?).copied()
 }

@@ -18,8 +18,8 @@ pub use crate::books::{
     UNREADABLE_IDS_FILE,
 };
 use crate::cli::{
-    AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, SchemasCommand,
-    SelfCommand,
+    AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, RunsCommand,
+    SchemasCommand, SelfCommand,
 };
 pub use crate::cli::{Cli, TOOL};
 
@@ -138,6 +138,13 @@ where
                 let result =
                     Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&mut run, &TOOL, &args));
                 let document = crumbkit_usage::SELF_FIGURES_LIST;
+                crumbkit::finish(run, document, result)
+            }
+            SelfCommand::Runs {
+                command: RunsCommand::List(args),
+            } => {
+                let result = Ok::<_, crumbkit::Error>(crumbkit_usage::runs(&mut run, &TOOL, &args));
+                let document = crumbkit_usage::SELF_RUNS_LIST;
                 crumbkit::finish(run, document, result)
             }
         },

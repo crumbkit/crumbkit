@@ -5,6 +5,7 @@ Usage: shelf self [OPTIONS] <COMMAND>
 Commands:
   usage    Report the patterns in shelf's usage log where callers waste effort
   figures  Work with the figures of each command in shelf's usage log
+  runs     Work with each run in shelf's usage log
 
 Options:
       --json

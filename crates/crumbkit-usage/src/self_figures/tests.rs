@@ -17,7 +17,7 @@ fn log() -> String {
         line(
             200,
             "books list",
-            &json!({"flags": ["--all"], "out_bytes": 500}),
+            &json!({"flags": ["--all"], "out_bytes": 500, "truncated": true}),
         ),
         line(
             100,
@@ -56,13 +56,16 @@ fn each_command_in_the_log_has_a_row_of_its_figures_in_the_order_of_its_path() {
         rows,
         [
             json!({"command": "shelf", "runs": 0, "help_pages": 1, "help_before": 0,
-                "refused": 0, "failed": 0, "p95_ms": null, "p95_out_bytes": null,
+                "refused": 0, "failed": 0, "p50_ms": null, "p95_ms": null,
+                "p50_out_bytes": null, "p95_out_bytes": null, "cut_short": 0,
                 "typed_full": 0, "typed_all": 0, "typed_long": 0, "exits": []}),
             json!({"command": "books list", "runs": 2, "help_pages": 0, "help_before": 0,
-                "refused": 0, "failed": 1, "p95_ms": 10, "p95_out_bytes": 500,
+                "refused": 0, "failed": 1, "p50_ms": 10, "p95_ms": 10,
+                "p50_out_bytes": 100, "p95_out_bytes": 500, "cut_short": 1,
                 "typed_full": 0, "typed_all": 1, "typed_long": 0, "exits": []}),
             json!({"command": "books show", "runs": 1, "help_pages": 0, "help_before": 1,
-                "refused": 0, "failed": 0, "p95_ms": 10, "p95_out_bytes": 90,
+                "refused": 0, "failed": 0, "p50_ms": 10, "p95_ms": 10,
+                "p50_out_bytes": 90, "p95_out_bytes": 90, "cut_short": 0,
                 "typed_full": 0, "typed_all": 0, "typed_long": 0, "exits": []}),
         ]
     );

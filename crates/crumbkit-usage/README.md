@@ -54,24 +54,26 @@ to a server and the time it waited for them, with an [`Extension`] type and
 and a [`Label`] is one value from the tool's own fixed vocabulary, such
 as the route template `/books/{id}`.
 
-A tool adds `self usage` with [`SelfUsage`] and [`findings`], and
-`self figures list` with [`SelfFigures`] and [`figures`]. It passes the
-result to crumbkit's `finish` with the document [`SELF_USAGE`] or
-[`SELF_FIGURES_LIST`]. Their rows are [`FindingRow`] and [`FiguresRow`],
-and [`UsageSummary`] sums the runs read. shelf's [`cli.rs`] and
-[`lib.rs`] show both.
+A tool adds `self usage` with [`SelfUsage`] and [`findings`],
+`self figures list` with [`SelfFigures`] and [`figures`], and
+`self runs list` with [`SelfRuns`] and [`runs`]. It passes the result to
+crumbkit's `finish` with the document [`SELF_USAGE`],
+[`SELF_FIGURES_LIST`] or [`SELF_RUNS_LIST`]. Their rows are
+[`FindingRow`], [`FiguresRow`] and [`RunRow`], and [`UsageSummary`] sums
+the runs read. shelf's [`cli.rs`] and [`lib.rs`] show all three.
 
 ## Where to read more
 
 - [`start`] describes the log, and [`Extension`] the tool's own facts.
-- [`SelfUsage`] and [`SelfFigures`] describe the two commands.
-- The [schemas] describe the `<tool>/usage/v1`, `<tool>/self-usage/v1`
-  and `<tool>/self-figures-list/v1` documents.
+- [`SelfUsage`], [`SelfFigures`] and [`SelfRuns`] describe the three
+  commands.
+- The [schemas] describe the `<tool>/usage/v1`, `<tool>/self-usage/v1`,
+  `<tool>/self-figures-list/v1` and `<tool>/self-runs-list/v1` documents.
 - The [usage log docs], [trace context docs] and [usage report docs]
-  describe the log, its trace context and the two commands, and the
+  describe the log, its trace context and the three commands, and the
   [run observer docs] describe how crumbkit reports each run to the log.
-  [ADR-0029], [ADR-0030], [ADR-0034], [ADR-0095], [ADR-0144] and
-  [ADR-0145] record why they work this way.
+  [ADR-0029], [ADR-0030], [ADR-0034], [ADR-0095], [ADR-0144],
+  [ADR-0145] and [ADR-0190] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -93,6 +95,10 @@ option.
 [`findings`]: src/self_usage.rs
 [`SelfFigures`]: src/self_figures.rs
 [`figures`]: src/self_figures.rs
+[`SELF_RUNS_LIST`]: src/self_runs.rs
+[`RunRow`]: src/self_runs.rs
+[`SelfRuns`]: src/self_runs.rs
+[`runs`]: src/self_runs.rs
 [`cli.rs`]: ../../examples/shelf/src/cli.rs
 [`lib.rs`]: ../../examples/shelf/src/lib.rs
 [schemas]: schemas
@@ -102,6 +108,7 @@ option.
 [ADR-0095]: ../../docs/decisions/api/usage/0095-text-hand-over-own-signals-and-menu.md
 [ADR-0144]: ../../docs/decisions/api/usage/0144-a-tool-adds-value-free-facts-to-the-usage-record.md
 [ADR-0145]: ../../docs/decisions/api/usage/0145-self-usage-finds-slow-commands-that-mostly-wait.md
+[ADR-0190]: ../../docs/decisions/api/usage/0190-self-runs-list-shows-each-sessions-runs-in-order.md
 [usage log docs]: ../../docs/behaviour/usage-log/README.md
 [trace context docs]: ../../docs/behaviour/usage-log/trace-context.md
 [usage report docs]: ../../docs/behaviour/usage-log/report.md

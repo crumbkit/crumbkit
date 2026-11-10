@@ -93,7 +93,9 @@ fn a_field_that_the_reader_does_not_know_is_ignored() {
 
 #[test]
 fn a_line_without_a_field_that_every_record_has_is_skipped() {
-    for field in ["schema", "at", "ms", "caller", "session", "args"] {
+    for field in [
+        "schema", "at", "ms", "caller", "session", "args", "trace", "run",
+    ] {
         let mut line = refused();
         line.as_object_mut().unwrap().remove(field);
 
@@ -124,4 +126,17 @@ fn a_line_that_is_not_json_or_was_cut_short_is_skipped() {
     assert!(Entry::parse(b"not json\n").is_none());
     assert!(Entry::parse(&whole[..whole.len() / 2]).is_none());
     assert!(Entry::parse(&[0xff, 0xfe, b'\n']).is_none());
+}
+
+#[test]
+fn a_line_of_the_log_reads_its_trace_ids_and_a_line_without_a_parent_reads_none() {
+    let mut line = refused();
+    let entry = Entry::parse(&bytes(&line)).unwrap();
+    line["parent"] = json!("b7ad6b7169203331");
+    let child = Entry::parse(&bytes(&line)).unwrap();
+
+    assert_eq!(entry.trace, "4bf92f3577b34da6a3ce929d0e0e4736");
+    assert_eq!(entry.run, "00f067aa0ba902b7");
+    assert_eq!(entry.parent, None);
+    assert_eq!(child.parent.as_deref(), Some("b7ad6b7169203331"));
 }
