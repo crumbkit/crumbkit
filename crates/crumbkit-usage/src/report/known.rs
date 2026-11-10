@@ -2,9 +2,10 @@
 //! write, which the reader makes before it adds a record to the report.
 //!
 //! The usage log is a file that anyone with the user's rights can edit, so
-//! a line may hold any text. The report prints command paths, flags, codes
-//! and callers, and the check keeps every value that the writer could not
-//! have produced out of the report (ADR-0029).
+//! a line may hold any text. The report prints command paths, flags, codes,
+//! callers, and the trace, run and parent span ids, and the check keeps
+//! every value that the writer could not have produced out of the report
+//! (ADR-0029).
 
 use clap::{Arg, Command};
 

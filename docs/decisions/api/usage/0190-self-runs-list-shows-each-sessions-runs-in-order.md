@@ -1,7 +1,7 @@
 # ADR-0190. `self runs list` shows each session's runs in order
 
 - Date: 2026-11-10
-- Status: accepted
+- Status: accepted. The Context credits ADR-0034 with the rule that the report prints no hash, but that rule comes from ADR-0029, which writes the command line only as a keyed hash. This record departs from ADR-0034's rule that the report holds at most one record in memory, because `self runs list` holds every run in its window.
 
 ## Context
 

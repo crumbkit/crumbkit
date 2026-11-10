@@ -119,7 +119,7 @@ command, such as its runs, failures, medians and 95th percentiles, and the `Next
 line points there. A command without a finding has no row, so `--full`
 gives no figures for it.
 
-Two figures need a definition.
+Four groups of figures need a definition.
 
 - `help_before` counts the help pages that a session read since its
   previous run that printed no help page. The count is credited to the
