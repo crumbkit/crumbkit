@@ -104,4 +104,4 @@ formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
 Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064,
-ADR-0065, ADR-0103, ADR-0120, ADR-0168, ADR-0169, ADR-0196.
+ADR-0065, ADR-0103, ADR-0120, ADR-0168, ADR-0169, ADR-0198.

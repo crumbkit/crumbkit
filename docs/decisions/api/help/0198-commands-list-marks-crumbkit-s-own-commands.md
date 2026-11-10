@@ -1,4 +1,4 @@
-# ADR-0196. `commands list` marks crumbkit's own commands
+# ADR-0198. `commands list` marks crumbkit's own commands
 
 - Date: 2026-11-10
 - Status: accepted. It amends ADR-0026, whose rows did not say who provides a command.
@@ -13,7 +13,7 @@ top-level group name, so a tool's own command under one of those groups,
 such as a tool's `self doctor`, is classed as crumbkit's.
 
 The tool owns its command tree: each tool mounts the `commands`, `schemas`,
-`self`, `skills` and `aliases` groups in its own clap types, and crumbkit
+`self`, `skills`, `completion` and `aliases` groups in its own clap types, and crumbkit
 never mounts them. The document that a leaf declares is the one place in
 the tool record where crumbkit's code, rather than the tool's, decides what
 the command is.
@@ -24,7 +24,8 @@ the command is.
   crates call where they define their documents. `COMMANDS_LIST`,
   `SCHEMAS_LIST`, `SCHEMAS_SHOW`, `SELF_USAGE`, `SELF_FIGURES_LIST`,
   `SELF_RUNS_LIST`, `SELF_RUNS_EXPORT`, `SKILLS_INSTALL`, `SKILLS_CHECK`,
-  `SKILLS_PRINT` and `ALIASES_LIST` are marked. The mark survives
+  `SKILLS_PRINT`, `COMPLETION_INSTALL`, `COMPLETION_CHECK`,
+  `COMPLETION_PRINT` and `ALIASES_LIST` are marked. The mark survives
   `untyped`, so a leaf's document keeps it.
 - Every `commands list` row gains `built_in`, a boolean that is always
   present. It is `true` for a command whose leaf declares a marked document

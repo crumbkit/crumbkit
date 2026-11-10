@@ -1,4 +1,4 @@
-# ADR-0195. A program marks its runs, and the reports can leave them out
+# ADR-0197. A program marks its runs, and the reports can leave them out
 
 - Date: 2026-11-10
 - Status: accepted. It amends ADR-0029 with a new record field and one warning, ADR-0034 with a filter, and ADR-0079, whose crumbkit warnings all started with `warning: <tool> left out `.

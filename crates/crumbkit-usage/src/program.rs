@@ -1,6 +1,6 @@
 //! The name of the program that started a run, which the program gives in
 //! the tool's `<TOOL>_PROGRAM` variable, such as `SHELF_PROGRAM=flightdeck`
-//! (ADR-0195).
+//! (ADR-0197).
 
 use schemars::JsonSchema;
 use serde::Serialize;

@@ -115,7 +115,8 @@ pub const COMPLETION_INSTALL: Document<Listing<InstallRow>> = Document::new(
     1,
     "What install did with the shell's completion file: written, unchanged, skipped or failed.",
 )
-.when_empty("no home directory to install into; set HOME");
+.when_empty("no home directory to install into; set HOME")
+.built_in();
 
 /// The document that `completion check` prints: the row of the shell's
 /// completion file, which the text lists only when the file is missing,
@@ -128,7 +129,8 @@ pub const COMPLETION_CHECK: Document<Listing<CheckRow>> = Document::new(
     "Whether the shell's completion file holds the script that install writes: current, linked, missing, differs or unreadable.",
 )
 .when_empty("no home directory to check; set HOME")
-.only_problems();
+.only_problems()
+.built_in();
 
 /// The document that `completion print` prints: the shell's registration
 /// script. Its schema is `crates/crumbkit/schemas/completion-print-v1.json`.
@@ -138,7 +140,8 @@ pub const COMPLETION_PRINT: Document<Prose<Script>> = Document::new(
     1,
     "The shell's registration script for the tool's completion.",
 )
-.always_print_first();
+.always_print_first()
+.built_in();
 
 /// The arguments of `<tool> completion install`: the shell, and whether to
 /// replace a file or a link that install did not write.

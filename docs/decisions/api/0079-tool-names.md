@@ -1,7 +1,7 @@
 # ADR-0079. The tool's name in place of crumbkit's
 
 - Date: 2026-10-17
-- Status: amended by ADR-0186 and ADR-0195
+- Status: amended by ADR-0186 and ADR-0197
 - Supersedes: ADR-0001, ADR-0007, ADR-0046 and ADR-0058, which it amends
 - Missed: ADR-0001, ADR-0046 and ADR-0058 gave crumbkit's own codes, the failure document and the output budget variable the name `crumbkit` in every tool's output, so a tool's users had to learn the name of a library that they never chose.
 

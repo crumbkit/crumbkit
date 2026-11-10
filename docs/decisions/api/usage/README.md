@@ -21,4 +21,4 @@ children, and the report that `self usage` reads from the log.
 - [ADR-0145. `self usage` finds slow commands that mostly wait](0145-self-usage-finds-slow-commands-that-mostly-wait.md)
 - [ADR-0190. `self runs list` shows each session's runs in order](0190-self-runs-list-shows-each-sessions-runs-in-order.md)
 - [ADR-0191. `self runs export` prints the usage log after a run](0191-self-runs-export-prints-the-usage-log-after-a-position.md)
-- [ADR-0195. A program marks its runs, and the reports can leave them out](0195-a-program-marks-its-runs-and-the-reports-can-leave-them-out.md)
+- [ADR-0197. A program marks its runs, and the reports can leave them out](0197-a-program-marks-its-runs-and-the-reports-can-leave-them-out.md)

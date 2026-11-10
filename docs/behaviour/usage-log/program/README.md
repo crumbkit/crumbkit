@@ -26,7 +26,7 @@ The program sets the variable only on the runs that it starts for its own
 purposes. A run that a person starts through the program carries no
 variable, so every report counts it as the person's.
 
-Why: ADR-0195, ADR-0029, ADR-0079.
+Why: ADR-0197, ADR-0029, ADR-0079.
 
 ## A value that is not a program name
 
@@ -53,7 +53,7 @@ counted with no sign of why. crumbkit-test's example checks ignore the
 warning, because only warnings that start with `warning: <tool> left out `
 fail them.
 
-Why: ADR-0195.
+Why: ADR-0197.
 
 ## Leaving a program's runs out of the reports
 
@@ -77,4 +77,4 @@ in `SHELF_PROGRAM` and in an argument of a run that a program marked, and
 checks that no line holds either and that the marked run's line holds only
 the program's name.
 
-Why: ADR-0195, ADR-0034.
+Why: ADR-0197, ADR-0034.

@@ -117,3 +117,11 @@ fn commands_list_and_the_schemas_documents_are_marked_as_crumbkit_s_own() {
     assert!(crate::schemas::SCHEMAS_LIST.is_built_in());
     assert!(crate::schemas::SCHEMAS_SHOW.is_built_in());
 }
+
+#[cfg(feature = "complete")]
+#[test]
+fn the_completion_documents_are_marked_as_crumbkit_s_own() {
+    assert!(crate::completion::COMPLETION_INSTALL.is_built_in());
+    assert!(crate::completion::COMPLETION_CHECK.is_built_in());
+    assert!(crate::completion::COMPLETION_PRINT.is_built_in());
+}

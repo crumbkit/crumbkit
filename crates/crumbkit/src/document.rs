@@ -155,7 +155,7 @@ impl<T> Document<T> {
     ///
     /// It is hidden because only crumbkit's crates call it, where they
     /// define their documents. A tool never marks its own documents
-    /// (ADR-0196).
+    /// (ADR-0198).
     #[doc(hidden)]
     #[must_use]
     pub const fn built_in(mut self) -> Self {

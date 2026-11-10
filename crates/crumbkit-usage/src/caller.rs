@@ -54,7 +54,7 @@ pub(super) fn detect() -> Caller {
 /// run that never reaches `parse` reads no variable. A variable that holds
 /// a value other than a program name prints a one-line warning on standard
 /// error then, before the tool prints anything, and never on the thread
-/// that answers a signal (ADR-0195). This module owns that environment read
+/// that answers a signal (ADR-0197). This module owns that environment read
 /// and that warning (RUST-4).
 pub(super) fn program(tool: ToolName) -> Option<Program> {
     #[expect(
@@ -99,7 +99,7 @@ impl Mark {
     /// Returns the line that a run of the tool named `tool` prints on
     /// standard error when its mark was refused, or `None` otherwise. The
     /// line names the variable and the rule, and never the value, which may
-    /// hold anything (ADR-0195).
+    /// hold anything (ADR-0197).
     fn warning(&self, tool: ToolName) -> Option<String> {
         matches!(self, Self::Refused).then(|| {
             format!(
