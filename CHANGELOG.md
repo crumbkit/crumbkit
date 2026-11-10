@@ -5,7 +5,7 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
+## [0.3.2](https://github.com/crumbkit/crumbkit/compare/v0.3.1...v0.3.2) - 2026-11-10
 ### Added
 
 - crumbkit-usage: a program marks the runs it starts with `<TOOL>_PROGRAM`,
