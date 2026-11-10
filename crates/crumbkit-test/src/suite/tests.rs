@@ -4,8 +4,10 @@ use clap::Command;
 use crumbkit::Tool;
 
 use super::{Check, Suite};
+#[cfg(unix)]
+use crate::Examples;
 use crate::testing::panic_message;
-use crate::{Allow, Budgets, Examples, Rule};
+use crate::{Allow, Budgets, Rule};
 
 /// Returns a tool whose one problem is that help shows a second name for
 /// `books`.

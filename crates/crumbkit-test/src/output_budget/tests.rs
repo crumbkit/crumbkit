@@ -1,5 +1,7 @@
 use super::{Ran, judge, judge_text};
+#[cfg(unix)]
 use crumbkit::help::Help;
+#[cfg(unix)]
 use crumbkit::tool::Failures;
 
 /// Returns a run that exited with `code` and printed `stdout` and `stderr`.
