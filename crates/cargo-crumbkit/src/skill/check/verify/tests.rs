@@ -28,7 +28,9 @@ fn positional(value: &str, many: bool) -> Argument {
 fn command(path: &str, arguments: Vec<Argument>) -> Command {
     Command {
         path: path.to_owned(),
+        about: None,
         arguments,
+        goals: Vec::new(),
     }
 }
 

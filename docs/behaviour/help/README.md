@@ -7,7 +7,8 @@ pages in this directory cover [goal headings](headings/README.md),
 [leaf examples and columns](examples.md),
 [`commands list`](commands-list.md), the
 [command reference](reference.md), [help weight](weight.md), the
-[skill check](skill-check/README.md) and the [help checks](checks.md).
+[skill check](skill-check/README.md), the [skill draft](skill-draft/README.md)
+and the [help checks](checks.md).
 
 ## Lines crumbkit adds to a help page
 

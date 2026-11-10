@@ -1,0 +1,19 @@
+Write the generated sections of a tool's SKILL.md from its commands and exported usage
+
+Usage: cargo crumbkit skill draft [OPTIONS] --bin <NAME>
+
+Options:
+      --bin <NAME>    Build this binary of the current workspace and draft its skill from its commands
+      --skill <FILE>  Draft this Markdown file [default: skill/SKILL.md in the binary's package]
+      --usage <DIR>   Rank the most-used commands from the exported usage files (*.jsonl) under this directory
+      --top <N>       List at most this many commands in the most-used section [default: 10]
+      --check         Write nothing, and exit with 1 when a draft would change a section
+  -h, --help          Print help (see more with '--help')
+
+Examples:
+  cargo crumbkit skill draft --bin shelf --skill tests/fixtures/shelf-skill-drafted.md --usage tests/fixtures/shelf-usage-export --check
+  cargo crumbkit skill draft --bin shelf --skill tests/fixtures/shelf-skill-drafted.md --check --json
+
+Effects: additive, idempotent, closed-world.
+Global flags: --json, --fields <FIELD>, --full. `cargo crumbkit skill draft --help` describes them.
+Next: cargo crumbkit skill draft --help explains each column.

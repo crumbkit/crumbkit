@@ -160,6 +160,45 @@ fn a_skill_file_that_cannot_be_read_names_the_file_and_hints_at_another() {
 }
 
 #[test]
+fn every_failure_of_skill_draft_names_its_code_what_failed_and_what_to_change() {
+    let cases = [
+        (
+            SkillError::Unclosed {
+                path: PathBuf::from("skill/SKILL.md"),
+                section: "jobs",
+                line: 12,
+            },
+            "crumbkit::skill::unclosed_section",
+            "the jobs section that starts on line 12 of skill/SKILL.md has no end marker",
+            "add the line <!-- /crumbkit:generated jobs --> where the section ends",
+        ),
+        (
+            SkillError::WriteFailed {
+                path: PathBuf::from("skill/SKILL.md"),
+                error: not_found(),
+            },
+            "crumbkit::skill::write_failed",
+            "the skill file skill/SKILL.md cannot be written",
+            "make the file's directory writable, or pass --skill another file",
+        ),
+        (
+            SkillError::UsageUnreadable {
+                path: PathBuf::from("usage/a.jsonl"),
+                error: not_found(),
+            },
+            "crumbkit::usage::unreadable",
+            "the usage at usage/a.jsonl cannot be read",
+            "make the path readable, or pass --usage another directory",
+        ),
+    ];
+
+    for (error, code, message, hint) in cases {
+        assert_eq!(crumbkit::Spelling::COLONS.spell(error.code()), code);
+        assert_eq!(rendered(&error), (message.to_owned(), hint.to_owned()));
+    }
+}
+
+#[test]
 fn a_failure_to_build_or_run_the_tool_keeps_its_code_and_message_in_weigh_docs_and_skill_check() {
     let tool = || ToolError::NoBinary {
         bin: "shelf".to_owned(),

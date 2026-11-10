@@ -26,7 +26,8 @@ its reasons.
   [leaf examples and columns](help/examples.md),
   [`commands list`](help/commands-list.md), the
   [command reference](help/reference.md), [help weight](help/weight.md),
-  the [skill check](help/skill-check/README.md) and the
+  the [skill check](help/skill-check/README.md), the
+  [skill draft](help/skill-draft/README.md) and the
   [help checks](help/checks.md).
 - [Effects](effects/README.md): effects, dry runs and confirmation,
   [pickers](effects/pickers.md) and [write guards](effects/write-guards.md).

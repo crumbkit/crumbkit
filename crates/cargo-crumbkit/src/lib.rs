@@ -9,7 +9,9 @@
 //! [weigh docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/weight.md
 //! [command reference docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/reference.md
 //! [skill check docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/skill-check/README.md
-//! [ADR-0193]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0193-skill-check.md
+//! [ADR-0193]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0193-skill-check.md
+//! [skill draft docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/skill-draft/README.md
+//! [ADR-0194]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/README.md
 #![doc = include_str!("../README.md")]
 
 mod cargo;
@@ -54,6 +56,9 @@ pub fn run() -> ExitCode {
             CrumbkitCommand::Skill { command } => match command {
                 SkillCommand::Check(args) => {
                     crumbkit::finish(output, skill::SKILL_CHECK, skill::check(&args))
+                }
+                SkillCommand::Draft(args) => {
+                    crumbkit::finish(output, skill::SKILL_DRAFT, skill::draft(&args))
                 }
             },
             CrumbkitCommand::Commands { command } => match command {

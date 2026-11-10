@@ -22,10 +22,27 @@ pub(crate) struct Tree {
 pub(crate) struct Command {
     /// The command line that runs the command, such as `shelf books list`.
     pub(crate) path: String,
+    /// The command's about text, or `None` when it has none.
+    #[serde(default)]
+    pub(crate) about: Option<String>,
     /// The command's arguments. The root's row lists every global argument,
     /// and a lower row lists only the global arguments that its command
     /// defines.
     pub(crate) arguments: Vec<Argument>,
+    /// The goal headings of the command's help page, which only the row of
+    /// a command whose help prints them has.
+    #[serde(default)]
+    pub(crate) goals: Vec<Goal>,
+}
+
+/// One goal heading of a command's help page and the subcommands that the
+/// page lists under it.
+#[derive(Debug, PartialEq, Eq, Deserialize)]
+pub(crate) struct Goal {
+    /// The heading, such as `Browse the catalogue`.
+    pub(crate) heading: String,
+    /// The names of the subcommands under the heading, such as `books`.
+    pub(crate) commands: Vec<String>,
 }
 
 /// One argument of a command, with the fields of a `commands list` row that
@@ -94,9 +111,33 @@ impl Tree {
     /// Returns the command whose command line is `path`, such as `shelf
     /// books list`.
     pub(crate) fn command(&self, path: &str) -> Option<&Command> {
-        std::iter::once(&self.root)
-            .chain(&self.below)
-            .find(|command| command.path == path)
+        self.commands().find(|command| command.path == path)
+    }
+
+    /// Returns every command, the root first and then the commands below it
+    /// in depth-first order.
+    pub(crate) fn commands(&self) -> impl Iterator<Item = &Command> {
+        std::iter::once(&self.root).chain(&self.below)
+    }
+
+    /// Returns the flag called `name`, by its long or short name, that the
+    /// command whose command line is `path` accepts: one of its own, or a
+    /// global flag of a command above it. It returns `None` when `path`
+    /// names no command or the command accepts no such flag.
+    pub(crate) fn flag(&self, path: &str, name: &str) -> Option<&Argument> {
+        let own = self.command(path)?;
+        own.arguments
+            .iter()
+            .find(|argument| argument.is_called(name))
+            .or_else(|| {
+                self.commands()
+                    .filter(|command| {
+                        path.strip_prefix(command.path.as_str())
+                            .is_some_and(|rest| rest.starts_with(' '))
+                    })
+                    .flat_map(|command| &command.arguments)
+                    .find(|argument| argument.global && argument.is_called(name))
+            })
     }
 
     /// Reports whether the command whose command line is `path` has a

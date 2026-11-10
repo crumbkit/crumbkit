@@ -16,11 +16,11 @@ fn every_command_and_argument_has_one_name() {
 }
 
 #[test]
-fn every_command_is_a_resource_followed_by_list_weigh_docs_or_check() {
+fn every_command_is_a_resource_followed_by_list_weigh_docs_check_or_draft() {
     crumbkit_test::check_grammar(
         &Cli::command(),
         Pages::rendered(&TOOL),
-        &["weigh", "docs", "check"],
+        &["weigh", "docs", "check", "draft"],
         ALLOW,
     );
 }

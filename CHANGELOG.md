@@ -8,6 +8,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- cargo-crumbkit: `cargo crumbkit skill draft --bin <NAME>` rewrites the
+  generated sections of a tool's SKILL.md, including the most-used commands
+  from exported usage, and `--check` exits with 1 when a draft would change
+  them ([cargo-crumbkit], [behaviour/help/skill-draft]).
 - cargo-crumbkit: `cargo crumbkit skill check --bin <NAME>` checks each
   command line in a tool's SKILL.md against its commands, flags and values,
   and exits with 1 when one fails ([cargo-crumbkit],
@@ -1665,6 +1669,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/help/headings]: docs/behaviour/help/headings/README.md
 [behaviour/help/reference]: docs/behaviour/help/reference.md
 [behaviour/help/skill-check]: docs/behaviour/help/skill-check/README.md
+[behaviour/help/skill-draft]: docs/behaviour/help/skill-draft/README.md
 [behaviour/help/weight]: docs/behaviour/help/weight.md
 [behaviour/output]: docs/behaviour/output/README.md
 [behaviour/output/values]: docs/behaviour/output/values/README.md

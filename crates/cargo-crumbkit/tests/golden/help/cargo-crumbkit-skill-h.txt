@@ -1,9 +1,10 @@
-Check a tool's agent skill against its commands
+Draft a tool's agent skill and check it against its commands
 
 Usage: cargo crumbkit skill [OPTIONS] <COMMAND>
 
 Commands:
   check  Check that every command line in a tool's SKILL.md names its real commands and flags
+  draft  Write the generated sections of a tool's SKILL.md from its commands and exported usage
 
 Options:
   -h, --help  Print help (see more with '--help')
