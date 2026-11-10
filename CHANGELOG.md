@@ -12,6 +12,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   generated sections of a tool's SKILL.md, including the most-used commands
   from exported usage, and `--check` exits with 1 when a draft would change
   them ([cargo-crumbkit], [behaviour/help/skill-draft]).
+- crumbkit-skills: the new crate gives a tool `skills install`, `skills check`
+  and `skills print`, which install its embedded agent skill and check the
+  installed copies ([crumbkit-skills]).
 - cargo-crumbkit: `cargo crumbkit skill check --bin <NAME>` checks each
   command line in a tool's SKILL.md against its commands, flags and values,
   and exits with 1 when one fails ([cargo-crumbkit],
@@ -1598,6 +1601,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Examples`]: crates/crumbkit-test/src/examples/settings.rs
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
+[crumbkit-skills]: crates/crumbkit-skills/README.md
 [crumbkit-usage]: crates/crumbkit-usage/README.md
 [crumbkit-child]: crates/crumbkit-child/README.md
 [crumbkit-derive]: crates/crumbkit-derive/README.md

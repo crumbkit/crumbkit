@@ -12,6 +12,7 @@ Browse a small catalogue of public-domain books
 - [`shelf commands`](#shelf-commands): Explore shelf's commands
 - [`shelf schemas`](#shelf-schemas): Explore the JSON documents that shelf prints
 - [`shelf self`](#shelf-self): Review shelf's own use
+- [`shelf skills`](#shelf-skills): Give coding agents shelf's skill
 
 ### Arguments
 
@@ -461,3 +462,90 @@ Effects: read-only, closed-world.
 Output: one row per line as each arrives, and --json prints one JSON document per line.
 
 Text: one line per row, `<RUN>  <COMMAND>  <EXIT>  [after a gap]`; --fields prints a table.
+
+## `shelf skills`
+
+Give coding agents shelf's skill
+
+### Commands
+
+- [`shelf skills install`](#shelf-skills-install): Install shelf's skill into each agent skills directory that exists
+- [`shelf skills check`](#shelf-skills-check): Check that each installed copy of shelf's skill matches this shelf
+- [`shelf skills print`](#shelf-skills-print): Print shelf's skill
+
+## `shelf skills install`
+
+Install shelf's skill into each agent skills directory that exists
+
+### Arguments
+
+- `--dir <DIR>`: Install into this skills directory in place of the agent skills directories
+- `--force`: Replace a file or a link that install did not write with the skill's own folder
+
+### Examples
+
+Install shelf's skill into each agent skills directory that exists.
+
+```sh
+shelf skills install
+```
+
+Install it, replacing a file or a link that install did not write.
+
+```sh
+shelf skills install --force
+```
+
+### Columns
+
+- `state`: What install did: failed, skipped, written or unchanged.
+- `dirs`: The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
+- `reason`: Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/skill`, or null.
+
+### Columns that `--long` adds
+
+- `path`: The SKILL.md file that install wrote or left, at its real path.
+
+Effects: additive, idempotent, closed-world.
+
+## `shelf skills check`
+
+Check that each installed copy of shelf's skill matches this shelf
+
+### Arguments
+
+- `--dir <DIR>`: Check this skills directory in place of the agent skills directories
+
+### Examples
+
+Report each agent skills directory whose copy is missing or differs.
+
+```sh
+shelf skills check
+```
+
+### Columns
+
+- `state`: Whether the copy is the binary's: missing, differs, unreadable, linked or current.
+- `dirs`: The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
+- `reason`: Why the copy differs, cannot be read or is linked, such as `written by shelf 0.2.0` or `linked to /src/shelf/skill`, or null.
+
+### Columns that `--long` adds
+
+- `path`: The SKILL.md file that was checked, at its real path.
+
+Effects: read-only, closed-world.
+
+## `shelf skills print`
+
+Print shelf's skill
+
+### Examples
+
+Print shelf's skill.
+
+```sh
+shelf skills print
+```
+
+Effects: read-only, closed-world.

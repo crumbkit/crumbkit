@@ -136,7 +136,15 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[shelf::CODES])
 /// each check.
 const SUITE: Suite<'_> = Suite::new(|| (Cli::command(), TOOL))
     .allow(ALLOW)
-    .verbs(&["summarize", "usage", "remove", "export"])
+    .verbs(&[
+        "summarize",
+        "usage",
+        "remove",
+        "export",
+        "install",
+        "check",
+        "print",
+    ])
     .path_budgets(PATH_BUDGETS)
     .examples(EXAMPLES)
     .recoveries(RECOVERIES)

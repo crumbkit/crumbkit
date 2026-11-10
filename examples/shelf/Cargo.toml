@@ -46,6 +46,9 @@ crumbkit-usage = { workspace = true }
 # shelf expands a person's aliases before parsing, and lists them with the
 # hidden `shelf aliases list`.
 crumbkit-aliases = { workspace = true }
+# shelf installs its agent skill, `skill/SKILL.md`, with crumbkit-skills
+# (ADR-0192).
+crumbkit-skills = { workspace = true }
 # The failure of a bad line in the ids file of `shelf books show --from`
 # implements `miette::Diagnostic` and holds the file as a
 # `miette::NamedSource`, which need no miette feature.

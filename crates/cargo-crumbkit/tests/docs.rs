@@ -42,7 +42,7 @@ fn docs_writes_the_reference_that_shelf_checks_in_and_names_the_file() {
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
         format!(
-            "Wrote the reference of 18 commands to {}.\n",
+            "Wrote the reference of 22 commands to {}.\n",
             file.display()
         )
     );

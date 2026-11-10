@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "crumbkit/skills-check/v1",
+  "description": "Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.",
+  "type": "object",
+  "properties": {
+    "cut": {
+      "description": "Present when the output budget cut the result short, so data holds only its first rows.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "description": "The most bytes that the run printed on standard output.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "code": {
+          "description": "The over-budget code.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "budget"
+      ]
+    },
+    "data": {
+      "description": "The rows of the page, up to the limit.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CheckRow"
+      }
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "next": {
+      "description": "The next steps, in the order the text prints them. It is absent when there are none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "description": "The commands that carry out the step, in order.",
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "call": {
+                      "description": "A command line of this tool.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "call"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "description": "A command line of another program.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "run"
+                  ]
+                }
+              ]
+            }
+          },
+          "text": {
+            "description": "The sentence or phrase that the text prints for the step.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "text",
+          "commands"
+        ]
+      }
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "crumbkit/skills-check/v1"
+    },
+    "total": {
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count the rows.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "description": "True when the document leaves out rows that matched, because of the limit or the output budget, and false when data holds every row.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "truncated"
+  ],
+  "$defs": {
+    "CheckRow": {
+      "description": "One skills directory, or several that resolve to the same place, and\nwhether it holds the binary's skill.",
+      "type": "object",
+      "properties": {
+        "dirs": {
+          "description": "The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "path": {
+          "description": "The SKILL.md file that was checked, at its real path.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why the copy differs, cannot be read or is linked, such as `written by shelf 0.2.0` or `linked to /src/shelf/skill`, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "description": "Whether the copy is the binary's: missing, differs, unreadable, linked or current.",
+          "$ref": "#/$defs/Checked"
+        }
+      },
+      "required": [
+        "state",
+        "dirs",
+        "reason"
+      ]
+    },
+    "Checked": {
+      "description": "Whether a skills directory holds the binary's skill.",
+      "oneOf": [
+        {
+          "description": "The directory holds no copy of the skill.",
+          "type": "string",
+          "const": "missing"
+        },
+        {
+          "description": "The directory holds a copy that differs from the binary's.",
+          "type": "string",
+          "const": "differs"
+        },
+        {
+          "description": "The copy cannot be read.",
+          "type": "string",
+          "const": "unreadable"
+        },
+        {
+          "description": "The skill's folder is a symbolic link to a folder that install did\nnot write, which install skips.",
+          "type": "string",
+          "const": "linked"
+        },
+        {
+          "description": "The copy is the binary's.",
+          "type": "string",
+          "const": "current"
+        }
+      ]
+    }
+  }
+}
