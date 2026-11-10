@@ -11,5 +11,5 @@ shelf/self-usage/v1         output  document  The patterns in the usage log wher
 shelf/self-figures-list/v1  output  document  The figures of each command in the usage log, and a summary of the runs read.
 shelf/self-runs-list/v1     output  document  Each run in the usage log, grouped by session and in order within each session, and a summary of the runs read.
 shelf/skills-install/v1     output  document  What install did in each skills directory: written, unchanged, skipped or failed.
-shelf/skills-check/v1       output  document  Whether each skills directory holds the skill that the binary embeds: current, missing, differs or unreadable.
+shelf/skills-check/v1       output  document  Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.
 shelf/skills-print/v1       output  document  The tool's agent skill: its name, its version and the text of its SKILL.md.

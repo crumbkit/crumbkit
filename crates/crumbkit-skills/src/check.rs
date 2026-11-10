@@ -23,7 +23,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::skill::{Skill, Writer};
-use crate::targets::{self, Chosen, Homes, Place, Target, shown, shown_all};
+use crate::targets::{self, Place, Target, shown, shown_all};
 
 #[cfg(test)]
 mod tests;
@@ -36,9 +36,9 @@ pub const SKILLS_CHECK: Document<Listing<CheckRow>> = Document::new(
     "crumbkit",
     "skills-check",
     1,
-    "Whether each skills directory holds the skill that the binary embeds: current, missing, differs or unreadable.",
+    "Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.",
 )
-.when_empty("no agent skills directory exists")
+.when_empty("no agent skills directory exists; name one with --dir")
 .only_problems();
 
 /// The arguments of `<tool> skills check`: which skills directory to check.
@@ -62,6 +62,9 @@ pub(crate) enum Checked {
     Differs,
     /// The copy cannot be read.
     Unreadable,
+    /// The skill's folder is a symbolic link to a folder that install did
+    /// not write, which install skips.
+    Linked,
     /// The copy is the binary's.
     Current,
 }
@@ -70,11 +73,11 @@ pub(crate) enum Checked {
 /// whether it holds the binary's skill.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct CheckRow {
-    /// Whether the copy is the binary's: missing, differs, unreadable or current.
+    /// Whether the copy is the binary's: missing, differs, unreadable, linked or current.
     state: Checked,
     /// The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
     dirs: Vec<String>,
-    /// Why the copy differs or cannot be read, such as `written by shelf 0.2.0`, or null.
+    /// Why the copy differs, cannot be read or is linked, such as `written by shelf 0.2.0` or `linked to /src/shelf/skill`, or null.
     reason: Option<String>,
     /// The SKILL.md file that was checked, at its real path.
     path: String,
@@ -85,9 +88,10 @@ impl Row for CheckRow {
     const LONG_COLUMNS: &'static [&'static str] = &["path"];
 
     // A copy that is missing, differs or cannot be read makes check exit
-    // with 1, and the document lists only those rows in text.
+    // with 1, and the document lists only those rows in text. A linked
+    // folder does not, because install skips it and its owner chose it.
     fn is_problem(&self) -> bool {
-        self.state != Checked::Current
+        !matches!(self.state, Checked::Current | Checked::Linked)
     }
 }
 
@@ -104,60 +108,44 @@ impl Row for CheckRow {
 /// without a copy is missing, and a copy that cannot be read, or a file
 /// where the skill's folder belongs, is unreadable. Those rows come first,
 /// the text lists only them, and the command exits with 1 when there is
-/// one. With no home directory and no `--dir`, it checks nothing and its
-/// note says so.
+/// one. A skill folder that links to a folder this tool's install did not
+/// write, which install skips, is `linked`, with the reason
+/// `linked to <path>`, and is no problem. With no home directory, or when
+/// none of the agent skills directories exists, it checks nothing, and the
+/// empty note asks for `--dir`.
 #[must_use]
 pub fn check(skill: &Skill, args: &SkillsCheck) -> Listing<CheckRow> {
-    check_in(skill, &Homes::from_env(), args)
+    check_in(skill, targets::agent_dirs_from_env(), args)
 }
 
-/// Checks `skill` as [`check`] describes, when the environment gives
-/// `homes`.
-fn check_in(skill: &Skill, homes: &Homes, args: &SkillsCheck) -> Listing<CheckRow> {
-    let name = skill.name();
-    let (targets, note) = match targets::choose(args.dir.as_deref(), homes) {
-        Chosen::Targets(targets) => (targets, None),
-        Chosen::NamedMissing(dir) => {
-            let row = CheckRow {
-                state: Checked::Missing,
-                dirs: vec![shown(&dir)],
-                reason: Some("the directory does not exist".to_owned()),
-                path: shown(&dir.join(name).join("SKILL.md")),
-            };
-            return Listing::from_all(vec![row], None).described("skills directories");
-        }
-        Chosen::NoAgents(tried) => {
-            let tried: Vec<String> = shown_all(&tried);
-            let note = format!(
-                "None of {} exists, so {name} checked nothing.",
-                tried.join(", ")
-            );
-            (Vec::new(), Some(note))
-        }
-        Chosen::NoHome => {
-            let note =
-                format!("The environment names no home directory, so {name} checked nothing.");
-            (Vec::new(), Some(note))
-        }
-    };
+/// Checks `skill` as [`check`] describes, when the environment names the
+/// agent skills directories `agent_dirs`.
+fn check_in(
+    skill: &Skill,
+    agent_dirs: Option<Vec<PathBuf>>,
+    args: &SkillsCheck,
+) -> Listing<CheckRow> {
     let text = skill.installed();
-    let mut rows: Vec<CheckRow> = Vec::new();
-    for target in targets {
-        let row = row(skill, &text, &target);
-        match rows
-            .iter_mut()
-            .find(|earlier| earlier.path == row.path && earlier.state == row.state)
-        {
-            Some(earlier) => earlier.dirs.extend(row.dirs),
-            None => rows.push(row),
+    let refused = |dir: &Path, reason: String| CheckRow {
+        state: Checked::Missing,
+        dirs: vec![shown(dir)],
+        reason: Some(reason),
+        path: shown(&dir.join(skill.name()).join("SKILL.md")),
+    };
+    targets::listing(args.dir.as_deref(), agent_dirs, refused, |targets| {
+        let mut rows: Vec<CheckRow> = Vec::new();
+        for target in targets {
+            let row = row(skill, &text, &target);
+            match rows
+                .iter_mut()
+                .find(|earlier| earlier.path == row.path && earlier.state == row.state)
+            {
+                Some(earlier) => earlier.dirs.extend(row.dirs),
+                None => rows.push(row),
+            }
         }
-    }
-    rows.sort_by_key(|row| !row.is_problem());
-    let listing = Listing::from_all(rows, None).described("skills directories");
-    match note {
-        Some(note) => listing.note(note),
-        None => listing,
-    }
+        rows
+    })
 }
 
 /// Returns the row of `target`, whose copy of `skill` should be `text`.
@@ -168,16 +156,24 @@ fn row(skill: &Skill, text: &str, target: &Target) -> CheckRow {
         reason,
         path: shown(path),
     };
-    let (folder, linked) = match targets::place(&target.real, skill.name()) {
+    let linked = |link: &Path, to: &Path| {
+        let reason = format!("linked to {}", shown(to));
+        row(Checked::Linked, Some(reason), &link.join("SKILL.md"))
+    };
+    let folder = match targets::place(&target.real, skill.name()) {
         Place::Absent { folder } => {
             return row(Checked::Missing, None, &folder.join("SKILL.md"));
         }
-        Place::Folder { folder } => (folder, None),
-        Place::Linked { to, .. } => (to.clone(), Some(to)),
-        Place::Broken { link, to } => {
-            let reason = format!("linked to {}, which is not a folder", shown(&to));
-            return row(Checked::Missing, Some(reason), &link.join("SKILL.md"));
+        Place::Folder { folder } => folder,
+        Place::Linked { link, to } => {
+            // Install updates a linked folder only when it holds this
+            // tool's copy, and skips any other, so check does the same.
+            match fs::read_to_string(to.join("SKILL.md")) {
+                Ok(old) if matches!(skill.writer(&old), Writer::Tool { .. }) => to,
+                _ => return linked(&link, &to),
+            }
         }
+        Place::Broken { link, to } => return linked(&link, &to),
         Place::NotFolder { path } => {
             let reason = format!("{} is not a folder", shown(&path));
             return row(Checked::Unreadable, Some(reason), &path);
@@ -190,14 +186,9 @@ fn row(skill: &Skill, text: &str, target: &Target) -> CheckRow {
     match fs::read_to_string(&file) {
         Ok(old) if old == text => row(Checked::Current, None, &file),
         Ok(old) => {
-            let reason = match (skill.writer(&old), linked) {
-                (Writer::Tool { version }, _) => format!("written by {} {version}", skill.name()),
-                (Writer::Other, Some(to)) => format!(
-                    "linked to {}, which {} skills install did not write",
-                    shown(&to),
-                    skill.name()
-                ),
-                (Writer::Other, None) => format!(
+            let reason = match skill.writer(&old) {
+                Writer::Tool { version } => format!("written by {} {version}", skill.name()),
+                Writer::Other => format!(
                     "not written by {} skills install; install --force replaces it",
                     skill.name()
                 ),

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "crumbkit/skills-check/v1",
-  "description": "Whether each skills directory holds the skill that the binary embeds: current, missing, differs or unreadable.",
+  "description": "Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.",
   "type": "object",
   "properties": {
     "cut": {
@@ -123,14 +123,14 @@
           "type": "string"
         },
         "reason": {
-          "description": "Why the copy differs or cannot be read, such as `written by shelf 0.2.0`, or null.",
+          "description": "Why the copy differs, cannot be read or is linked, such as `written by shelf 0.2.0` or `linked to /src/shelf/skill`, or null.",
           "type": [
             "string",
             "null"
           ]
         },
         "state": {
-          "description": "Whether the copy is the binary's: missing, differs, unreadable or current.",
+          "description": "Whether the copy is the binary's: missing, differs, unreadable, linked or current.",
           "$ref": "#/$defs/Checked"
         }
       },
@@ -157,6 +157,11 @@
           "description": "The copy cannot be read.",
           "type": "string",
           "const": "unreadable"
+        },
+        {
+          "description": "The skill's folder is a symbolic link to a folder that install did\nnot write, which install skips.",
+          "type": "string",
+          "const": "linked"
         },
         {
           "description": "The copy is the binary's.",

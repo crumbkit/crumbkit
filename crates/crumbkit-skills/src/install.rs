@@ -23,7 +23,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::skill::{Skill, Writer};
-use crate::targets::{self, Chosen, Homes, Place, Target, shown, shown_all};
+use crate::targets::{self, Place, Target, shown, shown_all};
 
 #[cfg(test)]
 mod tests;
@@ -37,7 +37,7 @@ pub const SKILLS_INSTALL: Document<Listing<InstallRow>> = Document::new(
     1,
     "What install did in each skills directory: written, unchanged, skipped or failed.",
 )
-.when_empty("no agent skills directory exists");
+.when_empty("no agent skills directory exists; name one with --dir");
 
 /// The arguments of `<tool> skills install`: where to install, and whether
 /// to replace what install did not write.
@@ -102,8 +102,9 @@ impl Row for InstallRow {
 /// The agent skills directories are `~/.claude/skills`, `~/.agents/skills`
 /// and `$CODEX_HOME/skills`, where `CODEX_HOME` defaults to `~/.codex`. The
 /// home directory is `HOME`, or `USERPROFILE` on Windows when `HOME` is
-/// unset. With no home directory and no `--dir`, it installs nothing and
-/// its note says so.
+/// unset. With no home directory, or when none of the agent skills
+/// directories exists, it installs nothing, and the empty note asks for
+/// `--dir`. A `--dir` that does not name a directory gives a `failed` row.
 ///
 /// Directories that resolve to the same real path, such as a
 /// `~/.claude/skills` that links to `~/.agents/skills`, get one write and
@@ -121,57 +122,36 @@ impl Row for InstallRow {
 /// the reason, and the command exits with 1. Rows that failed come first.
 #[must_use]
 pub fn install(skill: &Skill, args: &SkillsInstall) -> Listing<InstallRow> {
-    install_in(skill, &Homes::from_env(), args)
+    install_in(skill, targets::agent_dirs_from_env(), args)
 }
 
-/// Installs `skill` as [`install`] describes, when the environment gives
-/// `homes`.
-fn install_in(skill: &Skill, homes: &Homes, args: &SkillsInstall) -> Listing<InstallRow> {
-    let name = skill.name();
-    let (targets, note) = match targets::choose(args.dir.as_deref(), homes) {
-        Chosen::Targets(targets) => (targets, None),
-        Chosen::NamedMissing(dir) => {
-            let row = failed(
-                std::slice::from_ref(&dir),
-                &dir,
-                "the directory does not exist",
-            );
-            return Listing::from_all(vec![row], None).described("skills directories");
-        }
-        Chosen::NoAgents(tried) => {
-            let tried: Vec<String> = shown_all(&tried);
-            let note = format!(
-                "None of {} exists, so {name} installed nothing; name a directory with --dir.",
-                tried.join(", ")
-            );
-            (Vec::new(), Some(note))
-        }
-        Chosen::NoHome => {
-            let note = format!(
-                "The environment names no home directory, so {name} installed nothing; name a directory with --dir."
-            );
-            (Vec::new(), Some(note))
-        }
-    };
+/// Installs `skill` as [`install`] describes, when the environment names
+/// the agent skills directories `agent_dirs`.
+fn install_in(
+    skill: &Skill,
+    agent_dirs: Option<Vec<PathBuf>>,
+    args: &SkillsInstall,
+) -> Listing<InstallRow> {
     let text = skill.installed();
-    let mut rows: Vec<InstallRow> = merged(skill, targets, args.force)
-        .into_iter()
-        .map(|(dirs, plan)| run(skill, &text, &dirs, plan, args.force))
-        .collect();
-    rows.sort_by_key(|row| !row.is_problem());
-    let listing = Listing::from_all(rows, None).described("skills directories");
-    match note {
-        Some(note) => listing.note(note),
-        None => listing,
-    }
+    targets::listing(
+        args.dir.as_deref(),
+        agent_dirs,
+        |dir, reason| failed(&[dir.to_owned()], dir, &reason),
+        |targets| {
+            merged(skill, targets, args.force)
+                .into_iter()
+                .map(|(dirs, plan)| run(skill, &text, &dirs, plan, args.force))
+                .collect()
+        },
+    )
 }
 
 /// What install does in one skills directory.
 #[derive(Debug, PartialEq, Eq)]
 enum Plan {
-    /// Write `SKILL.md` in `folder`, creating the folder first when
-    /// `create` is set.
-    Write { folder: PathBuf, create: bool },
+    /// Write `SKILL.md` in `folder`, creating the folder first when it
+    /// does not exist.
+    Write { folder: PathBuf },
     /// Remove what is at `path`, a link or a file, create a folder there and
     /// write `SKILL.md` in it. `what` names what it replaced.
     Replace { path: PathBuf, what: String },
@@ -211,21 +191,13 @@ fn plan(skill: &Skill, real: &Path, force: bool) -> Plan {
         }
     };
     match targets::place(real, skill.name()) {
-        Place::Absent { folder } => Plan::Write {
-            folder,
-            create: true,
-        },
-        Place::Folder { folder } => Plan::Write {
-            folder,
-            create: false,
-        },
+        Place::Absent { folder } | Place::Folder { folder } => Plan::Write { folder },
         Place::Linked { link, to } => {
             let file = to.join("SKILL.md");
             match fs::read_to_string(&file) {
-                Ok(text) if matches!(skill.writer(&text), Writer::Tool { .. }) => Plan::Write {
-                    folder: to,
-                    create: false,
-                },
+                Ok(text) if matches!(skill.writer(&text), Writer::Tool { .. }) => {
+                    Plan::Write { folder: to }
+                }
                 _ => foreign(link, format!("linked to {}", shown(&to))),
             }
         }
@@ -243,9 +215,11 @@ fn plan(skill: &Skill, real: &Path, force: bool) -> Plan {
 /// write.
 fn run(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: bool) -> InstallRow {
     match plan {
-        Plan::Write { folder, create } => {
-            if create && let Err(error) = fs::create_dir(&folder) {
-                return failed(dirs, &folder.join("SKILL.md"), &error.to_string());
+        Plan::Write { folder } => {
+            match fs::create_dir(&folder) {
+                Ok(()) => {}
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+                Err(error) => return failed(dirs, &folder.join("SKILL.md"), &error.to_string()),
             }
             write_file(skill, text, dirs, &folder.join("SKILL.md"), force)
         }
@@ -320,22 +294,29 @@ fn replace_with_folder(path: &Path) -> io::Result<()> {
 
 /// Writes `text` to a temporary file beside `file` and renames it over
 /// `file`, so a reader sees the old text or the new text and never part of
-/// it. The temporary file is removed when a step fails.
+/// it.
+///
+/// The temporary file must be new, so install never writes through a link
+/// or into a file that someone else left at its name, and a run fails with
+/// that file's error instead. The temporary file is removed when a later
+/// step fails.
 fn write_atomically(file: &Path, text: &str) -> io::Result<()> {
     let temporary = file.with_file_name(format!(".SKILL.md.{}.tmp", std::process::id()));
     #[expect(
         clippy::disallowed_methods,
         reason = "this module owns the file writes of skills install, which write the skill through a temporary file and a rename"
     )]
-    let result = OpenOptions::new()
+    let mut handle = OpenOptions::new()
         .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&temporary)
-        .and_then(|mut handle| {
-            handle.write_all(text.as_bytes())?;
-            handle.sync_all()
-        })
+        .create_new(true)
+        .open(&temporary)?;
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns the file writes of skills install, which rename the temporary file over SKILL.md"
+    )]
+    let result = handle
+        .write_all(text.as_bytes())
+        .and_then(|()| handle.sync_all())
         .and_then(|()| fs::rename(&temporary, file));
     if result.is_err() {
         #[expect(

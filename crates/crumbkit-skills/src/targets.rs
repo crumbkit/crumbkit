@@ -6,103 +6,94 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crumbkit::{Listing, Row};
+
 #[cfg(test)]
 mod tests;
 
-/// The directories that a run reads from its environment: the home
-/// directory and the Codex home.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Homes {
-    /// The home directory, or `None` when the environment names none.
-    home: Option<PathBuf>,
-    /// `CODEX_HOME`, or `None` when it is unset, empty or relative.
-    codex_home: Option<PathBuf>,
+/// Returns the agent skills directories that the process's environment
+/// names, as [`agent_dirs`] describes.
+///
+/// It reads `HOME`, and on Windows `USERPROFILE` when `HOME` is unset,
+/// and `CODEX_HOME`. It never asks the operating system for the home
+/// directory, such as with `std::env::home_dir`, which reads the password
+/// database when `HOME` is unset. A test or an example run clears the
+/// environment, and that lookup would then install into the real home
+/// (ADR-0027).
+pub(crate) fn agent_dirs_from_env() -> Option<Vec<PathBuf>> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns the environment reads that find the agent skills directories"
+    )]
+    let read = |name: &str| std::env::var_os(name);
+    let home = read("HOME");
+    #[cfg(windows)]
+    let home = home.or_else(|| read("USERPROFILE"));
+    agent_dirs(home, read("CODEX_HOME"))
 }
 
-impl Homes {
-    /// Returns the homes that the process's environment names.
-    ///
-    /// It reads `HOME`, and on Windows `USERPROFILE` when `HOME` is unset,
-    /// and `CODEX_HOME`. It never asks the operating system for the home
-    /// directory, such as with `std::env::home_dir`, which reads the
-    /// password database when `HOME` is unset. A test or an example run
-    /// clears the environment, and that lookup would then install into the
-    /// real home (ADR-0027).
-    pub(crate) fn from_env() -> Self {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "this module owns the environment reads that find the agent skills directories"
-        )]
-        let read = |name: &str| std::env::var_os(name);
-        let home = read("HOME");
-        #[cfg(windows)]
-        let home = home.or_else(|| read("USERPROFILE"));
-        Self::new(home, read("CODEX_HOME"))
-    }
-
-    /// Returns the homes when the home directory is `home` and `CODEX_HOME`
-    /// is `codex_home`. Each counts only when it is an absolute path.
-    pub(crate) fn new(home: Option<OsString>, codex_home: Option<OsString>) -> Self {
-        let absolute =
-            |value: Option<OsString>| value.map(PathBuf::from).filter(|path| path.is_absolute());
-        Self {
-            home: absolute(home),
-            codex_home: absolute(codex_home),
-        }
-    }
-
-    /// Returns the agent skills directories in the order `install` tries
-    /// them: `~/.claude/skills`, `~/.agents/skills` and
-    /// `$CODEX_HOME/skills`, where `CODEX_HOME` defaults to `~/.codex`. It
-    /// returns `None` when there is no home directory.
-    pub(crate) fn agent_dirs(&self) -> Option<Vec<PathBuf>> {
-        let home = self.home.as_ref()?;
-        let codex = self
-            .codex_home
-            .clone()
-            .unwrap_or_else(|| home.join(".codex"));
-        Some(vec![
-            home.join(".claude").join("skills"),
-            home.join(".agents").join("skills"),
-            codex.join("skills"),
-        ])
-    }
+/// Returns the agent skills directories in the order `install` tries them,
+/// when the home directory is `home` and `CODEX_HOME` is `codex_home`:
+/// `~/.claude/skills`, `~/.agents/skills` and `$CODEX_HOME/skills`, where
+/// `CODEX_HOME` defaults to `~/.codex`. Each of `home` and `codex_home`
+/// counts only when it is an absolute path. It returns `None` when there
+/// is no home directory, even when `CODEX_HOME` is set.
+pub(crate) fn agent_dirs(
+    home: Option<OsString>,
+    codex_home: Option<OsString>,
+) -> Option<Vec<PathBuf>> {
+    let absolute =
+        |value: Option<OsString>| value.map(PathBuf::from).filter(|path| path.is_absolute());
+    let home = absolute(home)?;
+    let codex = absolute(codex_home).unwrap_or_else(|| home.join(".codex"));
+    Some(vec![
+        home.join(".claude").join("skills"),
+        home.join(".agents").join("skills"),
+        codex.join("skills"),
+    ])
 }
 
-/// The skills directories that a run acts on.
-#[derive(Debug)]
-pub(crate) enum Chosen {
-    /// The directory that `--dir` names, or the agent skills directories
-    /// that exist, merged by real path.
-    Targets(Vec<Target>),
-    /// The directory that `--dir` names, which does not exist.
-    NamedMissing(PathBuf),
-    /// No agent skills directory exists; it holds the paths tried.
-    NoAgents(Vec<PathBuf>),
-    /// The environment names no home directory.
-    NoHome,
-}
-
-/// Returns the skills directories that a run with `--dir` set to `dir`
-/// acts on, when the environment gives `homes`.
-pub(crate) fn choose(dir: Option<&Path>, homes: &Homes) -> Chosen {
-    if let Some(dir) = dir {
-        return match real_dir(dir) {
-            Some(real) => Chosen::Targets(vec![Target {
+/// Returns the listing of a run with `--dir` set to `dir`, when the
+/// environment names the agent skills directories `agent_dirs`.
+///
+/// A run with `--dir` acts on that directory alone, and `refused` gives the
+/// row of a `--dir` that is not a directory, with the reason. Otherwise the
+/// run acts on the agent skills directories that exist, merged by real
+/// path, and `rows` gives the row of each target. With no home directory,
+/// or when none of the agent skills directories exists, the listing is
+/// empty, and the document's empty note asks for `--dir`. The rows that
+/// report a problem come first (OUTPUT-3).
+pub(crate) fn listing<R: Row>(
+    dir: Option<&Path>,
+    agent_dirs: Option<Vec<PathBuf>>,
+    refused: impl FnOnce(&Path, String) -> R,
+    rows: impl FnOnce(Vec<Target>) -> Vec<R>,
+) -> Listing<R> {
+    let mut rows = match dir {
+        Some(dir) => match named_dir(dir) {
+            Ok(real) => rows(vec![Target {
                 dirs: vec![dir.to_owned()],
                 real,
             }]),
-            None => Chosen::NamedMissing(dir.to_owned()),
-        };
-    }
-    let Some(dirs) = homes.agent_dirs() else {
-        return Chosen::NoHome;
+            Err(reason) => vec![refused(dir, reason)],
+        },
+        None => rows(merge(&agent_dirs.unwrap_or_default())),
     };
-    let targets = merge(&dirs);
-    if targets.is_empty() {
-        Chosen::NoAgents(dirs)
-    } else {
-        Chosen::Targets(targets)
+    rows.sort_by_key(|row| !row.is_problem());
+    Listing::from_all(rows, None).described("skills directories")
+}
+
+/// Returns the real path of the directory `dir` that `--dir` names, or why
+/// it cannot be used: it does not exist, it is not a directory, or it
+/// cannot be read.
+fn named_dir(dir: &Path) -> Result<PathBuf, String> {
+    match fs::metadata(dir) {
+        Ok(metadata) if !metadata.is_dir() => Err("the path is not a directory".to_owned()),
+        Ok(_) => fs::canonicalize(dir).map_err(|error| error.to_string()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            Err("the directory does not exist".to_owned())
+        }
+        Err(error) => Err(error.to_string()),
     }
 }
 
@@ -212,9 +203,28 @@ pub(crate) fn place(real: &Path, name: &str) -> Place {
 }
 
 /// Returns `path` as a string for a row, with any bytes that are not UTF-8
-/// replaced.
+/// replaced and without the `\\?\` prefix that Windows gives a canonical
+/// path.
 pub(crate) fn shown(path: &Path) -> String {
-    path.display().to_string()
+    without_verbatim(path.display().to_string())
+}
+
+/// Returns `text` without a leading `\\?\` when a drive letter follows it,
+/// as in `\\?\C:\Users`. Windows gives a canonical path that prefix, and
+/// the path reads the same without it. A verbatim UNC path, `\\?\UNC\`,
+/// keeps the prefix, because it names a share in another form without it.
+/// No Unix path starts with the prefix, so this runs on every platform.
+///
+/// RUST-10: the dunce crate also checks that the path stays valid without
+/// the prefix, such as one longer than 260 characters or one that names a
+/// reserved device. This strip only changes how a row shows the path, and
+/// no file access reads the result, so it skips those checks. dunce
+/// replaces it if a stripped path is ever opened.
+pub(crate) fn without_verbatim(text: String) -> String {
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if rest.as_bytes().get(1) == Some(&b':') => rest.to_owned(),
+        _ => text,
+    }
 }
 
 /// Returns the paths of `dirs` as strings for a row.

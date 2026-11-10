@@ -15,13 +15,13 @@ include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICE
 # `install` and `check` return crumbkit's `Listing` of rows, and `print`
 # returns crumbkit's `Prose`.
 crumbkit = { workspace = true }
-# `SkillsInstall`, `SkillsCheck` and `SkillsPrint` derive `clap::Args`.
+# `SkillsInstall` and `SkillsCheck` derive `clap::Args`.
 clap = { workspace = true, features = ["derive"] }
-# The rows, the skill text and the argument types derive `Serialize`, as a
-# tool's own results do.
+# The rows and the skill text derive `Serialize`, as a tool's own results
+# do.
 serde = { workspace = true, features = ["derive"] }
-# `Row` and `Document` require `JsonSchema`, which the rows, the skill text
-# and the argument types derive (ADR-0007).
+# `Row` and `Document` require `JsonSchema`, which the rows and the skill
+# text derive (ADR-0007).
 schemars = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]

@@ -105,3 +105,20 @@ fn a_text_with_its_own_metadata_is_refused() {
         std::hint::black_box("---\nname: shelf\nmetadata:\n  a: \"b\"\n---\n"),
     );
 }
+
+#[test]
+fn a_key_that_only_starts_with_metadata_is_accepted() {
+    let skill = Skill::new("shelf", "0.3.0", "---\nname: shelf\nmetadatax: one\n---\n");
+
+    assert!(skill.installed().contains("metadatax: one\nmetadata:\n"));
+}
+
+#[test]
+#[should_panic(expected = "has no `metadata:` key")]
+fn an_inline_metadata_map_is_refused() {
+    let _ = Skill::new(
+        "shelf",
+        "0.3.0",
+        std::hint::black_box("---\nname: shelf\nmetadata: {a: b}\n---\n"),
+    );
+}

@@ -1,19 +1,17 @@
 use std::ffi::OsString;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use super::{Chosen, Homes, Place, Target, choose, merge, place};
+use super::{Place, Target, agent_dirs, merge, named_dir, place, without_verbatim};
 
-fn homes(home: &str, codex: Option<&str>) -> Homes {
-    Homes::new(Some(OsString::from(home)), codex.map(OsString::from))
+fn dirs(home: &str, codex: Option<&str>) -> Option<Vec<PathBuf>> {
+    agent_dirs(Some(OsString::from(home)), codex.map(OsString::from))
 }
 
 #[test]
 fn the_agent_dirs_are_claude_agents_and_codex_under_the_home() {
-    let dirs = homes("/home/ada", None).agent_dirs().unwrap();
-
     assert_eq!(
-        dirs,
+        dirs("/home/ada", None).unwrap(),
         [
             PathBuf::from("/home/ada/.claude/skills"),
             PathBuf::from("/home/ada/.agents/skills"),
@@ -24,14 +22,14 @@ fn the_agent_dirs_are_claude_agents_and_codex_under_the_home() {
 
 #[test]
 fn an_absolute_codex_home_replaces_the_default_codex_directory() {
-    let dirs = homes("/home/ada", Some("/opt/codex")).agent_dirs().unwrap();
+    let dirs = dirs("/home/ada", Some("/opt/codex")).unwrap();
 
     assert_eq!(dirs.last().unwrap(), &PathBuf::from("/opt/codex/skills"));
 }
 
 #[test]
 fn a_relative_codex_home_is_ignored() {
-    let dirs = homes("/home/ada", Some("codex")).agent_dirs().unwrap();
+    let dirs = dirs("/home/ada", Some("codex")).unwrap();
 
     assert_eq!(
         dirs.last().unwrap(),
@@ -41,45 +39,62 @@ fn a_relative_codex_home_is_ignored() {
 
 #[test]
 fn no_home_gives_no_agent_dirs_even_with_a_codex_home() {
-    let homes = Homes::new(None, Some(OsString::from("/opt/codex")));
-
-    assert_eq!(homes.agent_dirs(), None);
-    assert!(matches!(choose(None, &homes), Chosen::NoHome));
+    assert_eq!(agent_dirs(None, Some(OsString::from("/opt/codex"))), None);
 }
 
 #[test]
 fn a_relative_or_empty_home_counts_as_no_home() {
-    assert_eq!(homes("home", None).agent_dirs(), None);
-    assert_eq!(homes("", None).agent_dirs(), None);
+    assert_eq!(dirs("home", None), None);
+    assert_eq!(dirs("", None), None);
 }
 
 #[test]
-fn a_named_dir_is_chosen_without_reading_the_homes() {
+fn a_named_dir_resolves_to_its_real_path() {
     let dir = tempfile::tempdir().unwrap();
 
-    let Chosen::Targets(targets) = choose(Some(dir.path()), &Homes::default()) else {
-        panic!("expected the named dir");
-    };
-    assert_eq!(targets.len(), 1);
-    assert_eq!(targets[0].dirs, [dir.path().to_owned()]);
+    assert_eq!(
+        named_dir(dir.path()),
+        Ok(fs::canonicalize(dir.path()).unwrap())
+    );
 }
 
 #[test]
-fn a_named_dir_that_does_not_exist_is_chosen_as_missing() {
-    let chosen = choose(Some("missing-skills".as_ref()), &Homes::default());
+fn a_named_dir_that_does_not_exist_says_so() {
+    let dir = tempfile::tempdir().unwrap();
 
-    assert!(matches!(chosen, Chosen::NamedMissing(dir) if dir == Path::new("missing-skills")));
+    assert_eq!(
+        named_dir(&dir.path().join("missing")),
+        Err("the directory does not exist".to_owned())
+    );
 }
 
 #[test]
-fn no_existing_agent_dir_reports_the_paths_tried() {
-    let home = tempfile::tempdir().unwrap();
-    let homes = homes(home.path().to_str().unwrap(), None);
+fn a_named_dir_that_is_a_file_says_it_is_not_a_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("skills");
+    crate::testing::write(&file, "a file");
 
-    let Chosen::NoAgents(tried) = choose(None, &homes) else {
-        panic!("expected no agent dirs");
-    };
-    assert_eq!(tried.len(), 3);
+    assert_eq!(
+        named_dir(&file),
+        Err("the path is not a directory".to_owned())
+    );
+}
+
+#[test]
+fn a_verbatim_drive_path_shows_without_its_prefix() {
+    assert_eq!(
+        without_verbatim(r"\\?\C:\Users\ada".to_owned()),
+        r"C:\Users\ada"
+    );
+}
+
+#[test]
+fn a_verbatim_unc_path_and_a_unix_path_keep_their_text() {
+    assert_eq!(
+        without_verbatim(r"\\?\UNC\server\share".to_owned()),
+        r"\\?\UNC\server\share"
+    );
+    assert_eq!(without_verbatim("/home/ada".to_owned()), "/home/ada");
 }
 
 #[test]
@@ -170,4 +185,53 @@ fn place_follows_a_link_to_a_folder_and_reports_a_broken_one() {
             to: dir.path().join("gone"),
         }
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn place_reports_a_link_loop_as_broken() {
+    let dir = tempfile::tempdir().unwrap();
+    crate::testing::link(&dir.path().join("other"), &dir.path().join("shelf"));
+    crate::testing::link(&dir.path().join("shelf"), &dir.path().join("other"));
+
+    assert_eq!(
+        place(dir.path(), "shelf"),
+        Place::Broken {
+            link: dir.path().join("shelf"),
+            to: dir.path().join("other"),
+        }
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn place_follows_a_relative_link_from_the_link_s_own_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let skills = dir.path().join("skills");
+    let elsewhere = dir.path().join("elsewhere");
+    fs::create_dir(&skills).unwrap();
+    fs::create_dir(&elsewhere).unwrap();
+    crate::testing::link(std::path::Path::new("../elsewhere"), &skills.join("shelf"));
+
+    assert_eq!(
+        place(&skills, "shelf"),
+        Place::Linked {
+            link: skills.join("shelf"),
+            to: fs::canonicalize(&elsewhere).unwrap(),
+        }
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn merge_joins_a_dir_and_a_relative_link_to_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let agents = dir.path().join("agents");
+    fs::create_dir(&agents).unwrap();
+    crate::testing::link(std::path::Path::new("agents"), &dir.path().join("claude"));
+
+    let targets = merge(&[dir.path().join("claude"), agents]);
+
+    assert_eq!(targets.len(), 1);
+    assert_eq!(targets[0].dirs.len(), 2);
 }

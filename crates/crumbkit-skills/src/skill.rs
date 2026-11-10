@@ -240,15 +240,19 @@ const fn frontmatter_end(text: &[u8]) -> Option<usize> {
     None
 }
 
-/// Reports whether a line of the frontmatter of `text` starts with
-/// `metadata:`.
+/// Reports whether a line of the frontmatter of `text` holds the top-level
+/// key `metadata`: `metadata:` followed by the end of the line, a space or
+/// a tab, so `metadata: {a: b}` counts and `metadatax:` does not.
 const fn has_metadata(text: &[u8]) -> bool {
     let Some(end) = frontmatter_end(text) else {
         return false;
     };
     let mut start = next_line(text, 0);
     while start < end {
-        if starts_with(text, start, b"metadata:") {
+        let after = start + b"metadata:".len();
+        if starts_with(text, start, b"metadata:")
+            && (after == text.len() || matches!(text[after], b'\n' | b' ' | b'\t'))
+        {
             return true;
         }
         start = next_line(text, start);

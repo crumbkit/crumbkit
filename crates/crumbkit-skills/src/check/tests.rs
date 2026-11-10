@@ -6,7 +6,7 @@ use tempfile::TempDir;
 
 use super::{CheckRow, Checked, SKILLS_CHECK, SkillsCheck, check_in};
 use crate::skill::Skill;
-use crate::targets::Homes;
+use crate::targets::agent_dirs;
 use crate::testing::write;
 
 const TEXT: &str =
@@ -17,7 +17,7 @@ const SKILL: Skill = Skill::new("shelf", "0.3.0", TEXT);
 /// A temporary home with `.claude/skills` and `.agents/skills`.
 struct Home {
     dir: TempDir,
-    homes: Homes,
+    agent_dirs: Option<Vec<PathBuf>>,
 }
 
 impl Home {
@@ -26,8 +26,8 @@ impl Home {
         for path in [".claude", ".claude/skills", ".agents", ".agents/skills"] {
             fs::create_dir(dir.path().join(path)).unwrap();
         }
-        let homes = Homes::new(Some(OsString::from(dir.path())), None);
-        Self { dir, homes }
+        let agent_dirs = agent_dirs(Some(OsString::from(dir.path())), None);
+        Self { dir, agent_dirs }
     }
 
     fn skills(&self, agent: &str) -> PathBuf {
@@ -42,7 +42,7 @@ impl Home {
     }
 
     fn check(&self) -> Vec<CheckRow> {
-        check_in(&SKILL, &self.homes, &SkillsCheck::default())
+        check_in(&SKILL, self.agent_dirs.clone(), &SkillsCheck::default())
             .rows()
             .to_vec()
     }
@@ -107,7 +107,7 @@ fn every_current_copy_reports_no_problem() {
     home.put(".claude", &SKILL.installed());
     home.put(".agents", &SKILL.installed());
 
-    let listing = check_in(&SKILL, &home.homes, &SkillsCheck::default());
+    let listing = check_in(&SKILL, home.agent_dirs.clone(), &SkillsCheck::default());
 
     assert_eq!(states(listing.rows()), [Checked::Current, Checked::Current]);
     assert!(
@@ -119,14 +119,11 @@ fn every_current_copy_reports_no_problem() {
 }
 
 #[test]
-fn no_home_checks_nothing_and_says_so() {
-    let listing = check_in(&SKILL, &Homes::default(), &SkillsCheck::default());
+fn no_home_checks_nothing_and_has_no_note_of_its_own() {
+    let listing = check_in(&SKILL, None, &SkillsCheck::default());
 
     assert_eq!(listing.rows(), []);
-    assert_eq!(
-        listing.get_note(),
-        Some("The environment names no home directory, so shelf checked nothing.")
-    );
+    assert_eq!(listing.get_note(), None);
 }
 
 #[test]
@@ -135,7 +132,7 @@ fn a_named_dir_that_does_not_exist_is_missing() {
 
     let rows = check_in(
         &SKILL,
-        &home.homes,
+        home.agent_dirs.clone(),
         &SkillsCheck {
             dir: Some(home.dir.path().join("missing")),
         },
@@ -166,7 +163,7 @@ fn a_claude_dir_that_links_to_the_agents_dir_is_one_row() {
 
 #[cfg(unix)]
 #[test]
-fn a_tool_folder_that_links_elsewhere_differs_and_names_the_link() {
+fn a_tool_folder_that_links_elsewhere_is_linked_and_no_problem() {
     let home = Home::new();
     home.put(".claude", &SKILL.installed());
     let source = home.dir.path().join("source");
@@ -176,18 +173,44 @@ fn a_tool_folder_that_links_elsewhere_differs_and_names_the_link() {
 
     let rows = home.check();
 
-    assert_eq!(states(&rows), [Checked::Differs, Checked::Current]);
+    assert_eq!(states(&rows), [Checked::Current, Checked::Linked]);
     let real = fs::canonicalize(&source).unwrap();
     assert_eq!(
-        rows[0].reason.as_deref(),
-        Some(
-            format!(
-                "linked to {}, which shelf skills install did not write",
-                real.display()
-            )
-            .as_str()
-        )
+        rows[1].reason.as_deref(),
+        Some(format!("linked to {}", real.display()).as_str())
     );
+    assert!(rows.iter().all(|row| !crumbkit::Row::is_problem(row)));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_tool_folder_that_links_to_an_older_copy_install_wrote_differs() {
+    let home = Home::new();
+    home.put(".claude", &Skill::new("shelf", "0.2.0", TEXT).installed());
+    crate::testing::link(
+        &home.skills(".claude").join("shelf"),
+        &home.skills(".agents").join("shelf"),
+    );
+
+    let rows = home.check();
+
+    assert_eq!(states(&rows), [Checked::Differs]);
+    assert_eq!(rows[0].dirs.len(), 2);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_broken_tool_link_is_linked_and_no_problem() {
+    let home = Home::new();
+    home.put(".claude", &SKILL.installed());
+    crate::testing::link(
+        &home.dir.path().join("gone"),
+        &home.skills(".agents").join("shelf"),
+    );
+
+    let rows = home.check();
+
+    assert_eq!(states(&rows), [Checked::Current, Checked::Linked]);
 }
 
 #[test]

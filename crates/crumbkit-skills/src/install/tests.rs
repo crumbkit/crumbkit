@@ -6,7 +6,7 @@ use tempfile::TempDir;
 
 use super::{InstallRow, Installed, SKILLS_INSTALL, SkillsInstall, install_in};
 use crate::skill::Skill;
-use crate::targets::Homes;
+use crate::targets::agent_dirs;
 use crate::testing::write;
 
 const TEXT: &str =
@@ -14,17 +14,17 @@ const TEXT: &str =
 
 const SKILL: Skill = Skill::new("shelf", "0.3.0", TEXT);
 
-/// A temporary home and the homes that name it.
+/// A temporary home and the agent skills directories under it.
 struct Home {
     dir: TempDir,
-    homes: Homes,
+    agent_dirs: Option<Vec<PathBuf>>,
 }
 
 impl Home {
     fn new() -> Self {
         let dir = tempfile::tempdir().unwrap();
-        let homes = Homes::new(Some(OsString::from(dir.path())), None);
-        Self { dir, homes }
+        let agent_dirs = agent_dirs(Some(OsString::from(dir.path())), None);
+        Self { dir, agent_dirs }
     }
 
     fn path(&self, relative: &str) -> PathBuf {
@@ -45,7 +45,9 @@ impl Home {
     }
 
     fn install(&self, args: &SkillsInstall) -> Vec<InstallRow> {
-        install_in(&SKILL, &self.homes, args).rows().to_vec()
+        install_in(&SKILL, self.agent_dirs.clone(), args)
+            .rows()
+            .to_vec()
     }
 }
 
@@ -210,28 +212,54 @@ fn a_named_dir_that_does_not_exist_fails() {
 }
 
 #[test]
-fn no_home_installs_nothing_and_says_so() {
-    let listing = install_in(&SKILL, &Homes::default(), &SkillsInstall::default());
+fn no_home_installs_nothing_and_has_no_note_of_its_own() {
+    let listing = install_in(&SKILL, None, &SkillsInstall::default());
 
     assert_eq!(listing.rows(), []);
-    assert_eq!(
-        listing.get_note(),
-        Some(
-            "The environment names no home directory, so shelf installed nothing; name a directory with --dir."
-        )
-    );
+    assert_eq!(listing.get_note(), None);
 }
 
 #[test]
-fn no_agent_dir_installs_nothing_and_names_the_dirs_tried() {
+fn no_agent_dir_installs_nothing() {
     let home = Home::new();
 
-    let listing = install_in(&SKILL, &home.homes, &SkillsInstall::default());
+    let listing = install_in(&SKILL, home.agent_dirs.clone(), &SkillsInstall::default());
 
     assert_eq!(listing.rows(), []);
-    let note = listing.get_note().unwrap();
-    assert!(note.starts_with("None of "), "{note}");
-    assert!(note.contains(".claude"), "{note}");
+    assert!(!home.path(".claude").exists());
+}
+
+#[test]
+fn install_fails_when_its_temporary_file_name_is_taken() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+    fs::create_dir(agents.join("shelf")).unwrap();
+    let taken = agents.join(format!("shelf/.SKILL.md.{}.tmp", std::process::id()));
+    write(&taken, "someone else's file");
+
+    let rows = home.install(&SkillsInstall::default());
+
+    assert_eq!(states(&rows), [Installed::Failed]);
+    assert_eq!(fs::read_to_string(&taken).unwrap(), "someone else's file");
+    assert!(!agents.join("shelf/SKILL.md").exists());
+}
+
+#[test]
+fn a_named_path_that_is_a_file_fails_as_not_a_directory() {
+    let home = Home::new();
+    let file = home.path("skills");
+    write(&file, "a file");
+
+    let rows = home.install(&SkillsInstall {
+        dir: Some(file),
+        force: false,
+    });
+
+    assert_eq!(states(&rows), [Installed::Failed]);
+    assert_eq!(
+        rows[0].reason.as_deref(),
+        Some("the path is not a directory")
+    );
 }
 
 #[cfg(unix)]
