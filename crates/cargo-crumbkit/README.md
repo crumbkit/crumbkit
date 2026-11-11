@@ -2,9 +2,8 @@
 
 cargo-crumbkit adds the `cargo crumbkit` subcommand, which measures and
 describes a tool built with crumbkit. `cargo crumbkit weigh` counts the
-bytes that an agent reads on each path through the tool's help: each
-command's `-h` and `--help` pages, the output of its examples, and the total
-from the root down to the command. `cargo crumbkit docs` writes a Markdown
+bytes that an agent reads on each path through the tool's help, from the
+root down to each command. `cargo crumbkit docs` writes a Markdown
 reference of every command. `cargo crumbkit tool-skill draft` and
 `tool-skill check` draft and check the tool's agent skill.
 
@@ -30,7 +29,8 @@ The output for crumbkit's example tool is pinned in [shelf's weights].
 [schema] describes, so CI or an agent can compare two runs.
 
 `weigh` runs the tool's binary with a cleared environment and fresh XDG
-directories. It reads each example's output weight from the golden files that
+directories, so it never reads the person's aliases or writes to their usage
+log. It reads each example's output weight from the golden files that
 crumbkit-test's `check_examples` writes, in the directory that `--goldens`
 names, or in `tests/golden/examples` in the binary's package.
 
@@ -38,15 +38,15 @@ names, or in `tests/golden/examples` in the binary's package.
 it and the 95th percentile of its real output, from the tool's own usage
 log. `--log <FILE>` reads another copy of a log, and `--since <DURATION>`
 sets how far back to read. The tool needs to keep the log with crumbkit-usage
-and to have a `self figures list` command, as shelf has.
+and to have a `self figures list` command, as shelf has. The log stays on the
+machine, and `weigh` only reads it.
 
 ## Writing the command reference
 
 `cargo crumbkit docs --bin shelf` builds `shelf` as `weigh` does and writes
 the reference to `docs/commands.md` in shelf's package, or to the file that
-`--out` names. crumbkit-markdown writes the reference from the tool's
-`commands list --all --json --full` document, and the reference for
-crumbkit's example tool is [shelf's reference]. crumbkit-test's
+`--out` names. The reference for crumbkit's example tool is
+[shelf's reference]. crumbkit-test's
 `check_command_reference` fails a test when the checked-in file no longer
 matches the tool's help.
 
@@ -57,7 +57,7 @@ reads `skill/SKILL.md` in shelf's package, or the file that `--skill` names.
 Each inline code span and each line of a fenced block that starts with
 `shelf` must name real commands, flags that those commands accept, a value
 for each flag that takes one, and an accepted value where the argument
-lists its values. The
+lists its values. Placeholders such as `ID` or `<id>` count as values. The
 text prints `<FILE>:<LINE>: <SPAN>: <REASON>` for each failing line, and the
 run exits with 1 when any line fails, so CI can run it.
 

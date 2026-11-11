@@ -165,3 +165,16 @@ fn a_file_named_twice_is_refused() {
     let _ = Skill::new("shelf", "0.3.0", TEXT)
         .files(std::hint::black_box(&[("a.md", "one"), ("a.md", "two")]));
 }
+
+#[test]
+#[should_panic(expected = "a skill file is not named SKILL.md")]
+fn a_file_named_skill_md_in_other_case_is_refused() {
+    let _ = Skill::new("shelf", "0.3.0", TEXT).files(std::hint::black_box(&[("skill.md", "")]));
+}
+
+#[test]
+#[should_panic(expected = "a skill names each file once")]
+fn two_names_that_differ_only_by_case_are_refused() {
+    let _ = Skill::new("shelf", "0.3.0", TEXT)
+        .files(std::hint::black_box(&[("a.md", "one"), ("A.md", "two")]));
+}

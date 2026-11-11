@@ -104,7 +104,8 @@ one `Cargo.lock` are a finding on `convention-suite`, because their codes,
 events and observers differ.
 
 Count one finding per symbol and criterion, with every place in its
-`places`. Equivalent hints in one file make one finding.
+`places`. Equivalent hints in one file make one finding, whose `places` may
+lie in several symbols and whose `symbol` is the one that sorts first.
 
 ### Severity
 
@@ -173,8 +174,10 @@ applicable.
 
 A `crumbkit-gap` is a proposal for crumbkit itself. It goes in the report's
 `proposals`, never in `findings`, and it never makes the outcome `fail`. A
-pattern seen once stays out. A finding that needs a feature crumbkit lacks
-says so in its text and goes in `proposals`, not in `findings`.
+place that would be a finding only if crumbkit had a feature it lacks is no
+finding. When the same pattern appears in two or more tools or crates, it
+is a proposal whose text names the missing feature. A pattern seen once
+stays out of `proposals`, and `note` mentions it.
 
 ### False positives
 
@@ -210,12 +213,13 @@ holds:
 - `outcome`: `skipped` when no criterion could be judged, `fail` when the
   report holds a finding, and `pass` otherwise.
 - `files_read`: the number of files read.
-- `findings`: one entry per symbol and criterion, with the criterion id,
-  the severity, the file, the symbol, every `file:line` under `places`, and
+- `findings`: one entry per symbol and criterion, or per file for
+  equivalent hints, with the criterion id, the severity, the file, the
+  symbol that sorts first, every `file:line` under `places`, and
   a text that says what is wrong and the proposed change. A finding about
   something absent cites the line where it belongs.
-- `proposals`: each `crumbkit-gap`, with its text and the places in each
-  tool or crate.
+- `proposals`: each `crumbkit-gap`, a pattern seen in two or more tools or
+  crates that no affordance covers, with its text and its places.
 - `newer_affordances`: each affordance newer than the pinned version, with
   its **Since**.
 - `not_judged`: each criterion that could not be judged, with the reason,

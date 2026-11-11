@@ -27,10 +27,15 @@ beside each of its skills and needs the same.
 - A file name is ASCII letters, digits, dots, dashes and underscores that
   does not start with a dot, and is never `SKILL.md`, so every file sits in
   the skill's own folder. A name given twice is refused at compile time.
+  Names are compared ignoring ASCII case, because a file system that
+  ignores case, as macOS and Windows do by default, holds `skill.md` and
+  `SKILL.md` as one file.
 - The other files belong to `install` when the folder's `SKILL.md` does,
   because they carry no frontmatter that could mark them. A folder without
-  a `SKILL.md` that holds a file at one of their names is skipped before
-  anything is written there, and `--force` replaces that file.
+  a `SKILL.md` that holds a file at one of their names with other text is
+  skipped before anything is written there, and `--force` replaces that
+  file. A file that already holds the embedded text counts as install's
+  own, so the next install finishes a copy that an interrupted one left.
 - `install` writes the other files first and `SKILL.md` last, so an agent
   never loads a skill whose files are missing. A row is `unchanged` only
   when every file already matches.

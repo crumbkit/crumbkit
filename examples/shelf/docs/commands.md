@@ -508,7 +508,7 @@ shelf skills install --force
 
 ### Columns that `--long` adds
 
-- `path`: The SKILL.md file that install wrote or left, at its real path.
+- `path`: The SKILL.md file that install wrote or left, or the skill's other file whose write failed, at its real path.
 
 Effects: additive, idempotent, closed-world.
 

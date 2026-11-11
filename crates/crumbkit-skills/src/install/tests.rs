@@ -531,3 +531,26 @@ fn a_file_that_cannot_be_written_fails_the_row_and_leaves_the_skill_file_unwritt
     assert!(rows[0].path.ends_with("report.json"), "{:?}", rows[0]);
     assert!(!agents.join("shelf/SKILL.md").exists());
 }
+
+#[test]
+fn a_plain_install_finishes_the_copy_that_an_interrupted_install_left() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+    fs::create_dir(agents.join("shelf")).unwrap();
+    let taken = agents.join(format!("shelf/.report.json.{}.tmp", std::process::id()));
+    write(&taken, "someone else's file");
+    let failed = home.install_skill(&WITH_FILES, &SkillsInstall::default());
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test removes the file that made the first install fail"
+    )]
+    fs::remove_file(&taken).unwrap();
+
+    let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
+
+    assert_eq!(states(&failed), [Installed::Failed]);
+    assert_eq!(read(&agents, "REFERENCE.md"), "# Reference\n");
+    assert_eq!(states(&rows), [Installed::Written]);
+    assert_eq!(installed(&agents), WITH_FILES.installed());
+    assert_eq!(read(&agents, "report.json"), "{}\n");
+}

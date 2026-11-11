@@ -34,7 +34,7 @@
       "minimum": 0
     },
     "findings": {
-      "description": "One finding per symbol and criterion, in no particular order.",
+      "description": "One finding per symbol and criterion, or one per file for equivalent hints, in no particular order.",
       "type": "array",
       "items": {
         "type": "object",
@@ -52,11 +52,11 @@
             "type": "string"
           },
           "symbol": {
-            "description": "The function, type or enum that holds the places, such as BooksError::recovery.",
+            "description": "The function, type or enum that holds the places, such as BooksError::recovery. When equivalent hints in one file make one finding, it is the symbol that sorts first.",
             "type": "string"
           },
           "places": {
-            "description": "Every place of the finding within the symbol, each as file:line.",
+            "description": "Every place of the finding, each as file:line. They lie in the symbol, or in several symbols of the file when equivalent hints make one finding.",
             "type": "array",
             "items": {
               "type": "string"
@@ -73,13 +73,13 @@
       }
     },
     "proposals": {
-      "description": "The proposals for crumbkit itself: each hand-written mechanism that repeats across two or more tools or crates and that no affordance covers, under the criterion crumbkit-gap. A proposal never makes the outcome fail.",
+      "description": "The proposals for crumbkit itself, under the criterion crumbkit-gap: each pattern that appears in two or more tools or crates and that no affordance covers, including a place that would be a finding only if crumbkit had a feature it lacks. A pattern seen once is no proposal. A proposal never makes the outcome fail.",
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
           "text": {
-            "description": "The mechanism, and what crumbkit could offer in its place.",
+            "description": "The pattern, and the feature crumbkit could offer in its place.",
             "type": "string"
           },
           "places": {

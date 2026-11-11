@@ -119,7 +119,7 @@
           }
         },
         "path": {
-          "description": "The SKILL.md file that install wrote or left, at its real path.",
+          "description": "The SKILL.md file that install wrote or left, or the skill's other file whose write failed, at its real path.",
           "type": "string"
         },
         "reason": {

@@ -80,7 +80,7 @@ pub struct InstallRow {
     dirs: Vec<String>,
     /// Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/skill`, or null.
     reason: Option<String>,
-    /// The SKILL.md file that install wrote or left, at its real path.
+    /// The SKILL.md file that install wrote or left, or the skill's other file whose write failed, at its real path.
     path: String,
 }
 
@@ -120,8 +120,10 @@ impl Row for InstallRow {
 ///
 /// The skill's other files, which [`Skill::files`] names, belong to
 /// install when the folder's `SKILL.md` does. A folder without a
-/// `SKILL.md` that holds a file at one of their names is skipped, and
-/// `--force` replaces that file. Install writes the other files first and
+/// `SKILL.md` that holds a file at one of their names with other text is
+/// skipped, and `--force` replaces that file. A file that already holds the
+/// skill's text counts as install's own, so the next install finishes a
+/// copy that an interrupted one left. Install writes the other files first and
 /// `SKILL.md` last, so an agent never loads a skill whose files are
 /// missing, and a row is `unchanged` only when every file already matches.
 ///
@@ -294,8 +296,10 @@ fn carry_out(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: boo
 /// row. A `SKILL.md` that install did not write is skipped unless `force`.
 ///
 /// The other files belong to install when the folder's `SKILL.md` does, so
-/// a folder without a `SKILL.md` that holds a file at one of their names is
-/// skipped unless `force`, before anything is written there. Install
+/// a folder without a `SKILL.md` that holds a file at one of their names
+/// with other text is skipped unless `force`, before anything is written
+/// there. A file that holds the embedded text is install's own, so an
+/// install that stopped before `SKILL.md` is finished by the next one. Install
 /// writes `SKILL.md` last, so an agent never loads a skill whose files are
 /// missing.
 // RUST-10: install leaves a file that an earlier version of the skill
@@ -320,10 +324,13 @@ fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: b
         }
         None if !force => {
             let folder = file.parent().unwrap_or(file);
-            let taken = skill
-                .get_files()
-                .iter()
-                .find(|(name, _)| fs::symlink_metadata(folder.join(name)).is_ok());
+            // A file that already holds the embedded text is install's
+            // own, left by an install that stopped before SKILL.md.
+            let taken = skill.get_files().iter().find(|(name, body)| {
+                let path = folder.join(name);
+                fs::symlink_metadata(&path).is_ok()
+                    && !fs::read_to_string(&path).is_ok_and(|current| current == *body)
+            });
             if let Some((name, _)) = taken {
                 let reason = format!("{name} not written by {} skills install", skill.name());
                 return row(Installed::Skipped, Some(reason), file);

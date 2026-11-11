@@ -117,7 +117,8 @@ impl Skill {
     ///
     /// Panics unless each name is ASCII letters, digits, dots, dashes and
     /// underscores that does not start with a dot, no name is `SKILL.md`,
-    /// and no name appears twice. A `const` that calls it with such
+    /// and no name appears twice, with names compared ignoring ASCII case,
+    /// because a file system that ignores case holds them as one file. A `const` that calls it with such
     /// arguments fails to compile.
     // RUST-10: a file name holds no `/`, so every file sits in the skill's
     // own folder. A skill with subfolders needs install to create them and
@@ -133,13 +134,13 @@ impl Skill {
                 "a skill file name is ASCII letters, digits, dots, dashes and underscores, not starting with a dot"
             );
             assert!(
-                !bytes_eq(name.as_bytes(), b"SKILL.md"),
+                !same_name(name.as_bytes(), b"SKILL.md"),
                 "a skill file is not named SKILL.md, which holds the skill's text"
             );
             let mut earlier = 0;
             while earlier < index {
                 assert!(
-                    !bytes_eq(files[earlier].0.as_bytes(), name.as_bytes()),
+                    !same_name(files[earlier].0.as_bytes(), name.as_bytes()),
                     "a skill names each file once"
                 );
                 earlier += 1;
@@ -291,9 +292,21 @@ const fn is_file_name(name: &str) -> bool {
     true
 }
 
-/// Reports whether `a` and `b` hold the same bytes.
-const fn bytes_eq(a: &[u8], b: &[u8]) -> bool {
-    a.len() == b.len() && starts_with(a, 0, b)
+/// Reports whether `a` and `b` name the same file on a file system that
+/// ignores case, as macOS and Windows do by default: the same bytes apart
+/// from ASCII case.
+const fn same_name(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut index = 0;
+    while index < a.len() {
+        if !a[index].eq_ignore_ascii_case(&b[index]) {
+            return false;
+        }
+        index += 1;
+    }
+    true
 }
 
 /// Reports whether `version` is one non-empty line of printable ASCII
