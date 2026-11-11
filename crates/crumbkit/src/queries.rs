@@ -1,6 +1,6 @@
 //! The queries that a program which reads a tool runs: the command lines
 //! that ask a crumbkit tool to describe itself and to report its usage log
-//! (ADR-0200).
+//! (ADR-0202).
 //!
 //! A program such as flightdeck starts a tool it has never seen and reads
 //! the tool's commands, documents and runs from what these queries print.
@@ -16,13 +16,12 @@
 //! ```
 //! use crumbkit::queries::{COMMANDS_LIST, SCHEMAS_SHOW};
 //!
-//! let none: &[&str] = &[];
 //! assert_eq!(
-//!     COMMANDS_LIST.words(none),
+//!     COMMANDS_LIST.words(),
 //!     ["commands", "list", "--json", "--full", "--all", "--no-input"]
 //! );
 //! assert_eq!(
-//!     SCHEMAS_SHOW.words(&["shelf/books-list/v1"]),
+//!     SCHEMAS_SHOW.words_with_ids(&["shelf/books-list/v1"]),
 //!     ["schemas", "show", "--json", "--no-input", "--", "shelf/books-list/v1"]
 //! );
 //! ```
@@ -35,8 +34,8 @@
 #[cfg(test)]
 mod tests;
 
-/// One query: the fixed path of one of crumbkit's commands, the flags that a
-/// reading program passes to it, and whether document ids follow.
+/// One query: the fixed path of one of crumbkit's commands and the flags
+/// that a reading program passes to it.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Query {
     path: &'static [&'static str],
@@ -59,21 +58,26 @@ impl Query {
         self.flags
     }
 
-    /// Reports whether the query takes ids, which follow `--` so that an id
-    /// that starts with `-` stays an id. Only [`SCHEMAS_SHOW`] takes them.
+    /// Returns the query's argument vector after the program: the path and
+    /// then the flags. For [`SCHEMAS_SHOW`], which takes ids, the vector
+    /// ends with `--`, and [`words_with_ids`](Self::words_with_ids) adds
+    /// the ids.
     #[must_use]
-    pub const fn takes_ids(&self) -> bool {
-        self.takes_ids
-    }
-
-    /// Returns the query's argument vector after the program: the path, the
-    /// flags and, for a query that takes ids, `--` and then `ids`. A query
-    /// that takes no ids leaves `ids` out.
-    #[must_use]
-    pub fn words<'a, S: AsRef<str>>(&self, ids: &'a [S]) -> Vec<&'a str> {
-        let mut words: Vec<&'a str> = self.path.iter().chain(self.flags).copied().collect();
+    pub fn words(&self) -> Vec<&'static str> {
+        let mut words: Vec<&'static str> = self.path.iter().chain(self.flags).copied().collect();
         if self.takes_ids {
             words.push("--");
+        }
+        words
+    }
+
+    /// Returns the argument vector of [`words`](Self::words) with `ids`
+    /// after its `--`, so an id that starts with `-` stays an id. Only
+    /// [`SCHEMAS_SHOW`] takes ids, and every other query leaves `ids` out.
+    #[must_use]
+    pub fn words_with_ids<'a, S: AsRef<str>>(&self, ids: &'a [S]) -> Vec<&'a str> {
+        let mut words: Vec<&'a str> = self.words();
+        if self.takes_ids {
             words.extend(ids.iter().map(AsRef::as_ref));
         }
         words

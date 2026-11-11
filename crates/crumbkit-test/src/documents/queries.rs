@@ -1,5 +1,5 @@
 //! The query rule of the mount check: a tool accepts each query that a
-//! program which reads it runs (ADR-0200).
+//! program which reads it runs (ADR-0202).
 
 use clap::Command;
 use crumbkit::queries::{QUERIES, Query};
@@ -10,7 +10,8 @@ use crate::tree;
 #[cfg(test)]
 mod tests;
 
-/// The id that the check passes to a query that takes ids. `schemas show`
+/// The id that the check passes to every query. Only a query that takes
+/// ids puts it in its words. `schemas show`
 /// takes any string as an id when clap parses it, so the check needs no id
 /// that the tool prints.
 const SAMPLE_ID: &str = "crumbkit/schemas-list/v1";
@@ -47,7 +48,7 @@ pub(super) fn problems(command: &Command) -> Vec<String> {
             let words: Vec<&str> = above
                 .iter()
                 .copied()
-                .chain(query.words(&[SAMPLE_ID]))
+                .chain(query.words_with_ids(&[SAMPLE_ID]))
                 .collect();
             let line = command_line(command, &words);
             let argv = std::iter::once(command.get_name()).chain(words.iter().copied());

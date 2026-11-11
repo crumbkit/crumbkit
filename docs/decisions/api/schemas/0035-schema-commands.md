@@ -1,7 +1,7 @@
 # ADR-0035. Schema commands
 
 - Date: 2026-10-11
-- Status: amended by ADR-0080 and ADR-0200
+- Status: amended by ADR-0080 and ADR-0202
 
 ## Context
 

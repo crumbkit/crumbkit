@@ -141,7 +141,7 @@ pub(crate) fn declared_name(
 /// [`crumbkit::ViewFlags`] for `--json` and `--full`, and [`crumbkit::Page`]
 /// for `--all`. A query whose command the tree does not hold is skipped, so
 /// a tool that mounts none of the commands passes. The rule has no opt-out
-/// (ADR-0200).
+/// (ADR-0202).
 ///
 /// ```
 /// use clap::Command;

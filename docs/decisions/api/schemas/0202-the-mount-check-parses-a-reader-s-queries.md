@@ -1,7 +1,8 @@
-# ADR-0200. The mount check parses a reader's queries
+# ADR-0202. The mount check parses a reader's queries
 
 - Date: 2026-11-11
-- Status: accepted. It amends ADR-0035, whose mount check read only the path of each of crumbkit's commands.
+- Status: accepted
+- Supersedes: ADR-0035, which it amends
 
 ## Context
 
@@ -21,11 +22,12 @@ test, and the list of queries existed only in the reading program.
 ## Decision
 
 - crumbkit gains the public module `queries`. It holds the `Query` type,
-  with a command's fixed path, the flags that a reader passes and whether
-  ids follow `--`, one constant for each of the six queries above, and
-  `QUERIES`, the list of all six. `Query::words` returns the argument
-  vector after the program. The reading program builds its command lines
-  from this list.
+  with a command's fixed path and the flags that a reader passes, one
+  constant for each of the six queries above, and `QUERIES`, the list of
+  all six. `Query::words` returns the argument vector after the program,
+  and `Query::words_with_ids` returns it with the ids that `schemas show`
+  takes after `--`. The reading program builds its command lines from
+  this list.
 - `check_mounts` parses each query of `QUERIES` whose command the tool's
   `clap::Command` holds, with clap, as the binary would. It fails when clap
   refuses a query, and the message names each flag the command does not

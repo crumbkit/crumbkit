@@ -45,7 +45,7 @@ not take with the type that adds it: `NoInput` for `--no-input`, `ViewFlags`
 for `--json` and `--full`, and `Page` for `--all`. A query whose command the
 tool does not mount is skipped, and the rule has no opt-out.
 
-Why: ADR-0035, ADR-0015, ADR-0200.
+Why: ADR-0035, ADR-0015, ADR-0202.
 
 ## `schemas list`
 

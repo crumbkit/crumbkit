@@ -98,7 +98,7 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
 - The name rule of a failure's fields has no opt-out, because the failure
   document's schema promises it to every reader.
 
-Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104, ADR-0105, ADR-0165, ADR-0200.
+Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104, ADR-0105, ADR-0165, ADR-0202.
 
 ## The opt-out report
 
