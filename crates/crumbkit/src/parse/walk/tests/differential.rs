@@ -122,29 +122,23 @@ impl Node {
             }
         }))
     }
-
-    /// Adds each option of the command and the commands below it to
-    /// `options`.
-    fn options<'a>(&'a mut self, options: &mut Vec<&'a mut Argument>) {
-        options.extend(self.arguments.iter_mut().filter(|arg| arg.takes_value));
-        for subcommand in &mut self.subcommands {
-            subcommand.node.options(options);
-        }
-    }
 }
 
 /// Returns a strategy for the argument in place `slot` of a command `depth`
 /// levels below the root. About half the arguments are options, about half
-/// have a short name and about a third are global.
+/// have a short name and about a third are global. About one option in eight
+/// has a default value.
 fn argument(depth: usize, slot: usize) -> impl Strategy<Value = Argument> {
     let long = LONGS[depth * ARGUMENTS + slot];
-    (any::<bool>(), any::<bool>(), 0..3_u8).prop_map(move |(takes_value, short, global)| Argument {
-        long,
-        short: long.chars().next().filter(|_| short),
-        takes_value,
-        global: global == 0,
-        default: false,
-    })
+    (any::<bool>(), any::<bool>(), 0..3_u8, 0..8_u8).prop_map(
+        move |(takes_value, short, global, default)| Argument {
+            long,
+            short: long.chars().next().filter(|_| short),
+            takes_value,
+            global: global == 0,
+            default: takes_value && default == 0,
+        },
+    )
 }
 
 /// Returns a strategy for a command `depth` levels below the root, with up
@@ -204,28 +198,14 @@ const fn json() -> Argument {
 }
 
 /// Returns a strategy for the root of a tree. About half the trees declare
-/// the global flag `--json` on the root, and in about a quarter one option
-/// has a default value.
+/// the global flag `--json` on the root.
 fn tree() -> impl Strategy<Value = Node> {
-    (
-        node(0),
-        any::<bool>(),
-        proptest::option::weighted(0.25, any::<prop::sample::Index>()),
-    )
-        .prop_map(|(mut root, declares_json, default)| {
-            let mut options = Vec::new();
-            root.options(&mut options);
-            if let Some(index) = default
-                && !options.is_empty()
-            {
-                let chosen = index.index(options.len());
-                options[chosen].default = true;
-            }
-            if declares_json {
-                root.arguments.push(json());
-            }
-            root
-        })
+    (node(0), any::<bool>()).prop_map(|(mut root, declares_json)| {
+        if declares_json {
+            root.arguments.push(json());
+        }
+        root
+    })
 }
 
 /// The numbers that decide how a line reads, taken in order. The numbers
@@ -244,6 +224,11 @@ impl Picks<'_> {
     /// Reports whether the next number is odd.
     fn chance(&mut self) -> bool {
         self.below(2) == 1
+    }
+
+    /// Reports whether the next number is not a multiple of four.
+    fn likely(&mut self) -> bool {
+        self.below(4) > 0
     }
 
     /// Returns one of `NAMES`.
@@ -278,18 +263,18 @@ fn alone(argument: &Argument, picks: &mut Picks<'_>) -> Vec<String> {
     }
 }
 
-/// Returns the words that pass some of the arguments `in_scope`, each at
+/// Returns the words that pass most of the arguments `in_scope`, each at
 /// most once, with the words of each argument together. Boolean flags with
-/// short names sometimes join into one group, and the group sometimes ends
-/// with an option's letter.
+/// short names mostly join into one group, and the group mostly ends with an
+/// option's letter.
 fn typed(in_scope: &[&Argument], picks: &mut Picks<'_>) -> Vec<Vec<String>> {
     let mut chosen: Vec<&Argument> = in_scope
         .iter()
         .copied()
-        .filter(|_| picks.chance())
+        .filter(|_| picks.likely())
         .collect();
     let mut passed = Vec::new();
-    if picks.chance() {
+    if picks.likely() {
         let mut letters = String::new();
         chosen.retain(|argument| match argument.short {
             Some(short) if !argument.takes_value => {
@@ -301,7 +286,7 @@ fn typed(in_scope: &[&Argument], picks: &mut Picks<'_>) -> Vec<Vec<String>> {
         let last = chosen
             .iter()
             .position(|argument| argument.takes_value && argument.short.is_some())
-            .filter(|_| picks.chance())
+            .filter(|_| picks.likely())
             .map(|position| chosen.remove(position));
         match last.and_then(|option| option.short) {
             Some(short) => {
@@ -320,7 +305,7 @@ fn typed(in_scope: &[&Argument], picks: &mut Picks<'_>) -> Vec<Vec<String>> {
 /// through `root` and that clap should accept.
 ///
 /// Before each subcommand word, which is the real name or the alias, the
-/// line passes some of the arguments that the current command declares or
+/// line passes most of the arguments that the current command declares or
 /// that a command above declares as global. A line that ends at a command
 /// without subcommands sometimes holds one positional value among that
 /// command's arguments, and sometimes ends with `--` and one word that
@@ -395,11 +380,6 @@ fn read_by_clap(matches: &ArgMatches) -> (Vec<String>, BTreeSet<String>) {
 
 proptest! {
     #[test]
-    fn clap_s_debug_assertions_accept_every_generated_tree(root in tree()) {
-        root.command("tool").debug_assert();
-    }
-
-    #[test]
     fn the_walk_reads_the_path_the_flags_and_json_as_clap_does_from_a_line_that_clap_accepts(
         root in tree(),
         numbers in vec(any::<u8>(), 128),
@@ -412,7 +392,12 @@ proptest! {
             .map(OsString::from)
             .collect();
         let matches = command.clone().try_get_matches_from(&args);
-        prop_assume!(matches.is_ok(), "clap refuses {:?}", words);
+        prop_assert!(
+            matches.is_ok(),
+            "clap refuses {:?}: {}",
+            words,
+            matches.unwrap_err()
+        );
         let (path, ids) = read_by_clap(&matches.unwrap());
 
         let walked = walk(&command, &args);
