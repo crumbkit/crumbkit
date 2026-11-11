@@ -25,7 +25,27 @@ declares, and review checks a command that takes crumbkit's arguments type
 without such a leaf. The id check skips these documents, so each failure
 names one fix.
 
-Why: ADR-0035, ADR-0015.
+A program that reads a tool, such as flightdeck, runs these commands with
+fixed flags, and
+[`crumbkit::queries`](../../../crates/crumbkit/src/queries.rs) holds the one
+list of those command lines:
+
+| Query | Flags |
+| --- | --- |
+| `commands list` | `--json --full --all --no-input` |
+| `schemas list` | `--json --full --all --no-input` |
+| `schemas show` | `--json --no-input -- <ID>...` |
+| `self figures list` | `--json --full --all --no-input` |
+| `self usage` | `--json --full --no-input` |
+| `self runs list` | `--json --full --all --no-input` |
+
+`check_mounts` parses each query whose command the tool mounts, with clap,
+and fails when clap refuses it. The failure names each flag the command does
+not take with the type that adds it: `NoInput` for `--no-input`, `ViewFlags`
+for `--json` and `--full`, and `Page` for `--all`. A query whose command the
+tool does not mount is skipped, and the rule has no opt-out.
+
+Why: ADR-0035, ADR-0015, ADR-0200.
 
 ## `schemas list`
 

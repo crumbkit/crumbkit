@@ -6,7 +6,7 @@ Options:
       --bin <NAME>    Build this binary of the current workspace and draft its skill from its commands
       --skill <FILE>  Draft this Markdown file [default: skill/SKILL.md in the binary's package]
       --usage <DIR>   Rank the most-used commands from the exported usage files (*.jsonl) under this directory
-      --top <N>       List at most this many commands in the most-used section [default: 10]
+      --top <N>       List at most this many of the most-used commands [default: 10]
       --check         Write nothing, and exit with 1 when a draft would change a section
   -h, --help          Print help (see more with '--help')
 
@@ -15,5 +15,5 @@ Examples:
   cargo crumbkit tool-skill draft --bin shelf --skill tests/fixtures/shelf-skill-drafted.md --check --json
 
 Effects: additive, idempotent, closed-world.
-Global flags: --json, --fields <FIELD>, --full. `cargo crumbkit tool-skill draft --help` describes them.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `cargo crumbkit tool-skill draft --help` describes them.
 Next: cargo crumbkit tool-skill draft --help explains each column.

@@ -9,4 +9,4 @@ Examples:
   cargo crumbkit skills print
 
 Effects: read-only, closed-world.
-Global flags: --json. `cargo crumbkit skills print --help` describes them.
+Global flags: --json, --no-input. `cargo crumbkit skills print --help` describes them.

@@ -22,6 +22,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: `weigh`, `docs` and `tool-skill check` run a binary named
   `cargo-<name>` with `<name>` as its first word, as cargo does, so they
   read a cargo subcommand's commands ([behaviour/help/skill-check]).
+- crumbkit: the module `queries` holds the command lines that a program
+  which reads a tool runs, such as `commands list --json --full --all
+  --no-input`, as `Query` constants and the list `QUERIES`
+  ([behaviour/schemas/commands]).
+- cargo-crumbkit: every command takes `--no-input`
+  ([behaviour/schemas/commands]).
 
 ### Changed
 
@@ -33,6 +39,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   text without one no longer compiles. When it differs from the tool's
   name, the old `<dir>/<tool>` folder stays, and agents load both
   copies until the person removes it ([crumbkit-skills]).
+- crumbkit-test: `check_mounts` fails when a command the tool mounts
+  refuses a query of `crumbkit::queries`, and names the type that adds
+  each missing flag: `NoInput`, `ViewFlags` or `Page`
+  ([behaviour/schemas/commands]).
+
 - cargo-crumbkit: `cargo crumbkit skill draft` and `skill check` are now
   `tool-skill draft` and `tool-skill check`, and their documents are
   `crumbkit/tool-skill-draft/v1` and `crumbkit/tool-skill-check/v1`. The

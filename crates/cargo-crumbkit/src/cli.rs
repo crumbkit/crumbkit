@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf};
-use crumbkit::{Tool, ViewFlags};
+use crumbkit::{NoInput, Tool, ViewFlags};
 use crumbkit_skills::{
     SKILLS_CHECK, SKILLS_INSTALL, SKILLS_PRINT, Skill, SkillsCheck, SkillsInstall,
 };
@@ -33,6 +33,10 @@ pub struct Cli {
     /// The flags that choose how the result prints.
     #[command(flatten)]
     pub(crate) view: ViewFlags,
+
+    /// The flag that tells cargo crumbkit that nobody can answer a question.
+    #[command(flatten)]
+    pub(crate) no_input: NoInput,
 }
 
 /// cargo-crumbkit's goal headings and leaves. It gives goal headings to the
@@ -323,7 +327,7 @@ pub(crate) struct ToolSkillDraftArgs {
     #[arg(long, value_name = "DIR")]
     pub(crate) usage: Option<PathBuf>,
 
-    /// List at most this many commands in the most-used section
+    /// List at most this many of the most-used commands
     #[arg(long, value_name = "N", default_value_t = 10)]
     pub(crate) top: usize,
 

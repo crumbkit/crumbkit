@@ -173,7 +173,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `check_path_weights`, `PathBudgets` | No limit on a help path | No test calls it | `check_path_weights` | 0.1 | `convention-suite` |
 | `check_help_goldens`, `Pages` | Help snapshots by hand | `insta` over help | `check_help_goldens` `insta::` | 0.1 | `twins-examples` |
 | `check_schema_goldens` | Schemas checked in by hand | No test calls it | `check_schema_goldens` | 0.1 | `convention-suite` |
-| `check_document_ids`, `check_mounts` | Review of document names | No test calls it | `check_document_ids` `check_mounts` | 0.1 | `convention-suite` |
+| `check_document_ids`, `check_mounts` | Review of document names, and a test that runs each query of `crumbkit::queries` against the binary | No test calls it, or the root arguments lack `NoInput` or `ViewFlags` | `check_document_ids` `check_mounts` `NoInput` | 0.1, the query rule after 0.3.2 | `convention-suite` |
 | `check_opt_outs`, `Allow`, `Rule` | Lint suppressions with no reason | No test calls it | `check_opt_outs` | 0.1 | `convention-suite` |
 | `check_examples`, `Examples`, `example_golden_name`, `FailureReader` | `assert_cmd` tests of each example | Examples that no test runs | `check_examples` `assert_cmd` | 0.1 | `twins-examples` |
 | `check_output_budget` | No test of the cut result | No test calls it | `check_output_budget` | 0.1 | `convention-suite` |
