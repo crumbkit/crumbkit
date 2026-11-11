@@ -55,6 +55,10 @@ A tool with one skill passes a slice of one, and its documents gain the
 `skill` field, which holds the name that the tool's `SKILL.md` already
 gave. The reader of `name:` is no YAML parser: it reads one `name:` line
 at the start of a line, and a name written any other way is refused when
-the tool is built. Each crate's rustdoc describes the current behaviour.
+the tool is built. The installed folder is named by the frontmatter
+`name:`, so a text without a `name:` line no longer compiles, and a tool
+whose frontmatter name differs from its tool name installs into
+`<dir>/<name>` and leaves the old `<dir>/<tool>` folder for the person to
+remove. Each crate's rustdoc describes the current behaviour.
 
 Considered: a `named` builder method that sets the skill's name beside the tool's, which lets the folder's name differ from the name in the file; a `Skills` set type that holds the tool's name once, which adds a type for what a slice already says; a name lookup inside `print`, which adds a failure to crumbkit-skills for a choice that the tool's own argument makes.

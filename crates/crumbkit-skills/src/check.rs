@@ -133,38 +133,47 @@ fn check_in(
     agent_dirs: Option<Vec<PathBuf>>,
     args: &SkillsCheck,
 ) -> Listing<CheckRow> {
-    let refused = |dir: &Path, reason: &str| {
-        skills
-            .iter()
-            .map(|skill| CheckRow {
-                state: Checked::Missing,
-                skill: skill.name().to_owned(),
-                dirs: vec![shown(dir)],
-                reason: Some(reason.to_owned()),
-                path: shown(&dir.join(skill.name()).join("SKILL.md")),
-            })
-            .collect::<Vec<_>>()
+    let refused = |skill: &Skill, dir: &Path, reason: &str| {
+        let path = dir.join(skill.name()).join("SKILL.md");
+        let reason = Some(reason.to_owned());
+        checked(skill, &[dir.to_owned()], Checked::Missing, reason, &path)
     };
-    targets::listing(args.dir.as_deref(), agent_dirs, refused, |targets| {
+    let rows = |skill: &Skill, targets: &[Target]| {
+        let text = skill.installed();
+        // Targets that reach one copy share a row. Rows of different skills
+        // never share a path, because each skill has a folder of its own.
         let mut rows: Vec<CheckRow> = Vec::new();
-        for skill in skills {
-            let text = skill.installed();
-            // The rows of the skills before this one never merge with its
-            // own, because each skill has a folder of its own.
-            let first = rows.len();
-            for target in targets {
-                let row = row(skill, &text, target);
-                match rows[first..]
-                    .iter_mut()
-                    .find(|earlier| earlier.path == row.path && earlier.state == row.state)
-                {
-                    Some(earlier) => earlier.dirs.extend(row.dirs),
-                    None => rows.push(row),
-                }
+        for target in targets {
+            let row = row(skill, &text, target);
+            match rows
+                .iter_mut()
+                .find(|earlier| earlier.path == row.path && earlier.state == row.state)
+            {
+                Some(earlier) => earlier.dirs.extend(row.dirs),
+                None => rows.push(row),
             }
         }
         rows
-    })
+    };
+    targets::listing(skills, args.dir.as_deref(), agent_dirs, refused, rows)
+}
+
+/// Returns the row of `skill` in the skills directories `dirs`, whose
+/// `SKILL.md` is at `path`.
+fn checked(
+    skill: &Skill,
+    dirs: &[PathBuf],
+    state: Checked,
+    reason: Option<String>,
+    path: &Path,
+) -> CheckRow {
+    CheckRow {
+        state,
+        skill: skill.name().to_owned(),
+        dirs: shown_all(dirs),
+        reason,
+        path: shown(path),
+    }
 }
 
 /// Compares each of the other files of `skill` in `folder` with the text
@@ -190,12 +199,8 @@ fn files(skill: &Skill, folder: &Path) -> Option<(Checked, String)> {
 
 /// Returns the row of `target`, whose copy of `skill` should be `text`.
 fn row(skill: &Skill, text: &str, target: &Target) -> CheckRow {
-    let row = |state, reason: Option<String>, path: &Path| CheckRow {
-        state,
-        skill: skill.name().to_owned(),
-        dirs: shown_all(&target.dirs),
-        reason,
-        path: shown(path),
+    let row = |state, reason: Option<String>, path: &Path| {
+        checked(skill, &target.dirs, state, reason, path)
     };
     let linked = |link: &Path, to: &Path| {
         let reason = format!("linked to {}", shown(to));

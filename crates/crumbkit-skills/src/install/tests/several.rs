@@ -5,13 +5,7 @@ use std::path::Path;
 
 use super::{Home, InstallRow, Installed, SKILL, SkillsInstall, installed, states};
 use crate::skill::Skill;
-use crate::testing::write;
-
-const LENDING_TEXT: &str =
-    "---\nname: shelf-lending\ndescription: Lend a book.\n---\n\nRun `shelf loans add`.\n";
-
-/// shelf's second skill, which an agent loads when it lends a book.
-const LENDING: Skill = Skill::new("shelf", "0.3.0", LENDING_TEXT);
+use crate::testing::{LENDING, LENDING_TEXT, write};
 
 fn skills(rows: &[InstallRow]) -> Vec<&str> {
     rows.iter().map(|row| row.skill.as_str()).collect()

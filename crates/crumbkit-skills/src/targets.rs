@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 
 use crumbkit::{Listing, Row};
 
+use crate::skill::Skill;
+
 #[cfg(test)]
 mod tests;
 
@@ -53,31 +55,41 @@ pub(crate) fn agent_dirs(
 /// environment names the agent skills directories `agent_dirs`.
 ///
 /// A run with `--dir` acts on that directory alone, and `refused` gives the
-/// rows of a `--dir` that is not a directory, one for each skill, with the
-/// reason. Otherwise the run acts on the agent skills directories that
-/// exist, merged by real path, and `rows` gives the rows of the targets,
-/// one for each skill in each target. With no home directory,
-/// or when none of the agent skills directories exists, the listing is
-/// empty, and the document's empty note asks for `--dir`. The rows that
-/// report a problem come first (OUTPUT-3).
+/// row of one skill for a `--dir` that is not a directory, with the reason.
+/// Otherwise the run acts on the agent skills directories that exist,
+/// merged by real path, and `rows` gives the rows of one skill, one for
+/// each target. The listing holds the rows of each skill of `skills` in
+/// turn. With no home directory, or when none of the agent skills
+/// directories exists, the listing is empty, and the document's empty note
+/// asks for `--dir`. The rows that report a problem come first (OUTPUT-3),
+/// and the other rows keep their order.
 pub(crate) fn listing<R: Row>(
+    skills: &[Skill],
     dir: Option<&Path>,
     agent_dirs: Option<Vec<PathBuf>>,
-    refused: impl FnOnce(&Path, &str) -> Vec<R>,
-    rows: impl FnOnce(&[Target]) -> Vec<R>,
+    refused: impl Fn(&Skill, &Path, &str) -> R,
+    rows: impl Fn(&Skill, &[Target]) -> Vec<R>,
 ) -> Listing<R> {
-    let mut rows = match dir {
+    // A named directory that cannot be used is kept with the reason.
+    let targets = match dir {
         Some(dir) => match named_dir(dir) {
-            Ok(real) => rows(&[Target {
+            Ok(real) => Ok(vec![Target {
                 dirs: vec![dir.to_owned()],
                 real,
             }]),
-            Err(reason) => refused(dir, &reason),
+            Err(reason) => Err((dir, reason)),
         },
-        None => rows(&merge(&agent_dirs.unwrap_or_default())),
+        None => Ok(merge(&agent_dirs.unwrap_or_default())),
     };
-    rows.sort_by_key(|row| !row.is_problem());
-    Listing::from_all(rows, None).described("skills directories")
+    let mut all = Vec::new();
+    for skill in skills {
+        match &targets {
+            Ok(targets) => all.extend(rows(skill, targets)),
+            Err((dir, reason)) => all.push(refused(skill, dir, reason)),
+        }
+    }
+    all.sort_by_key(|row| !row.is_problem());
+    Listing::from_all(all, None).described("skills directories")
 }
 
 /// Returns the real path of the directory `dir` that `--dir` names, or why

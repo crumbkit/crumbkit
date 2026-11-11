@@ -1,5 +1,6 @@
 use super::{SKILLS_PRINT, print};
 use crate::skill::Skill;
+use crate::testing::LENDING;
 
 const TEXT: &str =
     "---\nname: shelf\ndescription: Browse the catalogue.\n---\n\nRun `shelf books list`.\n";
@@ -70,13 +71,7 @@ fn the_checked_in_schema_matches_the_print_document_schema() {
 
 #[test]
 fn print_of_a_second_skill_names_it_under_skill_and_the_tool_under_tool() {
-    let lending = Skill::new(
-        "shelf",
-        "0.3.0",
-        "---\nname: shelf-lending\ndescription: Lend a book.\n---\n\nRun `shelf loans add`.\n",
-    );
-
-    let json = serde_json::to_value(print(&lending)).unwrap();
+    let json = serde_json::to_value(print(&LENDING)).unwrap();
 
     assert_eq!(json["skill"], "shelf-lending");
     assert_eq!(json["tool"], "shelf");

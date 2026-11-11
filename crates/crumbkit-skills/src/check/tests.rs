@@ -6,7 +6,7 @@ use tempfile::TempDir;
 use super::{CheckRow, Checked, SKILLS_CHECK, SkillsCheck, check_in};
 use crate::skill::Skill;
 use crate::targets::agent_dirs;
-use crate::testing::write;
+use crate::testing::{LENDING, write};
 
 const TEXT: &str =
     "---\nname: shelf\ndescription: Browse the catalogue.\n---\n\nRun `shelf books list`.\n";
@@ -293,13 +293,6 @@ fn a_copy_whose_file_holds_other_text_differs_and_names_the_file() {
         Some("REFERENCE.md differs from this binary's")
     );
 }
-
-/// shelf's second skill, which an agent loads when it lends a book.
-const LENDING: Skill = Skill::new(
-    "shelf",
-    "0.3.0",
-    "---\nname: shelf-lending\ndescription: Lend a book.\n---\n\nRun `shelf loans add`.\n",
-);
 
 #[test]
 fn check_reports_each_skill_and_lists_the_missing_one_before_the_current_one() {

@@ -153,23 +153,16 @@ fn install_in(
     args: &SkillsInstall,
 ) -> Listing<InstallRow> {
     targets::listing(
+        skills,
         args.dir.as_deref(),
         agent_dirs,
-        |dir, reason| {
-            skills
-                .iter()
-                .map(|skill| failed(skill, &[dir.to_owned()], dir, reason))
+        |skill, dir, reason| failed(skill, &[dir.to_owned()], dir, reason),
+        |skill, targets| {
+            let text = skill.installed();
+            merged(skill, targets, args.force)
+                .into_iter()
+                .map(|(dirs, real, plan)| run(skill, &text, &dirs, &real, plan, args.force))
                 .collect()
-        },
-        |targets| {
-            let mut rows = Vec::new();
-            for skill in skills {
-                let text = skill.installed();
-                for (dirs, real, plan) in merged(skill, targets, args.force) {
-                    rows.push(run(skill, &text, &dirs, &real, plan, args.force));
-                }
-            }
-            rows
         },
     )
 }

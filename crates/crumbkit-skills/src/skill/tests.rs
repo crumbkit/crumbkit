@@ -1,4 +1,5 @@
 use super::{Skill, Writer};
+use crate::testing::{LENDING, LENDING_TEXT};
 
 const TEXT: &str =
     "---\nname: shelf\ndescription: Browse the catalogue.\n---\n\nRun `shelf books list`.\n";
@@ -180,15 +181,10 @@ fn two_names_that_differ_only_by_case_are_refused() {
         .files(std::hint::black_box(&[("a.md", "one"), ("A.md", "two")]));
 }
 
-const LENDING_TEXT: &str =
-    "---\nname: shelf-lending\ndescription: Lend a book.\n---\n\nRun `shelf loans add`.\n";
-
 #[test]
 fn a_skill_takes_its_name_from_the_name_line_of_its_frontmatter_and_keeps_the_tool_s_name_apart() {
-    let skill = Skill::new("shelf", "0.3.0", LENDING_TEXT);
-
-    assert_eq!(skill.name(), "shelf-lending");
-    assert_eq!(skill.tool(), "shelf");
+    assert_eq!(LENDING.name(), "shelf-lending");
+    assert_eq!(LENDING.tool(), "shelf");
 }
 
 #[test]
@@ -203,11 +199,45 @@ fn a_quoted_name_with_spaces_around_it_is_read_without_the_quotes_and_spaces() {
 }
 
 #[test]
-fn the_installed_text_of_a_second_skill_records_the_tool_s_name() {
-    let skill = Skill::new("shelf", "0.3.0", LENDING_TEXT);
+fn a_name_line_that_ends_with_a_carriage_return_is_read_without_it() {
+    let skill = Skill::new(
+        "shelf",
+        "0.3.0",
+        "---\nname: shelf-lending\r\ndescription: Lend a book.\r\n---\n",
+    );
 
+    assert_eq!(skill.name(), "shelf-lending");
+}
+
+#[test]
+fn a_quoted_name_before_a_carriage_return_is_read_without_the_quotes() {
+    let skill = Skill::new("shelf", "0.3.0", "---\nname: \"shelf-lending\" \r\n---\n");
+
+    assert_eq!(skill.name(), "shelf-lending");
+}
+
+#[test]
+fn a_tab_after_the_name_key_separates_it_from_the_name() {
+    let skill = Skill::new("shelf", "0.3.0", "---\nname:\tshelf-lending\n---\n");
+
+    assert_eq!(skill.name(), "shelf-lending");
+}
+
+#[test]
+fn a_name_nested_under_another_key_is_ignored_and_the_top_level_one_is_read() {
+    let skill = Skill::new(
+        "shelf",
+        "0.3.0",
+        "---\nauthor:\n  name: someone\nname: shelf-lending\n---\n",
+    );
+
+    assert_eq!(skill.name(), "shelf-lending");
+}
+
+#[test]
+fn the_installed_text_of_a_second_skill_records_the_tool_s_name() {
     assert_eq!(
-        skill.installed(),
+        LENDING.installed(),
         "---\nname: shelf-lending\ndescription: Lend a book.\nmetadata:\n  tool: \"shelf\"\n  version: \"0.3.0\"\n---\n\nRun `shelf loans add`.\n"
     );
 }

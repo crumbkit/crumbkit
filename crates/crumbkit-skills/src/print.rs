@@ -4,8 +4,7 @@
 //! The tool owns the command. It adds a `print` subcommand without
 //! arguments to its `skills` group, and its handler passes the result of
 //! [`print`] to [`finish`](crumbkit::finish) with the document
-//! [`SKILLS_PRINT`]. A tool with several skills gives the subcommand an
-//! argument of its own that chooses the skill to print:
+//! [`SKILLS_PRINT`]:
 //!
 //! ```ignore
 //! SkillsCommand::Print => {
@@ -13,6 +12,9 @@
 //!     crumbkit::finish(run, crumbkit_skills::SKILLS_PRINT, result)
 //! }
 //! ```
+//!
+//! A tool with several skills gives the subcommand an argument of its own
+//! that chooses the skill to print.
 
 use std::fmt;
 

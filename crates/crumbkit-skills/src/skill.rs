@@ -69,7 +69,8 @@ impl Skill {
     /// `SKILL.md` is `text`.
     ///
     /// The skill's name is the value of the `name:` line of the frontmatter
-    /// of `text`, plain or in double quotes, without the spaces around it.
+    /// of `text`, plain or in double quotes, without the spaces around it
+    /// or the carriage return of a line that ends with CRLF.
     /// The folder that `install` writes therefore always has the name that
     /// an agent reads in the file.
     ///
@@ -390,16 +391,18 @@ const fn frontmatter_end(text: &[u8]) -> Option<usize> {
 }
 
 /// Returns the value of the `name:` line of the frontmatter of `text`,
-/// without the spaces and tabs around it and without a pair of double
-/// quotes around it, or the empty string when the frontmatter has no such
-/// line.
+/// without the spaces and tabs around it, without the carriage return of a
+/// line that ends with CRLF and without a pair of double quotes around it,
+/// or the empty string when the frontmatter has no such line.
 ///
-/// RUST-10: it reads the first line that starts with `name:` at the start
-/// of a line, followed by a space, a tab or the end of the line, and is no
-/// YAML parser. A name in single quotes, a name with a comment after it or
-/// a name on the line below its key is returned as written or not found,
-/// and `Skill::new` then refuses it. A YAML parser that a `const fn` can
-/// call replaces this once a skill needs to read other frontmatter.
+/// RUST-10: it reads the lines that start with `name:` at the start of a
+/// line, followed by a space, a tab or the end of the line, and is no YAML
+/// parser. The first such top-level line wins, and an indented `name:`
+/// under another key is ignored. A name in single quotes, a name with a
+/// comment after it or a name on the line below its key is returned as
+/// written or not found, and `Skill::new` then refuses it. A YAML parser
+/// that a `const fn` can call replaces this once a skill needs to read
+/// other frontmatter.
 const fn frontmatter_name(text: &str) -> &str {
     let bytes = text.as_bytes();
     let Some(end) = frontmatter_end(bytes) else {
@@ -410,13 +413,13 @@ const fn frontmatter_name(text: &str) -> &str {
     while start < end {
         let mut from = start + key.len();
         let next = next_line(bytes, start);
-        if starts_with(bytes, start, key) && matches!(bytes[from], b'\n' | b' ' | b'\t') {
+        if starts_with(bytes, start, key) && matches!(bytes[from], b'\n' | b'\r' | b' ' | b'\t') {
             // A line before the closing `---` line ends with a line feed.
             let mut to = next - 1;
             while from < to && matches!(bytes[from], b' ' | b'\t') {
                 from += 1;
             }
-            while from < to && matches!(bytes[to - 1], b' ' | b'\t') {
+            while from < to && matches!(bytes[to - 1], b' ' | b'\t' | b'\r') {
                 to -= 1;
             }
             if to - from >= 2 && bytes[from] == b'"' && bytes[to - 1] == b'"' {
