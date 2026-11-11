@@ -7,22 +7,18 @@ use clap::{Arg, Command};
 #[cfg(test)]
 mod tests;
 
+// RUST-10: `real_names` finds the part to rewrite by these three starts of
+// clap's English tips. It misses the part when clap rewords a tip, and the
+// refusal then keeps the tip as clap wrote it, which can name a hidden
+// alias. A message built from the error's kind and its context values
+// replaces it.
+
 /// The start of the tip that clap renders from its suggested flag.
 const ARGUMENT: &str = "a similar argument exists: ";
 /// The start of the tip that clap renders from one suggested subcommand.
 const SUBCOMMAND: &str = "a similar subcommand exists: ";
 /// The start of the tip that clap renders from several suggested subcommands.
 const SUBCOMMANDS: &str = "some similar subcommands exist: ";
-
-/// What a name that clap suggested resolves to.
-enum Resolved {
-    /// The real name of a visible flag or subcommand.
-    Visible(String),
-    /// A hidden flag or subcommand, which the refusal leaves out.
-    Hidden,
-    /// Nothing that crumbkit can find, so the name stays as clap wrote it.
-    Unknown,
-}
 
 /// Returns `part`, one part of a refusal's message, with each name that
 /// clap's tip suggests replaced by the real name that it belongs to, each
@@ -49,16 +45,15 @@ enum Resolved {
 pub(super) fn real_names(part: &str, commands: &[&Command], error: &clap::Error) -> Option<String> {
     let last = commands.last()?;
     if part.starts_with(ARGUMENT)
-        && let Some(ContextValue::String(name)) = error.get(ContextKind::SuggestedArg)
+        && let Some(name) = suggested_flag(error)
     {
-        let names = resolve([name.as_str()], |name| match find_flag(name, commands) {
-            Some(arg) if arg.is_hide_set() => Resolved::Hidden,
-            Some(arg) => arg.get_long().map_or(Resolved::Unknown, |long| {
-                Resolved::Visible(format!("--{long}"))
-            }),
-            None => Resolved::Unknown,
-        });
-        return (!names.is_empty()).then(|| format!("{ARGUMENT}{}", list(&names)));
+        let arg = find_flag(name, commands);
+        if arg.is_some_and(Arg::is_hide_set) {
+            return None;
+        }
+        let real = arg.and_then(Arg::get_long);
+        let real = real.map_or_else(|| name.to_owned(), |long| format!("--{long}"));
+        return Some(format!("{ARGUMENT}'{real}'"));
     }
     if let Some((name, flag)) = flag_of_subcommand(part, error) {
         return real_flag_of_subcommand(part, name, flag, commands);
@@ -67,19 +62,23 @@ pub(super) fn real_names(part: &str, commands: &[&Command], error: &clap::Error)
         && let Some(ContextValue::Strings(names)) = error.get(ContextKind::SuggestedSubcommand)
         && !names.is_empty()
     {
-        let names = resolve(names.iter().map(String::as_str), |name| {
-            match last.find_subcommand(name) {
-                Some(subcommand) if subcommand.is_hide_set() => Resolved::Hidden,
-                Some(subcommand) => Resolved::Visible(subcommand.get_name().to_owned()),
-                None => Resolved::Unknown,
+        let mut real: Vec<&str> = Vec::new();
+        for name in names {
+            let name = match last.find_subcommand(name) {
+                Some(subcommand) if subcommand.is_hide_set() => continue,
+                Some(subcommand) => subcommand.get_name(),
+                None => name,
+            };
+            if !real.contains(&name) {
+                real.push(name);
             }
-        });
-        let start = match names.len() {
+        }
+        let start = match real.len() {
             0 => return None,
             1 => SUBCOMMAND,
             _ => SUBCOMMANDS,
         };
-        return Some(format!("{start}{}", list(&names)));
+        return Some(format!("{start}{}", list(&real)));
     }
     Some(part.to_owned())
 }
@@ -155,10 +154,16 @@ pub(crate) fn nearest_flag<'a>(
             commands.push(subcommand);
         }
     }
-    let Some(ContextValue::String(suggestion)) = error.get(ContextKind::SuggestedArg) else {
-        return None;
-    };
-    find_flag(suggestion, &commands).filter(|arg| !arg.is_hide_set())
+    find_flag(suggested_flag(error)?, &commands).filter(|arg| !arg.is_hide_set())
+}
+
+/// Returns the flag that clap suggests in the context of `error`, such as
+/// `--max`, or `None` when it suggests none.
+fn suggested_flag(error: &clap::Error) -> Option<&str> {
+    match error.get(ContextKind::SuggestedArg)? {
+        ContextValue::String(name) => Some(name),
+        _ => None,
+    }
 }
 
 /// Returns the argument that the flag `name`, such as `--max`, names by its
@@ -186,31 +191,9 @@ fn find_flag<'a>(name: &str, commands: &[&'a Command]) -> Option<&'a Arg> {
     })
 }
 
-/// Returns the real name of each of `names` that `real` resolves to a
-/// visible flag or subcommand, and each name that it cannot resolve as it
-/// is, without repeats and in the order of their first appearance. A name
-/// of a hidden flag or subcommand is left out.
-fn resolve<'a>(
-    names: impl IntoIterator<Item = &'a str>,
-    real: impl Fn(&str) -> Resolved,
-) -> Vec<String> {
-    let mut resolved: Vec<String> = Vec::new();
-    for name in names {
-        let name = match real(name) {
-            Resolved::Visible(real) => real,
-            Resolved::Hidden => continue,
-            Resolved::Unknown => name.to_owned(),
-        };
-        if !resolved.contains(&name) {
-            resolved.push(name);
-        }
-    }
-    resolved
-}
-
 /// Returns `names` in single quotes, separated by commas, as clap lists
 /// them.
-fn list(names: &[String]) -> String {
+fn list(names: &[&str]) -> String {
     names
         .iter()
         .map(|name| format!("'{name}'"))

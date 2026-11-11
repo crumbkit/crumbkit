@@ -126,6 +126,26 @@ fn a_message_that_only_reads_like_claps_tip_names_no_nearest_flag() {
     assert_eq!(nearest.map(Arg::get_id), None);
 }
 
+#[test]
+fn a_message_that_only_reads_like_claps_tip_keeps_its_names_as_written() {
+    let command = tree();
+    let books = command.find_subcommand("books").unwrap();
+    let error = clap::Error::raw(
+        ErrorKind::UnknownArgument,
+        "unexpected argument '--maxx' found\n\n  tip: a similar argument exists: '--max'\n",
+    );
+
+    for part in [
+        "a similar argument exists: '--max'",
+        "a similar subcommand exists: 'wipe'",
+        "'books --max' exists",
+    ] {
+        let kept = super::real_names(part, &[&command, books], &error);
+
+        assert_eq!(kept.as_deref(), Some(part));
+    }
+}
+
 /// A tool whose `books` command has the alias `boots`, beside a `boats`
 /// command, and whose `lend` command takes a `--limit` option with the
 /// hidden alias `--max`, a `--format` option with possible values and the
