@@ -1,10 +1,10 @@
 //! The `skills print` command, which prints one of a tool's skills
 //! (ADR-0192, ADR-0201).
 //!
-//! The tool owns the command. It adds a `print` subcommand without
-//! arguments to its `skills` group, and its handler passes the result of
-//! [`print`] to [`finish`](crumbkit::finish) with the document
-//! [`SKILLS_PRINT`]:
+//! The tool owns the command. A tool with one skill adds a `print`
+//! subcommand without arguments to its `skills` group, and its handler
+//! passes the result of [`print`] to [`finish`](crumbkit::finish) with the
+//! document [`SKILLS_PRINT`]:
 //!
 //! ```ignore
 //! SkillsCommand::Print => {

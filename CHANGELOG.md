@@ -28,10 +28,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and `SkillText` gain `skill`. `Skill::new` reads the skill's name from
   the `name:` line of its frontmatter, and `Skill::tool` returns the
   tool's name ([crumbkit-skills]).
-- crumbkit-skills: the frontmatter `name:` names a skill's installed
-  folder. A text without a `name:` line no longer compiles, and a tool
-  whose `name:` differs from its tool name leaves the old `<dir>/<tool>`
-  folder for the person to remove ([crumbkit-skills]).
+- crumbkit-skills: the frontmatter `name:` names a skill's folder, and a
+  text without one no longer compiles. When it differs from the tool's
+  name, the old `<dir>/<tool>` folder stays, and agents load both
+  copies until the person removes it ([crumbkit-skills]).
 - cargo-crumbkit: `cargo crumbkit skill draft` and `skill check` are now
   `tool-skill draft` and `tool-skill check`, and their documents are
   `crumbkit/tool-skill-draft/v1` and `crumbkit/tool-skill-check/v1`. The
