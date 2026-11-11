@@ -177,7 +177,7 @@ A `crumbkit-gap` is a proposal for crumbkit itself. It goes in the report's
 place that would be a finding only if crumbkit had a feature it lacks is no
 finding. When the same pattern appears in two or more tools or crates, it
 is a proposal whose text names the missing feature. A pattern seen once
-stays out of `proposals`, and `note` mentions it.
+stays out of the report.
 
 ### False positives
 
