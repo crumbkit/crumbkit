@@ -4,7 +4,7 @@
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 
 /// A row type's child lines, which [`Row::CHILDREN`](crate::Row::CHILDREN)
 /// holds (ADR-0120, ADR-0182).
@@ -168,10 +168,7 @@ pub(super) fn shown_lines<R: Serialize + ?Sized>(row: &R, children: Option<&str>
     let Some(children) = children else {
         return Vec::new();
     };
-    let value = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(row)
-    };
+    let value = text_cells(|| serde_json::to_value(row));
     let Ok(Value::Object(mut fields)) = value else {
         return Vec::new();
     };

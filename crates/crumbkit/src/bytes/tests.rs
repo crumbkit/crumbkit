@@ -9,7 +9,7 @@ use serde_json::json;
 use super::{Base64, Bytes};
 use crate::Rows;
 use crate::row::Sealed;
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 use crate::{NoRow, Row, Shape};
 
 /// Returns the base64 text of `bytes`.
@@ -226,10 +226,7 @@ fn a_flattened_bytes_field_stays_an_object_while_the_text_mode_is_set() {
         content: Bytes::from("one\n".to_owned()),
     };
 
-    let value = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(&row).unwrap()
-    };
+    let value = text_cells(|| serde_json::to_value(&row).unwrap());
 
     assert_eq!(value, json!({"name": "a.txt", "text": "one\n"}));
 }
