@@ -127,9 +127,11 @@ Why: ADR-0011.
   run cover the Windows SIGINT and SIGBREAK handlers without the usage
   log, and crumbkit-process's Windows tests cover its job object. It turns off debug info and
   incremental builds.
-- `report` comments the run's URL on the open issue titled "Scheduled CI
-  failed" when `nightly`, `bench`, `changed` or `windows` fails, or opens
-  that issue when none is open.
+- `clap-latest` tests crumbkit and shelf against the newest clap
+  `Cargo.toml` allows.
+- `report` comments the run's URL and failed jobs on the open issue
+  titled "Scheduled CI failed", or opens that issue, when another job
+  fails.
 
 A scheduled run skips `bench` and `windows` when the last passing run of
 that job was at the same commit, because nothing they check has changed. A

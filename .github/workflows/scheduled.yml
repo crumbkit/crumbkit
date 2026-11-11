@@ -3,8 +3,10 @@
 # job checks the benchmarks and shelf's run time against their limits
 # (ADR-0008) when main has changed since they last passed. The windows job
 # builds, lints and tests the workspace on Windows (CI-4) when main has
-# changed since it last passed. The report job keeps every failure on one
-# issue. A manual run runs every job in full.
+# changed since it last passed. The clap-latest job tests crumbkit and shelf
+# against the newest clap release that Cargo.toml allows. The report job
+# keeps every failure on one issue and names each job that failed. A manual
+# run runs every job in full.
 name: Scheduled
 
 on:
@@ -179,12 +181,44 @@ jobs:
       - if: ${{ !cancelled() }}
         run: cargo test --workspace --doc
 
-  # When the nightly, bench, changed or windows job fails, this job comments on the open issue
-  # titled "Scheduled CI failed", or opens that issue when none is open, so
-  # failures collect in one place. It uses the gh CLI that the ubuntu-slim image
-  # includes.
+  # The clap-latest job tests crumbkit against the newest clap release that
+  # Cargo.toml allows. crumbkit depends on clap's error text and argument
+  # model, and pull requests test only the clap version in Cargo.lock, so
+  # this job shows within a day when a clap release changes what crumbkit
+  # depends on. The updated lock file stays in the job's checkout and is
+  # never committed. It runs every night, because a clap release needs no
+  # change on `main`. It has no rust-cache, as the nightly job has none,
+  # because it compiles the updated clap, which a cache keyed on the
+  # committed lock file would not hold.
+  clap-latest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read # actions/checkout reads the repository.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins.
+      - run: rustup toolchain install
+      # The log of this step names each clap package it moves and the
+      # version it moves to.
+      - id: update
+        run: cargo update -p clap -p clap_builder -p clap_derive -p clap_lex
+      - run: cargo test -p crumbkit
+      # shelf's tests run even when crumbkit's fail, so one failure does not
+      # hide the other. They do not run when the update itself failed.
+      - if: ${{ !cancelled() && steps.update.outcome == 'success' }}
+        run: cargo test -p shelf
+
+  # When the nightly, bench, changed, windows or clap-latest job fails, this
+  # job comments on the open issue titled "Scheduled CI failed", or opens
+  # that issue when none is open, so failures collect in one place. The
+  # comment names each job that failed. It uses the gh CLI that the
+  # ubuntu-slim image includes.
   report:
-    needs: [nightly, bench, changed, windows]
+    needs: [nightly, bench, changed, windows, clap-latest]
     if: failure()
     runs-on: ubuntu-slim
     timeout-minutes: 10
@@ -196,11 +230,26 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TITLE: Scheduled CI failed
+          NIGHTLY: ${{ needs.nightly.result }}
+          BENCH: ${{ needs.bench.result }}
+          CHANGED: ${{ needs.changed.result }}
+          WINDOWS: ${{ needs.windows.result }}
+          CLAP_LATEST: ${{ needs.clap-latest.result }}
         run: |
+          failed=""
+          for job in "nightly=$NIGHTLY" "bench=$BENCH" "changed=$CHANGED" \
+            "windows=$WINDOWS" "clap-latest=$CLAP_LATEST"; do
+            if [ "${job#*=}" = failure ]; then
+              failed="$failed, ${job%%=*}"
+            fi
+          done
+          body="This scheduled run failed: $RUN_URL
+
+          Failed jobs: ${failed#, }"
           number=$(gh issue list --state open --search "in:title $TITLE" --json number,title \
             --jq 'map(select(.title == env.TITLE)) | .[0].number // empty')
           if [ -n "$number" ]; then
-            gh issue comment "$number" --body "This scheduled run failed: $RUN_URL"
+            gh issue comment "$number" --body "$body"
           else
-            gh issue create --title "$TITLE" --body "This scheduled run failed: $RUN_URL"
+            gh issue create --title "$TITLE" --body "$body"
           fi
