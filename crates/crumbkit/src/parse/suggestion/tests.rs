@@ -1,6 +1,7 @@
 //! Tests for the names that a refusal suggests, through `parse_to`.
 
 use crate::parse::tests::parse_tree_to;
+use clap::error::ErrorKind;
 use clap::{Arg, ArgAction, Command};
 
 use crate::{Sink, Tool};
@@ -110,4 +111,89 @@ fn the_nearest_flag_of_a_suggested_hidden_alias_is_the_flag_that_the_alias_belon
 #[test]
 fn a_suggested_hidden_flag_gives_no_nearest_flag() {
     assert_eq!(nearest(&["shelf", "books", "--legac"]), None);
+}
+
+#[test]
+fn a_message_that_only_reads_like_claps_tip_names_no_nearest_flag() {
+    let command = tree();
+    let error = clap::Error::raw(
+        ErrorKind::UnknownArgument,
+        "unexpected argument '--limi' found\n\n  tip: a similar argument exists: '--limit'\n",
+    );
+
+    let nearest = super::nearest_flag(&command, &["books".to_owned()], &error);
+
+    assert_eq!(nearest.map(Arg::get_id), None);
+}
+
+#[test]
+fn a_message_that_only_reads_like_claps_tip_keeps_its_names_as_written() {
+    let command = tree();
+    let books = command.find_subcommand("books").unwrap();
+    let error = clap::Error::raw(
+        ErrorKind::UnknownArgument,
+        "unexpected argument '--maxx' found\n\n  tip: a similar argument exists: '--max'\n",
+    );
+
+    for part in [
+        "a similar argument exists: '--max'",
+        "a similar subcommand exists: 'wipe'",
+        "'books --max' exists",
+    ] {
+        let kept = super::real_names(part, &[&command, books], &error);
+
+        assert_eq!(kept.as_deref(), Some(part));
+    }
+}
+
+/// A tool whose `books` command has the alias `boots`, beside a `boats`
+/// command, and whose `lend` command takes a `--limit` option with the
+/// hidden alias `--max`, a `--format` option with possible values and the
+/// words to pass on.
+fn lending() -> Command {
+    Command::new("shelf")
+        .subcommand(Command::new("books").alias("boots"))
+        .subcommand(Command::new("boats"))
+        .subcommand(
+            Command::new("lend")
+                .arg(Arg::new("limit").long("limit").alias("max"))
+                .arg(
+                    Arg::new("format")
+                        .long("format")
+                        .value_parser(["json", "text"]),
+                )
+                .arg(Arg::new("words").num_args(0..).last(true)),
+        )
+}
+
+#[test]
+fn several_suggested_subcommands_name_each_real_command_once() {
+    let err = refusal(lending(), &["shelf", "boos"]);
+
+    assert!(
+        err.starts_with(
+            "error: unrecognized subcommand 'boos'; some similar subcommands exist: 'boats', 'books'\n"
+        ),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_suggested_hidden_alias_names_the_real_flag_before_the_tip_to_pass_a_value() {
+    let err = refusal(lending(), &["shelf", "lend", "--maxx"]);
+
+    assert!(
+        err.starts_with(
+            "error: unexpected argument '--maxx' found; a similar argument exists: '--limit'; \
+             to pass '--maxx' as a value, use '-- --maxx'\n"
+        ),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_tip_that_suggests_a_similar_value_stays_as_clap_wrote_it() {
+    let err = refusal(lending(), &["shelf", "lend", "--format", "jsn"]);
+
+    assert!(err.contains("; a similar value exists: 'json'\n"), "{err}");
 }
