@@ -95,8 +95,9 @@ impl Row for InstallRow {
     }
 }
 
-/// Writes `skill` to `<dir>/<name>/SKILL.md` in each agent skills
-/// directory that exists, or in the directory that `--dir` names, and
+/// Writes `skill` to `<dir>/<name>/SKILL.md`, with the skill's other files
+/// beside it, in each agent skills directory that exists, or in the
+/// directory that `--dir` names, and
 /// returns one row for each, for the tool to pass to
 /// [`finish`](crumbkit::finish) with [`SKILLS_INSTALL`].
 ///
@@ -117,8 +118,15 @@ impl Row for InstallRow {
 /// own folder and file. Install recognises its own copy by the
 /// `metadata:` lines that [`Skill`] describes.
 ///
+/// The skill's other files, which [`Skill::files`] names, belong to
+/// install when the folder's `SKILL.md` does. A folder without a
+/// `SKILL.md` that holds a file at one of their names is skipped, and
+/// `--force` replaces that file. Install writes the other files first and
+/// `SKILL.md` last, so an agent never loads a skill whose files are
+/// missing, and a row is `unchanged` only when every file already matches.
+///
 /// Each write goes to a temporary file in the same folder, which install
-/// then renames over `SKILL.md`, so an agent never reads half a file. A
+/// then renames over the file, so an agent never reads half a file. A
 /// directory that install cannot read or write gives a `failed` row with
 /// the reason, and the command exits with 1. Rows that failed come first.
 #[must_use]
@@ -281,29 +289,72 @@ fn carry_out(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: boo
     }
 }
 
-/// Writes `text` to `file` unless it already holds it, and returns the
+/// Writes `text` to `file`, a `SKILL.md`, and each of the skill's other
+/// files beside it, unless the folder already holds them, and returns the
 /// row. A `SKILL.md` that install did not write is skipped unless `force`.
+///
+/// The other files belong to install when the folder's `SKILL.md` does, so
+/// a folder without a `SKILL.md` that holds a file at one of their names is
+/// skipped unless `force`, before anything is written there. Install
+/// writes `SKILL.md` last, so an agent never loads a skill whose files are
+/// missing.
+// RUST-10: install leaves a file that an earlier version of the skill
+// wrote and this version no longer names. Removing it needs a record of
+// the files that each copy holds, such as a list in the frontmatter.
 fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: bool) -> InstallRow {
-    let row = |state, reason: Option<String>| InstallRow {
+    let row = |state, reason: Option<String>, path: &Path| InstallRow {
         state,
         dirs: shown_all(dirs),
         reason,
-        path: shown(file),
+        path: shown(path),
     };
-    match fs::read_to_string(file) {
-        Ok(old) if old == text => return row(Installed::Unchanged, None),
-        Ok(old) if !force && skill.writer(&old) == Writer::Other => {
+    let old = match fs::read_to_string(file) {
+        Ok(old) => Some(old),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+        Err(error) => return row(Installed::Failed, Some(error.to_string()), file),
+    };
+    match &old {
+        Some(old) if !force && skill.writer(old) == Writer::Other => {
             let reason = format!("not written by {} skills install", skill.name());
-            return row(Installed::Skipped, Some(reason));
+            return row(Installed::Skipped, Some(reason), file);
         }
-        Ok(_) => {}
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-        Err(error) => return row(Installed::Failed, Some(error.to_string())),
+        None if !force => {
+            let folder = file.parent().unwrap_or(file);
+            let taken = skill
+                .get_files()
+                .iter()
+                .find(|(name, _)| fs::symlink_metadata(folder.join(name)).is_ok());
+            if let Some((name, _)) = taken {
+                let reason = format!("{name} not written by {} skills install", skill.name());
+                return row(Installed::Skipped, Some(reason), file);
+            }
+        }
+        _ => {}
     }
-    match crumbkit::files::write_atomically(file, text) {
-        Ok(()) => row(Installed::Written, None),
-        Err(error) => row(Installed::Failed, Some(error.to_string())),
+    let mut written = false;
+    let folder = file.parent().unwrap_or(file);
+    for (name, body) in skill.get_files() {
+        let path = folder.join(name);
+        if fs::read_to_string(&path).is_ok_and(|current| current == *body) {
+            continue;
+        }
+        if let Err(error) = crumbkit::files::write_atomically(&path, body) {
+            return row(Installed::Failed, Some(error.to_string()), &path);
+        }
+        written = true;
     }
+    if old.as_deref() != Some(text) {
+        if let Err(error) = crumbkit::files::write_atomically(file, text) {
+            return row(Installed::Failed, Some(error.to_string()), file);
+        }
+        written = true;
+    }
+    let state = if written {
+        Installed::Written
+    } else {
+        Installed::Unchanged
+    };
+    row(state, None, file)
 }
 
 /// Returns the row of a directory that install could not read or write.

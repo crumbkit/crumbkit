@@ -9,7 +9,7 @@ repository.workspace = true
 readme = "README.md"
 keywords = ["cli", "clap", "agents", "help", "cargo-subcommand"]
 categories = ["command-line-utilities", "development-tools::cargo-plugins"]
-include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+include = ["src/**/*.rs", "schemas/*.json", "skill/*", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
 # cargo-crumbkit is a crumbkit tool: it parses with `crumbkit::parse`,
@@ -42,6 +42,10 @@ crumbkit-markdown = { workspace = true }
 # the two find the same file. `weigh` also recognises the
 # `self-figures-list/v1` document by crumbkit-usage's `SELF_FIGURES_LIST`.
 crumbkit-usage = { workspace = true }
+# `skills install`, `skills check` and `skills print` install, check and
+# print cargo crumbkit's own agent skill, which embeds the audit of a tool
+# for crumbkit, as every crumbkit tool installs its skill (ADR-0192).
+crumbkit-skills = { workspace = true }
 # The weight row derives `Serialize` and `JsonSchema`, as a tool's results do.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }

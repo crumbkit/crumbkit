@@ -12,9 +12,29 @@
       "budget": null
     },
     {
+      "rule": "examples/run",
+      "applies_to": "cargo crumbkit skills install",
+      "reason": "The example test passes HOME on for cargo's builds, so each run of the example would install into the person's own skills directories.",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "examples/run",
+      "applies_to": "cargo crumbkit skills check",
+      "reason": "The example test passes HOME on for cargo's builds, so the output would depend on the person's own skills directories.",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    },
+    {
       "rule": "recoveries/follow",
       "applies_to": "cargo",
-      "reason": "Each failure of weigh, docs, skill check and skill draft comes from cargo, a build, the tool that it runs, the file system or a broken skill file, so a test provokes one only by building a broken workspace or breaking a file.",
+      "reason": "Each failure of weigh, docs, tool-skill check and tool-skill draft comes from cargo, a build, the tool that it runs, the file system or a broken skill file, so a test provokes one only by building a broken workspace or breaking a file.",
       "costs": [
         "No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs."
       ],
@@ -24,7 +44,7 @@
   "declarations": [
     {
       "declaration": "text-line",
-      "applies_to": "cargo crumbkit skill check",
+      "applies_to": "cargo crumbkit tool-skill check",
       "declares": "The text prints each row as the line <FILE>:<LINE>: <SPAN>: <REASON> in place of a table row."
     }
   ]

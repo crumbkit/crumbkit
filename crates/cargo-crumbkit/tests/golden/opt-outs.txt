@@ -1,15 +1,25 @@
-cargo has 2 opt-outs from the conventions.
+cargo has 4 opt-outs from the conventions.
 
 examples/run: cargo crumbkit docs
   Reason: Each run of the example writes shelf's reference into the workspace, so tests/docs.rs runs docs with a file in a temporary directory instead.
   Cost: The examples are not run, so help can show an example that fails.
   Cost: The command's output weight counts 0 bytes, so its path weight is too low.
 
+examples/run: cargo crumbkit skills install
+  Reason: The example test passes HOME on for cargo's builds, so each run of the example would install into the person's own skills directories.
+  Cost: The examples are not run, so help can show an example that fails.
+  Cost: The command's output weight counts 0 bytes, so its path weight is too low.
+
+examples/run: cargo crumbkit skills check
+  Reason: The example test passes HOME on for cargo's builds, so the output would depend on the person's own skills directories.
+  Cost: The examples are not run, so help can show an example that fails.
+  Cost: The command's output weight counts 0 bytes, so its path weight is too low.
+
 recoveries/follow: cargo
-  Reason: Each failure of weigh, docs, skill check and skill draft comes from cargo, a build, the tool that it runs, the file system or a broken skill file, so a test provokes one only by building a broken workspace or breaking a file.
+  Reason: Each failure of weigh, docs, tool-skill check and tool-skill draft comes from cargo, a build, the tool that it runs, the file system or a broken skill file, so a test provokes one only by building a broken workspace or breaking a file.
   Cost: No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs.
 
 cargo has 1 declaration, which needs no reason.
 
-text-line: cargo crumbkit skill check
+text-line: cargo crumbkit tool-skill check
   Declares: The text prints each row as the line <FILE>:<LINE>: <SPAN>: <REASON> in place of a table row.

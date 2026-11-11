@@ -5,9 +5,8 @@ describes a tool built with crumbkit. `cargo crumbkit weigh` counts the
 bytes that an agent reads on each path through the tool's help: each
 command's `-h` and `--help` pages, the output of its examples, and the total
 from the root down to the command. `cargo crumbkit docs` writes a Markdown
-reference of every command. `cargo crumbkit skill draft` writes the
-generated sections of the tool's agent skill, and `cargo crumbkit skill
-check` checks the command lines in the skill against its commands.
+reference of every command. `cargo crumbkit tool-skill draft` and
+`tool-skill check` draft and check the tool's agent skill.
 
 ## Adding it
 
@@ -31,8 +30,7 @@ The output for crumbkit's example tool is pinned in [shelf's weights].
 [schema] describes, so CI or an agent can compare two runs.
 
 `weigh` runs the tool's binary with a cleared environment and fresh XDG
-directories, so it never reads the person's aliases or writes to their usage
-log. It reads each example's output weight from the golden files that
+directories. It reads each example's output weight from the golden files that
 crumbkit-test's `check_examples` writes, in the directory that `--goldens`
 names, or in `tests/golden/examples` in the binary's package.
 
@@ -40,8 +38,7 @@ names, or in `tests/golden/examples` in the binary's package.
 it and the 95th percentile of its real output, from the tool's own usage
 log. `--log <FILE>` reads another copy of a log, and `--since <DURATION>`
 sets how far back to read. The tool needs to keep the log with crumbkit-usage
-and to have a `self figures list` command, as shelf has. The log stays on the
-machine, and `weigh` only reads it.
+and to have a `self figures list` command, as shelf has.
 
 ## Writing the command reference
 
@@ -55,18 +52,18 @@ matches the tool's help.
 
 ## Checking the agent skill
 
-`cargo crumbkit skill check --bin shelf` builds `shelf` as `weigh` does and
+`cargo crumbkit tool-skill check --bin shelf` builds `shelf` as `weigh` does and
 reads `skill/SKILL.md` in shelf's package, or the file that `--skill` names.
 Each inline code span and each line of a fenced block that starts with
 `shelf` must name real commands, flags that those commands accept, a value
 for each flag that takes one, and an accepted value where the argument
-lists its values. Placeholders such as `ID` or `<id>` count as values. The
+lists its values. The
 text prints `<FILE>:<LINE>: <SPAN>: <REASON>` for each failing line, and the
 run exits with 1 when any line fails, so CI can run it.
 
 ## Drafting the agent skill
 
-`cargo crumbkit skill draft --bin shelf` rewrites the lines between
+`cargo crumbkit tool-skill draft --bin shelf` rewrites the lines between
 `<!-- crumbkit:generated NAME -->` markers in shelf's `skill/SKILL.md`, or
 in the file that `--skill` names, and leaves the author's text alone. It
 writes the description, a table of the jobs that the help's goal headings
@@ -74,13 +71,20 @@ name, and, with `--usage <DIR>` of exported usage, the most-used commands.
 `--check` writes nothing and exits with 1 when a draft would change the
 file.
 
+## Its own skill
+
+`cargo crumbkit skills install` installs cargo crumbkit's agent skill, which
+says what each command is for and how to audit a tool for places that
+should use crumbkit. The audit writes a JSON report that
+[the report schema] describes.
+
 ## Where to read more
 
 - `cargo crumbkit weigh --help` describes each column.
 - The [weigh docs], the [command reference docs], the [skill check docs]
   and the [skill draft docs] describe `weigh`, the command reference,
-  `skill check` and `skill draft`, and [ADR-0033], [ADR-0044], [ADR-0193]
-  and [ADR-0194] record their reasons.
+  `tool-skill check` and `tool-skill draft`, and [ADR-0033], [ADR-0044],
+  [ADR-0193], [ADR-0194] and [ADR-0199] record their reasons.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -96,3 +100,5 @@ option.
 [ADR-0193]: ../../docs/decisions/api/help/skill/0193-skill-check.md
 [skill draft docs]: ../../docs/behaviour/help/skill-draft/README.md
 [ADR-0194]: ../../docs/decisions/api/help/skill/README.md
+[the report schema]: skill/audit-report-v1.json
+[ADR-0199]: ../../docs/decisions/api/help/skill/0199-skill-files.md

@@ -12,14 +12,16 @@
 //! [ADR-0193]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0193-skill-check.md
 //! [skill draft docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/skill-draft/README.md
 //! [ADR-0194]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/README.md
+//! [the report schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/cargo-crumbkit/skill/audit-report-v1.json
+//! [ADR-0199]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0199-skill-files.md
 #![doc = include_str!("../README.md")]
 
 mod cargo;
 mod cli;
 mod docs;
 mod error;
-mod skill;
 mod tool;
+mod tool_skill;
 mod weigh;
 
 use std::process::ExitCode;
@@ -28,7 +30,9 @@ use std::process::ExitCode;
 // tests, so they stay out of the documentation.
 #[doc(hidden)]
 pub use crate::cli::{ALLOW, Cli, TOOL};
-use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand, SkillCommand};
+use crate::cli::{
+    CargoCommand, CommandsCommand, CrumbkitCommand, SKILL, SkillsCommand, ToolSkillCommand,
+};
 
 #[cfg(test)]
 mod tests;
@@ -53,14 +57,19 @@ pub fn run() -> ExitCode {
                 crumbkit::finish(output, weigh::WEIGH, weigh::weigh(&args))
             }
             CrumbkitCommand::Docs(args) => crumbkit::finish(output, docs::DOCS, docs::docs(&args)),
-            CrumbkitCommand::Skill { command } => match command {
-                SkillCommand::Check(args) => {
-                    crumbkit::finish(output, skill::SKILL_CHECK, skill::check(&args))
-                }
-                SkillCommand::Draft(args) => {
-                    crumbkit::finish(output, skill::SKILL_DRAFT, skill::draft(&args))
-                }
+            CrumbkitCommand::ToolSkill { command } => match command {
+                ToolSkillCommand::Check(args) => crumbkit::finish(
+                    output,
+                    tool_skill::TOOL_SKILL_CHECK,
+                    tool_skill::check(&args),
+                ),
+                ToolSkillCommand::Draft(args) => crumbkit::finish(
+                    output,
+                    tool_skill::TOOL_SKILL_DRAFT,
+                    tool_skill::draft(&args),
+                ),
             },
+            CrumbkitCommand::Skills { command } => skills(output, command),
             CrumbkitCommand::Commands { command } => match command {
                 // `commands list` reads the command tree through
                 // `&mut output`, so it runs before `finish`.
@@ -71,5 +80,24 @@ pub fn run() -> ExitCode {
                 }
             },
         },
+    }
+}
+
+/// Runs one of cargo crumbkit's `skills` commands, which crumbkit-skills
+/// provides for cargo crumbkit's own skill.
+fn skills(run: crumbkit::Run, command: SkillsCommand) -> ExitCode {
+    match command {
+        SkillsCommand::Install(args) => {
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&SKILL, &args));
+            crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
+        }
+        SkillsCommand::Check(args) => {
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&SKILL, &args));
+            crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
+        }
+        SkillsCommand::Print => {
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::print(&SKILL));
+            crumbkit::finish(run, crumbkit_skills::SKILLS_PRINT, result)
+        }
     }
 }

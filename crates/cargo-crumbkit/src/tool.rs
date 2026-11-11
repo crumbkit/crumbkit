@@ -154,7 +154,7 @@ impl Tool {
     /// and [`ToolError::NoCommandsList`] when the run exits with a failure,
     /// such as for a tool that does not mount `commands list`.
     pub(crate) fn document(&self) -> Result<Vec<u8>, ToolError> {
-        let output = self.run(&COMMANDS_LIST_ARGS)?;
+        let output = self.run(&self.below_root(&COMMANDS_LIST_ARGS))?;
         if output.status.success() {
             Ok(output.stdout)
         } else {
@@ -165,10 +165,45 @@ impl Tool {
     /// Returns the command line of the tool's `commands list` run, such as
     /// `shelf commands list --all --json --full`.
     pub(crate) fn commands_line(&self) -> String {
-        std::iter::once(self.name().as_str())
-            .chain(COMMANDS_LIST_ARGS)
+        self.line(&COMMANDS_LIST_ARGS)
+    }
+
+    /// Returns the command line of a run of the binary with `args` after
+    /// the tool's root, such as `shelf commands list`, or `cargo crumbkit
+    /// commands list` for a cargo subcommand.
+    fn line(&self, args: &[&str]) -> String {
+        let root = match self.subcommand() {
+            Some(subcommand) => format!("cargo {subcommand}"),
+            None => self.name(),
+        };
+        std::iter::once(root.as_str())
+            .chain(args.iter().copied())
             .collect::<Vec<_>>()
             .join(" ")
+    }
+
+    /// Returns `args`, the words after the tool's root command, with the
+    /// word that cargo passes first to a cargo subcommand before them.
+    fn below_root(&self, args: &[&str]) -> Vec<String> {
+        self.subcommand()
+            .into_iter()
+            .chain(args.iter().map(|word| (*word).to_owned()))
+            .collect()
+    }
+
+    /// Returns the word that cargo passes first to the binary when the
+    /// binary is a cargo subcommand, such as `crumbkit` for
+    /// `cargo-crumbkit`, or `None` for any other binary.
+    ///
+    /// cargo runs `cargo crumbkit weigh` as `cargo-crumbkit crumbkit weigh`,
+    /// so the tool's root command is `cargo` and its commands sit below
+    /// that word. A command path that `commands list` prints already starts
+    /// with `cargo crumbkit`, so only the runs at fixed paths need it.
+    fn subcommand(&self) -> Option<String> {
+        let stem = self.binary.file_stem()?.to_str()?;
+        stem.strip_prefix("cargo-")
+            .filter(|rest| !rest.is_empty())
+            .map(str::to_owned)
     }
 
     /// Returns the failure of a `commands list` run that gives no document.
@@ -198,17 +233,14 @@ impl Tool {
         if let Some(since) = since {
             args.extend(["--since", since]);
         }
-        let output = self.run(&args)?;
+        let output = self.run(&self.below_root(&args))?;
         let figures = if output.status.success() {
             used(&output.stdout)
         } else {
             None
         };
         figures.ok_or_else(|| WeighError::NoUsageFigures {
-            line: std::iter::once(self.name().as_str())
-                .chain(args)
-                .collect::<Vec<_>>()
-                .join(" "),
+            line: self.line(&args),
         })
     }
 
@@ -232,8 +264,8 @@ impl Tool {
         // The first word of the path is the tool's name, which the binary
         // stands for. A command's name never holds a space, because help and
         // `commands list` join the names with spaces.
-        let mut args: Vec<&str> = path.split(' ').skip(1).collect();
-        args.push(flag);
+        let mut args: Vec<String> = path.split(' ').skip(1).map(str::to_owned).collect();
+        args.push(flag.to_owned());
         let output = self.run(&args)?;
         if !output.status.success() {
             return Err(WeighError::HelpFailed {
@@ -248,7 +280,7 @@ impl Tool {
 
     /// Runs the binary with `args`, a cleared environment and the XDG
     /// directories, with no standard input, and returns its output.
-    fn run(&self, args: &[&str]) -> Result<Output, ToolError> {
+    fn run(&self, args: &[String]) -> Result<Output, ToolError> {
         #[expect(
             clippy::disallowed_methods,
             reason = "this module owns the runs of the tool's binary"

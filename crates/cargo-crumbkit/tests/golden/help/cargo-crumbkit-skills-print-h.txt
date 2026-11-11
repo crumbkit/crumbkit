@@ -1,0 +1,12 @@
+Print cargo crumbkit's skill
+
+Usage: cargo crumbkit skills print [OPTIONS]
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Examples:
+  cargo crumbkit skills print
+
+Effects: read-only, closed-world.
+Global flags: --json. `cargo crumbkit skills print --help` describes them.

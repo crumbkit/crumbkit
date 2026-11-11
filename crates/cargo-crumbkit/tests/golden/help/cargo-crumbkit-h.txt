@@ -3,16 +3,17 @@ Measure and explore tools built with crumbkit
 Usage: cargo crumbkit [OPTIONS] <COMMAND>
 
 Measure a tool's help
-  weigh     Measure the bytes that an agent reads on each path through a tool's help
+  weigh       Measure the bytes that an agent reads on each path through a tool's help
 
 Write a tool's reference
-  docs      Write a Markdown reference of every command of a tool to a file
+  docs        Write a Markdown reference of every command of a tool to a file
 
-Draft and check a tool's agent skill
-  skill     Draft a tool's agent skill and check it against its commands
+Work with agent skills
+  tool-skill  Draft and check a tool's agent skill
+  skills      Install cargo crumbkit's own skill
 
 Explore the commands
-  commands  Explore cargo crumbkit's commands
+  commands    Explore cargo crumbkit's commands
 
 Options:
   -h, --help     Print help (see more with '--help')

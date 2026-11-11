@@ -1,0 +1,14 @@
+Install cargo crumbkit's own skill
+
+Usage: cargo crumbkit skills [OPTIONS] <COMMAND>
+
+Commands:
+  install  Install cargo crumbkit's skill into each agent skills directory that exists
+  check    Check that each installed copy of cargo crumbkit's skill matches this cargo crumbkit
+  print    Print cargo crumbkit's skill
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit skills --help` describes them.
+Next: cargo crumbkit skills <COMMAND> -h

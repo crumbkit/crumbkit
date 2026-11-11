@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cargo-crumbkit/audit-report/v1",
+  "description": "The report of one audit of a tool for places that should use something crumbkit offers, which the \"Audit a tool\" job of cargo crumbkit's skill writes.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "description": "The id of this document.",
+      "const": "cargo-crumbkit/audit-report/v1"
+    },
+    "repository": {
+      "description": "The repository that was audited, such as its path or its owner/name.",
+      "type": "string"
+    },
+    "commit": {
+      "description": "The commit that was audited.",
+      "type": "string"
+    },
+    "since": {
+      "description": "The starting commit of a catch-up audit, which judged only the files changed since it, or null for a full audit.",
+      "type": ["string", "null"]
+    },
+    "crumbkit_version": {
+      "description": "The crumbkit version that Cargo.lock pins, or the commit that a git source pins.",
+      "type": "string"
+    },
+    "outcome": {
+      "description": "skipped when no criterion could be judged, fail when the report holds a finding, and pass otherwise.",
+      "enum": ["pass", "fail", "skipped"]
+    },
+    "files_read": {
+      "description": "The number of files that the audit read.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "findings": {
+      "description": "One finding per symbol and criterion, in no particular order.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "criterion": {
+            "description": "The id of the criterion that the place fails, such as typed-recovery.",
+            "type": "string"
+          },
+          "severity": {
+            "description": "The severity that the skill's Severity section gives the finding.",
+            "enum": ["high", "medium", "low"]
+          },
+          "file": {
+            "description": "The file that holds the symbol, relative to the repository's root. A finding that spans two places takes the file and symbol that sort first.",
+            "type": "string"
+          },
+          "symbol": {
+            "description": "The function, type or enum that holds the places, such as BooksError::recovery.",
+            "type": "string"
+          },
+          "places": {
+            "description": "Every place of the finding within the symbol, each as file:line.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "text": {
+            "description": "What is wrong and the proposed change.",
+            "type": "string"
+          }
+        },
+        "required": ["criterion", "severity", "file", "symbol", "places", "text"],
+        "additionalProperties": false
+      }
+    },
+    "proposals": {
+      "description": "The proposals for crumbkit itself: each hand-written mechanism that repeats across two or more tools or crates and that no affordance covers, under the criterion crumbkit-gap. A proposal never makes the outcome fail.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "description": "The mechanism, and what crumbkit could offer in its place.",
+            "type": "string"
+          },
+          "places": {
+            "description": "The places of the mechanism in each tool or crate, each as file:line.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["text", "places"],
+        "additionalProperties": false
+      }
+    },
+    "newer_affordances": {
+      "description": "The affordances newer than the pinned version, which the tool can use after an upgrade.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "affordance": {
+            "description": "The affordance as AFFORDANCES.md names it.",
+            "type": "string"
+          },
+          "since": {
+            "description": "The first version with the affordance.",
+            "type": "string"
+          }
+        },
+        "required": ["affordance", "since"],
+        "additionalProperties": false
+      }
+    },
+    "not_judged": {
+      "description": "The criteria that the audit could not judge, with the reason, such as Reads that are absent.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "criterion": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["criterion", "reason"],
+        "additionalProperties": false
+      }
+    },
+    "unverified": {
+      "description": "The findings with no file:line to cite, which count in no outcome.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "criterion": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["criterion", "text"],
+        "additionalProperties": false
+      }
+    },
+    "note": {
+      "description": "A one-line verdict.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "repository",
+    "commit",
+    "since",
+    "crumbkit_version",
+    "outcome",
+    "files_read",
+    "findings",
+    "proposals",
+    "newer_affordances",
+    "not_judged",
+    "unverified",
+    "note"
+  ],
+  "additionalProperties": false
+}

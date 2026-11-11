@@ -13,7 +13,7 @@ shelf/self-runs-list/v1      output  document  Each run in the usage log, groupe
 shelf/self-runs-export/v1    output  stream    Each record of the usage log after a run, oldest first, as the log stores it.
 shelf/skills-install/v1      output  document  What install did in each skills directory: written, unchanged, skipped or failed.
 shelf/skills-check/v1        output  document  Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.
-shelf/skills-print/v1        output  document  The tool's agent skill: its name, its version and the text of its SKILL.md.
+shelf/skills-print/v1        output  document  The tool's agent skill: its name, its version, the text of its SKILL.md and the names of its other files.
 shelf/completion-install/v1  output  document  What install did with the shell's completion file: written, unchanged, skipped or failed.
 shelf/completion-check/v1    output  document  Whether the shell's completion file holds the script that install writes: current, linked, missing, differs or unreadable.
 shelf/completion-print/v1    output  document  The shell's registration script for the tool's completion.

@@ -7,7 +7,7 @@ description: "Browse a small catalogue of public-domain books"
 
 # shelf
 
-<!-- Write here when an agent should use shelf and which command fits which job. cargo crumbkit skill draft rewrites only the sections between crumbkit:generated markers. -->
+<!-- Write here when an agent should use shelf and which command fits which job. cargo crumbkit tool-skill draft rewrites only the sections between crumbkit:generated markers. -->
 
 <!-- crumbkit:generated jobs -->
 ## Jobs

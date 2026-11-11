@@ -1,4 +1,4 @@
-//! Builds the binary that `weigh` measures, `docs` describes and `skill
+//! Builds the binary that `weigh` measures, `docs` describes and `tool-skill
 //! check` checks with cargo, and finds its executable and its package in
 //! cargo's JSON build messages.
 

@@ -45,6 +45,10 @@ The tool adds a `skills` group with three commands:
 - `skills print` prints the skill. [`print`] returns a [`SkillText`] for
   [`SKILLS_PRINT`].
 
+A skill that reads other files beside its `SKILL.md` names them with
+[`Skill::files`]. `install` writes them into the skill's folder before
+`SKILL.md`, `check` compares each one, and `print` names them.
+
 The tool passes each result to crumbkit's `finish` with its document.
 shelf's [`cli.rs`] and [`lib.rs`] show all three.
 
@@ -55,7 +59,7 @@ shelf's [`cli.rs`] and [`lib.rs`] show all three.
   counts as current.
 - The [schemas] describe the `<tool>/skills-install/v1`,
   `<tool>/skills-check/v1` and `<tool>/skills-print/v1` documents.
-- [ADR-0192] records why they work this way.
+- [ADR-0192] and [ADR-0199] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.

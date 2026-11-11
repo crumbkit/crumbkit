@@ -1,0 +1,25 @@
+Draft and check a tool's agent skill
+
+Usage: cargo crumbkit tool-skill [OPTIONS] <COMMAND>
+
+Commands:
+  check  Check that every command line in a tool's SKILL.md names its real commands and flags
+  draft  Write the generated sections of a tool's SKILL.md from its commands and exported usage
+
+Options:
+      --json
+          Print the result as a JSON document. The default prints text.
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order. The default prints the compact columns.
+
+      --long
+          Add the long columns after the compact ones. The default prints only the compact columns.
+
+      --full
+          With --json, print every field of every row. The default prints only the fields of the columns.
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Next: cargo crumbkit tool-skill <COMMAND> -h

@@ -122,3 +122,46 @@ fn an_inline_metadata_map_is_refused() {
         std::hint::black_box("---\nname: shelf\nmetadata: {a: b}\n---\n"),
     );
 }
+
+const FILES: &[(&str, &str)] = &[("REFERENCE.md", "# Reference\n"), ("report.json", "{}\n")];
+
+#[test]
+fn a_skill_keeps_its_files_in_the_order_the_tool_gives_them() {
+    let skill = Skill::new("shelf", "0.3.0", TEXT).files(FILES);
+
+    assert_eq!(skill.get_files(), FILES);
+}
+
+#[test]
+fn a_skill_without_files_has_none() {
+    assert_eq!(SKILL.get_files(), &[]);
+}
+
+#[test]
+#[should_panic(
+    expected = "a skill file name is ASCII letters, digits, dots, dashes and underscores"
+)]
+fn a_file_in_a_subfolder_is_refused() {
+    let _ = Skill::new("shelf", "0.3.0", TEXT).files(std::hint::black_box(&[("docs/a.md", "")]));
+}
+
+#[test]
+#[should_panic(
+    expected = "a skill file name is ASCII letters, digits, dots, dashes and underscores"
+)]
+fn a_file_name_that_starts_with_a_dot_is_refused() {
+    let _ = Skill::new("shelf", "0.3.0", TEXT).files(std::hint::black_box(&[("..", "")]));
+}
+
+#[test]
+#[should_panic(expected = "a skill file is not named SKILL.md")]
+fn a_file_named_skill_md_is_refused() {
+    let _ = Skill::new("shelf", "0.3.0", TEXT).files(std::hint::black_box(&[("SKILL.md", "")]));
+}
+
+#[test]
+#[should_panic(expected = "a skill names each file once")]
+fn a_file_named_twice_is_refused() {
+    let _ = Skill::new("shelf", "0.3.0", TEXT)
+        .files(std::hint::black_box(&[("a.md", "one"), ("a.md", "two")]));
+}

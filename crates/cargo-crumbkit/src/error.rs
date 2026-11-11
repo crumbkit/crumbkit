@@ -1,5 +1,5 @@
 //! The failures of `cargo crumbkit weigh`, `cargo crumbkit docs`,
-//! `cargo crumbkit skill check` and `cargo crumbkit skill draft`, and the failures of building and running a
+//! `cargo crumbkit tool-skill check` and `cargo crumbkit tool-skill draft`, and the failures of building and running a
 //! tool's binary that they share.
 
 use std::fmt;
@@ -331,8 +331,8 @@ impl std::error::Error for DocsError {
     }
 }
 
-/// A failure of `cargo crumbkit skill check` or `cargo crumbkit skill
-/// draft`. Each failure's next step is
+/// A failure of `cargo crumbkit tool-skill check` or `cargo crumbkit
+/// tool-skill draft`. Each failure's next step is
 /// advice, because each one needs a change outside cargo crumbkit: to the
 /// workspace, to the tool or to the file system.
 #[derive(Debug, Failure)]
@@ -388,7 +388,7 @@ pub(crate) enum SkillError {
     },
 }
 
-/// `skill check` returns a failure to build or run the tool as its own.
+/// `tool-skill check` returns a failure to build or run the tool as its own.
 impl From<ToolError> for SkillError {
     fn from(error: ToolError) -> Self {
         Self::Tool(error)

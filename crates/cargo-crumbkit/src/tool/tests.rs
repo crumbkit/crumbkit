@@ -222,3 +222,22 @@ fn a_commands_list_run_that_fails_gives_no_document() {
 
     assert_eq!(code(&error), "crumbkit::tool::no_commands_list");
 }
+
+// The test links to a program that Windows lacks.
+#[cfg(unix)]
+#[test]
+fn a_cargo_subcommand_runs_with_its_subcommand_word_first_as_cargo_runs_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let binary = dir.path().join("cargo-shelf");
+    std::os::unix::fs::symlink("/bin/echo", &binary).unwrap();
+    let tool = Tool::new(&binary, &std::env::temp_dir()).unwrap();
+
+    assert_eq!(
+        tool.document().unwrap(),
+        b"shelf commands list --all --json --full\n"
+    );
+    assert_eq!(
+        tool.commands_line(),
+        "cargo shelf commands list --all --json --full"
+    );
+}

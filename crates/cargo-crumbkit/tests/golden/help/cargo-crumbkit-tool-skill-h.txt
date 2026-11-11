@@ -1,0 +1,13 @@
+Draft and check a tool's agent skill
+
+Usage: cargo crumbkit tool-skill [OPTIONS] <COMMAND>
+
+Commands:
+  check  Check that every command line in a tool's SKILL.md names its real commands and flags
+  draft  Write the generated sections of a tool's SKILL.md from its commands and exported usage
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit tool-skill --help` describes them.
+Next: cargo crumbkit tool-skill <COMMAND> -h

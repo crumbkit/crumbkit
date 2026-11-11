@@ -44,10 +44,23 @@ impl Home {
     }
 
     fn install(&self, args: &SkillsInstall) -> Vec<InstallRow> {
-        install_in(&SKILL, self.agent_dirs.clone(), args)
+        self.install_skill(&SKILL, args)
+    }
+
+    fn install_skill(&self, skill: &Skill, args: &SkillsInstall) -> Vec<InstallRow> {
+        install_in(skill, self.agent_dirs.clone(), args)
             .rows()
             .to_vec()
     }
+}
+
+/// shelf's skill with a reference file and a report schema beside its
+/// `SKILL.md`.
+const WITH_FILES: Skill = Skill::new("shelf", "0.3.0", TEXT)
+    .files(&[("REFERENCE.md", "# Reference\n"), ("report.json", "{}\n")]);
+
+fn read(dir: &Path, file: &str) -> String {
+    fs::read_to_string(dir.join("shelf").join(file)).unwrap()
 }
 
 fn installed(dir: &Path) -> String {
@@ -422,4 +435,99 @@ fn the_checked_in_schema_matches_the_install_document_schema() {
         checked_in, generated,
         "schemas/skills-install-v1.json differs from the generated schema; replace the file with the generated schema"
     );
+}
+
+#[test]
+fn install_writes_each_file_of_the_skill_beside_its_skill_file() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+
+    let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
+
+    assert_eq!(states(&rows), [Installed::Written]);
+    assert_eq!(installed(&agents), WITH_FILES.installed());
+    assert_eq!(read(&agents, "REFERENCE.md"), "# Reference\n");
+    assert_eq!(read(&agents, "report.json"), "{}\n");
+}
+
+#[test]
+fn a_second_install_of_a_skill_with_files_leaves_the_copy_unchanged() {
+    let home = Home::new();
+    home.mkdir(".agents/skills");
+    home.install_skill(&WITH_FILES, &SkillsInstall::default());
+
+    let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
+
+    assert_eq!(states(&rows), [Installed::Unchanged]);
+}
+
+#[test]
+fn install_writes_a_file_that_its_own_earlier_copy_lacks() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+    home.install(&SkillsInstall::default());
+
+    let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
+
+    assert_eq!(states(&rows), [Installed::Written]);
+    assert_eq!(read(&agents, "REFERENCE.md"), "# Reference\n");
+}
+
+#[test]
+fn install_rewrites_a_file_of_its_own_copy_that_was_changed() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+    home.install_skill(&WITH_FILES, &SkillsInstall::default());
+    write(&agents.join("shelf/report.json"), "edited\n");
+
+    let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
+
+    assert_eq!(states(&rows), [Installed::Written]);
+    assert_eq!(read(&agents, "report.json"), "{}\n");
+}
+
+#[test]
+fn install_writes_nothing_into_a_folder_that_holds_a_file_it_did_not_write() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+    fs::create_dir(agents.join("shelf")).unwrap();
+    write(&agents.join("shelf/REFERENCE.md"), "a person's notes\n");
+
+    let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
+
+    assert_eq!(states(&rows), [Installed::Skipped]);
+    assert_eq!(
+        rows[0].reason.as_deref(),
+        Some("REFERENCE.md not written by shelf skills install")
+    );
+    assert_eq!(read(&agents, "REFERENCE.md"), "a person's notes\n");
+    assert!(!agents.join("shelf/report.json").exists());
+    assert!(!agents.join("shelf/SKILL.md").exists());
+}
+
+#[test]
+fn force_replaces_a_file_that_install_did_not_write() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+    fs::create_dir(agents.join("shelf")).unwrap();
+    write(&agents.join("shelf/REFERENCE.md"), "a person's notes\n");
+
+    let rows = home.install_skill(&WITH_FILES, &forced());
+
+    assert_eq!(states(&rows), [Installed::Written]);
+    assert_eq!(read(&agents, "REFERENCE.md"), "# Reference\n");
+    assert_eq!(installed(&agents), WITH_FILES.installed());
+}
+
+#[test]
+fn a_file_that_cannot_be_written_fails_the_row_and_leaves_the_skill_file_unwritten() {
+    let home = Home::new();
+    let agents = home.mkdir(".agents/skills");
+    home.mkdir(".agents/skills/shelf/report.json");
+
+    let rows = home.install_skill(&WITH_FILES, &forced());
+
+    assert_eq!(states(&rows), [Installed::Failed]);
+    assert!(rows[0].path.ends_with("report.json"), "{:?}", rows[0]);
+    assert!(!agents.join("shelf/SKILL.md").exists());
 }

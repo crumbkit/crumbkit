@@ -123,7 +123,7 @@
           "type": "string"
         },
         "reason": {
-          "description": "Why the copy differs, cannot be read or is linked, such as `written by shelf 0.2.0` or `linked to /src/shelf/skill`, or null.",
+          "description": "Why the copy is missing a file, differs, cannot be read or is linked, such as `written by shelf 0.2.0`, `REFERENCE.md is missing` or `linked to /src/shelf/skill`, or null.",
           "type": [
             "string",
             "null"
