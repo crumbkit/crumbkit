@@ -181,15 +181,16 @@ jobs:
       - if: ${{ !cancelled() }}
         run: cargo test --workspace --doc
 
-  # The clap-latest job tests crumbkit against the newest clap release that
-  # Cargo.toml allows. crumbkit depends on clap's error text and argument
-  # model, and pull requests test only the clap version in Cargo.lock, so
-  # this job shows within a day when a clap release changes what crumbkit
-  # depends on. The updated lock file stays in the job's checkout and is
-  # never committed. It runs every night, because a clap release needs no
-  # change on `main`. It has no rust-cache, as the nightly job has none,
-  # because it compiles the updated clap, which a cache keyed on the
-  # committed lock file would not hold.
+  # The clap-latest job tests crumbkit against the newest clap and
+  # clap_complete releases that Cargo.toml allows. crumbkit depends on clap's
+  # error text and argument model, and its `complete` feature uses
+  # clap_complete's unstable API, which a patch release may change. Pull
+  # requests test only the versions in Cargo.lock, so this job shows within
+  # a day when a release changes what crumbkit depends on. The updated lock
+  # file stays in the job's checkout and is never committed. It runs every
+  # night, because a clap release needs no change on `main`. It has no
+  # rust-cache, as the nightly job has none, because it compiles the updated
+  # clap, which a cache keyed on the committed lock file would not hold.
   clap-latest:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -202,10 +203,17 @@ jobs:
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins.
       - run: rustup toolchain install
-      # The log of this step names each clap package it moves and the
-      # version it moves to.
+      # The log of this step names each package it moves and the version it
+      # moves to. By default cargo skips a release whose minimum Rust version
+      # is above the workspace's rust-version. The variable lifts that limit,
+      # so the job tests the release that people on current Rust receive. The
+      # pinned toolchain is new enough to build it.
       - id: update
-        run: cargo update -p clap -p clap_builder -p clap_derive -p clap_lex
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: allow
+        run: >-
+          cargo update -p clap -p clap_builder -p clap_derive -p clap_lex
+          -p clap_complete
       - run: cargo test -p crumbkit
       # shelf's tests run even when crumbkit's fail, so one failure does not
       # hide the other. They do not run when the update itself failed.
