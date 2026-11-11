@@ -81,6 +81,7 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-markdown",
+ "crumbkit-skills",
  "crumbkit-test",
  "crumbkit-usage",
  "schemars",

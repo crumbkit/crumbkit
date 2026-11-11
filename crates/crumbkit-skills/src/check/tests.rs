@@ -41,11 +41,24 @@ impl Home {
     }
 
     fn check(&self) -> Vec<CheckRow> {
-        check_in(&SKILL, self.agent_dirs.clone(), &SkillsCheck::default())
+        self.check_skill(&SKILL)
+    }
+
+    fn check_skill(&self, skill: &Skill) -> Vec<CheckRow> {
+        check_in(skill, self.agent_dirs.clone(), &SkillsCheck::default())
             .rows()
             .to_vec()
     }
+
+    /// Writes `text` as the file `name` in the skill's folder of `agent`.
+    fn put_file(&self, agent: &str, name: &str, text: &str) {
+        write(&self.skills(agent).join("shelf").join(name), text);
+    }
 }
+
+/// shelf's skill with a reference file beside its `SKILL.md`.
+const WITH_FILES: Skill =
+    Skill::new("shelf", "0.3.0", TEXT).files(&[("REFERENCE.md", "# Reference\n")]);
 
 fn states(rows: &[CheckRow]) -> Vec<Checked> {
     rows.iter().map(|row| row.state).collect()
@@ -232,4 +245,47 @@ fn the_skills_documents_are_marked_as_crumbkit_s_own() {
     assert!(SKILLS_CHECK.is_built_in());
     assert!(crate::SKILLS_INSTALL.is_built_in());
     assert!(crate::SKILLS_PRINT.is_built_in());
+}
+
+#[test]
+fn a_copy_with_every_file_of_the_skill_is_current() {
+    let home = Home::new();
+    for agent in [".claude", ".agents"] {
+        home.put(agent, &WITH_FILES.installed());
+        home.put_file(agent, "REFERENCE.md", "# Reference\n");
+    }
+
+    let rows = home.check_skill(&WITH_FILES);
+
+    assert_eq!(states(&rows), [Checked::Current, Checked::Current]);
+}
+
+#[test]
+fn a_copy_without_one_of_the_skill_s_files_is_missing_and_names_the_file() {
+    let home = Home::new();
+    home.put(".claude", &WITH_FILES.installed());
+    home.put(".agents", &WITH_FILES.installed());
+    home.put_file(".agents", "REFERENCE.md", "# Reference\n");
+
+    let rows = home.check_skill(&WITH_FILES);
+
+    assert_eq!(states(&rows), [Checked::Missing, Checked::Current]);
+    assert_eq!(rows[0].reason.as_deref(), Some("REFERENCE.md is missing"));
+}
+
+#[test]
+fn a_copy_whose_file_holds_other_text_differs_and_names_the_file() {
+    let home = Home::new();
+    home.put(".claude", &WITH_FILES.installed());
+    home.put_file(".claude", "REFERENCE.md", "edited\n");
+    home.put(".agents", &WITH_FILES.installed());
+    home.put_file(".agents", "REFERENCE.md", "# Reference\n");
+
+    let rows = home.check_skill(&WITH_FILES);
+
+    assert_eq!(states(&rows), [Checked::Differs, Checked::Current]);
+    assert_eq!(
+        rows[0].reason.as_deref(),
+        Some("REFERENCE.md differs from this binary's")
+    );
 }

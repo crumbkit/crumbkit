@@ -222,3 +222,31 @@ fn a_commands_list_run_that_fails_gives_no_document() {
 
     assert_eq!(code(&error), "crumbkit::tool::no_commands_list");
 }
+
+// The test writes a shell script, which Windows cannot run.
+#[cfg(unix)]
+#[test]
+fn a_cargo_subcommand_runs_with_its_subcommand_word_first_as_cargo_runs_it() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    // A script, because a link to `/bin/echo` named `cargo-shelf` is no echo
+    // where `/bin/echo` is a multicall binary that reads its own name.
+    let dir = tempfile::tempdir().unwrap();
+    let binary = dir.path().join("cargo-shelf");
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test writes the script that stands for a cargo subcommand"
+    )]
+    std::fs::write(&binary, "#!/bin/sh\necho \"$@\"\n").unwrap();
+    std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let tool = Tool::new(&binary, &std::env::temp_dir()).unwrap();
+
+    assert_eq!(
+        tool.document().unwrap(),
+        b"shelf commands list --all --json --full\n"
+    );
+    assert_eq!(
+        tool.commands_line(),
+        "cargo shelf commands list --all --json --full"
+    );
+}

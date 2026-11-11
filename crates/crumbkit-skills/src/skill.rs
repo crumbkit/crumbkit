@@ -6,8 +6,9 @@ use std::fmt::Write as _;
 #[cfg(test)]
 mod tests;
 
-/// A tool's agent skill: the tool's name, its version and the text of its
-/// `SKILL.md`, which the tool embeds with `include_str!`.
+/// A tool's agent skill: the tool's name, its version, the text of its
+/// `SKILL.md` and any files that the skill reads beside it, all of which
+/// the tool embeds with `include_str!`.
 ///
 /// `install` writes the text to `<dir>/<name>/SKILL.md` with two lines
 /// added to its frontmatter under `metadata:`, which name the tool and the
@@ -34,6 +35,10 @@ mod tests;
 /// );
 /// # let _ = SKILL;
 /// ```
+///
+/// A skill that reads other files beside its `SKILL.md`, such as a
+/// reference table, names them with [`Skill::files`], and `install` writes
+/// them into the same folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Skill {
     /// The tool's name, which names the skill's folder.
@@ -42,6 +47,8 @@ pub struct Skill {
     version: &'static str,
     /// The text of the tool's `SKILL.md`.
     text: &'static str,
+    /// The other files of the skill, each as its file name and its text.
+    files: &'static [(&'static str, &'static str)],
 }
 
 impl Skill {
@@ -83,7 +90,64 @@ impl Skill {
             name,
             version,
             text,
+            files: &[],
         }
+    }
+
+    /// Returns the skill with `files` beside its `SKILL.md`, each as its
+    /// file name and its text, in the order that `install` writes them.
+    ///
+    /// `install` writes each file into the skill's folder before
+    /// `SKILL.md`, and `check` compares each one, so an agent that reads
+    /// the skill finds the files of the same version beside it.
+    ///
+    /// ```
+    /// use crumbkit_skills::Skill;
+    ///
+    /// const SKILL: Skill = Skill::new(
+    ///     "shelf",
+    ///     "0.3.0",
+    ///     "---\nname: shelf\ndescription: Browse the catalogue.\n---\n\nRead `REFERENCE.md`.\n",
+    /// )
+    /// .files(&[("REFERENCE.md", "# Every shelf command\n")]);
+    /// # let _ = SKILL;
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics unless each name is ASCII letters, digits, dots, dashes and
+    /// underscores that does not start with a dot, no name is `SKILL.md`,
+    /// and no name appears twice, with names compared ignoring ASCII case,
+    /// because a file system that ignores case holds them as one file. A `const` that calls it with such
+    /// arguments fails to compile.
+    // RUST-10: a file name holds no `/`, so every file sits in the skill's
+    // own folder. A skill with subfolders needs install to create them and
+    // check to walk them, which a path type with its own checks would
+    // replace this with.
+    #[must_use]
+    pub const fn files(self, files: &'static [(&'static str, &'static str)]) -> Self {
+        let mut index = 0;
+        while index < files.len() {
+            let name = files[index].0;
+            assert!(
+                is_file_name(name),
+                "a skill file name is ASCII letters, digits, dots, dashes and underscores, not starting with a dot"
+            );
+            assert!(
+                !same_name(name.as_bytes(), b"SKILL.md"),
+                "a skill file is not named SKILL.md, which holds the skill's text"
+            );
+            let mut earlier = 0;
+            while earlier < index {
+                assert!(
+                    !same_name(files[earlier].0.as_bytes(), name.as_bytes()),
+                    "a skill names each file once"
+                );
+                earlier += 1;
+            }
+            index += 1;
+        }
+        Self { files, ..self }
     }
 
     /// Returns the tool's name, such as `shelf`.
@@ -102,6 +166,14 @@ impl Skill {
     #[must_use]
     pub const fn text(&self) -> &'static str {
         self.text
+    }
+
+    /// Returns the other files of the skill, each as its file name and its
+    /// text, in the order that [`Skill::files`] gave them. The getter has
+    /// the `get_` prefix because the builder takes the plain name.
+    #[must_use]
+    pub const fn get_files(&self) -> &'static [(&'static str, &'static str)] {
+        self.files
     }
 
     /// Returns the text that `install` writes: the skill's text with the
@@ -194,6 +266,42 @@ const fn is_name(name: &str) -> bool {
     while index < bytes.len() {
         let byte = bytes[index];
         if !(byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-') {
+            return false;
+        }
+        index += 1;
+    }
+    true
+}
+
+/// Reports whether `name` is ASCII letters, digits, dots, dashes and
+/// underscores that does not start with a dot, so it names a file in the
+/// skill's own folder and never `.` or `..`.
+const fn is_file_name(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    if bytes.is_empty() || bytes[0] == b'.' {
+        return false;
+    }
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if !(byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_')) {
+            return false;
+        }
+        index += 1;
+    }
+    true
+}
+
+/// Reports whether `a` and `b` name the same file on a file system that
+/// ignores case, as macOS and Windows do by default: the same bytes apart
+/// from ASCII case.
+const fn same_name(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut index = 0;
+    while index < a.len() {
+        if !a[index].eq_ignore_ascii_case(&b[index]) {
             return false;
         }
         index += 1;

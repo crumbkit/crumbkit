@@ -1,7 +1,7 @@
 # ADR-0192. Agent skills
 
 - Date: 2026-11-10
-- Status: accepted
+- Status: amended by ADR-0199
 
 ## Context
 

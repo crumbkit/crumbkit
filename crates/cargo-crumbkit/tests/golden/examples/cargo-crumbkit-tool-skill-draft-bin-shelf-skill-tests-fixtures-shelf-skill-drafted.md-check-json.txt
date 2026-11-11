@@ -1,0 +1,1 @@
+{"schema":"crumbkit/tool-skill-draft/v1","data":[{"section":"description","status":"unchanged"},{"section":"jobs","status":"unchanged"},{"section":"usage","status":"kept"}],"total":3,"truncated":false,"summary":{"file":"tests/fixtures/shelf-skill-drafted.md","tool":"shelf","check":true,"usage":null,"runs":0,"ignored":0,"unreadable":0}}

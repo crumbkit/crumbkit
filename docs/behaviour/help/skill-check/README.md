@@ -1,6 +1,6 @@
 # Skill check
 
-This page covers `cargo crumbkit skill check`, which checks every command
+This page covers `cargo crumbkit tool-skill check`, which checks every command
 line in a tool's agent skill against the tool's commands.
 [cargo-crumbkit](../../../../crates/cargo-crumbkit/README.md) describes the
 binary.
@@ -9,9 +9,13 @@ Why: ADR-0193.
 
 ## Running it
 
-`cargo crumbkit skill check --bin <NAME>` builds the binary and reads its
+`cargo crumbkit tool-skill check --bin <NAME>` builds the binary and reads its
 command tree as [`weigh`](../weight.md) does, so it shares weigh's
-`crumbkit::tool::*` failures. It reads `skill/SKILL.md` in the binary's
+`crumbkit::tool::*` failures. A binary named `cargo-<name>` is a cargo
+subcommand, so the check, `weigh` and `docs` run it with `<name>` as its
+first word, as cargo does, and
+`cargo crumbkit tool-skill check --bin cargo-crumbkit` checks cargo
+crumbkit's own skill. It reads `skill/SKILL.md` in the binary's
 package, or the Markdown file that `--skill <FILE>` names. A file that
 cannot be read fails with `crumbkit::skill::unreadable`.
 
@@ -75,8 +79,8 @@ an argument takes.
 
 ## Output
 
-The result is the `crumbkit/skill-check/v1` document, which
-[the schema](../../../../crates/cargo-crumbkit/schemas/skill-check-v1.json)
+The result is the `crumbkit/tool-skill-check/v1` document, which
+[the schema](../../../../crates/cargo-crumbkit/schemas/tool-skill-check-v1.json)
 describes. It holds one row for each command line, with the file, the line
 number, the command line and the reason it fails, or `null` when it
 passes. Failing rows come first, each group in file order. The summary

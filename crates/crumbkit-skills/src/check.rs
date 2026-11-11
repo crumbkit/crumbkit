@@ -78,7 +78,7 @@ pub struct CheckRow {
     state: Checked,
     /// The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
     dirs: Vec<String>,
-    /// Why the copy differs, cannot be read or is linked, such as `written by shelf 0.2.0` or `linked to /src/shelf/skill`, or null.
+    /// Why the copy is missing a file, differs, cannot be read or is linked, such as `written by shelf 0.2.0`, `REFERENCE.md is missing` or `linked to /src/shelf/skill`, or null.
     reason: Option<String>,
     /// The SKILL.md file that was checked, at its real path.
     path: String,
@@ -105,7 +105,10 @@ impl Row for CheckRow {
 /// merged by real path in the same way, and follows a symbolic link at
 /// `<dir>/<name>`. A copy is current when its text is what this binary's
 /// install writes, including the `metadata:` lines that name the tool and
-/// its version, so a copy from another version differs. A directory
+/// its version, so a copy from another version differs. A current
+/// `SKILL.md` whose folder lacks one of the skill's other files, which
+/// [`Skill::files`] names, is missing, with the reason naming the file, and
+/// one whose other file holds other text differs. A directory
 /// without a copy is missing, and a copy that cannot be read, or a file
 /// where the skill's folder belongs, is unreadable. Those rows come first,
 /// the text lists only them, and the command exits with 1 when there is
@@ -149,6 +152,27 @@ fn check_in(
     })
 }
 
+/// Compares each of the other files of `skill` in `folder` with the text
+/// that the skill embeds, and returns the state and reason of the first
+/// that is missing, differs or cannot be read, or `None` when every file
+/// matches.
+fn files(skill: &Skill, folder: &Path) -> Option<(Checked, String)> {
+    skill
+        .get_files()
+        .iter()
+        .find_map(|(name, body)| match fs::read_to_string(folder.join(name)) {
+            Ok(current) if current == *body => None,
+            Ok(_) => Some((
+                Checked::Differs,
+                format!("{name} differs from this binary's"),
+            )),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                Some((Checked::Missing, format!("{name} is missing")))
+            }
+            Err(error) => Some((Checked::Unreadable, format!("{name}: {error}"))),
+        })
+}
+
 /// Returns the row of `target`, whose copy of `skill` should be `text`.
 fn row(skill: &Skill, text: &str, target: &Target) -> CheckRow {
     let row = |state, reason: Option<String>, path: &Path| CheckRow {
@@ -185,7 +209,10 @@ fn row(skill: &Skill, text: &str, target: &Target) -> CheckRow {
     };
     let file = folder.join("SKILL.md");
     match fs::read_to_string(&file) {
-        Ok(old) if old == text => row(Checked::Current, None, &file),
+        Ok(old) if old == text => match files(skill, &folder) {
+            Some((state, reason)) => row(state, Some(reason), &file),
+            None => row(Checked::Current, None, &file),
+        },
         Ok(old) => {
             let reason = match skill.writer(&old) {
                 Writer::Tool { version } => format!("written by {} {version}", skill.name()),

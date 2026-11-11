@@ -40,6 +40,6 @@ Columns:
   reason  Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/skill`, or null.
 
 Columns that --long adds:
-  path  The SKILL.md file that install wrote or left, at its real path.
+  path  The SKILL.md file that install wrote or left, or the skill's other file whose write failed, at its real path.
 
 Effects: additive, idempotent, closed-world.

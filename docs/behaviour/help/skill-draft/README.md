@@ -1,6 +1,6 @@
 # Skill draft
 
-This page covers `cargo crumbkit skill draft`, which writes the generated
+This page covers `cargo crumbkit tool-skill draft`, which writes the generated
 sections of a tool's agent skill from the tool's commands and, when given,
 its exported usage. [cargo-crumbkit](../../../../crates/cargo-crumbkit/README.md)
 describes the binary, and the [skill check](../skill-check/README.md)
@@ -10,7 +10,7 @@ Why: ADR-0194.
 
 ## Running it
 
-`cargo crumbkit skill draft --bin <NAME>` builds the binary and reads its
+`cargo crumbkit tool-skill draft --bin <NAME>` builds the binary and reads its
 command tree as [`weigh`](../weight.md) does, so it shares weigh's
 `crumbkit::tool::*` failures. It drafts `skill/SKILL.md` in the binary's
 package, or the Markdown file that `--skill <FILE>` names. A file that
@@ -105,8 +105,8 @@ draft with them wrote.
 
 ## Output
 
-The result is the `crumbkit/skill-draft/v1` document, which
-[the schema](../../../../crates/cargo-crumbkit/schemas/skill-draft-v1.json)
+The result is the `crumbkit/tool-skill-draft/v1` document, which
+[the schema](../../../../crates/cargo-crumbkit/schemas/tool-skill-draft-v1.json)
 describes. It holds one row for each section, with its name and its status:
 `written`, `unchanged`, `would-change`, `kept` or `unmarked`. The summary
 names the file and the tool, and counts the runs that the usage holds, the
@@ -123,8 +123,8 @@ usage        written
 
 `--check` writes nothing. Each section that a draft would change is
 reported as `would-change` and listed first, and the run exits with 1, so
-CI can run `cargo crumbkit skill draft --check` beside
-`cargo crumbkit skill check`.
+CI can run `cargo crumbkit tool-skill draft --check` beside
+`cargo crumbkit tool-skill check`.
 
 ## Tests
 
@@ -133,6 +133,6 @@ draft a file from a fixed command tree. End-to-end tests build shelf, draft
 a skill file from the exported usage in
 `crates/cargo-crumbkit/tests/fixtures/shelf-usage-export`, compare it with
 `shelf-skill-drafted.md`, keep the hand-written text of a stale file, and
-run `skill check` on the drafted file.
+run `tool-skill check` on the drafted file.
 
 Why: ADR-0194.

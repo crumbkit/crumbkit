@@ -1,7 +1,7 @@
 # ADR-0194. Skill draft
 
 - Date: 2026-11-10
-- Status: accepted
+- Status: amended by ADR-0199
 
 ## Context
 
@@ -72,3 +72,4 @@ Considered: treating a missing usage directory as no usage, which hides a mistyp
 ## Children
 
 - [ADR-0193. Skill check](0193-skill-check.md)
+- [ADR-0199. A skill's other files, and cargo crumbkit's own skill](0199-skill-files.md)

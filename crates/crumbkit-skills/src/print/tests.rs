@@ -23,8 +23,33 @@ fn the_json_of_print_holds_the_tool_and_its_version_beside_the_text() {
             "tool": "shelf",
             "version": "0.3.0+git-951022a3a14a",
             "text": TEXT,
+            "files": [],
         })
     );
+}
+
+#[test]
+fn print_names_the_skill_s_other_files_in_a_note_and_in_json() {
+    let skill = Skill::new("shelf", "0.3.0", TEXT)
+        .files(&[("REFERENCE.md", "# Reference\n"), ("report.json", "{}\n")]);
+
+    let prose = print(&skill);
+    let json = serde_json::to_value(&prose).unwrap();
+
+    assert_eq!(prose.value().to_string(), TEXT);
+    assert_eq!(
+        prose.get_note(),
+        Some("The skill also holds REFERENCE.md and report.json beside SKILL.md.")
+    );
+    assert_eq!(
+        json["files"],
+        serde_json::json!(["REFERENCE.md", "report.json"])
+    );
+}
+
+#[test]
+fn print_of_a_skill_without_other_files_has_no_note() {
+    assert_eq!(print(&SKILL).get_note(), None);
 }
 
 #[test]

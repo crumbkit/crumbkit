@@ -5,6 +5,27 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+- crumbkit-skills: `Skill::files` names the files that a skill reads beside
+  its `SKILL.md`. `skills install` writes them before `SKILL.md`, `skills
+  check` reports one that is missing or differs, and `skills print` names
+  them ([crumbkit-skills]).
+- cargo-crumbkit: `cargo crumbkit skills install`, `check` and `print`
+  install its own agent skill, which says what each command is for and
+  audits a tool for places that should use crumbkit, writing a JSON report
+  ([cargo-crumbkit]).
+- cargo-crumbkit: `weigh`, `docs` and `tool-skill check` run a binary named
+  `cargo-<name>` with `<name>` as its first word, as cargo does, so they
+  read a cargo subcommand's commands ([behaviour/help/skill-check]).
+
+### Changed
+
+- cargo-crumbkit: `cargo crumbkit skill draft` and `skill check` are now
+  `tool-skill draft` and `tool-skill check`, and their documents are
+  `crumbkit/tool-skill-draft/v1` and `crumbkit/tool-skill-check/v1`. The
+  old names have no alias ([behaviour/help/skill-check]).
+
 ## [0.3.2](https://github.com/crumbkit/crumbkit/compare/v0.3.1...v0.3.2) - 2026-11-10
 ### Added
 
