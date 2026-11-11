@@ -1,4 +1,4 @@
-# ADR-0202. RUST-8 counts code lines
+# ADR-0203. RUST-8 counts code lines
 
 - Date: 2026-11-11
 - Status: accepted
@@ -28,9 +28,11 @@ blocks of 50 to 75 lines into new files for this reason.
 ## Consequences
 
 Documentation no longer uses up the limit. The largest file had 497 code
-lines on this date, so no file failed under the new count. A file can reach
-about 1,000 lines in all, which a person or an agent still reads whole. The
-refusal line says what the number counts. A file that uses a block comment
+lines on this date, so no file failed under the new count. At the share of
+comment and blank lines on this date, a file of 600 code lines has about
+1,000 lines in all. That figure is an estimate: the check no longer bounds
+comment lines, so review guards against a file whose comments make it too
+long to read whole. The refusal line says what the number counts. A file that uses a block comment
 reaches the limit sooner than its code warrants, and a tokenizer replaces
 the count once that happens.
 

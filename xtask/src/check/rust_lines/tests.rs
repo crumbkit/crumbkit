@@ -27,7 +27,7 @@ fn over_limit(measured: usize) -> Violation {
     Violation::OverLimit {
         path: "src/lib.rs".to_owned(),
         measured,
-        unit: "lines that are neither blank nor comments",
+        unit: "code lines",
         limit: 600,
     }
 }
@@ -38,7 +38,7 @@ fn a_rust_file_of_exactly_600_code_lines_passes() {
 }
 
 #[test]
-fn a_rust_file_of_601_code_lines_is_reported_with_its_count_and_what_the_count_leaves_out() {
+fn a_rust_file_of_601_code_lines_is_reported_with_its_count_of_code_lines() {
     assert_eq!(check(&[file("src/lib.rs", 601, 0, 0)]), [over_limit(601)]);
 }
 

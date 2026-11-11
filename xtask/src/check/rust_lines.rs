@@ -21,7 +21,7 @@ pub(super) fn check(files: &[File]) -> Vec<Violation> {
             (measured > LIMIT).then(|| Violation::OverLimit {
                 path: file.path.clone(),
                 measured,
-                unit: "lines that are neither blank nor comments",
+                unit: "code lines",
                 limit: LIMIT,
             })
         })
