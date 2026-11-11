@@ -1,7 +1,8 @@
 //! End-to-end tests of `tool-skill check`, which build shelf and check a skill
-//! file whose command lines fail against shelf's commands, and build cargo
-//! crumbkit and check its own skill.
+//! file and a skill folder whose command lines fail against shelf's commands,
+//! and build cargo crumbkit and check its own skill.
 
+use std::path::Path;
 use std::process::{Command, Output};
 
 use serde_json::Value;
@@ -19,9 +20,23 @@ const FAILING: &str = concat!(
     "/tests/fixtures/shelf-skill-failing.md"
 );
 
+/// A skill folder whose `SKILL.md` passes, whose `REVIEW.md` and
+/// `lending/SKILL.md` each hold a failing command line, and whose `notes.txt`
+/// holds one that the check never reads.
+const FOLDER: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/fixtures/shelf-skill-folder"
+);
+
 /// Runs `cargo crumbkit tool-skill check --bin shelf --skill <FAILING>` with
 /// `args` after it.
 fn check(args: &[&str]) -> std::io::Result<Output> {
+    check_path(FAILING, args)
+}
+
+/// Runs `cargo crumbkit tool-skill check --bin shelf --skill <skill>` with
+/// `args` after it.
+fn check_path(skill: &str, args: &[&str]) -> std::io::Result<Output> {
     #[expect(
         clippy::disallowed_methods,
         reason = "the test runs the built binary as cargo runs a subcommand"
@@ -34,7 +49,7 @@ fn check(args: &[&str]) -> std::io::Result<Output> {
             "--bin",
             "shelf",
             "--skill",
-            FAILING,
+            skill,
         ])
         .args(args)
         .env("CARGO_TERM_QUIET", "true")
@@ -83,6 +98,26 @@ fn json_holds_every_command_line_with_the_failing_ones_first() {
         ]
     );
     assert_eq!(document["summary"]["failed"], 3);
+}
+
+#[test]
+fn a_skill_folder_prints_the_failures_of_every_markdown_file_in_it_and_exits_1() {
+    let output = check_path(FOLDER, &[]).unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let review = Path::new(FOLDER).join("REVIEW.md");
+    let lending = Path::new(FOLDER).join("lending").join("SKILL.md");
+
+    assert_eq!(output.status.code(), Some(1), "{stdout}");
+    assert_eq!(
+        stdout,
+        format!(
+            "Checked 4 shelf command lines in {FOLDER}, and 2 failed.\n\
+             {}:5: shelf books list --author Austen: `shelf books list` has no flag `--author`\n\
+             {}:6: shelf books sumarize: `sumarize` is not a command of `shelf books`\n",
+            review.display(),
+            lending.display()
+        )
+    );
 }
 
 #[test]

@@ -5,7 +5,7 @@ line in a tool's agent skill against the tool's commands.
 [cargo-crumbkit](../../../../crates/cargo-crumbkit/README.md) describes the
 binary.
 
-Why: ADR-0193.
+Why: ADR-0193, ADR-0200.
 
 ## Running it
 
@@ -15,9 +15,20 @@ command tree as [`weigh`](../weight.md) does, so it shares weigh's
 subcommand, so the check, `weigh` and `docs` run it with `<name>` as its
 first word, as cargo does, and
 `cargo crumbkit tool-skill check --bin cargo-crumbkit` checks cargo
-crumbkit's own skill. It reads `skill/SKILL.md` in the binary's
-package, or the Markdown file that `--skill <FILE>` names. A file that
-cannot be read fails with `crumbkit::skill::unreadable`.
+crumbkit's own skill.
+
+The check reads every Markdown file under `skill` in the binary's package,
+subfolders included, in path order. A Markdown file is a file whose
+extension is `md` in any ASCII case, so one run checks `skill/REVIEW.md`,
+`skill/SKILL.md` and `skill/lending/SKILL.md`. `--skill <PATH>` names
+another folder, which is read the same way, or one Markdown file, which is
+checked alone. A path that does not exist counts as a file when its
+extension is `md` and as a folder otherwise.
+
+A file or folder that cannot be read fails with
+`crumbkit::skill::unreadable`, which names it. A folder that holds no
+Markdown file, or does not exist, fails with the same code and names
+`SKILL.md` in that folder.
 
 ## What counts as a command line
 
@@ -83,16 +94,17 @@ The result is the `crumbkit/tool-skill-check/v1` document, which
 [the schema](../../../../crates/cargo-crumbkit/schemas/tool-skill-check-v1.json)
 describes. It holds one row for each command line, with the file, the line
 number, the command line and the reason it fails, or `null` when it
-passes. Failing rows come first, each group in file order. The summary
-counts the command lines and the failures.
+passes. Failing rows come first, and each group is in path order and then
+line order. The summary names the file or folder that was checked in
+`file`, and counts the command lines and the failures.
 
 The default text prints the summary and one line for each failing row:
 
 ```text
-Checked 5 shelf command lines in skill/SKILL.md, and 3 failed.
+Checked 9 shelf command lines in skill, and 3 failed.
+skill/REVIEW.md:8: shelf books list --author Austen: `shelf books list` has no flag `--author`
 skill/SKILL.md:6: shelf books lsit: `lsit` is not a command of `shelf books`
 skill/SKILL.md:7: shelf books list --limit: `--limit` needs a value
-skill/SKILL.md:8: shelf books list --author Austen: `shelf books list` has no flag `--author`
 ```
 
 `--long`, `--fields` and `--json` list every row. The run exits with 1 when

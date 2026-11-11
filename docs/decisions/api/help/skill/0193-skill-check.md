@@ -1,7 +1,7 @@
 # ADR-0193. Skill check
 
 - Date: 2026-11-10
-- Status: amended by ADR-0199
+- Status: amended by ADR-0199 and ADR-0200
 
 ## Context
 

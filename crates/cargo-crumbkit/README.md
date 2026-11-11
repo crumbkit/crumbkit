@@ -53,13 +53,13 @@ matches the tool's help.
 ## Checking the agent skill
 
 `cargo crumbkit tool-skill check --bin shelf` builds `shelf` as `weigh` does and
-reads `skill/SKILL.md` in shelf's package, or the file that `--skill` names.
-Each inline code span and each line of a fenced block that starts with
-`shelf` must name real commands, flags that those commands accept, a value
-for each flag that takes one, and an accepted value where the argument
-lists its values. Placeholders such as `ID` or `<id>` count as values. The
-text prints `<FILE>:<LINE>: <SPAN>: <REASON>` for each failing line, and the
-run exits with 1 when any line fails, so CI can run it.
+reads every Markdown file under `skill` in shelf's package, or the file or
+folder that `--skill` names. Each inline code span and fenced-block line
+that starts with `shelf` must name real commands, their flags, a value for
+each flag that takes one, and an accepted value where the argument lists
+its values. Placeholders such as `ID` count as values. The text prints
+`<FILE>:<LINE>: <SPAN>: <REASON>` for each failing line, and the run exits
+with 1 when one fails, so CI can run it.
 
 ## Drafting the agent skill
 

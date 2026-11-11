@@ -1,9 +1,10 @@
-//! `cargo crumbkit tool-skill check`, which checks every command line in a
-//! tool's SKILL.md against the tool's real command tree (ADR-0193).
+//! `cargo crumbkit tool-skill check`, which checks every command line in the
+//! Markdown files of a tool's skill against the tool's real command tree
+//! (ADR-0193, ADR-0200).
 
 use std::fmt;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crumbkit::{Document, Listing, Row};
 use schemars::JsonSchema;
@@ -25,24 +26,28 @@ mod words;
 mod tests;
 
 /// The document that `cargo crumbkit tool-skill check` prints: one row for each
-/// command line of the tool in the skill file, the failing ones first. Its
+/// command line of the tool in the skill's files, the failing ones first. Its
 /// schema is `crates/cargo-crumbkit/schemas/tool-skill-check-v1.json`.
 pub(crate) const TOOL_SKILL_CHECK: Document<Listing<Checked, Summary>> = Document::new(
     "crumbkit",
     "tool-skill-check",
     1,
-    "Each command line of a tool in its skill file, and why it fails.",
+    "Each command line of a tool in its skill's Markdown files, and why it fails.",
 )
 .only_problems();
 
-/// The skill file in the binary's package, when `--skill` names none.
-const SKILL: &str = "skill/SKILL.md";
+/// The skill folder in the binary's package, when `--skill` names no path.
+const FOLDER: &str = "skill";
+
+/// The file that every skill holds. A folder without a Markdown file fails
+/// as a folder without this file.
+const SKILL: &str = "SKILL.md";
 
 /// The prompt that a shell example may put before a command line, which
 /// the check drops.
 const PROMPT: &str = "$ ";
 
-/// One command line of the tool in the skill file, and the reason that it
+/// One command line of the tool in a skill file, and the reason that it
 /// fails.
 #[derive(Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub(crate) struct Checked {
@@ -70,15 +75,15 @@ impl Row for Checked {
     }
 }
 
-/// The figures of one check: the file, the tool, and how many command
+/// The figures of one check: the path, the tool, and how many command
 /// lines it checked and how many failed.
 #[derive(Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub(crate) struct Summary {
-    /// The path of the skill file.
+    /// The path of the skill file, or of the folder whose Markdown files were checked.
     file: String,
     /// The name that the tool's root command runs as, which starts each checked command line.
     tool: String,
-    /// The command lines of the tool in the skill file.
+    /// The command lines of the tool in the checked files.
     checked: u64,
     /// The command lines that do not match the tool's commands.
     failed: u64,
@@ -98,31 +103,83 @@ impl fmt::Display for Summary {
 
 /// Builds the binary that `--bin` names, as `weigh` does, reads its
 /// `commands list --all --json --full` document, and checks every command
-/// line of the tool in the skill file that `--skill` names, or in
-/// `skill/SKILL.md` in the binary's package.
+/// line of the tool in the Markdown file or folder that `--skill` names, or
+/// in the `skill` folder of the binary's package.
 ///
 /// # Errors
 ///
 /// Returns the [`SkillError`] of a build that fails, of a binary that
-/// cannot run or lists no commands, or of a skill file that cannot be read.
+/// cannot run or lists no commands, or of a skill file or folder that cannot
+/// be read.
 pub(crate) fn check(args: &ToolSkillCheckArgs) -> Result<Listing<Checked, Summary>, SkillError> {
     let built = cargo::build(&cargo::program(), &args.bin)?;
-    let file = args
+    let path = args
         .skill
         .clone()
-        .unwrap_or_else(|| built.package.join(SKILL));
-    let text = fs::read_to_string(&file).map_err(|error| SkillError::Unreadable {
-        path: file.clone(),
-        error,
-    })?;
+        .unwrap_or_else(|| built.package.join(FOLDER));
+    let files = read(&path)?;
     let tool = Tool::new(&built.executable, &std::env::temp_dir())?;
     let document = tool.document()?;
     let tree = Tree::read(&document).ok_or_else(|| tool.no_commands_list())?;
-    Ok(listing(&file, &text, &tree, &args.bin))
+    Ok(listing(&path, &files, &tree, &args.bin))
+}
+
+/// Returns the path and text of each skill file that `path` names, in path
+/// order. A folder gives every Markdown file in it and its subfolders. A
+/// path that exists, or that names a Markdown file, is read as one file. Any
+/// other path is a folder that does not exist.
+///
+/// # Errors
+///
+/// Returns [`SkillError::Unreadable`] with the file or folder that cannot be
+/// read. A folder that holds no Markdown file, or does not exist, fails as
+/// its missing `SKILL.md`.
+fn read(path: &Path) -> Result<Vec<(PathBuf, String)>, SkillError> {
+    let mut files = Vec::new();
+    if path.is_dir() {
+        collect(path, &mut files)?;
+        files.sort();
+    } else if path.exists() || markdown(path) {
+        files.push(path.to_path_buf());
+    }
+    if files.is_empty() {
+        files.push(path.join(SKILL));
+    }
+    files
+        .into_iter()
+        .map(|file| match fs::read_to_string(&file) {
+            Ok(text) => Ok((file, text)),
+            Err(error) => Err(SkillError::Unreadable { path: file, error }),
+        })
+        .collect()
+}
+
+/// Adds the Markdown files under `dir` and its subdirectories to `files`.
+fn collect(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), SkillError> {
+    let failed = |error| SkillError::Unreadable {
+        path: dir.to_path_buf(),
+        error,
+    };
+    for entry in fs::read_dir(dir).map_err(failed)? {
+        let path = entry.map_err(failed)?.path();
+        if path.is_dir() {
+            collect(&path, files)?;
+        } else if markdown(&path) {
+            files.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// Returns whether `path` has the extension `md`, in any ASCII case.
+fn markdown(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("md"))
 }
 
 /// Returns the rows and summary of the command lines of `tree`'s tool, whose
-/// binary is `bin`, in `text`, the skill file at `file`.
+/// binary is `bin`, in `files`, the skill files that `path` names, each with
+/// its text.
 ///
 /// A command line is an inline code span, or a line of a fenced block, whose
 /// first word is the name of the tool's root command, after a `$ ` prompt if
@@ -130,14 +187,41 @@ pub(crate) fn check(args: &ToolSkillCheckArgs) -> Result<Listing<Checked, Summar
 /// another program, as cargo-crumbkit runs as `cargo crumbkit`, and that
 /// program has commands of its own, such as `cargo test`. A command line
 /// then also needs a second word that names a subcommand of the root.
-fn listing(file: &Path, text: &str, tree: &Tree, bin: &str) -> Listing<Checked, Summary> {
+fn listing(
+    path: &Path,
+    files: &[(PathBuf, String)],
+    tree: &Tree,
+    bin: &str,
+) -> Listing<Checked, Summary> {
+    let name = tree.name();
+    let mut rows: Vec<Checked> = files
+        .iter()
+        .flat_map(|(file, text)| file_rows(&file.display().to_string(), text, tree, bin))
+        .collect();
+    // The failing rows come first (OUTPUT-3). The sort is stable, so each
+    // group keeps path order and then line order.
+    rows.sort_by_key(|row| row.reason.is_none());
+    let count = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
+    let summary = Summary {
+        file: path.display().to_string(),
+        tool: name.to_owned(),
+        checked: count(rows.len()),
+        failed: count(rows.iter().filter(|row| row.reason.is_some()).count()),
+    };
+    Listing::from_all(rows, None)
+        .described("command lines")
+        .summary(summary)
+}
+
+/// Returns one row for each command line of `tree`'s tool in `text`, the
+/// skill file at `file`, in line order.
+fn file_rows(file: &str, text: &str, tree: &Tree, bin: &str) -> Vec<Checked> {
     let name = tree.name();
     let ours = |second: Option<&str>| {
         name == bin
             || second.is_some_and(|second| tree.command(&format!("{name} {second}")).is_some())
     };
-    let file = file.display().to_string();
-    let mut rows: Vec<Checked> = markdown::code(text)
+    markdown::code(text)
         .into_iter()
         .filter_map(|code| {
             let span = code.text.strip_prefix(PROMPT).unwrap_or(&code.text);
@@ -158,7 +242,7 @@ fn listing(file: &Path, text: &str, tree: &Tree, bin: &str) -> Listing<Checked, 
                 Ok(_) => return None,
             };
             Some(Checked {
-                file: file.clone(),
+                file: file.to_owned(),
                 // A `usize` always fits in a `u64` on the 32-bit and 64-bit
                 // platforms that Rust supports, so the conversion never
                 // saturates.
@@ -167,17 +251,5 @@ fn listing(file: &Path, text: &str, tree: &Tree, bin: &str) -> Listing<Checked, 
                 reason,
             })
         })
-        .collect();
-    // The failing rows come first (OUTPUT-3), each group in file order.
-    rows.sort_by_key(|row| row.reason.is_none());
-    let count = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
-    let summary = Summary {
-        file,
-        tool: name.to_owned(),
-        checked: count(rows.len()),
-        failed: count(rows.iter().filter(|row| row.reason.is_some()).count()),
-    };
-    Listing::from_all(rows, None)
-        .described("command lines")
-        .summary(summary)
+        .collect()
 }
