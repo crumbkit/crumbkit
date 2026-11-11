@@ -22,13 +22,14 @@ subfolders included, in path order. A Markdown file is a file whose
 extension is `md` in any ASCII case, so one run checks `skill/REVIEW.md`,
 `skill/SKILL.md` and `skill/lending/SKILL.md`. `--skill <PATH>` names
 another folder, which is read the same way, or one Markdown file, which is
-checked alone. A path that does not exist counts as a file when its
-extension is `md` and as a folder otherwise.
+checked alone. The walk does not follow a symbolic link to a folder, and
+it reads a link to a Markdown file.
 
 A file or folder that cannot be read fails with
-`crumbkit::skill::unreadable`, which names it. A folder that holds no
-Markdown file, or does not exist, fails with the same code and names
-`SKILL.md` in that folder.
+`crumbkit::skill::unreadable`, which names it. A path that does not exist
+fails this way and names itself, so a package with no `skill` folder fails
+naming `skill` in the package. A folder that holds no Markdown file fails
+with the same code and names `SKILL.md` in that folder.
 
 ## What counts as a command line
 

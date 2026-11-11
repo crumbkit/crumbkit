@@ -125,25 +125,25 @@ pub(crate) fn check(args: &ToolSkillCheckArgs) -> Result<Listing<Checked, Summar
 }
 
 /// Returns the path and text of each skill file that `path` names, in path
-/// order. A folder gives every Markdown file in it and its subfolders. A
-/// path that exists, or that names a Markdown file, is read as one file. Any
-/// other path is a folder that does not exist.
+/// order. A folder gives every Markdown file in it and its subfolders, and
+/// the walk does not follow a symbolic link to a folder. Any other path is
+/// read as one file.
 ///
 /// # Errors
 ///
 /// Returns [`SkillError::Unreadable`] with the file or folder that cannot be
-/// read. A folder that holds no Markdown file, or does not exist, fails as
-/// its missing `SKILL.md`.
+/// read, so a path that does not exist fails naming itself. A folder that
+/// holds no Markdown file fails as its missing `SKILL.md`.
 fn read(path: &Path) -> Result<Vec<(PathBuf, String)>, SkillError> {
     let mut files = Vec::new();
     if path.is_dir() {
         collect(path, &mut files)?;
         files.sort();
-    } else if path.exists() || markdown(path) {
+        if files.is_empty() {
+            files.push(path.join(SKILL));
+        }
+    } else {
         files.push(path.to_path_buf());
-    }
-    if files.is_empty() {
-        files.push(path.join(SKILL));
     }
     files
         .into_iter()
@@ -155,14 +155,17 @@ fn read(path: &Path) -> Result<Vec<(PathBuf, String)>, SkillError> {
 }
 
 /// Adds the Markdown files under `dir` and its subdirectories to `files`.
+/// Each entry's own type decides, so a symbolic link to a folder is not
+/// followed, and a link to a Markdown file is added.
 fn collect(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), SkillError> {
     let failed = |error| SkillError::Unreadable {
         path: dir.to_path_buf(),
         error,
     };
     for entry in fs::read_dir(dir).map_err(failed)? {
-        let path = entry.map_err(failed)?.path();
-        if path.is_dir() {
+        let entry = entry.map_err(failed)?;
+        let path = entry.path();
+        if entry.file_type().map_err(failed)?.is_dir() {
             collect(&path, files)?;
         } else if markdown(&path) {
             files.push(path);
@@ -193,7 +196,6 @@ fn listing(
     tree: &Tree,
     bin: &str,
 ) -> Listing<Checked, Summary> {
-    let name = tree.name();
     let mut rows: Vec<Checked> = files
         .iter()
         .flat_map(|(file, text)| file_rows(&file.display().to_string(), text, tree, bin))
@@ -204,7 +206,7 @@ fn listing(
     let count = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
     let summary = Summary {
         file: path.display().to_string(),
-        tool: name.to_owned(),
+        tool: tree.name().to_owned(),
         checked: count(rows.len()),
         failed: count(rows.iter().filter(|row| row.reason.is_some()).count()),
     };

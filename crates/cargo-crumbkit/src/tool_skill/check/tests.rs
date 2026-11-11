@@ -183,25 +183,16 @@ fn a_folder_with_no_markdown_file_fails_naming_skill_md_in_it() {
 }
 
 #[test]
-fn a_folder_that_does_not_exist_fails_naming_skill_md_in_it() {
-    let folder = Path::new(FOLDER).join("missing");
+fn a_path_that_does_not_exist_fails_naming_the_path() {
+    for missing in ["missing", "MISSING.md"] {
+        let missing = Path::new(FOLDER).join(missing);
 
-    let Err(SkillError::Unreadable { path, .. }) = read(&folder) else {
-        panic!("a folder that does not exist is read");
-    };
+        let Err(SkillError::Unreadable { path, .. }) = read(&missing) else {
+            panic!("a path that does not exist is read");
+        };
 
-    assert_eq!(path, folder.join("SKILL.md"));
-}
-
-#[test]
-fn a_markdown_file_that_does_not_exist_fails_naming_the_file() {
-    let file = Path::new(FOLDER).join("MISSING.md");
-
-    let Err(SkillError::Unreadable { path, .. }) = read(&file) else {
-        panic!("a file that does not exist is read");
-    };
-
-    assert_eq!(path, file);
+        assert_eq!(path, missing);
+    }
 }
 
 #[test]

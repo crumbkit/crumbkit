@@ -18,14 +18,15 @@ CI did not name.
 - With no `--skill`, `cargo crumbkit tool-skill check` reads every Markdown
   file under `skill` in the binary's package, subfolders included, in path
   order. A Markdown file is a file whose extension is `md` in any ASCII
-  case.
+  case. The walk does not follow a symbolic link to a folder, so a link
+  that loops cannot hang the check. It reads a link to a Markdown file.
 - `--skill <PATH>` names a folder, which is read the same way, or one file,
-  which is checked alone as before. A path that does not exist counts as a
-  file when its extension is `md` and as a folder otherwise.
-- A folder that holds no Markdown file, or does not exist, fails with
-  `crumbkit::skill::unreadable` naming `SKILL.md` in that folder, as a
-  missing `skill/SKILL.md` did. A file or folder that cannot be read fails
-  with the same code and names that path, and no row prints.
+  which is checked alone as before.
+- A folder that holds no Markdown file fails with
+  `crumbkit::skill::unreadable` naming `SKILL.md` in that folder. A file or
+  folder that cannot be read fails with the same code and names that path,
+  and no row prints. A path that does not exist fails this way, so a
+  package with no `skill` folder fails naming `skill` in the package.
 - The document stays `crumbkit/tool-skill-check/v1` with the same fields.
   Each row already names its file. Failing rows come first, and each group
   is in path order and then line order. The summary's `file` holds the path
