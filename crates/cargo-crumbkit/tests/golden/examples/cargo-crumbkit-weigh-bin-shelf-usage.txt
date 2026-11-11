@@ -8,7 +8,7 @@ shelf books remove        716         114     1972        0     0
 shelf commands            367         -       915         0     0
 shelf commands list       702         2840    4457        0     0
 shelf schemas             424         -       972         0     0
-shelf schemas list        502         2532    4006        0     0
+shelf schemas list        502         2578    4052        0     0
 shelf schemas show        484         3426    4882        0     0
 shelf self                468         -       1016        0     0
 shelf self usage          720         -       1736        0     0
@@ -18,7 +18,7 @@ shelf self runs           440         -       1456        0     0
 shelf self runs list      864         -       2320        0     0
 shelf self runs export    851         54      2361        0     0
 shelf skills              471         -       1019        0     0
-shelf skills install      646         80      1745        0     0
+shelf skills install      646         87      1752        0     0
 shelf skills check        604         60      1683        0     0
 shelf skills print        262         586     1867        0     0
 shelf completion          506         -       1054        0     0

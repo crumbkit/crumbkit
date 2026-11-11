@@ -1,5 +1,6 @@
-//! The `skills check` command, which compares each installed copy of a
-//! tool's skill with the skill that the binary embeds (ADR-0192).
+//! The `skills check` command, which compares each installed copy of each
+//! of a tool's skills with the skill that the binary embeds (ADR-0192,
+//! ADR-0201).
 //!
 //! The tool owns the command. It adds a `check` subcommand that takes
 //! [`SkillsCheck`] to its `skills` group, and its handler passes the result
@@ -8,7 +9,7 @@
 //!
 //! ```ignore
 //! SkillsCommand::Check(args) => {
-//!     let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&SKILL, &args));
+//!     let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&[SKILL], &args));
 //!     crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
 //! }
 //! ```
@@ -28,15 +29,15 @@ use crate::targets::{self, Place, Target, shown, shown_all};
 #[cfg(test)]
 mod tests;
 
-/// The document that `skills check` prints: one row for each skills
-/// directory, of which the text lists only those whose copy is missing,
+/// The document that `skills check` prints: one row for each skill in each
+/// skills directory, of which the text lists only those whose copy is missing,
 /// differs or cannot be read. Its schema is
 /// `crates/crumbkit-skills/schemas/skills-check-v1.json`.
 pub const SKILLS_CHECK: Document<Listing<CheckRow>> = Document::new(
     "crumbkit",
     "skills-check",
     1,
-    "Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.",
+    "Whether each skills directory holds each skill that the binary embeds: current, linked, missing, differs or unreadable.",
 )
 .when_empty("no agent skills directory exists; name one with --dir")
 .only_problems()
@@ -70,12 +71,14 @@ pub(crate) enum Checked {
     Current,
 }
 
-/// One skills directory, or several that resolve to the same place, and
-/// whether it holds the binary's skill.
+/// One skill in one skills directory, or in several that resolve to the
+/// same place, and whether the directory holds the binary's copy of it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct CheckRow {
     /// Whether the copy is the binary's: missing, differs, unreadable, linked or current.
     state: Checked,
+    /// The skill's name, which names its folder in each skills directory, such as `shelf`.
+    skill: String,
     /// The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
     dirs: Vec<String>,
     /// Why the copy is missing a file, differs, cannot be read or is linked, such as `written by shelf 0.2.0`, `REFERENCE.md is missing` or `linked to /src/shelf/skill`, or null.
@@ -85,7 +88,7 @@ pub struct CheckRow {
 }
 
 impl Row for CheckRow {
-    const COLUMNS: &'static [&'static str] = &["state", "dirs", "reason"];
+    const COLUMNS: &'static [&'static str] = &["state", "skill", "dirs", "reason"];
     const LONG_COLUMNS: &'static [&'static str] = &["path"];
 
     // A copy that is missing, differs or cannot be read makes check exit
@@ -96,10 +99,11 @@ impl Row for CheckRow {
     }
 }
 
-/// Compares the copy of `skill` in each agent skills directory that exists,
-/// or in the directory that `--dir` names, with the text that `install`
-/// writes, and returns one row for each, for the tool to pass to
-/// [`finish`](crumbkit::finish) with [`SKILLS_CHECK`].
+/// Compares the copy of each skill of `skills` in each agent skills
+/// directory that exists, or in the directory that `--dir` names, with the
+/// text that `install` writes, and returns one row for each skill in each
+/// directory, for the tool to pass to [`finish`](crumbkit::finish) with
+/// [`SKILLS_CHECK`]. Each row names its skill under `skill`.
 ///
 /// It checks the directories that [`install`](crate::install) writes to,
 /// merged by real path in the same way, and follows a symbolic link at
@@ -118,28 +122,29 @@ impl Row for CheckRow {
 /// none of the agent skills directories exists, it checks nothing, and the
 /// empty note asks for `--dir`.
 #[must_use]
-pub fn check(skill: &Skill, args: &SkillsCheck) -> Listing<CheckRow> {
-    check_in(skill, targets::agent_dirs_from_env(), args)
+pub fn check(skills: &[Skill], args: &SkillsCheck) -> Listing<CheckRow> {
+    check_in(skills, targets::agent_dirs_from_env(), args)
 }
 
-/// Checks `skill` as [`check`] describes, when the environment names the
+/// Checks `skills` as [`check`] describes, when the environment names the
 /// agent skills directories `agent_dirs`.
 fn check_in(
-    skill: &Skill,
+    skills: &[Skill],
     agent_dirs: Option<Vec<PathBuf>>,
     args: &SkillsCheck,
 ) -> Listing<CheckRow> {
-    let text = skill.installed();
-    let refused = |dir: &Path, reason: String| CheckRow {
-        state: Checked::Missing,
-        dirs: vec![shown(dir)],
-        reason: Some(reason),
-        path: shown(&dir.join(skill.name()).join("SKILL.md")),
+    let refused = |skill: &Skill, dir: &Path, reason: &str| {
+        let path = dir.join(skill.name()).join("SKILL.md");
+        let reason = Some(reason.to_owned());
+        checked(skill, &[dir.to_owned()], Checked::Missing, reason, &path)
     };
-    targets::listing(args.dir.as_deref(), agent_dirs, refused, |targets| {
+    let rows = |skill: &Skill, targets: &[Target]| {
+        let text = skill.installed();
+        // Targets that reach one copy share a row. Rows of different skills
+        // never share a path, because each skill has a folder of its own.
         let mut rows: Vec<CheckRow> = Vec::new();
         for target in targets {
-            let row = row(skill, &text, &target);
+            let row = row(skill, &text, target);
             match rows
                 .iter_mut()
                 .find(|earlier| earlier.path == row.path && earlier.state == row.state)
@@ -149,7 +154,26 @@ fn check_in(
             }
         }
         rows
-    })
+    };
+    targets::listing(skills, args.dir.as_deref(), agent_dirs, refused, rows)
+}
+
+/// Returns the row of `skill` in the skills directories `dirs`, whose
+/// `SKILL.md` is at `path`.
+fn checked(
+    skill: &Skill,
+    dirs: &[PathBuf],
+    state: Checked,
+    reason: Option<String>,
+    path: &Path,
+) -> CheckRow {
+    CheckRow {
+        state,
+        skill: skill.name().to_owned(),
+        dirs: shown_all(dirs),
+        reason,
+        path: shown(path),
+    }
 }
 
 /// Compares each of the other files of `skill` in `folder` with the text
@@ -175,11 +199,8 @@ fn files(skill: &Skill, folder: &Path) -> Option<(Checked, String)> {
 
 /// Returns the row of `target`, whose copy of `skill` should be `text`.
 fn row(skill: &Skill, text: &str, target: &Target) -> CheckRow {
-    let row = |state, reason: Option<String>, path: &Path| CheckRow {
-        state,
-        dirs: shown_all(&target.dirs),
-        reason,
-        path: shown(path),
+    let row = |state, reason: Option<String>, path: &Path| {
+        checked(skill, &target.dirs, state, reason, path)
     };
     let linked = |link: &Path, to: &Path| {
         let reason = format!("linked to {}", shown(to));
@@ -215,10 +236,10 @@ fn row(skill: &Skill, text: &str, target: &Target) -> CheckRow {
         },
         Ok(old) => {
             let reason = match skill.writer(&old) {
-                Writer::Tool { version } => format!("written by {} {version}", skill.name()),
+                Writer::Tool { version } => format!("written by {} {version}", skill.tool()),
                 Writer::Other => format!(
                     "not written by {} skills install; install --force replaces it",
-                    skill.name()
+                    skill.tool()
                 ),
             };
             row(Checked::Differs, Some(reason), &file)

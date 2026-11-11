@@ -6,7 +6,7 @@ use tempfile::TempDir;
 use super::{CheckRow, Checked, SKILLS_CHECK, SkillsCheck, check_in};
 use crate::skill::Skill;
 use crate::targets::agent_dirs;
-use crate::testing::write;
+use crate::testing::{LENDING, write};
 
 const TEXT: &str =
     "---\nname: shelf\ndescription: Browse the catalogue.\n---\n\nRun `shelf books list`.\n";
@@ -45,9 +45,13 @@ impl Home {
     }
 
     fn check_skill(&self, skill: &Skill) -> Vec<CheckRow> {
-        check_in(skill, self.agent_dirs.clone(), &SkillsCheck::default())
-            .rows()
-            .to_vec()
+        check_in(
+            std::slice::from_ref(skill),
+            self.agent_dirs.clone(),
+            &SkillsCheck::default(),
+        )
+        .rows()
+        .to_vec()
     }
 
     /// Writes `text` as the file `name` in the skill's folder of `agent`.
@@ -119,7 +123,7 @@ fn every_current_copy_reports_no_problem() {
     home.put(".claude", &SKILL.installed());
     home.put(".agents", &SKILL.installed());
 
-    let listing = check_in(&SKILL, home.agent_dirs.clone(), &SkillsCheck::default());
+    let listing = check_in(&[SKILL], home.agent_dirs.clone(), &SkillsCheck::default());
 
     assert_eq!(states(listing.rows()), [Checked::Current, Checked::Current]);
     assert!(
@@ -132,7 +136,7 @@ fn every_current_copy_reports_no_problem() {
 
 #[test]
 fn no_home_checks_nothing_and_has_no_note_of_its_own() {
-    let listing = check_in(&SKILL, None, &SkillsCheck::default());
+    let listing = check_in(&[SKILL], None, &SkillsCheck::default());
 
     assert_eq!(listing.rows(), []);
     assert_eq!(listing.get_note(), None);
@@ -143,7 +147,7 @@ fn a_named_dir_that_does_not_exist_is_missing() {
     let home = Home::new();
 
     let rows = check_in(
-        &SKILL,
+        &[SKILL],
         home.agent_dirs.clone(),
         &SkillsCheck {
             dir: Some(home.dir.path().join("missing")),
@@ -288,4 +292,43 @@ fn a_copy_whose_file_holds_other_text_differs_and_names_the_file() {
         rows[0].reason.as_deref(),
         Some("REFERENCE.md differs from this binary's")
     );
+}
+
+#[test]
+fn check_reports_each_skill_and_lists_the_missing_one_before_the_current_one() {
+    let home = Home::new();
+    home.put(".agents", &SKILL.installed());
+
+    let rows = check_in(
+        &[SKILL, LENDING],
+        home.agent_dirs.clone(),
+        &SkillsCheck {
+            dir: Some(home.skills(".agents")),
+        },
+    )
+    .rows()
+    .to_vec();
+
+    assert_eq!(states(&rows), [Checked::Missing, Checked::Current]);
+    assert_eq!(rows[0].skill, "shelf-lending");
+    assert_eq!(rows[1].skill, "shelf");
+}
+
+#[test]
+fn a_named_dir_that_does_not_exist_is_missing_once_for_each_skill() {
+    let home = Home::new();
+
+    let rows = check_in(
+        &[SKILL, LENDING],
+        home.agent_dirs.clone(),
+        &SkillsCheck {
+            dir: Some(home.dir.path().join("missing")),
+        },
+    )
+    .rows()
+    .to_vec();
+
+    assert_eq!(states(&rows), [Checked::Missing, Checked::Missing]);
+    assert_eq!(rows[0].skill, "shelf");
+    assert_eq!(rows[1].skill, "shelf-lending");
 }

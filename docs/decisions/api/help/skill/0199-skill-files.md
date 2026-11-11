@@ -1,7 +1,7 @@
 # ADR-0199. A skill's other files, and cargo crumbkit's own skill
 
 - Date: 2026-11-11
-- Status: accepted
+- Status: amended by ADR-0201
 - Supersedes: ADR-0192, ADR-0193 and ADR-0194, which it amends
 - Missed: ADR-0192 let a skill hold only its `SKILL.md`, although a skill can read other files beside it, such as a reference table. ADR-0193 and ADR-0194 named cargo crumbkit's group `skill`, which reads as the same group as the `skills` group that crumbkit-skills gives a tool.
 

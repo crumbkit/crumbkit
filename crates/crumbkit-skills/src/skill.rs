@@ -6,13 +6,15 @@ use std::fmt::Write as _;
 #[cfg(test)]
 mod tests;
 
-/// A tool's agent skill: the tool's name, its version, the text of its
-/// `SKILL.md` and any files that the skill reads beside it, all of which
-/// the tool embeds with `include_str!`.
+/// One of a tool's agent skills: the tool's name, its version, the text of
+/// the skill's `SKILL.md` and any files that the skill reads beside it, all
+/// of which the tool embeds with `include_str!`.
 ///
-/// `install` writes the text to `<dir>/<name>/SKILL.md` with two lines
-/// added to its frontmatter under `metadata:`, which name the tool and the
-/// version in quoted YAML strings:
+/// The skill's name is the `name` of its frontmatter, which is what an
+/// agent reads, so a tool with several skills gives each `SKILL.md` its own
+/// `name` and `description`. `install` writes the text to
+/// `<dir>/<name>/SKILL.md` with two lines added to its frontmatter under
+/// `metadata:`, which name the tool and the version in quoted YAML strings:
 ///
 /// ```text
 /// metadata:
@@ -21,7 +23,9 @@ mod tests;
 /// ```
 ///
 /// The lines tell `install` that a later copy at that path is its own, so
-/// it replaces that copy and leaves every other file alone. An agent still
+/// it replaces that copy and leaves every other file alone. They name the
+/// tool whatever the skill is called, so `install` recognises each skill
+/// of its own tool. An agent still
 /// reads `name` and `description` as before, and quoted values keep the
 /// YAML valid whatever the version holds, such as build metadata.
 ///
@@ -33,7 +37,14 @@ mod tests;
 ///     "0.3.0",
 ///     "---\nname: shelf\ndescription: Browse the catalogue.\n---\n\nRun `shelf books list`.\n",
 /// );
-/// # let _ = SKILL;
+/// const LENDING: Skill = Skill::new(
+///     "shelf",
+///     "0.3.0",
+///     "---\nname: shelf-lending\ndescription: Lend a book.\n---\n\nRun `shelf loans add`.\n",
+/// );
+/// assert_eq!(SKILL.name(), "shelf");
+/// assert_eq!(LENDING.name(), "shelf-lending");
+/// assert_eq!(LENDING.tool(), "shelf");
 /// ```
 ///
 /// A skill that reads other files beside its `SKILL.md`, such as a
@@ -41,26 +52,35 @@ mod tests;
 /// them into the same folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Skill {
-    /// The tool's name, which names the skill's folder.
+    /// The tool's name, which the installed copy records.
+    tool: &'static str,
+    /// The skill's name, which names the skill's folder.
     name: &'static str,
     /// The tool's version, which the installed copy records.
     version: &'static str,
-    /// The text of the tool's `SKILL.md`.
+    /// The text of the skill's `SKILL.md`.
     text: &'static str,
     /// The other files of the skill, each as its file name and its text.
     files: &'static [(&'static str, &'static str)],
 }
 
 impl Skill {
-    /// Returns the skill of the tool named `name` at `version`, whose
+    /// Returns a skill of the tool named `tool` at `version`, whose
     /// `SKILL.md` is `text`.
+    ///
+    /// The skill's name is the value of the `name:` line of the frontmatter
+    /// of `text`, plain or in double quotes, without the spaces around it
+    /// or the carriage return of a line that ends with CRLF.
+    /// The folder that `install` writes therefore always has the name that
+    /// an agent reads in the file.
     ///
     /// # Panics
     ///
-    /// Panics unless `name` is lowercase ASCII letters, digits and dashes
+    /// Panics unless `tool` is lowercase ASCII letters, digits and dashes
     /// that start with a letter, `version` is one non-empty line of
     /// printable ASCII without a quote or a backslash, and `text` starts
-    /// with a frontmatter block between two `---` lines that has no
+    /// with a frontmatter block between two `---` lines that has a `name:`
+    /// line whose value follows the rule for `tool`, and has no
     /// top-level `metadata:` key, because `install` adds that key. A `const`
     /// that calls it with such arguments fails to compile:
     ///
@@ -68,11 +88,19 @@ impl Skill {
     /// const BAD: crumbkit_skills::Skill =
     ///     crumbkit_skills::Skill::new("shelf", "0.3.0", "No frontmatter.\n");
     /// ```
+    ///
+    /// ```compile_fail
+    /// const NAMELESS: crumbkit_skills::Skill = crumbkit_skills::Skill::new(
+    ///     "shelf",
+    ///     "0.3.0",
+    ///     "---\ndescription: Browse the catalogue.\n---\n",
+    /// );
+    /// ```
     #[must_use]
-    pub const fn new(name: &'static str, version: &'static str, text: &'static str) -> Self {
+    pub const fn new(tool: &'static str, version: &'static str, text: &'static str) -> Self {
         assert!(
-            is_name(name),
-            "a skill name is lowercase ASCII letters, digits and dashes, starting with a letter"
+            is_name(tool.as_bytes()),
+            "a tool name is lowercase ASCII letters, digits and dashes, starting with a letter"
         );
         assert!(
             is_version(version),
@@ -86,7 +114,13 @@ impl Skill {
             !has_metadata(text.as_bytes()),
             "a skill's frontmatter has no `metadata:` key, because install adds it"
         );
+        let name = frontmatter_name(text);
+        assert!(
+            is_name(name.as_bytes()),
+            "a skill's frontmatter has a `name:` line whose value is lowercase ASCII letters, digits and dashes, starting with a letter"
+        );
         Self {
+            tool,
             name,
             version,
             text,
@@ -150,7 +184,15 @@ impl Skill {
         Self { files, ..self }
     }
 
-    /// Returns the tool's name, such as `shelf`.
+    /// Returns the tool's name, such as `shelf`, which is the same for
+    /// each of the tool's skills.
+    #[must_use]
+    pub const fn tool(&self) -> &'static str {
+        self.tool
+    }
+
+    /// Returns the skill's name, such as `shelf-lending`, which is the
+    /// `name` of its frontmatter and names its folder.
     #[must_use]
     pub const fn name(&self) -> &'static str {
         self.name
@@ -162,7 +204,7 @@ impl Skill {
         self.version
     }
 
-    /// Returns the text of the tool's `SKILL.md`, as the tool embeds it.
+    /// Returns the text of the skill's `SKILL.md`, as the tool embeds it.
     #[must_use]
     pub const fn text(&self) -> &'static str {
         self.text
@@ -188,14 +230,15 @@ impl Skill {
         let _ = write!(
             text,
             "metadata:\n  tool: \"{}\"\n  version: \"{}\"\n",
-            self.name, self.version
+            self.tool, self.version
         );
         text.push_str(rest);
         text
     }
 
     /// Returns who wrote `text`, an installed `SKILL.md`, by the
-    /// `metadata:` lines of its frontmatter.
+    /// `metadata:` lines of its frontmatter. A copy that names this skill's
+    /// tool is the tool's own, whichever of its skills the copy holds.
     ///
     /// RUST-10: it reads only the lines that `install` writes, `metadata:`
     /// at the start of a line and `  tool: "<name>"` and
@@ -229,7 +272,7 @@ impl Skill {
             }
         }
         match (tool, version) {
-            (Some(tool), Some(version)) if tool == self.name => Writer::Tool {
+            (Some(tool), Some(version)) if tool == self.tool => Writer::Tool {
                 version: version.to_owned(),
             },
             _ => Writer::Other,
@@ -255,10 +298,9 @@ fn quoted<'a>(line: &'a str, key: &str) -> Option<&'a str> {
     line.strip_prefix(key)?.strip_prefix('"')?.strip_suffix('"')
 }
 
-/// Reports whether `name` is lowercase ASCII letters, digits and dashes,
-/// starting with a letter.
-const fn is_name(name: &str) -> bool {
-    let bytes = name.as_bytes();
+/// Reports whether `bytes`, the name of a tool or a skill, is lowercase
+/// ASCII letters, digits and dashes, starting with a letter.
+const fn is_name(bytes: &[u8]) -> bool {
     if bytes.is_empty() || !bytes[0].is_ascii_lowercase() {
         return false;
     }
@@ -346,6 +388,53 @@ const fn frontmatter_end(text: &[u8]) -> Option<usize> {
         start = next_line(text, start);
     }
     None
+}
+
+/// Returns the value of the `name:` line of the frontmatter of `text`,
+/// without the spaces and tabs around it, without the carriage return of a
+/// line that ends with CRLF and without a pair of double quotes around it,
+/// or the empty string when the frontmatter has no such line.
+///
+/// RUST-10: it reads the lines that start with `name:` at the start of a
+/// line, followed by a space, a tab or the end of the line, and is no YAML
+/// parser. The first such top-level line wins, and an indented `name:`
+/// under another key is ignored. A name in single quotes, a name with a
+/// comment after it or a name on the line below its key is returned as
+/// written or not found, and `Skill::new` then refuses it. A YAML parser
+/// that a `const fn` can call replaces this once a skill needs to read
+/// other frontmatter.
+const fn frontmatter_name(text: &str) -> &str {
+    let bytes = text.as_bytes();
+    let Some(end) = frontmatter_end(bytes) else {
+        return "";
+    };
+    let key = b"name:";
+    let mut start = next_line(bytes, 0);
+    while start < end {
+        let mut from = start + key.len();
+        let next = next_line(bytes, start);
+        if starts_with(bytes, start, key) && matches!(bytes[from], b'\n' | b'\r' | b' ' | b'\t') {
+            // A line before the closing `---` line ends with a line feed.
+            let mut to = next - 1;
+            while from < to && matches!(bytes[from], b' ' | b'\t') {
+                from += 1;
+            }
+            while from < to && matches!(bytes[to - 1], b' ' | b'\t' | b'\r') {
+                to -= 1;
+            }
+            if to - from >= 2 && bytes[from] == b'"' && bytes[to - 1] == b'"' {
+                from += 1;
+                to -= 1;
+            }
+            // Both offsets sit beside an ASCII byte, so they are character
+            // boundaries.
+            let (head, _) = text.split_at(to);
+            let (_, name) = head.split_at(from);
+            return name;
+        }
+        start = next;
+    }
+    ""
 }
 
 /// Reports whether a line of the frontmatter of `text` holds the top-level

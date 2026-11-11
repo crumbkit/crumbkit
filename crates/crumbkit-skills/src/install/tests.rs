@@ -48,7 +48,11 @@ impl Home {
     }
 
     fn install_skill(&self, skill: &Skill, args: &SkillsInstall) -> Vec<InstallRow> {
-        install_in(skill, self.agent_dirs.clone(), args)
+        self.install_all(std::slice::from_ref(skill), args)
+    }
+
+    fn install_all(&self, skills: &[Skill], args: &SkillsInstall) -> Vec<InstallRow> {
+        install_in(skills, self.agent_dirs.clone(), args)
             .rows()
             .to_vec()
     }
@@ -73,6 +77,8 @@ fn forced() -> SkillsInstall {
         force: true,
     }
 }
+
+mod several;
 
 fn states(rows: &[InstallRow]) -> Vec<Installed> {
     rows.iter().map(|row| row.state).collect()
@@ -225,7 +231,7 @@ fn a_named_dir_that_does_not_exist_fails() {
 
 #[test]
 fn no_home_installs_nothing_and_has_no_note_of_its_own() {
-    let listing = install_in(&SKILL, None, &SkillsInstall::default());
+    let listing = install_in(&[SKILL], None, &SkillsInstall::default());
 
     assert_eq!(listing.rows(), []);
     assert_eq!(listing.get_note(), None);
@@ -235,7 +241,7 @@ fn no_home_installs_nothing_and_has_no_note_of_its_own() {
 fn no_agent_dir_installs_nothing() {
     let home = Home::new();
 
-    let listing = install_in(&SKILL, home.agent_dirs.clone(), &SkillsInstall::default());
+    let listing = install_in(&[SKILL], home.agent_dirs.clone(), &SkillsInstall::default());
 
     assert_eq!(listing.rows(), []);
     assert!(!home.path(".claude").exists());
