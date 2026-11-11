@@ -261,3 +261,5 @@ fn the_program_path_becomes_its_file_stem_so_help_names_the_tool_without_exe() {
 
     assert_eq!(args, ["shelf", "books"]);
 }
+
+mod differential;
