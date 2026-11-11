@@ -53,8 +53,9 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
 /// ``the command `tool planets` needs a subcommand: show, weigh``.
 ///
 /// Every other refusal is clap's own message, from [`message`], with the
-/// real name in place of each name that clap suggests and without the names
-/// of hidden items, from [`suggestion::real_names`]. A refusal of missing
+/// real name in place of each name that clap suggests in the error's
+/// context and without the names of hidden items, from
+/// [`suggestion::real_names`]. A refusal of missing
 /// required arguments separates the missing arguments with commas and lists
 /// the visible possible values of each missing argument after its name,
 /// from [`list_missing`].
@@ -75,11 +76,12 @@ fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> S
             rendered = list_missing(&rendered, node, error);
         }
         // `message` joins the parts with `; `, and `real_names` changes or
-        // drops only a part that starts with clap's suggestion, so splitting
-        // on `; ` and joining again keeps every other part as it was.
+        // drops only a part that is the tip clap renders from a suggestion
+        // in the error's context, so splitting on `; ` and joining again
+        // keeps every other part as it was.
         return message(&rendered)
             .split("; ")
-            .filter_map(|part| suggestion::real_names(part, &commands))
+            .filter_map(|part| suggestion::real_names(part, &commands, error))
             .collect::<Vec<_>>()
             .join("; ");
     }

@@ -1,16 +1,17 @@
 //! The real names that a refusal suggests in place of the names that clap
 //! suggests, which can be hidden aliases, hidden commands or hidden flags.
 
+use clap::error::{ContextKind, ContextValue};
 use clap::{Arg, Command};
 
 #[cfg(test)]
 mod tests;
 
-/// The start of clap's tip that suggests one flag.
+/// The start of the tip that clap renders from its suggested flag.
 const ARGUMENT: &str = "a similar argument exists: ";
-/// The start of clap's tip that suggests one subcommand.
+/// The start of the tip that clap renders from one suggested subcommand.
 const SUBCOMMAND: &str = "a similar subcommand exists: ";
-/// The start of clap's tip that suggests several subcommands.
+/// The start of the tip that clap renders from several suggested subcommands.
 const SUBCOMMANDS: &str = "some similar subcommands exist: ";
 
 /// What a name that clap suggested resolves to.
@@ -28,27 +29,29 @@ enum Resolved {
 /// repeated name left out, and each name of a hidden flag or subcommand left
 /// out. It returns `None` when the tip suggests nothing else, so the
 /// refusal drops the tip. `commands` holds the root and each command on the
-/// walked path, so the last is the command that refused the line.
+/// walked path, so the last is the command that refused the line. `error`
+/// is clap's error, whose context holds the names that clap suggests.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts, hidden
 /// or not, so it can suggest a hidden alias, such as `--max` for `--maxx`
-/// when `--max` is a hidden alias of `--limit`, or a hidden command. A
-/// suggested flag resolves through [`find_flag`]. A suggested subcommand
-/// resolves to the subcommand of the last command that has that name or
-/// alias. clap's tip that names a flag of a subcommand, such as `'books
-/// --max' exists`, resolves through [`real_flag_of_subcommand`]. A part that
-/// is no such tip, and a name that resolves to nothing, stay as clap wrote
-/// them.
-//
-// RUST-10: this reads clap's wording of the tips, as `message` does. It
-// misses a suggestion when clap changes the wording. crumbkit enables clap's
-// `error-context` feature (ADR-0003), so reading `ContextKind::SuggestedArg`,
-// `ContextKind::SuggestedSubcommand` and `ContextKind::Suggested` through
-// `Error::get` can replace it.
-pub(super) fn real_names(part: &str, commands: &[&Command]) -> Option<String> {
+/// when `--max` is a hidden alias of `--limit`, or a hidden command. The
+/// suggested flag is the `SuggestedArg` context value, and it resolves
+/// through [`find_flag`]. The suggested subcommands are the
+/// `SuggestedSubcommand` context value, and each resolves to the subcommand
+/// of the last command that has that name or alias. clap's tip that names a
+/// flag of a subcommand, such as `'books --max' exists`, comes from
+/// [`flag_of_subcommand`] and resolves through [`real_flag_of_subcommand`].
+///
+/// The part that changes is the one that starts with the tip that clap
+/// renders from a context value, and only when the error holds that value.
+/// Every other part, and a name that resolves to nothing, stay as clap
+/// wrote them.
+pub(super) fn real_names(part: &str, commands: &[&Command], error: &clap::Error) -> Option<String> {
     let last = commands.last()?;
-    if let Some(names) = part.strip_prefix(ARGUMENT).and_then(quoted) {
-        let names = resolve(names, |name| match find_flag(name, commands) {
+    if part.starts_with(ARGUMENT)
+        && let Some(ContextValue::String(name)) = error.get(ContextKind::SuggestedArg)
+    {
+        let names = resolve([name.as_str()], |name| match find_flag(name, commands) {
             Some(arg) if arg.is_hide_set() => Resolved::Hidden,
             Some(arg) => arg.get_long().map_or(Resolved::Unknown, |long| {
                 Resolved::Visible(format!("--{long}"))
@@ -57,31 +60,49 @@ pub(super) fn real_names(part: &str, commands: &[&Command]) -> Option<String> {
         });
         return (!names.is_empty()).then(|| format!("{ARGUMENT}{}", list(&names)));
     }
-    let flag_of_subcommand = part
-        .strip_prefix('\'')
-        .and_then(|rest| rest.strip_suffix("' exists"))
-        .and_then(|words| words.split_once(' '));
-    if let Some((name, flag)) = flag_of_subcommand {
+    if let Some((name, flag)) = flag_of_subcommand(part, error) {
         return real_flag_of_subcommand(part, name, flag, commands);
     }
-    let names = part
-        .strip_prefix(SUBCOMMAND)
-        .or_else(|| part.strip_prefix(SUBCOMMANDS))
-        .and_then(quoted);
-    let Some(names) = names else {
-        return Some(part.to_owned());
+    if (part.starts_with(SUBCOMMAND) || part.starts_with(SUBCOMMANDS))
+        && let Some(ContextValue::Strings(names)) = error.get(ContextKind::SuggestedSubcommand)
+        && !names.is_empty()
+    {
+        let names = resolve(names.iter().map(String::as_str), |name| {
+            match last.find_subcommand(name) {
+                Some(subcommand) if subcommand.is_hide_set() => Resolved::Hidden,
+                Some(subcommand) => Resolved::Visible(subcommand.get_name().to_owned()),
+                None => Resolved::Unknown,
+            }
+        });
+        let start = match names.len() {
+            0 => return None,
+            1 => SUBCOMMAND,
+            _ => SUBCOMMANDS,
+        };
+        return Some(format!("{start}{}", list(&names)));
+    }
+    Some(part.to_owned())
+}
+
+/// Returns the subcommand and the flag that `part` names when it is clap's
+/// tip that a flag belongs to a subcommand, such as `books` and `--max` in
+/// `'books --max' exists`, or `None` when `part` is no such tip. `part` is
+/// that tip only when it equals the plain text of one of the `Suggested`
+/// context values of `error`.
+//
+// RUST-10: clap 4.6.7 gives this tip only as a finished sentence in
+// `ContextKind::Suggested`, so this splits the subcommand and the flag out
+// of that one sentence. It misses the tip when clap changes the sentence,
+// and the refusal then keeps the tip as clap wrote it. A context value from
+// clap that holds the subcommand and the flag as names replaces it.
+fn flag_of_subcommand<'a>(part: &'a str, error: &clap::Error) -> Option<(&'a str, &'a str)> {
+    let Some(ContextValue::StyledStrs(tips)) = error.get(ContextKind::Suggested) else {
+        return None;
     };
-    let names = resolve(names, |name| match last.find_subcommand(name) {
-        Some(subcommand) if subcommand.is_hide_set() => Resolved::Hidden,
-        Some(subcommand) => Resolved::Visible(subcommand.get_name().to_owned()),
-        None => Resolved::Unknown,
-    });
-    let start = match names.len() {
-        0 => return None,
-        1 => SUBCOMMAND,
-        _ => SUBCOMMANDS,
-    };
-    Some(format!("{start}{}", list(&names)))
+    tips.iter().find(|tip| tip.to_string() == part)?;
+    part.strip_prefix('\'')?
+        .strip_suffix("' exists")?
+        .split_once(' ')
 }
 
 /// Returns `part`, clap's tip that the flag `flag` of the subcommand `name`
@@ -123,11 +144,6 @@ fn real_flag_of_subcommand(
 /// word of `path` that names no subcommand is left out.
 ///
 /// [`RefusalEvent::nearest_flag`]: crate::events::RefusalEvent::nearest_flag
-//
-// RUST-10: this reads the suggestion from clap's rendered text, as
-// `real_names` does. It misses a suggestion when clap changes the wording,
-// and then returns `None`. Reading `ContextKind::SuggestedArg` through
-// `Error::get` can replace it.
 pub(crate) fn nearest_flag<'a>(
     command: &'a Command,
     path: &[String],
@@ -139,9 +155,9 @@ pub(crate) fn nearest_flag<'a>(
             commands.push(subcommand);
         }
     }
-    let text = error.render().to_string();
-    let (_, rest) = text.split_once("a similar argument exists: '")?;
-    let (suggestion, _) = rest.split_once('\'')?;
+    let Some(ContextValue::String(suggestion)) = error.get(ContextKind::SuggestedArg) else {
+        return None;
+    };
     find_flag(suggestion, &commands).filter(|arg| !arg.is_hide_set())
 }
 
@@ -170,19 +186,14 @@ fn find_flag<'a>(name: &str, commands: &[&'a Command]) -> Option<&'a Arg> {
     })
 }
 
-/// Returns the names in `text`, a list such as `'books', 'book'`, or `None`
-/// when a name in it is not in single quotes.
-fn quoted(text: &str) -> Option<Vec<&str>> {
-    text.split(", ")
-        .map(|name| name.strip_prefix('\'')?.strip_suffix('\''))
-        .collect()
-}
-
 /// Returns the real name of each of `names` that `real` resolves to a
 /// visible flag or subcommand, and each name that it cannot resolve as it
 /// is, without repeats and in the order of their first appearance. A name
 /// of a hidden flag or subcommand is left out.
-fn resolve(names: Vec<&str>, real: impl Fn(&str) -> Resolved) -> Vec<String> {
+fn resolve<'a>(
+    names: impl IntoIterator<Item = &'a str>,
+    real: impl Fn(&str) -> Resolved,
+) -> Vec<String> {
     let mut resolved: Vec<String> = Vec::new();
     for name in names {
         let name = match real(name) {
