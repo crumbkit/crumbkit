@@ -208,17 +208,16 @@ jobs:
       # is above the workspace's rust-version. The variable lifts that limit,
       # so the job tests the release that people on current Rust receive. The
       # pinned toolchain is new enough to build it.
-      - id: update
-        env:
+      - env:
           CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: allow
         run: >-
           cargo update -p clap -p clap_builder -p clap_derive -p clap_lex
           -p clap_complete
-      - run: cargo test -p crumbkit
-      # shelf's tests run even when crumbkit's fail, so one failure does not
-      # hide the other. They do not run when the update itself failed.
-      - if: ${{ !cancelled() && steps.update.outcome == 'success' }}
-        run: cargo test -p shelf
+      # Selecting both packages builds crumbkit with the features shelf turns
+      # on, which include `complete`, so crumbkit's completion tests run
+      # against the updated clap_complete. With --no-fail-fast a failure in
+      # one package's tests does not stop the other's from running.
+      - run: cargo test -p crumbkit -p shelf --no-fail-fast
 
   # When the nightly, bench, changed, windows or clap-latest job fails, this
   # job comments on the open issue titled "Scheduled CI failed", or opens
