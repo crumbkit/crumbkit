@@ -243,7 +243,7 @@ pub(crate) const SKILL: Skill = Skill::new(
 /// The commands for a tool's agent skill.
 #[derive(Debug, Subcommand)]
 pub(crate) enum ToolSkillCommand {
-    /// Check that every command line in a tool's SKILL.md names its real commands and flags.
+    /// Check that every command line in a tool's skill names its real commands and flags.
     Check(ToolSkillCheckArgs),
     /// Write the generated sections of a tool's SKILL.md from its commands and exported usage.
     Draft(ToolSkillDraftArgs),
@@ -303,8 +303,8 @@ pub(crate) struct ToolSkillCheckArgs {
     #[arg(long, value_name = "NAME")]
     pub(crate) bin: String,
 
-    /// Check this Markdown file [default: skill/SKILL.md in the binary's package]
-    #[arg(long, value_name = "FILE")]
+    /// Check this Markdown file or folder [default: skill in the binary's package]
+    #[arg(long, value_name = "PATH")]
     pub(crate) skill: Option<PathBuf>,
 }
 

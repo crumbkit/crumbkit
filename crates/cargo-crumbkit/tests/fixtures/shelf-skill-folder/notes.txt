@@ -1,0 +1,1 @@
+Run `shelf books lsit` is not Markdown, so the check skips it.

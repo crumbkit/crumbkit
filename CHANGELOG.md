@@ -36,6 +36,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `tool-skill draft` and `tool-skill check`, and their documents are
   `crumbkit/tool-skill-draft/v1` and `crumbkit/tool-skill-check/v1`. The
   old names have no alias ([behaviour/help/skill-check]).
+- cargo-crumbkit: `tool-skill check` reads every Markdown file under the
+  tool's `skill` folder, subfolders included, and `--skill` takes a file or a
+  folder. The summary's `file` names the path checked
+  ([behaviour/help/skill-check]).
 
 ## [0.3.2](https://github.com/crumbkit/crumbkit/compare/v0.3.1...v0.3.2) - 2026-11-10
 ### Added

@@ -1,10 +1,10 @@
-Check that every command line in a tool's SKILL.md names its real commands and flags
+Check that every command line in a tool's skill names its real commands and flags
 
 Usage: cargo crumbkit tool-skill check [OPTIONS] --bin <NAME>
 
 Options:
       --bin <NAME>    Build this binary of the current workspace and check its skill against its commands
-      --skill <FILE>  Check this Markdown file [default: skill/SKILL.md in the binary's package]
+      --skill <PATH>  Check this Markdown file or folder [default: skill in the binary's package]
   -h, --help          Print help (see more with '--help')
 
 Examples:

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "crumbkit/tool-skill-check/v1",
-  "description": "Each command line of a tool in its skill file, and why it fails.",
+  "description": "Each command line of a tool in its skill's Markdown files, and why it fails.",
   "type": "object",
   "properties": {
     "cut": {
@@ -112,7 +112,7 @@
   ],
   "$defs": {
     "Checked": {
-      "description": "One command line of the tool in the skill file, and the reason that it\nfails.",
+      "description": "One command line of the tool in a skill file, and the reason that it\nfails.",
       "type": "object",
       "properties": {
         "file": {
@@ -145,11 +145,11 @@
       ]
     },
     "Summary": {
-      "description": "The figures of one check: the file, the tool, and how many command\nlines it checked and how many failed.",
+      "description": "The figures of one check: the path, the tool, and how many command\nlines it checked and how many failed.",
       "type": "object",
       "properties": {
         "checked": {
-          "description": "The command lines of the tool in the skill file.",
+          "description": "The command lines of the tool in the checked files.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0
@@ -161,7 +161,7 @@
           "minimum": 0
         },
         "file": {
-          "description": "The path of the skill file.",
+          "description": "The path of the skill file, or of the folder whose Markdown files were checked.",
           "type": "string"
         },
         "tool": {
