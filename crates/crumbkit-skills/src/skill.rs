@@ -113,16 +113,11 @@ impl Skill {
             !has_metadata(text.as_bytes()),
             "a skill's frontmatter has no `metadata:` key, because install adds it"
         );
-        let Some(name) = frontmatter_name(text.as_bytes()) else {
-            panic!("a skill's frontmatter has a `name:` line, which names the skill");
-        };
-        // A name that passes `is_name` is ASCII, so it is always UTF-8.
-        let name = match std::str::from_utf8(name) {
-            Ok(name) if is_name(name.as_bytes()) => name,
-            _ => panic!(
-                "a skill name is lowercase ASCII letters, digits and dashes, starting with a letter"
-            ),
-        };
+        let name = frontmatter_name(text);
+        assert!(
+            is_name(name.as_bytes()),
+            "a skill's frontmatter has a `name:` line whose value is lowercase ASCII letters, digits and dashes, starting with a letter"
+        );
         Self {
             tool,
             name,
@@ -396,7 +391,8 @@ const fn frontmatter_end(text: &[u8]) -> Option<usize> {
 
 /// Returns the value of the `name:` line of the frontmatter of `text`,
 /// without the spaces and tabs around it and without a pair of double
-/// quotes around it, or `None` when the frontmatter has no such line.
+/// quotes around it, or the empty string when the frontmatter has no such
+/// line.
 ///
 /// RUST-10: it reads the first line that starts with `name:` at the start
 /// of a line, followed by a space, a tab or the end of the line, and is no
@@ -404,35 +400,38 @@ const fn frontmatter_end(text: &[u8]) -> Option<usize> {
 /// a name on the line below its key is returned as written or not found,
 /// and `Skill::new` then refuses it. A YAML parser that a `const fn` can
 /// call replaces this once a skill needs to read other frontmatter.
-const fn frontmatter_name(text: &[u8]) -> Option<&[u8]> {
-    let Some(end) = frontmatter_end(text) else {
-        return None;
+const fn frontmatter_name(text: &str) -> &str {
+    let bytes = text.as_bytes();
+    let Some(end) = frontmatter_end(bytes) else {
+        return "";
     };
     let key = b"name:";
-    let mut start = next_line(text, 0);
+    let mut start = next_line(bytes, 0);
     while start < end {
         let mut from = start + key.len();
-        let next = next_line(text, start);
-        if starts_with(text, start, key) && matches!(text[from], b'\n' | b' ' | b'\t') {
+        let next = next_line(bytes, start);
+        if starts_with(bytes, start, key) && matches!(bytes[from], b'\n' | b' ' | b'\t') {
             // A line before the closing `---` line ends with a line feed.
             let mut to = next - 1;
-            while from < to && matches!(text[from], b' ' | b'\t') {
+            while from < to && matches!(bytes[from], b' ' | b'\t') {
                 from += 1;
             }
-            while from < to && matches!(text[to - 1], b' ' | b'\t') {
+            while from < to && matches!(bytes[to - 1], b' ' | b'\t') {
                 to -= 1;
             }
-            if to - from >= 2 && text[from] == b'"' && text[to - 1] == b'"' {
+            if to - from >= 2 && bytes[from] == b'"' && bytes[to - 1] == b'"' {
                 from += 1;
                 to -= 1;
             }
+            // Both offsets sit beside an ASCII byte, so they are character
+            // boundaries.
             let (head, _) = text.split_at(to);
             let (_, name) = head.split_at(from);
-            return Some(name);
+            return name;
         }
         start = next;
     }
-    None
+    ""
 }
 
 /// Reports whether a line of the frontmatter of `text` holds the top-level

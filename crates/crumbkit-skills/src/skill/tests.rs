@@ -245,7 +245,7 @@ fn a_name_line_after_the_frontmatter_does_not_count() {
 }
 
 #[test]
-#[should_panic(expected = "a skill name is lowercase ASCII letters")]
+#[should_panic(expected = "a skill's frontmatter has a `name:` line whose value is lowercase")]
 fn a_name_that_cannot_name_a_folder_is_refused() {
     let _ = Skill::new(
         "shelf",
