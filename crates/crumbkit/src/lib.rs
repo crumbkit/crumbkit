@@ -68,6 +68,7 @@ mod page;
 mod parse;
 pub mod pick;
 mod prose;
+pub mod queries;
 mod refusal;
 #[cfg(feature = "miette")]
 mod report;

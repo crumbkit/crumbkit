@@ -12,9 +12,10 @@ The tool owns the wiring and adds the command to its own clap types. `parse`
 adds no command and answers none, so a tool that does not want the export
 leaves it out, and the command's help, goal heading, leaf and examples are
 the tool's like any other command's. `commands` is a resource and `list` its
-verb, and `CommandsList` flattens `Page`, so the command passes
-crumbkit-test's tree checks with no opt-out. The command sits at the root,
-because the not-found recovery runs `commands list` below the root.
+verb, `CommandsList` flattens `Page`, and the root flattens `ViewFlags` and
+`NoInput`, so the command passes crumbkit-test's checks without an opt-out.
+The command sits at the root, because the not-found recovery runs `commands
+list` there.
 
 Why: ADR-0026.
 

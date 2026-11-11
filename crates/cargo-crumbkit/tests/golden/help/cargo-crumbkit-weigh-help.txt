@@ -30,6 +30,9 @@ Options:
       --since <DURATION>
           How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]
 
+      --no-input
+          Fail instead of asking a question
+
   -h, --help
           Print help (see a summary with '-h')
 

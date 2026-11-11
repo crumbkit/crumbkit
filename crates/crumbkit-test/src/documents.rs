@@ -1,5 +1,6 @@
 //! The document id check and the mount check, which tie each document that
-//! a leaf prints to the leaf's path.
+//! a leaf prints to the leaf's path. The mount check also parses the queries
+//! that a program which reads a tool runs.
 
 use clap::Command;
 use crumbkit::help::LeafDocument;
@@ -9,6 +10,7 @@ use crate::allow::{Allow, Allowances, Rule};
 use crate::schemas::command_line;
 use crate::tree;
 
+mod queries;
 #[cfg(test)]
 mod tests;
 
@@ -130,6 +132,17 @@ pub(crate) fn declared_name(
 /// review covers that case. As in [`check_document_ids`], the path of a
 /// cargo subcommand starts below its own name.
 ///
+/// The check also parses each query of [`crumbkit::queries::QUERIES`] whose
+/// command `command` holds, with clap, as the tool's binary would. They are
+/// the command lines that a program which reads a tool runs, such as
+/// `commands list --json --full --all --no-input`. The check fails on a
+/// query that clap refuses and names each flag the command does not take
+/// with the type that adds it: [`crumbkit::NoInput`] for `--no-input`,
+/// [`crumbkit::ViewFlags`] for `--json` and `--full`, and [`crumbkit::Page`]
+/// for `--all`. A query whose command the tree does not hold is skipped, so
+/// a tool that mounts none of the commands passes. The rule has no opt-out
+/// (ADR-0202).
+///
 /// ```
 /// use clap::Command;
 /// use crumbkit::Tool;
@@ -139,9 +152,11 @@ pub(crate) fn declared_name(
 ///
 /// # Panics
 ///
-/// Panics when a leaf breaks the rule. Each problem in the message starts
-/// on a new line and names the leaf's command line, the document, and the
-/// command line the tool mounts the command at.
+/// Panics when a leaf breaks the path rule or clap refuses a query. Each
+/// problem in the message starts on a new line. A problem of the path rule
+/// names the leaf's command line, the document, and the command line the
+/// tool mounts the command at. A problem of a query names the command, the
+/// whole query, and each flag to add with the type that adds it.
 pub fn check_mounts(command: &Command, tool: &Tool) {
     let mut problems = Vec::new();
     for leaf in tool.get_help().get_leaves() {
@@ -162,6 +177,7 @@ pub fn check_mounts(command: &Command, tool: &Tool) {
             ));
         }
     }
+    problems.extend(queries::problems(command));
     tree::report("mount rules", &problems);
 }
 

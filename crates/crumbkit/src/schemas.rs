@@ -25,7 +25,7 @@
 //! use crumbkit::Tool;
 //! use crumbkit::help::{Help, Leaf};
 //! use crumbkit::schemas::{self, SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-//! use crumbkit::ViewFlags;
+//! use crumbkit::{NoInput, ViewFlags};
 //!
 //! /// Browse a small catalogue.
 //! #[derive(Parser)]
@@ -35,6 +35,8 @@
 //!     resource: Resource,
 //!     #[command(flatten)]
 //!     view: ViewFlags,
+//!     #[command(flatten)]
+//!     no_input: NoInput,
 //! }
 //!
 //! #[derive(Subcommand)]

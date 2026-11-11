@@ -15,7 +15,7 @@
 //! use clap::{Parser, Subcommand};
 //! use crumbkit::commands::{self, CommandsList};
 //! use crumbkit::Tool;
-//! use crumbkit::ViewFlags;
+//! use crumbkit::{NoInput, ViewFlags};
 //!
 //! /// Browse a small catalogue.
 //! #[derive(Parser)]
@@ -25,6 +25,8 @@
 //!     resource: Resource,
 //!     #[command(flatten)]
 //!     view: ViewFlags,
+//!     #[command(flatten)]
+//!     no_input: NoInput,
 //! }
 //!
 //! #[derive(Subcommand)]

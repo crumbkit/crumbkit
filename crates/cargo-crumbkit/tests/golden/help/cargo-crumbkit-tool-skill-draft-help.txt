@@ -19,7 +19,7 @@ Options:
           Rank the most-used commands from the exported usage files (*.jsonl) under this directory
 
       --top <N>
-          List at most this many commands in the most-used section
+          List at most this many of the most-used commands
           
           [default: 10]
 
@@ -28,6 +28,9 @@ Options:
 
       --full
           With --json, print every field of every row. The default prints only the fields of the columns.
+
+      --no-input
+          Fail instead of asking a question
 
   -h, --help
           Print help (see a summary with '-h')

@@ -93,11 +93,12 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
   that the tool can correct.
 - The help checks take budgets in place of opt-outs
   ([help checks](../help/checks.md)).
-- `check_mounts` exists to keep crumbkit's commands at fixed paths.
+- `check_mounts` exists to keep crumbkit's commands at fixed paths, with the
+  flags that a program which reads a tool passes to them.
 - The name rule of a failure's fields has no opt-out, because the failure
   document's schema promises it to every reader.
 
-Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104, ADR-0105, ADR-0165.
+Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104, ADR-0105, ADR-0165, ADR-0202.
 
 ## The opt-out report
 

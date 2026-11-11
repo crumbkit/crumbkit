@@ -15,5 +15,5 @@ Examples:
   cargo crumbkit weigh --bin shelf --json
   cargo crumbkit weigh --bin shelf --usage
 
-Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit weigh --help` describes them.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `cargo crumbkit weigh --help` describes them.
 Next: cargo crumbkit weigh --help explains each column.

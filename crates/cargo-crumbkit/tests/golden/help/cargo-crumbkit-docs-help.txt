@@ -12,6 +12,9 @@ Options:
       --out <FILE>
           Write the reference to this file [default: docs/commands.md in the binary's package]
 
+      --no-input
+          Fail instead of asking a question
+
   -h, --help
           Print help (see a summary with '-h')
 

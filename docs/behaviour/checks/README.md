@@ -60,7 +60,7 @@ no arguments on a command that the tool gives to `Command::defer`.
 | [`check_help`](../../../crates/crumbkit-test/src/help.rs) | The tool record's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
 | [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The tool record's declared exit codes avoid 0, 1 and 2, keep single codes to 3 to 125 or 129 to 159, never overlap, and declare each code once. |
 | [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has crumbkit's envelope. |
-| [`check_mounts`](../../../crates/crumbkit-test/src/documents.rs) | Each of crumbkit's own commands that a tool mounts sits at its fixed path. |
+| [`check_mounts`](../../../crates/crumbkit-test/src/documents.rs) | Each of crumbkit's own commands that a tool mounts sits at its fixed path, and takes the flags of each [query](../schemas/commands.md#mounting-the-commands) that a program which reads the tool runs. |
 | [`check_schema_goldens`](../../../crates/crumbkit-test/src/schemas.rs) | The JSON Schema of each document the tool prints matches its golden file. |
 | [`check_opt_outs`](../../../crates/crumbkit-test/src/opt_outs.rs) | The report of the tool's opt-outs, budgets and declarations matches `opt-outs.txt` and `opt-outs.json`. |
 
