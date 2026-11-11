@@ -20,3 +20,4 @@ chain and releases, documentation, and the repository layout.
 - [ADR-0014. Repository layout](0014-repository-layout.md)
 - [ADR-0074. Options with a second use](0074-options-with-a-second-use.md)
 - [ADR-0122. Options for an ordinary need](0122-options-for-an-ordinary-need.md)
+- [ADR-0202. RUST-8 counts code lines](0202-rust-8-counts-code-lines.md)

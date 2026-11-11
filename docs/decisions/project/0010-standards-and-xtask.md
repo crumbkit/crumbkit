@@ -1,7 +1,7 @@
 # ADR-0010. Standards and xtask
 
 - Date: 2026-10-07
-- Status: accepted
+- Status: amended by ADR-0202
 
 ## Context
 
