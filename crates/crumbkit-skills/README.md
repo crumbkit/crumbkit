@@ -11,7 +11,7 @@ A tool adds crumbkit-skills beside crumbkit:
 
 ```toml
 [dependencies]
-crumbkit-skills = "0.3"
+crumbkit-skills = "0.4"
 ```
 
 ## Example

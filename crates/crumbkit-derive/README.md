@@ -11,7 +11,7 @@ same name.
 
 ```toml
 [dependencies]
-crumbkit = { version = "0.3", features = ["derive"] }
+crumbkit = { version = "0.4", features = ["derive"] }
 ```
 
 The feature is off by default, so a tool that writes its impls by hand does

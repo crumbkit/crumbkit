@@ -5,6 +5,7 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.4.0](https://github.com/crumbkit/crumbkit/compare/v0.3.2...v0.4.0) - 2026-11-11
 ### Added
 
 - crumbkit-skills: `Skill::files` names the files that a skill reads beside
