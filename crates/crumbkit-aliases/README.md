@@ -10,7 +10,7 @@ A tool adds crumbkit-aliases beside crumbkit:
 
 ```toml
 [dependencies]
-crumbkit-aliases = "0.3"
+crumbkit-aliases = "0.4"
 ```
 
 ## Example

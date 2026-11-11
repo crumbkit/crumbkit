@@ -10,7 +10,7 @@ your own `main`, and you adopt only the parts you want.
 
 ## Crates
 
-The ten crates share version 0.3 on crates.io, and their API
+The ten crates share version 0.4 on crates.io, and their API
 reference is on [docs.rs](https://docs.rs/crumbkit). The crumbkit crate README's
 [Adding it](crates/crumbkit/README.md#adding-it) section shows the
 dependencies that a tool needs.
