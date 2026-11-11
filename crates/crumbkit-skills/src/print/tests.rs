@@ -21,6 +21,7 @@ fn the_json_of_print_holds_the_tool_and_its_version_beside_the_text() {
         json,
         serde_json::json!({
             "tool": "shelf",
+            "skill": "shelf",
             "version": "0.3.0+git-951022a3a14a",
             "text": TEXT,
             "files": [],
@@ -65,4 +66,18 @@ fn the_checked_in_schema_matches_the_print_document_schema() {
         checked_in, generated,
         "schemas/skills-print-v1.json differs from the generated schema; replace the file with the generated schema"
     );
+}
+
+#[test]
+fn print_of_a_second_skill_names_it_under_skill_and_the_tool_under_tool() {
+    let lending = Skill::new(
+        "shelf",
+        "0.3.0",
+        "---\nname: shelf-lending\ndescription: Lend a book.\n---\n\nRun `shelf loans add`.\n",
+    );
+
+    let json = serde_json::to_value(print(&lending)).unwrap();
+
+    assert_eq!(json["skill"], "shelf-lending");
+    assert_eq!(json["tool"], "shelf");
 }

@@ -1,9 +1,11 @@
-//! The `skills print` command, which prints a tool's skill (ADR-0192).
+//! The `skills print` command, which prints one of a tool's skills
+//! (ADR-0192, ADR-0201).
 //!
 //! The tool owns the command. It adds a `print` subcommand without
 //! arguments to its `skills` group, and its handler passes the result of
 //! [`print`] to [`finish`](crumbkit::finish) with the document
-//! [`SKILLS_PRINT`]:
+//! [`SKILLS_PRINT`]. A tool with several skills gives the subcommand an
+//! argument of its own that chooses the skill to print:
 //!
 //! ```ignore
 //! SkillsCommand::Print => {
@@ -23,27 +25,30 @@ use crate::skill::Skill;
 #[cfg(test)]
 mod tests;
 
-/// The document that `skills print` prints: the tool's skill. Its schema is
+/// The document that `skills print` prints: one of the tool's skills. Its schema is
 /// `crates/crumbkit-skills/schemas/skills-print-v1.json`.
 pub const SKILLS_PRINT: Document<Prose<SkillText>> = Document::new(
     "crumbkit",
     "skills-print",
     1,
-    "The tool's agent skill: its name, its version, the text of its SKILL.md and the names of its other files.",
+    "One agent skill of the tool: the tool's name and version, the skill's name, the text of its SKILL.md and the names of its other files.",
 )
 .always_print_first()
 .built_in();
 
 /// A tool's skill as `skills print` prints it. The text output is the
-/// skill's text, and the JSON document holds the tool's name, its version
-/// and the names of the skill's other files beside it.
+/// skill's text, and the JSON document holds the tool's name, the skill's
+/// name, the tool's version and the names of the skill's other files
+/// beside it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct SkillText {
-    /// The tool's name, which names the skill's folder, such as `shelf`.
+    /// The tool's name, such as `shelf`.
     tool: String,
+    /// The skill's name, which names the skill's folder, such as `shelf`.
+    skill: String,
     /// The tool's version, such as `0.3.0`.
     version: String,
-    /// The text of the tool's SKILL.md, as the tool embeds it, without the metadata lines that install adds.
+    /// The text of the skill's SKILL.md, as the tool embeds it, without the metadata lines that install adds.
     text: String,
     /// The names of the skill's other files, which install writes beside SKILL.md, in the order the tool gives them.
     files: Vec<String>,
@@ -65,6 +70,9 @@ impl fmt::Display for SkillText {
 /// no use to an agent. The skill's other files, which [`Skill::files`]
 /// names, are listed by name under `files`, and the text output names them
 /// in a note on standard error.
+///
+/// It takes one skill. A tool with several skills chooses which one to
+/// pass, such as by an argument of its own `skills print` command.
 #[must_use]
 pub fn print(skill: &Skill) -> Prose<SkillText> {
     let files: Vec<String> = skill
@@ -78,7 +86,8 @@ pub fn print(skill: &Skill) -> Prose<SkillText> {
         [rest @ .., last] => Some(format!("{} and {last}", rest.join(", "))),
     };
     let prose = Prose::new(SkillText {
-        tool: skill.name().to_owned(),
+        tool: skill.tool().to_owned(),
+        skill: skill.name().to_owned(),
         version: skill.version().to_owned(),
         text: skill.text().to_owned(),
         files,

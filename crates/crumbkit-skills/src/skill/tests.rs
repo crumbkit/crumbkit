@@ -73,14 +73,15 @@ fn a_text_whose_frontmatter_ends_the_file_gets_its_metadata_before_the_closing_l
 
 #[test]
 fn the_getters_return_what_the_tool_passed() {
+    assert_eq!(SKILL.tool(), "shelf");
     assert_eq!(SKILL.name(), "shelf");
     assert_eq!(SKILL.version(), "0.3.0+git-951022a3a14a.dirty");
     assert_eq!(SKILL.text(), TEXT);
 }
 
 #[test]
-#[should_panic(expected = "a skill name is lowercase ASCII letters")]
-fn a_name_with_a_slash_is_refused() {
+#[should_panic(expected = "a tool name is lowercase ASCII letters")]
+fn a_tool_name_with_a_slash_is_refused() {
     let _ = Skill::new(std::hint::black_box("../shelf"), "0.3.0", TEXT);
 }
 
@@ -177,4 +178,78 @@ fn a_file_named_skill_md_in_other_case_is_refused() {
 fn two_names_that_differ_only_by_case_are_refused() {
     let _ = Skill::new("shelf", "0.3.0", TEXT)
         .files(std::hint::black_box(&[("a.md", "one"), ("A.md", "two")]));
+}
+
+const LENDING_TEXT: &str =
+    "---\nname: shelf-lending\ndescription: Lend a book.\n---\n\nRun `shelf loans add`.\n";
+
+#[test]
+fn a_skill_takes_its_name_from_the_name_line_of_its_frontmatter_and_keeps_the_tool_s_name_apart() {
+    let skill = Skill::new("shelf", "0.3.0", LENDING_TEXT);
+
+    assert_eq!(skill.name(), "shelf-lending");
+    assert_eq!(skill.tool(), "shelf");
+}
+
+#[test]
+fn a_quoted_name_with_spaces_around_it_is_read_without_the_quotes_and_spaces() {
+    let skill = Skill::new(
+        "shelf",
+        "0.3.0",
+        "---\ndescription: Lend a book.\nname:   \"shelf-lending\"  \n---\n",
+    );
+
+    assert_eq!(skill.name(), "shelf-lending");
+}
+
+#[test]
+fn the_installed_text_of_a_second_skill_records_the_tool_s_name() {
+    let skill = Skill::new("shelf", "0.3.0", LENDING_TEXT);
+
+    assert_eq!(
+        skill.installed(),
+        "---\nname: shelf-lending\ndescription: Lend a book.\nmetadata:\n  tool: \"shelf\"\n  version: \"0.3.0\"\n---\n\nRun `shelf loans add`.\n"
+    );
+}
+
+#[test]
+fn a_copy_of_another_skill_of_the_same_tool_is_written_by_the_tool() {
+    let lending = Skill::new("shelf", "0.2.0", LENDING_TEXT);
+
+    assert_eq!(
+        SKILL.writer(&lending.installed()),
+        Writer::Tool {
+            version: "0.2.0".to_owned()
+        }
+    );
+}
+
+#[test]
+#[should_panic(expected = "a skill's frontmatter has a `name:` line")]
+fn a_text_without_a_name_line_is_refused() {
+    let _ = Skill::new(
+        "shelf",
+        "0.3.0",
+        std::hint::black_box("---\ndescription: Lend a book.\n---\n"),
+    );
+}
+
+#[test]
+#[should_panic(expected = "a skill's frontmatter has a `name:` line")]
+fn a_name_line_after_the_frontmatter_does_not_count() {
+    let _ = Skill::new(
+        "shelf",
+        "0.3.0",
+        std::hint::black_box("---\ndescription: Lend a book.\n---\nname: shelf\n"),
+    );
+}
+
+#[test]
+#[should_panic(expected = "a skill name is lowercase ASCII letters")]
+fn a_name_that_cannot_name_a_folder_is_refused() {
+    let _ = Skill::new(
+        "shelf",
+        "0.3.0",
+        std::hint::black_box("---\nname: ../shelf\n---\n"),
+    );
 }

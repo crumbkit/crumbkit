@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "crumbkit/skills-check/v1",
-  "description": "Whether each skills directory holds the skill that the binary embeds: current, linked, missing, differs or unreadable.",
+  "description": "Whether each skills directory holds each skill that the binary embeds: current, linked, missing, differs or unreadable.",
   "type": "object",
   "properties": {
     "cut": {
@@ -108,7 +108,7 @@
   ],
   "$defs": {
     "CheckRow": {
-      "description": "One skills directory, or several that resolve to the same place, and\nwhether it holds the binary's skill.",
+      "description": "One skill in one skills directory, or in several that resolve to the\nsame place, and whether the directory holds the binary's copy of it.",
       "type": "object",
       "properties": {
         "dirs": {
@@ -129,6 +129,10 @@
             "null"
           ]
         },
+        "skill": {
+          "description": "The skill's name, which names its folder in each skills directory, such as `shelf`.",
+          "type": "string"
+        },
         "state": {
           "description": "Whether the copy is the binary's: missing, differs, unreadable, linked or current.",
           "$ref": "#/$defs/Checked"
@@ -136,6 +140,7 @@
       },
       "required": [
         "state",
+        "skill",
         "dirs",
         "reason"
       ]

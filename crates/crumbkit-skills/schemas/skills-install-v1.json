@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "crumbkit/skills-install/v1",
-  "description": "What install did in each skills directory: written, unchanged, skipped or failed.",
+  "description": "What install did with each skill in each skills directory: written, unchanged, skipped or failed.",
   "type": "object",
   "properties": {
     "cut": {
@@ -108,7 +108,7 @@
   ],
   "$defs": {
     "InstallRow": {
-      "description": "One skills directory, or several that resolve to the same place, and\nwhat install did there.",
+      "description": "One skill in one skills directory, or in several that resolve to the\nsame place, and what install did with it there.",
       "type": "object",
       "properties": {
         "dirs": {
@@ -129,6 +129,10 @@
             "null"
           ]
         },
+        "skill": {
+          "description": "The skill's name, which names its folder in each skills directory, such as `shelf`.",
+          "type": "string"
+        },
         "state": {
           "description": "What install did: failed, skipped, written or unchanged.",
           "$ref": "#/$defs/Installed"
@@ -136,12 +140,13 @@
       },
       "required": [
         "state",
+        "skill",
         "dirs",
         "reason"
       ]
     },
     "Installed": {
-      "description": "What install did in one skills directory.",
+      "description": "What install did with one skill in one skills directory.",
       "oneOf": [
         {
           "description": "Install could not read or write the directory.",

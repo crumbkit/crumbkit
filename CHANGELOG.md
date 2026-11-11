@@ -11,6 +11,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its `SKILL.md`. `skills install` writes them before `SKILL.md`, `skills
   check` reports one that is missing or differs, and `skills print` names
   them ([crumbkit-skills]).
+- crumbkit-skills: a tool ships several agent skills. `skills install`
+  writes each skill into a folder named after the skill, and `skills
+  check` reports each one ([crumbkit-skills]).
 - cargo-crumbkit: `cargo crumbkit skills install`, `check` and `print`
   install its own agent skill, which says what each command is for and
   audits a tool for places that should use crumbkit, writing a JSON report
@@ -21,6 +24,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-skills: `install` and `check` take `&[Skill]`, and their rows
+  and `SkillText` gain `skill`. `Skill::new` reads the skill's name from
+  the `name:` line of its frontmatter, and `Skill::tool` returns the
+  tool's name ([crumbkit-skills]).
 - cargo-crumbkit: `cargo crumbkit skill draft` and `skill check` are now
   `tool-skill draft` and `tool-skill check`, and their documents are
   `crumbkit/tool-skill-draft/v1` and `crumbkit/tool-skill-check/v1`. The

@@ -503,6 +503,7 @@ shelf skills install --force
 ### Columns
 
 - `state`: What install did: failed, skipped, written or unchanged.
+- `skill`: The skill's name, which names its folder in each skills directory, such as `shelf`.
 - `dirs`: The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
 - `reason`: Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/skill`, or null.
 
@@ -531,6 +532,7 @@ shelf skills check
 ### Columns
 
 - `state`: Whether the copy is the binary's: missing, differs, unreadable, linked or current.
+- `skill`: The skill's name, which names its folder in each skills directory, such as `shelf`.
 - `dirs`: The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
 - `reason`: Why the copy is missing a file, differs, cannot be read or is linked, such as `written by shelf 0.2.0`, `REFERENCE.md is missing` or `linked to /src/shelf/skill`, or null.
 

@@ -19,6 +19,7 @@
 //! [schemas]: https://github.com/crumbkit/crumbkit/tree/main/crates/crumbkit-skills/schemas
 //! [ADR-0192]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0192-agent-skills.md
 //! [ADR-0199]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0199-skill-files.md
+//! [ADR-0201]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0201-several-skills.md
 #![doc = include_str!("../README.md")]
 
 mod check;

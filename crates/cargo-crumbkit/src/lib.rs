@@ -88,11 +88,11 @@ pub fn run() -> ExitCode {
 fn skills(run: crumbkit::Run, command: SkillsCommand) -> ExitCode {
     match command {
         SkillsCommand::Install(args) => {
-            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&SKILL, &args));
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&[SKILL], &args));
             crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
         }
         SkillsCommand::Check(args) => {
-            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&SKILL, &args));
+            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&[SKILL], &args));
             crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
         }
         SkillsCommand::Print => {

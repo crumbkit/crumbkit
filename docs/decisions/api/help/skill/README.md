@@ -73,3 +73,4 @@ Considered: treating a missing usage directory as no usage, which hides a mistyp
 
 - [ADR-0193. Skill check](0193-skill-check.md)
 - [ADR-0199. A skill's other files, and cargo crumbkit's own skill](0199-skill-files.md)
+- [ADR-0201. A tool ships several agent skills](0201-several-skills.md)

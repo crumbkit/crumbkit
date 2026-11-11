@@ -1,5 +1,5 @@
-//! The `skills install` command, which writes a tool's skill into each
-//! agent skills directory (ADR-0192).
+//! The `skills install` command, which writes each of a tool's skills into
+//! each agent skills directory (ADR-0192, ADR-0201).
 //!
 //! The tool owns the command. It adds a `skills` group with an `install`
 //! subcommand that takes [`SkillsInstall`], and its handler passes the
@@ -8,7 +8,7 @@
 //!
 //! ```ignore
 //! SkillsCommand::Install(args) => {
-//!     let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&SKILL, &args));
+//!     let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&[SKILL], &args));
 //!     crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
 //! }
 //! ```
@@ -28,14 +28,14 @@ use crate::targets::{self, Place, Target, shown, shown_all};
 #[cfg(test)]
 mod tests;
 
-/// The document that `skills install` prints: one row for each skills
-/// directory that install acted on. Its schema is
+/// The document that `skills install` prints: one row for each skill in
+/// each skills directory that install acted on. Its schema is
 /// `crates/crumbkit-skills/schemas/skills-install-v1.json`.
 pub const SKILLS_INSTALL: Document<Listing<InstallRow>> = Document::new(
     "crumbkit",
     "skills-install",
     1,
-    "What install did in each skills directory: written, unchanged, skipped or failed.",
+    "What install did with each skill in each skills directory: written, unchanged, skipped or failed.",
 )
 .when_empty("no agent skills directory exists; name one with --dir")
 .built_in();
@@ -56,7 +56,7 @@ pub struct SkillsInstall {
     force: bool,
 }
 
-/// What install did in one skills directory.
+/// What install did with one skill in one skills directory.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum Installed {
@@ -70,12 +70,14 @@ pub(crate) enum Installed {
     Unchanged,
 }
 
-/// One skills directory, or several that resolve to the same place, and
-/// what install did there.
+/// One skill in one skills directory, or in several that resolve to the
+/// same place, and what install did with it there.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct InstallRow {
     /// What install did: failed, skipped, written or unchanged.
     state: Installed,
+    /// The skill's name, which names its folder in each skills directory, such as `shelf`.
+    skill: String,
     /// The skills directories that share this copy, as named. Directories that resolve to one place through a symbolic link share one copy.
     dirs: Vec<String>,
     /// Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/skill`, or null.
@@ -85,32 +87,39 @@ pub struct InstallRow {
 }
 
 impl Row for InstallRow {
-    const COLUMNS: &'static [&'static str] = &["state", "dirs", "reason"];
+    const COLUMNS: &'static [&'static str] = &["state", "skill", "dirs", "reason"];
     const LONG_COLUMNS: &'static [&'static str] = &["path"];
 
-    // A failed directory makes install exit with 1. A skipped one does
+    // A failed row makes install exit with 1. A skipped one does
     // not, because the person or program that owns that file chose it.
     fn is_problem(&self) -> bool {
         self.state == Installed::Failed
     }
 }
 
-/// Writes `skill` to `<dir>/<name>/SKILL.md`, with the skill's other files
-/// beside it, in each agent skills directory that exists, or in the
-/// directory that `--dir` names, and
-/// returns one row for each, for the tool to pass to
+/// Writes each skill of `skills` to `<dir>/<name>/SKILL.md`, with the
+/// skill's other files beside it, in each agent skills directory that
+/// exists, or in the directory that `--dir` names, and returns one row for
+/// each skill in each directory, for the tool to pass to
 /// [`finish`](crumbkit::finish) with [`SKILLS_INSTALL`].
+///
+/// `<name>` is the skill's name, which [`Skill::name`] returns, and each
+/// row names it under `skill`. The names in `skills` differ, because two
+/// skills with one name would write one folder twice. Install plans and
+/// writes each skill's folder on its own, so a skill that is skipped or
+/// fails leaves the tool's other skills as they are.
 ///
 /// The agent skills directories are `~/.claude/skills`, `~/.agents/skills`
 /// and `$CODEX_HOME/skills`, where `CODEX_HOME` defaults to `~/.codex`. The
 /// home directory is `HOME`, or `USERPROFILE` on Windows when `HOME` is
 /// unset. With no home directory, or when none of the agent skills
 /// directories exists, it installs nothing, and the empty note asks for
-/// `--dir`. A `--dir` that does not name a directory gives a `failed` row.
+/// `--dir`. A `--dir` that does not name a directory gives a `failed` row
+/// for each skill.
 ///
 /// Directories that resolve to the same real path, such as a
 /// `~/.claude/skills` that links to `~/.agents/skills`, get one write and
-/// one row that names each. When `<dir>/<name>` is a symbolic link, install
+/// one row for each skill, which names each directory. When `<dir>/<name>` is a symbolic link, install
 /// follows it: a folder that holds a copy that this tool's install wrote is
 /// updated once, and a link anywhere else is skipped with the reason
 /// `linked to <path>`. A `SKILL.md` that install did not write is skipped
@@ -132,32 +141,40 @@ impl Row for InstallRow {
 /// directory that install cannot read or write gives a `failed` row with
 /// the reason, and the command exits with 1. Rows that failed come first.
 #[must_use]
-pub fn install(skill: &Skill, args: &SkillsInstall) -> Listing<InstallRow> {
-    install_in(skill, targets::agent_dirs_from_env(), args)
+pub fn install(skills: &[Skill], args: &SkillsInstall) -> Listing<InstallRow> {
+    install_in(skills, targets::agent_dirs_from_env(), args)
 }
 
-/// Installs `skill` as [`install`] describes, when the environment names
+/// Installs `skills` as [`install`] describes, when the environment names
 /// the agent skills directories `agent_dirs`.
 fn install_in(
-    skill: &Skill,
+    skills: &[Skill],
     agent_dirs: Option<Vec<PathBuf>>,
     args: &SkillsInstall,
 ) -> Listing<InstallRow> {
-    let text = skill.installed();
     targets::listing(
         args.dir.as_deref(),
         agent_dirs,
-        |dir, reason| failed(&[dir.to_owned()], dir, &reason),
-        |targets| {
-            merged(skill, targets, args.force)
-                .into_iter()
-                .map(|(dirs, real, plan)| run(skill, &text, &dirs, &real, plan, args.force))
+        |dir, reason| {
+            skills
+                .iter()
+                .map(|skill| failed(skill, &[dir.to_owned()], dir, reason))
                 .collect()
+        },
+        |targets| {
+            let mut rows = Vec::new();
+            for skill in skills {
+                let text = skill.installed();
+                for (dirs, real, plan) in merged(skill, targets, args.force) {
+                    rows.push(run(skill, &text, &dirs, &real, plan, args.force));
+                }
+            }
+            rows
         },
     )
 }
 
-/// What install does in one skills directory.
+/// What install does with one skill in one skills directory.
 #[derive(Debug, PartialEq, Eq)]
 enum Plan {
     /// Write `SKILL.md` in `folder`, creating the folder first when it
@@ -175,7 +192,7 @@ enum Plan {
 /// Returns the plan of each target with the target's skills directories and
 /// real path, with the targets whose plans write the same folder merged
 /// into one, in the order of each plan's first target.
-fn merged(skill: &Skill, targets: Vec<Target>, force: bool) -> Vec<(Vec<PathBuf>, PathBuf, Plan)> {
+fn merged(skill: &Skill, targets: &[Target], force: bool) -> Vec<(Vec<PathBuf>, PathBuf, Plan)> {
     let mut plans: Vec<(Vec<PathBuf>, PathBuf, Plan)> = Vec::new();
     for target in targets {
         let plan = plan(skill, &target.real, force);
@@ -186,8 +203,8 @@ fn merged(skill: &Skill, targets: Vec<Target>, force: bool) -> Vec<(Vec<PathBuf>
                 _ => false,
             });
         match same {
-            Some((dirs, _, _)) => dirs.extend(target.dirs),
-            None => plans.push((target.dirs, target.real, plan)),
+            Some((dirs, _, _)) => dirs.extend(target.dirs.iter().cloned()),
+            None => plans.push((target.dirs.clone(), target.real.clone(), plan)),
         }
     }
     plans
@@ -250,7 +267,9 @@ fn run(
         match fs::create_dir(folder) {
             Ok(()) => return write_file(skill, text, dirs, &folder.join("SKILL.md"), force),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
-            Err(error) => return failed(dirs, &folder.join("SKILL.md"), &error.to_string()),
+            Err(error) => {
+                return failed(skill, dirs, &folder.join("SKILL.md"), &error.to_string());
+            }
         }
         let again = self::plan(skill, real, force);
         if again == plan {
@@ -259,6 +278,7 @@ fn run(
         plan = again;
     }
     failed(
+        skill,
         dirs,
         &real.join(skill.name()),
         "the skill's folder kept changing while install wrote it",
@@ -273,7 +293,7 @@ fn carry_out(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: boo
         Plan::Write { folder } => write_file(skill, text, dirs, &folder.join("SKILL.md"), force),
         Plan::Replace { path, what } => {
             if let Err(error) = replace_with_folder(&path) {
-                return failed(dirs, &path, &error.to_string());
+                return failed(skill, dirs, &path, &error.to_string());
             }
             let mut row = write_file(skill, text, dirs, &path.join("SKILL.md"), true);
             if row.state == Installed::Written {
@@ -283,11 +303,12 @@ fn carry_out(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: boo
         }
         Plan::Skip { path, reason } => InstallRow {
             state: Installed::Skipped,
+            skill: skill.name().to_owned(),
             dirs: shown_all(dirs),
             reason: Some(reason),
             path: shown(&path.join("SKILL.md")),
         },
-        Plan::Fail { path, reason } => failed(dirs, &path, &reason),
+        Plan::Fail { path, reason } => failed(skill, dirs, &path, &reason),
     }
 }
 
@@ -308,6 +329,7 @@ fn carry_out(skill: &Skill, text: &str, dirs: &[PathBuf], plan: Plan, force: boo
 fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: bool) -> InstallRow {
     let row = |state, reason: Option<String>, path: &Path| InstallRow {
         state,
+        skill: skill.name().to_owned(),
         dirs: shown_all(dirs),
         reason,
         path: shown(path),
@@ -319,7 +341,7 @@ fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: b
     };
     match &old {
         Some(old) if !force && skill.writer(old) == Writer::Other => {
-            let reason = format!("not written by {} skills install", skill.name());
+            let reason = format!("not written by {} skills install", skill.tool());
             return row(Installed::Skipped, Some(reason), file);
         }
         None if !force => {
@@ -332,7 +354,7 @@ fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: b
                     && !fs::read_to_string(&path).is_ok_and(|current| current == *body)
             });
             if let Some((name, _)) = taken {
-                let reason = format!("{name} not written by {} skills install", skill.name());
+                let reason = format!("{name} not written by {} skills install", skill.tool());
                 return row(Installed::Skipped, Some(reason), file);
             }
         }
@@ -364,10 +386,12 @@ fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: b
     row(state, None, file)
 }
 
-/// Returns the row of a directory that install could not read or write.
-fn failed(dirs: &[PathBuf], path: &Path, reason: &str) -> InstallRow {
+/// Returns the row of `skill` in a directory that install could not read
+/// or write.
+fn failed(skill: &Skill, dirs: &[PathBuf], path: &Path, reason: &str) -> InstallRow {
     InstallRow {
         state: Installed::Failed,
+        skill: skill.name().to_owned(),
         dirs: shown_all(dirs),
         reason: Some(reason.to_owned()),
         path: shown(path),
