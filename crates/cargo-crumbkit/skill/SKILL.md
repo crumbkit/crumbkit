@@ -22,9 +22,9 @@ workspace and runs it, as an agent would.
   commands, and let the tool's convention test check that the file is
   current.
 - `cargo crumbkit tool-skill check --bin <NAME>` checks that every command
-  line in the tool's `skill/SKILL.md`, or in the file that `--skill <FILE>`
-  names, names real commands and flags of the tool. It exits with 1 when a
-  line fails, so CI can run it.
+  line in every Markdown file under the tool's `skill` folder, or in the
+  file or folder that `--skill <PATH>` names, names real commands and flags
+  of the tool. It exits with 1 when a line fails, so CI can run it.
 - `cargo crumbkit tool-skill draft --bin <NAME>` writes the generated
   sections of the tool's `SKILL.md` from its commands, and with
   `--usage <DIR>` from its exported usage. `--check` writes nothing and

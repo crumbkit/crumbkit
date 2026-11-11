@@ -3,7 +3,7 @@ Draft and check a tool's agent skill
 Usage: cargo crumbkit tool-skill [OPTIONS] <COMMAND>
 
 Commands:
-  check  Check that every command line in a tool's SKILL.md names its real commands and flags
+  check  Check that every command line in a tool's skill names its real commands and flags
   draft  Write the generated sections of a tool's SKILL.md from its commands and exported usage
 
 Options:

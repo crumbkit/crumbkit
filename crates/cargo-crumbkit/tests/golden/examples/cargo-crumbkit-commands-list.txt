@@ -4,7 +4,7 @@ cargo crumbkit                   Measure and explore tools built with crumbkit
 cargo crumbkit weigh             Measure the bytes that an agent reads on each path through a tool's help
 cargo crumbkit docs              Write a Markdown reference of every command of a tool to a file
 cargo crumbkit tool-skill        Draft and check a tool's agent skill
-cargo crumbkit tool-skill check  Check that every command line in a tool's SKILL.md names its real commands and flags
+cargo crumbkit tool-skill check  Check that every command line in a tool's skill names its real commands and flags
 cargo crumbkit tool-skill draft  Write the generated sections of a tool's SKILL.md from its commands and exported usage
 cargo crumbkit skills            Install cargo crumbkit's own skill
 cargo crumbkit skills install    Install cargo crumbkit's skill into each agent skills directory that exists
