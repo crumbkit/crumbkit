@@ -59,7 +59,7 @@ const CRUMBKIT: [(u8, &str); 3] = [
 /// use crumbkit::Tool;
 /// use crumbkit::tool::{Exit, Failures};
 ///
-/// const TIMED_OUT: Code = Code::new("shelf", "download", "timed_out");
+/// const TIMED_OUT: Code<'static> = Code::new("shelf", "download", "timed_out");
 ///
 /// const TOOL: Tool = Tool::new().failures(
 ///     Failures::new()
@@ -111,7 +111,7 @@ pub struct Exit {
     /// commands below it. An empty list covers every command.
     commands: &'static [&'static [&'static str]],
     /// The failure codes that end a run with the code.
-    failures: &'static [&'static Code],
+    failures: &'static [&'static Code<'static>],
 }
 
 impl Exit {
@@ -162,7 +162,7 @@ impl Exit {
     /// `check_exit_codes` fails on a range that lists any. A code may be one of
     /// crumbkit's, such as `crumbkit::codes::CLI_USAGE`.
     #[must_use]
-    pub const fn failures(mut self, codes: &'static [&'static Code]) -> Self {
+    pub const fn failures(mut self, codes: &'static [&'static Code<'static>]) -> Self {
         self.failures = codes;
         self
     }
@@ -170,7 +170,7 @@ impl Exit {
     /// Returns the failure codes that [`Exit::failures`] set, or an empty
     /// list when no failure ends a run with the code.
     #[must_use]
-    pub const fn get_failures(&self) -> &'static [&'static Code] {
+    pub const fn get_failures(&self) -> &'static [&'static Code<'static>] {
         self.failures
     }
 
@@ -317,7 +317,7 @@ pub(crate) fn note(tool_name: &str, tool: &Tool) -> String {
 /// Returns whether a refused command line exits with crumbkit's 2 under
 /// `tool`, which lists no other code for it.
 fn refuses_with_2(tool: &Tool) -> bool {
-    tool.failure_exit(&crate::codes::CLI_USAGE) == 2
+    tool.failure_exit(crate::codes::CLI_USAGE) == 2
 }
 
 impl Tool {
@@ -327,19 +327,23 @@ impl Tool {
     /// and 1 for every other failure (ADR-0002). The failures that a range of
     /// codes lists count as unlisted, because a range names no single code to
     /// exit with (ADR-0103).
+    ///
+    /// Codes are compared by their segments, so a code from
+    /// [`Code::runtime`] with the segments of a listed code exits with that
+    /// code's number.
     #[must_use]
-    pub fn failure_exit(&self, code: &'static Code) -> u8 {
+    pub fn failure_exit(&self, code: Code<'_>) -> u8 {
         failure_exit(self.get_failures().get_exits(), code)
     }
 }
 
 /// Returns the exit code of a run whose first failure has `code`, as
 /// [`Tool::failure_exit`] describes.
-pub(crate) fn failure_exit(exits: &[Exit], code: &'static Code) -> u8 {
+pub(crate) fn failure_exit(exits: &[Exit], code: Code<'_>) -> u8 {
     if let Some(exit) = listed_exit(exits, code) {
         return exit;
     }
-    if *code == crate::codes::CLI_USAGE {
+    if code == crate::codes::CLI_USAGE {
         return 2;
     }
     1
@@ -348,10 +352,10 @@ pub(crate) fn failure_exit(exits: &[Exit], code: &'static Code) -> u8 {
 /// Returns the code of the first single code of `exits` that lists `code`,
 /// and `None` when no such exit lists it. A range names no single code to
 /// exit with, so its failures count as unlisted.
-pub(crate) fn listed_exit(exits: &[Exit], code: &'static Code) -> Option<u8> {
+pub(crate) fn listed_exit(exits: &[Exit], code: Code<'_>) -> Option<u8> {
     exits
         .iter()
         .filter(|exit| exit.is_single())
-        .find(|exit| exit.get_failures().contains(&code))
+        .find(|exit| exit.get_failures().iter().any(|listed| **listed == code))
         .map(Exit::code)
 }

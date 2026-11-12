@@ -7,7 +7,7 @@
 use crumbkit::Code;
 
 /// The code of an aliases file that exists but cannot be read or parsed.
-pub const UNREADABLE: Code = Code::new("crumbkit", "aliases", "unreadable");
+pub const UNREADABLE: Code<'static> = Code::new("crumbkit", "aliases", "unreadable");
 
 /// Every code above, in the order this module declares them.
-pub const ALL: &[&Code] = &[&UNREADABLE];
+pub const ALL: &[&Code<'static>] = &[&UNREADABLE];

@@ -270,7 +270,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         }
         if self.items > 0 && self.sent.saturating_add(self.line.len()) > self.budget {
             self.line.clear();
-            let code = &codes::OUTPUT_OVER_BUDGET;
+            let code = codes::OUTPUT_OVER_BUDGET;
             let over = OverBudget {
                 code,
                 budget: self.budget,

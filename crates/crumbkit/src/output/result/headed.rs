@@ -46,7 +46,7 @@ pub(super) fn write<T: Rows>(
     first_always: bool,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
-    let code = &codes::OUTPUT_OVER_BUDGET;
+    let code = codes::OUTPUT_OVER_BUDGET;
     let rows = value.rows();
     let headers = crate::output::several_keys(value) || rows.len() > 1;
     let mut printed: Vec<(String, Cow<'_, [u8]>)> = Vec::new();
@@ -144,7 +144,7 @@ pub(in crate::output) fn header(key: Option<&str>, position: usize) -> String {
 fn left_out<T: Rows>(
     value: &T,
     stop: usize,
-    code: &'static Code,
+    code: Code<'static>,
     budget: usize,
     rerun: Option<&Rerun>,
 ) -> Option<OverBudget> {

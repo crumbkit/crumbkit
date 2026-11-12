@@ -175,8 +175,8 @@ impl fmt::Display for Conflict {
 impl std::error::Error for Conflict {}
 
 impl Failure for Conflict {
-    fn code(&self) -> &'static Code {
-        &codes::VERSION_CONFLICT
+    fn code(&self) -> Code<'_> {
+        codes::VERSION_CONFLICT
     }
 
     fn recovery(&self) -> Recovery {

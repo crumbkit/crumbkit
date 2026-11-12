@@ -105,7 +105,7 @@ fn a_refused_command_line_comes_back_unprinted_with_its_typed_and_parsed_words_a
         refused.message(),
         "unexpected argument '--srot' found; a similar argument exists: '--sort'"
     );
-    assert_eq!(refused.code(), &CLI_USAGE);
+    assert_eq!(refused.code(), CLI_USAGE);
     assert_eq!(refused.exit(), 2);
 }
 

@@ -28,7 +28,7 @@ mod tests;
 
 /// Every failure code that shelf declares, which shelf's tests pass to
 /// crumbkit-test's codes and recovery checks.
-pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
+pub const CODES: &[&crumbkit::Code<'static>] = books::BooksError::CODES;
 
 /// Parses the process's command line, runs the command and returns the
 /// process's exit code. `crumbkit::try_parse_to` takes shelf's tool record, which

@@ -268,9 +268,9 @@ impl fmt::Display for SchemasError {
 impl std::error::Error for SchemasError {}
 
 impl Failure for SchemasError {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         match self {
-            Self::NotFound { .. } => &codes::SCHEMAS_NOT_FOUND,
+            Self::NotFound { .. } => codes::SCHEMAS_NOT_FOUND,
         }
     }
 

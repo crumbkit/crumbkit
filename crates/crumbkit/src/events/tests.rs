@@ -195,7 +195,7 @@ fn the_trace_ids_come_from_the_first_installed_observer_that_gives_them() {
     assert_eq!((ids.trace(), ids.run()), ("trace-a", "run-a"));
 }
 
-const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
+const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
 
 /// A tool record that maps `TIMED_OUT` to 124 and refused command lines to 64
 /// (ADR-0037), with the smallest output budget.
@@ -344,8 +344,8 @@ impl fmt::Display for TimedOut {
 impl std::error::Error for TimedOut {}
 
 impl Failure for TimedOut {
-    fn code(&self) -> &'static Code {
-        &TIMED_OUT
+    fn code(&self) -> Code<'_> {
+        TIMED_OUT
     }
 
     fn recovery(&self) -> Recovery {
@@ -505,7 +505,7 @@ fn a_stream_reports_its_exit_its_bytes_and_whether_the_budget_stopped_it() {
     );
 }
 
-static LOCKED: Code = Code::new("shelf", "catalogue", "locked");
+static LOCKED: Code<'static> = Code::new("shelf", "catalogue", "locked");
 
 #[test]
 fn the_public_reports_reach_the_observer_and_ended_returns_its_exit_code() {
@@ -513,7 +513,7 @@ fn the_public_reports_reach_the_observer_and_ended_returns_its_exit_code() {
 
     let seen = watch(|| {
         super::aliased();
-        super::tolerated(&LOCKED);
+        super::tolerated(LOCKED);
         code = super::ended(124, Some(2048));
     });
 

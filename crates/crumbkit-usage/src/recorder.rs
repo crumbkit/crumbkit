@@ -22,7 +22,7 @@ use super::record::{self, Hash, Help, Name, Record, Run};
 use super::shape;
 use clap::Command;
 use crumbkit::events::TraceIds;
-use crumbkit::{Code, Spelling, ToolName};
+use crumbkit::{Code, CodeBuf, Spelling, ToolName};
 
 mod signals;
 #[cfg(test)]
@@ -94,8 +94,10 @@ pub(super) struct Recorder {
     /// How the tool spells its failure codes, which `parse` gives.
     spelling: Option<Spelling>,
     /// The distinct codes of the failures that the tool recovered from, in
-    /// the order it reported them, at most [`MAX_TOLERATED`].
-    tolerated: Vec<&'static Code>,
+    /// the order it reported them, at most [`MAX_TOLERATED`]. Each is an
+    /// owned copy, because a reported code may borrow text that is gone
+    /// before the run ends.
+    tolerated: Vec<CodeBuf>,
     /// What the run reported.
     pub(super) run: Run,
     /// Whether a signal ended a child that held the terminal, which the
@@ -330,9 +332,11 @@ impl Recorder {
     /// [`crumbkit::events::tolerated`] describes. A code that the run already
     /// reported, and every code after the first [`MAX_TOLERATED`], is left
     /// out.
-    pub(super) fn tolerated(&mut self, code: &'static Code) {
-        if self.tolerated.len() < MAX_TOLERATED && !self.tolerated.contains(&code) {
-            self.tolerated.push(code);
+    pub(super) fn tolerated(&mut self, code: Code<'_>) {
+        if self.tolerated.len() < MAX_TOLERATED
+            && !self.tolerated.iter().any(|held| held.as_code() == code)
+        {
+            self.tolerated.push(code.to_buf());
         }
     }
 
@@ -348,7 +352,7 @@ impl Recorder {
     /// Records the code of a failure or refusal that crumbkit printed, in
     /// `spelling`. The first code of a run stays, so a batch records its
     /// first failure.
-    pub(super) fn failed(&mut self, spelling: Spelling, code: &Code) {
+    pub(super) fn failed(&mut self, spelling: Spelling, code: &Code<'_>) {
         if self.run.code.is_none() {
             self.run.code = Some(Name::code(spelling, code));
         }
@@ -376,7 +380,7 @@ impl Recorder {
             run.tolerated = self
                 .tolerated
                 .iter()
-                .map(|code| Name::code(spelling, code))
+                .map(|code| Name::code(spelling, &code.as_code()))
                 .collect();
         }
         Some(Record {

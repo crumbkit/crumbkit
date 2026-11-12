@@ -81,7 +81,7 @@ fn an_undeclared_code_in_the_tools_component_that_no_crumbkit_crate_raises_fails
 
 #[test]
 fn an_undeclared_start_in_the_crumbkit_component_on_neither_built_in_list_fails_the_check() {
-    const GONE: Code = Code::new("crumbkit", "books", "gone");
+    const GONE: Code<'static> = Code::new("crumbkit", "books", "gone");
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let gone = failure("tool::books::gone", r#"{"kind":"retry"}"#);
     let setup = Setup::new(

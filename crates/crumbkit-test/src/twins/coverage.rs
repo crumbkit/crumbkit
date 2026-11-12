@@ -20,7 +20,7 @@ use crate::runs::with_json;
 /// use crumbkit::Code;
 /// use crumbkit_test::{Failing, Twin};
 ///
-/// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 ///
 /// const SHOW_7: Twin<'_> = Twin::new(
 ///     Failing::new(&NOT_FOUND, &["books", "show", "7"]),
@@ -63,7 +63,7 @@ impl<'a> Twin<'a> {
     /// use crumbkit::Code;
     /// use crumbkit_test::{Failing, Twin};
     ///
-    /// const TOO_DEEP: Code = Code::new("shelf", "books", "too_deep");
+    /// const TOO_DEEP: Code<'static> = Code::new("shelf", "books", "too_deep");
     ///
     /// const DEPTH_1: Twin<'_> = Twin::variable(
     ///     Failing::new(&TOO_DEEP, &["books", "list"]).env(&[("SHELF_DEPTH", Some("1"))]),
@@ -88,8 +88,8 @@ impl<'a> Twin<'a> {
 /// use crumbkit::Code;
 /// use crumbkit_test::{Examples, Failing, Twin, Twins, Unprovoked};
 ///
-/// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-/// const GONE: Code = Code::new("shelf", "books", "removed_file");
+/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// const GONE: Code<'static> = Code::new("shelf", "books", "removed_file");
 ///
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
@@ -120,7 +120,7 @@ impl<'a> Twins<'a> {
     /// unprovoked code. [`check_twins`] spells the codes as the
     /// tool record does.
     #[must_use]
-    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
+    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code<'a>]]) -> Self {
         Self {
             examples,
             codes: Declared::Lists(codes),
@@ -133,7 +133,7 @@ impl<'a> Twins<'a> {
     /// list of the tool's declared codes held by value, such as codes that
     /// the tool builds at run time with `Code::runtime`.
     #[must_use]
-    pub const fn from_codes(examples: Examples<'a>, codes: &'a [Code]) -> Self {
+    pub const fn from_codes(examples: Examples<'a>, codes: &'a [Code<'a>]) -> Self {
         Self {
             examples,
             codes: Declared::Codes(codes),
@@ -213,7 +213,7 @@ impl<'a> Twins<'a> {
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
-    let declared: Vec<&Code> = twins.codes.to_vec();
+    let declared: Vec<&Code<'_>> = twins.codes.to_vec();
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();
@@ -230,8 +230,8 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
             problems.push(problem);
         }
     }
-    let refused = |code: &Code| twins.pairs.iter().any(|pair| pair.refused.code() == code);
-    let listed = |code: &Code| twins.unprovoked.iter().any(|entry| entry.code() == code);
+    let refused = |code: &Code<'_>| twins.pairs.iter().any(|pair| pair.refused.code() == code);
+    let listed = |code: &Code<'_>| twins.unprovoked.iter().any(|entry| entry.code() == code);
     let mut untwinned = Vec::new();
     for failing in twins
         .examples
@@ -240,7 +240,8 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
         .filter(|allow| allow.rule() == Rule::NoTwin)
         .filter_map(Allow::refused)
     {
-        let code = failing.code();
+        let held = *failing.code();
+        let code = &held;
         let text = spelling.spell(code);
         let line = named(
             &tool_name(&twins.examples),
@@ -265,7 +266,7 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
                 "{opt_out} names {text}, which Twins::unprovoked lists, so it is stale"
             ));
         } else {
-            untwinned.push(code);
+            untwinned.push(held);
             let words = json_lines(failing.words(), &[]).0;
             let words: Vec<&str> = words.iter().map(String::as_str).collect();
             let run = failing.with_words(&words);
@@ -275,7 +276,7 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
         }
     }
     for &code in &declared {
-        if !is_library_code(code) && !listed(code) && !refused(code) && !untwinned.contains(&code) {
+        if !is_library_code(code) && !listed(code) && !refused(code) && !untwinned.contains(code) {
             problems.push(format!(
                 "{}: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it",
                 spelling.spell(code)
@@ -306,7 +307,7 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
 /// `declared`, the codes of the tool's `CODES` lists, does not hold. A code of
 /// crumbkit or of one of its add-on crates needs no `CODES` list, because a
 /// crumbkit crate raises the failure.
-fn unheld(tool: &Tool, spelling: Spelling, declared: &[&Code], problems: &mut Vec<String>) {
+fn unheld(tool: &Tool, spelling: Spelling, declared: &[&Code<'_>], problems: &mut Vec<String>) {
     for exit in tool.get_failures().get_exits() {
         for &code in exit.get_failures() {
             if !declared.contains(&code) && !is_library_code(code) {
@@ -360,6 +361,6 @@ fn json_lines(refused: &[&str], admitted: &[&str]) -> (Vec<String>, Vec<String>)
 
 /// Returns whether `code` is a code of crumbkit or of one of its add-on
 /// crates. A crumbkit crate raises such a failure, so the code needs no twin.
-fn is_library_code(code: &Code) -> bool {
+fn is_library_code(code: &Code<'_>) -> bool {
     library_codes().any(|listed| listed == code)
 }

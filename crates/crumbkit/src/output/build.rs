@@ -280,7 +280,7 @@ impl Run {
                 let mut command = command;
                 let spelling = Spelling::COLONS.for_tool(tool.tool_name(&command));
                 let printing = Printing::of(tool);
-                crate::events::exited(printing.exit(&crate::codes::CLI_USAGE));
+                crate::events::exited(printing.exit(crate::codes::CLI_USAGE));
                 let code = refusal.print(sink, json, spelling, printing, &mut command);
                 let path = crate::command_path(&command, &words);
                 Err(Stop::new(

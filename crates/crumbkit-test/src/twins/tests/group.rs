@@ -11,7 +11,7 @@ use crate::testing::panic_message;
 use crate::twins::check_twin;
 
 /// The code of a refused command line.
-const USAGE: Code = crumbkit::codes::CLI_USAGE;
+const USAGE: Code<'static> = crumbkit::codes::CLI_USAGE;
 
 /// The script's answers: `books` prints the group's help page and exits
 /// with code 2, `books --json` prints a failure document with the usage
@@ -53,7 +53,7 @@ fn a_refused_line_that_prints_a_group_s_help_page_passes_with_the_code_of_its_js
 
 #[test]
 fn a_refused_line_that_prints_a_group_s_help_page_fails_when_its_json_run_prints_another_code() {
-    const OTHER: Code = Code::new("tool", "books", "other");
+    const OTHER: Code<'static> = Code::new("tool", "books", "other");
     let (_dir, path) = tool("twins-group-other");
     let examples = Examples::new(&path, "");
 

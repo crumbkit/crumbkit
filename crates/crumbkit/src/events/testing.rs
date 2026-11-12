@@ -22,7 +22,7 @@ thread_local! {
 
 /// The code that shows a spelling: a `typed` line ends with this code in
 /// the run's spelling, such as `a::b::c`.
-const SAMPLE: Code = Code::new("a", "b", "c");
+const SAMPLE: Code<'static> = Code::new("a", "b", "c");
 
 /// The test observer. It handles no interrupt, and its other queries answer
 /// what the thread's test set, by default no variables and no ids.
@@ -124,7 +124,7 @@ impl Observer for Recording {
         see(format!("exited {exit}"));
     }
 
-    fn failed(&self, spelling: Spelling, code: &Code) {
+    fn failed(&self, spelling: Spelling, code: &Code<'_>) {
         see(format!("failed {}", spelling.spell(code)));
     }
 
@@ -146,8 +146,8 @@ impl Observer for Recording {
         see("aliased".to_owned());
     }
 
-    fn tolerated(&self, code: &'static Code) {
-        see(format!("tolerated {}", Spelling::COLONS.spell(code)));
+    fn tolerated(&self, code: Code<'_>) {
+        see(format!("tolerated {}", Spelling::COLONS.spell(&code)));
     }
 
     fn handed_over(&self) {

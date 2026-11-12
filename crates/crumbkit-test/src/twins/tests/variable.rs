@@ -11,11 +11,11 @@ use crate::testing::panic_message;
 use crate::twins::{Twin, Twins, check_twin, check_twins};
 
 /// The code of a listing that goes deeper than the tool allows.
-const TOO_DEEP: Code = Code::new("tool", "books", "too_deep");
+const TOO_DEEP: Code<'static> = Code::new("tool", "books", "too_deep");
 /// The code of a listing without a shelf.
-const NO_SHELF: Code = Code::new("tool", "books", "no_shelf");
+const NO_SHELF: Code<'static> = Code::new("tool", "books", "no_shelf");
 /// The code of a book that does not exist.
-const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
 
 /// The script's answers: `books list` fails with `TOO_DEEP` when `DEPTH` is
 /// 1, fails with `NO_SHELF` when `BOOKS` is not set, and succeeds

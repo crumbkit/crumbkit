@@ -27,8 +27,8 @@ use std::fmt;
 
 use crumbkit::{Call, Code, Failure, Recovery};
 
-const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
+const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+const REMOVED_FILE: Code<'static> = Code::new("shelf", "books", "removed_file");
 
 #[derive(Debug, Failure)]
 pub enum BooksError {

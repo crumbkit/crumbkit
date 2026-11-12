@@ -86,7 +86,7 @@ impl Row for Loan {
 
 const LOANS: Document<Vec<Loan>> = Document::new("loans", "loans", 1, "The loans.");
 
-const OVERDUE: Code = Code::new("loans", "loans", "overdue");
+const OVERDUE: Code<'static> = Code::new("loans", "loans", "overdue");
 
 /// A loan kept past its term.
 #[derive(Debug)]
@@ -104,8 +104,8 @@ impl fmt::Display for Overdue {
 impl std::error::Error for Overdue {}
 
 impl Failure for Overdue {
-    fn code(&self) -> &'static Code {
-        &OVERDUE
+    fn code(&self) -> Code<'_> {
+        OVERDUE
     }
 
     fn recovery(&self) -> Recovery {

@@ -57,7 +57,7 @@ impl Observer for UsageLog {
         recorder::report(|recorder| recorder.run.exit = Some(exit));
     }
 
-    fn failed(&self, spelling: Spelling, code: &Code) {
+    fn failed(&self, spelling: Spelling, code: &Code<'_>) {
         recorder::report(|recorder| recorder.failed(spelling, code));
     }
 
@@ -78,7 +78,7 @@ impl Observer for UsageLog {
         recorder::report(|recorder| recorder.run.alias = true);
     }
 
-    fn tolerated(&self, code: &'static Code) {
+    fn tolerated(&self, code: Code<'_>) {
         recorder::report(|recorder| recorder.tolerated(code));
     }
 

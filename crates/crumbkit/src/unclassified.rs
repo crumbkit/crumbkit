@@ -36,7 +36,7 @@ impl Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Code, Failure, Recovery};
-    /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+    /// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
     /// # #[derive(Debug)]
     /// # struct NoSuchBook(u32);
     /// # impl fmt::Display for NoSuchBook {
@@ -46,7 +46,7 @@ impl Error {
     /// # }
     /// # impl std::error::Error for NoSuchBook {}
     /// # impl Failure for NoSuchBook {
-    /// #     fn code(&self) -> &'static Code { &NOT_FOUND }
+    /// #     fn code(&self) -> Code<'_> { NOT_FOUND }
     /// #     fn recovery(&self) -> Recovery { Recovery::Retry }
     /// # }
     /// use crumbkit::codes::REPORT_UNCHECKED;
@@ -62,10 +62,10 @@ impl Error {
     /// }
     ///
     /// let known = classify(Box::new(NoSuchBook(7)));
-    /// assert_eq!(known.failure().code(), &NOT_FOUND);
+    /// assert_eq!(known.failure().code(), NOT_FOUND);
     ///
     /// let unknown = classify("the catalogue is locked".into());
-    /// assert_eq!(unknown.failure().code(), &REPORT_UNCHECKED);
+    /// assert_eq!(unknown.failure().code(), REPORT_UNCHECKED);
     /// ```
     pub fn unclassified(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
         Self::from(Unclassified(error.into()))
@@ -98,8 +98,8 @@ impl std::error::Error for Unclassified {
 }
 
 impl Failure for Unclassified {
-    fn code(&self) -> &'static Code {
-        &REPORT_UNCHECKED
+    fn code(&self) -> Code<'_> {
+        REPORT_UNCHECKED
     }
 
     fn recovery(&self) -> Recovery {

@@ -55,7 +55,7 @@ fn an_export_that_cannot_open_the_file_names_its_path_in_the_hint() {
     };
 
     assert_eq!(error.to_string(), "cannot read the list to-read");
-    assert_eq!(crumbkit::Failure::code(&error), &super::UNREADABLE);
+    assert_eq!(crumbkit::Failure::code(&error), super::UNREADABLE);
     assert_eq!(
         crumbkit::Failure::recovery(&error),
         crumbkit::Recovery::Hint(

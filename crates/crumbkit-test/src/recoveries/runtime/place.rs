@@ -35,7 +35,7 @@ impl RuntimePlace {
     #[must_use]
     pub fn line(
         &self,
-        code: Code,
+        code: Code<'_>,
         words: impl IntoIterator<Item = impl Into<String>>,
     ) -> RuntimeFailing {
         RuntimeFailing::with_settings(code, words, self.settings.clone())

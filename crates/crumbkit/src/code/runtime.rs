@@ -1,8 +1,7 @@
 //! Failure codes known only at run time, such as the code that a plugin
-//! answers with.
+//! answers with, and the owned code that a failure keeps them in.
 
 use std::fmt;
-use std::sync::{Mutex, PoisonError};
 
 use super::Code;
 use crate::segment::is_code_segment;
@@ -10,31 +9,18 @@ use crate::segment::is_code_segment;
 #[cfg(test)]
 mod tests;
 
-/// The most distinct run-time codes that one process holds. A plugin that
-/// put an id in its reason would otherwise grow the process's memory with
-/// every failure.
-const MOST_CODES: usize = 256;
-
-/// The run-time codes of this process, each made once and kept until the
-/// process exits.
-static CODES: Mutex<Table> = Mutex::new(Table::new());
-
-impl Code {
+impl<'a> Code<'a> {
     /// Returns the code with the segments `component`, `area` and `reason`,
     /// which the tool learns only at run time, such as from a plugin's
     /// answer.
     ///
     /// It applies the rule of [`Code::new`] to each segment and returns
     /// [`RuntimeCodeError::Segment`] for the first one that breaks it. The
-    /// returned code is `'static`, so it fits
-    /// [`Failure::code`](crate::Failure::code) as a constant does.
-    ///
-    /// The process keeps each distinct run-time code until it exits, and
-    /// returns the same code for the same segments. It holds at most 256 of
-    /// them. Once it holds 256, a call with segments it does not hold returns
-    /// [`RuntimeCodeError::Full`], and a call with segments it holds still
-    /// returns their code. A tool that receives `Full` reports the failure
-    /// under a code of its own.
+    /// returned code borrows the three segments, and crumbkit keeps no copy
+    /// of it, so a tool makes any number of run-time codes. A failure that
+    /// keeps the code holds the [`CodeBuf`] that [`Code::to_buf`] returns,
+    /// and answers [`Failure::code`](crate::Failure::code) with
+    /// [`CodeBuf::as_code`].
     ///
     /// A `CODES` list cannot name run-time codes, because the tool does not
     /// know them when its tests run. A failure with a run-time code supplies
@@ -44,58 +30,26 @@ impl Code {
     /// ```
     /// use crumbkit::{Code, Spelling};
     ///
-    /// const PLUGIN_FAILED: Code = Code::new("shelf", "plugin", "failed");
+    /// const PLUGIN_FAILED: Code<'static> = Code::new("shelf", "plugin", "failed");
     ///
     /// let answer = "lending::loans::overdue";
     /// let code = Spelling::COLONS
     ///     .split(answer)
     ///     .and_then(|(component, area, reason)| Code::runtime(component, area, reason).ok())
-    ///     .unwrap_or(&PLUGIN_FAILED);
+    ///     .unwrap_or(PLUGIN_FAILED);
     ///
-    /// assert_eq!(Spelling::COLONS.spell(code), "lending::loans::overdue");
+    /// assert_eq!(Spelling::COLONS.spell(&code), "lending::loans::overdue");
     /// ```
     ///
     /// # Errors
     ///
     /// Returns [`RuntimeCodeError::Segment`] when a segment breaks the rule
-    /// of [`Code::new`], and
-    /// [`RuntimeCodeError::Full`] when the process already holds 256 other
-    /// run-time codes.
+    /// of [`Code::new`].
     pub fn runtime(
-        component: &str,
-        area: &str,
-        reason: &str,
-    ) -> Result<&'static Self, RuntimeCodeError> {
-        // `Table::code` pushes only a finished code, so the table is whole
-        // even after a thread panicked while it held the lock, and a
-        // poisoned lock is used as it is.
-        let mut table = CODES.lock().unwrap_or_else(PoisonError::into_inner);
-        table.code(component, area, reason, MOST_CODES)
-    }
-}
-
-/// The run-time codes that one process holds.
-pub(super) struct Table {
-    /// The codes, in the order they were first asked for.
-    codes: Vec<&'static Code>,
-}
-
-impl Table {
-    /// Returns an empty table.
-    pub(super) const fn new() -> Self {
-        Self { codes: Vec::new() }
-    }
-
-    /// Returns the code with these segments: the one the table holds, or a
-    /// new one that it keeps, when the segments follow the rule and the
-    /// table holds fewer than `most` codes.
-    pub(super) fn code(
-        &mut self,
-        component: &str,
-        area: &str,
-        reason: &str,
-        most: usize,
-    ) -> Result<&'static Code, RuntimeCodeError> {
+        component: &'a str,
+        area: &'a str,
+        reason: &'a str,
+    ) -> Result<Self, RuntimeCodeError> {
         for (segment, text) in [
             (Segment::Component, component),
             (Segment::Area, area),
@@ -108,31 +62,102 @@ impl Table {
                 });
             }
         }
-        let held = self
-            .codes
-            .iter()
-            .find(|code| code.component == component && code.area == area && code.reason == reason);
-        if let Some(code) = held {
-            return Ok(code);
+        Ok(Self {
+            component,
+            area,
+            reason,
+        })
+    }
+
+    /// Returns a copy of the code that owns its segments.
+    ///
+    /// A value that keeps a code after the text the code borrows is gone,
+    /// such as a failure made from a plugin's answer or an observer that
+    /// holds the codes of a run, stores the copy and reads it with
+    /// [`CodeBuf::as_code`].
+    ///
+    /// ```
+    /// use crumbkit::{Code, CodeBuf, Spelling};
+    ///
+    /// let owned: CodeBuf = {
+    ///     let answer = String::from("lending::loans::overdue");
+    ///     let (component, area, reason) = Spelling::COLONS.split(&answer).unwrap();
+    ///     Code::runtime(component, area, reason).unwrap().to_buf()
+    /// };
+    ///
+    /// assert_eq!(Spelling::COLONS.spell(&owned.as_code()), "lending::loans::overdue");
+    /// ```
+    #[must_use]
+    pub fn to_buf(self) -> CodeBuf {
+        CodeBuf {
+            component: self.component.into(),
+            area: self.area.into(),
+            reason: self.reason.into(),
         }
-        if self.codes.len() >= most {
-            return Err(RuntimeCodeError::Full);
-        }
-        // Leaking gives the `'static` lifetime that `Failure::code`
-        // requires. The table bounds the leak at `most` codes per process.
-        let code: &'static Code = Box::leak(Box::new(Code {
-            component: leak(component),
-            area: leak(area),
-            reason: leak(reason),
-        }));
-        self.codes.push(code);
-        Ok(code)
     }
 }
 
-/// Returns a copy of `text` that lives until the process exits.
-fn leak(text: &str) -> &'static str {
-    Box::leak(text.into())
+/// A failure [`Code`] that owns its three segments.
+///
+/// A failure that learns its code at run time stores a `CodeBuf`, which
+/// [`Code::to_buf`] returns, and answers
+/// [`Failure::code`](crate::Failure::code) with [`CodeBuf::as_code`]. Two
+/// `CodeBuf`s are equal when their segments are equal.
+///
+/// ```
+/// use std::fmt;
+///
+/// use crumbkit::{Code, CodeBuf, Failure, Recovery};
+///
+/// /// A failure with the code that a plugin answered with.
+/// #[derive(Debug)]
+/// struct PluginFailure {
+///     code: CodeBuf,
+/// }
+///
+/// impl fmt::Display for PluginFailure {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         f.write_str("the plugin failed")
+///     }
+/// }
+///
+/// impl std::error::Error for PluginFailure {}
+///
+/// impl Failure for PluginFailure {
+///     fn code(&self) -> Code<'_> {
+///         self.code.as_code()
+///     }
+///
+///     fn recovery(&self) -> Recovery {
+///         Recovery::none("the plugin gave no next step")
+///     }
+/// }
+///
+/// let failure = PluginFailure {
+///     code: Code::runtime("lending", "loans", "overdue").unwrap().to_buf(),
+/// };
+/// assert_eq!(failure.code(), Code::new("lending", "loans", "overdue"));
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct CodeBuf {
+    /// The component that owns the code, such as `shelf`.
+    component: Box<str>,
+    /// The area of the tool, such as `books`.
+    area: Box<str>,
+    /// The reason for the failure, such as `not_found`.
+    reason: Box<str>,
+}
+
+impl CodeBuf {
+    /// Returns the code, which borrows its segments from this value.
+    #[must_use]
+    pub fn as_code(&self) -> Code<'_> {
+        Code {
+            component: &self.component,
+            area: &self.area,
+            reason: &self.reason,
+        }
+    }
 }
 
 /// The three segments of a [`Code`], in the order that [`Code::new`] and
@@ -175,9 +200,6 @@ pub enum RuntimeCodeError {
         /// The segment's text.
         text: String,
     },
-    /// The process already holds 256 run-time codes, and these segments are
-    /// not one of them.
-    Full,
 }
 
 impl fmt::Display for RuntimeCodeError {
@@ -186,10 +208,6 @@ impl fmt::Display for RuntimeCodeError {
             Self::Segment { segment, text } => write!(
                 f,
                 "the code {segment} {text:?} is not words of lowercase ASCII letters, digits and underscores joined by single hyphens"
-            ),
-            Self::Full => write!(
-                f,
-                "the process already holds {MOST_CODES} codes known only at run time, the most it can hold"
             ),
         }
     }

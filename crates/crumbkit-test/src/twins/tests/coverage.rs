@@ -12,14 +12,14 @@ use crate::testing::panic_message;
 use crate::twins::{Twin, Twins, check_twins};
 
 /// The code of a book that does not exist.
-const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
 /// The code of a list of ids that cannot be read.
-const UNREADABLE: Code = Code::new("tool", "books", "unreadable");
+const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
 /// The code of a book file that disappeared, which no command line provokes.
-const REMOVED: Code = Code::new("tool", "books", "removed_file");
+const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
 
 /// The tool's declared codes.
-const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
+const CODES: &[&[&Code<'static>]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books
 /// list --limit 0` fails with crumbkit's usage code, `books show 8` fails
@@ -90,7 +90,7 @@ fn a_declared_code_without_a_twin_or_an_unprovoked_entry_fails_the_twin_check() 
 
 #[test]
 fn an_unprovoked_entry_for_a_code_with_a_twin_or_an_undeclared_code_fails_the_twin_check() {
-    const STRAY: Code = Code::new("tool", "stray", "gone");
+    const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
     let unprovoked = [
         Unprovoked::new(&NOT_FOUND, "A missing book needs a full disk."),
         Unprovoked::new(&UNREADABLE, "Only a broken file provokes it."),
@@ -110,7 +110,7 @@ fn an_unprovoked_entry_for_a_code_with_a_twin_or_an_undeclared_code_fails_the_tw
 
 #[test]
 fn every_broken_pair_is_reported_and_the_check_does_not_stop_at_the_first() {
-    const STRAY: Code = Code::new("tool", "stray", "gone");
+    const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
     let pairs = [
         Twin::new(
             Failing::new(&NOT_FOUND, &["books", "show", "7"]),
@@ -259,7 +259,7 @@ fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() 
     let dir = TempDir::new("twins-owned-codes").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
-    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE, REMOVED];
+    let codes: Vec<Code<'_>> = vec![NOT_FOUND, UNREADABLE, REMOVED];
     let unprovoked = [Unprovoked::from_code(
         codes[2],
         "Only a book file that disappears provokes it.",

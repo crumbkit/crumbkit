@@ -13,7 +13,7 @@ use crate::{finish_to, parse_to, stream_to};
 const PLANETS_WATCH: Document<Stream<Planet>> =
     Document::new("solar", "planets-watch", 1, "Each planet as it arrives.");
 
-const MISSING: Code = Code::new("tool", "planets", "missing");
+const MISSING: Code<'static> = Code::new("tool", "planets", "missing");
 
 /// A failure that the handler returns when a planet does not exist.
 #[derive(Debug)]
@@ -28,8 +28,8 @@ impl fmt::Display for Missing {
 impl std::error::Error for Missing {}
 
 impl Failure for Missing {
-    fn code(&self) -> &'static Code {
-        &MISSING
+    fn code(&self) -> Code<'_> {
+        MISSING
     }
 
     fn recovery(&self) -> Recovery {

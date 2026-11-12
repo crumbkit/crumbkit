@@ -67,7 +67,7 @@ fn kingfisher() -> Sighting {
     }
 }
 
-const NOT_FOUND: Code = Code::new("birds", "sightings", "unreadable");
+const NOT_FOUND: Code<'static> = Code::new("birds", "sightings", "unreadable");
 
 /// A failure that names a line of the log that could not be read.
 #[derive(Debug)]
@@ -82,8 +82,8 @@ impl fmt::Display for Unreadable {
 impl std::error::Error for Unreadable {}
 
 impl Failure for Unreadable {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {

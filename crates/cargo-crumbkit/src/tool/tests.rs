@@ -21,7 +21,7 @@ const DOCUMENT: &str = r#"{"schema":"crumbkit/commands-list/v1","data":[
 
 /// Returns the spelled code of `error`.
 fn code(error: &impl crumbkit::Failure) -> String {
-    Spelling::COLONS.spell(error.code())
+    Spelling::COLONS.spell(&error.code())
 }
 
 #[test]

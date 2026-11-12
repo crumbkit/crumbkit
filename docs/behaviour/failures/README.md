@@ -162,12 +162,17 @@ Why: ADR-0079.
 
 A tool that learns a code only at run time, such as from a plugin's answer, gets
 it from [`Code::runtime`](../../../crates/crumbkit/src/code/runtime.rs), which
-checks the segments by the same rule and keeps each distinct code until the
-process exits. A process holds at most 256 run-time codes. A new code past that
-limit is refused, and the tool reports the failure under a code of its own, so a
-plugin that puts an id in its reason cannot grow memory without bound.
+checks the segments by the same rule and returns a `Code<'a>` that borrows
+them. crumbkit keeps no copy of a run-time code, so a tool makes any number of
+them. A segment that breaks the rule returns `RuntimeCodeError::Segment`, and the
+tool reports the failure under a code of its own.
 `Spelling::COLONS.split(text)` reads a printed code back into its segments, so a
 tool passes the segments to `Code::runtime`.
+
+A failure that keeps a run-time code stores the `CodeBuf` that `Code::to_buf`
+returns, which owns the three segments, and answers `Failure::code` with
+`CodeBuf::as_code`. An observer that keeps a tolerated code stores a `CodeBuf`
+in the same way.
 
 A `CODES` list cannot name a run-time code, so such a failure supplies its own
 recovery. `check_recoveries` does not follow the recovery of a code from a
@@ -175,17 +180,18 @@ component that no declared code has, such as a plugin's, and counts such codes
 in its report. It reports a code from a declared component that is not declared.
 It finds a printed code's component from the text before the area, as [recovery
 chains](../checks/recovery-chains.md) describes. A run-time code cannot be
-listed by an [exit](exit-codes.md), so its failure exits with 1.
+listed by an [exit](exit-codes.md), so its failure exits with 1 unless its
+segments equal those of a listed code.
 
-A tool whose tests hold its declared codes by value, such as a `Vec<Code>`
-built from `Code::runtime`, passes them to `Recoveries::from_codes` and
-`Twins::from_codes`, and lists a code that no test provokes with
-`Unprovoked::from_code`. These constructors take the owned codes directly.
-`Recoveries::new` and `Twins::new` take a slice of lists of references, so
-with them the tool first collects a `Vec<&Code>` from its codes and wraps
-it in an outer slice.
+A tool whose tests hold its declared codes by value, such as a
+`Vec<Code<'_>>` built from `Code::runtime`, passes them to
+`Recoveries::from_codes` and `Twins::from_codes`, and lists a code that no
+test provokes with `Unprovoked::from_code`. These constructors take the codes
+by value directly. `Recoveries::new` and `Twins::new` take a slice of lists of
+references, so with them the tool first collects a `Vec<&Code<'_>>` from its
+codes and wraps it in an outer slice.
 
-Why: ADR-0001, ADR-0037, ADR-0085, ADR-0088, ADR-0089.
+Why: ADR-0001, ADR-0037, ADR-0085, ADR-0088, ADR-0089, ADR-0205.
 
 ## Refused command lines
 
@@ -283,7 +289,7 @@ classified, so a tool that wants its own failure back calls
 
 A diagnostic's own `code()` does not become the failure code. miette's code is
 text that the diagnostic decides at run time, and a code that `Failure::code`
-returns is a declared `&'static Code` that a `CODES` list can name. The
+returns is a declared `Code<'static>` that a `CODES` list can name. The
 failure's message ends with the diagnostic's code in parentheses. A tool that
 wants its own code on a miette failure downcasts the report to its own
 diagnostic type and returns a typed failure that declares the code.

@@ -48,7 +48,7 @@ impl Row for Book {
 
 const BOOKS_LIST: Document<Listing<Book>> =
     Document::new("shelf", "books-list", 1, "One page of the books.");
-const UNKNOWN_AUTHOR: Code = Code::new("shelf", "books", "unknown_author");
+const UNKNOWN_AUTHOR: Code<'static> = Code::new("shelf", "books", "unknown_author");
 
 /// The catalogue has no book by the author the caller named.
 #[derive(Debug)]
@@ -63,8 +63,8 @@ impl fmt::Display for UnknownAuthor {
 impl std::error::Error for UnknownAuthor {}
 
 impl Failure for UnknownAuthor {
-    fn code(&self) -> &'static Code {
-        &UNKNOWN_AUTHOR
+    fn code(&self) -> Code<'_> {
+        UNKNOWN_AUTHOR
     }
 
     fn recovery(&self) -> Recovery {
@@ -124,8 +124,8 @@ The [behaviour docs] describe each part.
 - Output: [`Run`], [`finish`], [`Row`], [`Document`], [`Listing`],
   [`Page`], [`Batch`] and [`Prose`].
 - Value types of your own: [`Shown`] and [`Elapsed`].
-- Failures: [`Failure`], [`Recovery`], [`Code`], [`Spelling`] and
-  [`Error`].
+- Failures: [`Failure`], [`Recovery`], [`Code`], [`CodeBuf`],
+  [`Spelling`] and [`Error`].
 - Parsing and help: [`parse`], [`help`] and [`Call`].
 - The listings for agents: [`commands`] and [`schemas`].
 - Per-id lookups: [`fetch_each`].
@@ -157,6 +157,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`Failure`]: src/failure.rs
 [`Recovery`]: src/failure.rs
 [`Code`]: src/code.rs
+[`CodeBuf`]: src/code/runtime.rs
 [`Spelling`]: src/code.rs
 [`Error`]: src/failure.rs
 [`parse`]: src/parse.rs

@@ -45,7 +45,7 @@ pub(super) enum Answer {
     Whole,
     /// The first rows of a listing or a list, marked as cut short with this
     /// code.
-    Cut(&'static Code),
+    Cut(Code<'static>),
     /// The first rows of a batch, in a table, a JSON document or the text of
     /// a headed batch. The failure of the keys left out follows the batch's
     /// own failures.
@@ -109,7 +109,7 @@ pub(super) fn write_result<T: Rows>(
     problems: usize,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
-    let code = &codes::OUTPUT_OVER_BUDGET;
+    let code = codes::OUTPUT_OVER_BUDGET;
     if let Some(bytes) = value.bytes().filter(|_| !output.is_json()) {
         // The text of bytes is their own length, so it is measured without
         // a buffer.
@@ -207,7 +207,7 @@ fn write_rows<T: Rows>(
     problems: usize,
 ) -> io::Result<(Answer, usize)> {
     let budget = settings.budget;
-    let code = &codes::OUTPUT_OVER_BUDGET;
+    let code = codes::OUTPUT_OVER_BUDGET;
     // A document without the envelope has no `next`, so it renders no step.
     let next = if settings.is_json() && !document.get_envelope().wraps() {
         Vec::new()
@@ -250,7 +250,7 @@ fn write_rows<T: Rows>(
     }
     match T::SHAPE {
         Shape::Listing | Shape::List if rows > 0 => {
-            prepared.cut(sink, spelling.spell(code), code, budget)
+            prepared.cut(sink, spelling.spell(&code), code, budget)
         }
         Shape::Batch => {
             let listed = failures.unwrap_or_default();
@@ -606,7 +606,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         &mut self,
         sink: &mut dyn Deliver,
         spelled: String,
-        code: &'static Code,
+        code: Code<'static>,
         budget: usize,
     ) -> io::Result<(Answer, usize)> {
         let rows = self.rows;

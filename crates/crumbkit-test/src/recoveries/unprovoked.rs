@@ -11,7 +11,7 @@ use crate::allow::is_reason;
 #[derive(Clone, Copy, Debug)]
 pub struct Unprovoked<'a> {
     /// The declared code.
-    code: Code,
+    code: Code<'a>,
     /// Why no test can provoke it, in one line.
     reason: &'a str,
 }
@@ -28,11 +28,11 @@ impl<'a> Unprovoked<'a> {
     /// use crumbkit::Code;
     /// use crumbkit_test::Unprovoked;
     ///
-    /// const GONE: Code = Code::new("shelf", "books", "removed_file");
+    /// const GONE: Code<'static> = Code::new("shelf", "books", "removed_file");
     /// const BAD: Unprovoked<'_> = Unprovoked::new(&GONE, "");
     /// ```
     #[must_use]
-    pub const fn new(code: &'a Code, reason: &'a str) -> Self {
+    pub const fn new(code: &'a Code<'a>, reason: &'a str) -> Self {
         Self::from_code(*code, reason)
     }
 
@@ -44,13 +44,13 @@ impl<'a> Unprovoked<'a> {
     ///
     /// Panics unless `reason` is non-empty and holds no line break.
     #[must_use]
-    pub const fn from_code(code: Code, reason: &'a str) -> Self {
+    pub const fn from_code(code: Code<'a>, reason: &'a str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
         Self { code, reason }
     }
 
     /// Returns the declared code.
-    pub(crate) const fn code(&self) -> &Code {
+    pub(crate) const fn code(&self) -> &Code<'a> {
         &self.code
     }
 

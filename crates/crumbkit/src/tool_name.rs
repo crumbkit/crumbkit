@@ -44,7 +44,7 @@ const CRUMBKIT: &str = "crumbkit";
 /// ```
 /// use crumbkit::{Code, Spelling, ToolName};
 ///
-/// const USAGE: Code = Code::new("crumbkit", "cli", "usage");
+/// const USAGE: Code<'static> = Code::new("crumbkit", "cli", "usage");
 ///
 /// let tool = ToolName::new("my-tool");
 /// assert_eq!(Spelling::COLONS.spell(&tool.code(&USAGE)), "my_tool::cli::usage");
@@ -82,16 +82,16 @@ impl ToolName {
     /// type's documentation describes.
     ///
     /// The process keeps each distinct name that it is given until it
-    /// exits, because the segments of a [`Code`] live that long. A tool's
-    /// names come from its own command tree, so a process holds one or a
-    /// few of them.
+    /// exits, because a `ToolName` is `Copy` and holds `&'static` text, which
+    /// a constant [`Spelling`](crate::Spelling) needs. A tool's names come
+    /// from its own command tree, so a process holds one or a few of them.
     ///
     /// RUST-10: this handles a tool's own names, one or a few for each
     /// process. It misses a bound, because nothing limits the list or the
     /// leaked strings, so a host that calls it with many distinct names, such
-    /// as one for each plugin, grows for the life of the process. A cap that
-    /// returns an error replaces this when a host needs one, as
-    /// [`Code::runtime`] does with `RuntimeCodeError::Full`.
+    /// as one for each plugin, grows for the life of the process. A
+    /// `ToolName` that owns its text, as [`CodeBuf`](crate::CodeBuf) owns a
+    /// code's segments, replaces this when a host needs one.
     #[must_use]
     pub fn new(name: &str) -> Self {
         // The list holds only finished names, so it is whole even after a
@@ -145,7 +145,7 @@ impl ToolName {
     /// Returns `code` with the tool's component in place of `crumbkit`,
     /// or `code` itself when the tool or another component owns it.
     #[must_use]
-    pub const fn code(self, code: &Code) -> Code {
+    pub const fn code<'a>(self, code: &Code<'a>) -> Code<'a> {
         if is_crumbkit(code.component()) {
             code.with_component(self.code)
         } else {

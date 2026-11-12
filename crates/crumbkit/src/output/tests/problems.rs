@@ -23,7 +23,7 @@ const CHECK_LIST: Document<Vec<Check>> = Document::new("lint", "check-list", 1, 
 const CHECK_BATCH: Document<Batch<Check, Unreadable>> =
     Document::new("lint", "check-batch", 1, "The test rows.");
 
-const UNREADABLE: Code = Code::new("lint", "checks", "unreadable");
+const UNREADABLE: Code<'static> = Code::new("lint", "checks", "unreadable");
 
 /// A row whose `problem` field marks a problem when it holds a value.
 #[derive(Serialize, JsonSchema)]
@@ -70,8 +70,8 @@ impl fmt::Display for Unreadable {
 impl std::error::Error for Unreadable {}
 
 impl Failure for Unreadable {
-    fn code(&self) -> &'static Code {
-        &UNREADABLE
+    fn code(&self) -> Code<'_> {
+        UNREADABLE
     }
 
     fn recovery(&self) -> Recovery {

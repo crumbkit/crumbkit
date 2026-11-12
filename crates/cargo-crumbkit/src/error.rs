@@ -13,56 +13,56 @@ use crumbkit_markdown::RenderError;
 mod tests;
 
 /// The code of a failure whose cargo cannot start.
-const CARGO_UNAVAILABLE: Code = Code::new("crumbkit", "tool", "cargo_unavailable");
+const CARGO_UNAVAILABLE: Code<'static> = Code::new("crumbkit", "tool", "cargo_unavailable");
 
 /// The code of a failure whose `cargo build` exits with a failure.
-const BUILD_FAILED: Code = Code::new("crumbkit", "tool", "build_failed");
+const BUILD_FAILED: Code<'static> = Code::new("crumbkit", "tool", "build_failed");
 
 /// The code of a failure whose build names no executable for the binary.
-const NO_BINARY: Code = Code::new("crumbkit", "tool", "no_binary");
+const NO_BINARY: Code<'static> = Code::new("crumbkit", "tool", "no_binary");
 
 /// The code of a failure whose temporary XDG directories cannot be created.
-const NO_TEMP_DIR: Code = Code::new("crumbkit", "tool", "no_temp_dir");
+const NO_TEMP_DIR: Code<'static> = Code::new("crumbkit", "tool", "no_temp_dir");
 
 /// The code of a failure whose tool binary cannot start.
-const TOOL_UNAVAILABLE: Code = Code::new("crumbkit", "tool", "tool_unavailable");
+const TOOL_UNAVAILABLE: Code<'static> = Code::new("crumbkit", "tool", "tool_unavailable");
 
 /// The code of a failure whose tool prints no `commands list` document.
-const NO_COMMANDS_LIST: Code = Code::new("crumbkit", "tool", "no_commands_list");
+const NO_COMMANDS_LIST: Code<'static> = Code::new("crumbkit", "tool", "no_commands_list");
 
 /// The code of a failure whose tool fails to print a help page.
-const HELP_FAILED: Code = Code::new("crumbkit", "weight", "help_failed");
+const HELP_FAILED: Code<'static> = Code::new("crumbkit", "weight", "help_failed");
 
 /// The code of a failure whose golden file exists but cannot be read.
-const GOLDEN_UNREADABLE: Code = Code::new("crumbkit", "weight", "golden_unreadable");
+const GOLDEN_UNREADABLE: Code<'static> = Code::new("crumbkit", "weight", "golden_unreadable");
 
 /// The code of a failure whose tool prints no `self figures list` document.
-const NO_USAGE_FIGURES: Code = Code::new("crumbkit", "weight", "no_usage_figures");
+const NO_USAGE_FIGURES: Code<'static> = Code::new("crumbkit", "weight", "no_usage_figures");
 
 /// The code of a failure whose usage log cannot be found, because the XDG
 /// state directory cannot be found.
-const NO_STATE_DIR: Code = Code::new("crumbkit", "weight", "no_state_dir");
+const NO_STATE_DIR: Code<'static> = Code::new("crumbkit", "weight", "no_state_dir");
 
 /// The code of a failure whose `commands list` document cannot become a
 /// reference.
-const UNRENDERABLE: Code = Code::new("crumbkit", "docs", "unrenderable");
+const UNRENDERABLE: Code<'static> = Code::new("crumbkit", "docs", "unrenderable");
 
 /// The code of a failure whose reference file cannot be written.
-const WRITE_FAILED: Code = Code::new("crumbkit", "docs", "write_failed");
+const WRITE_FAILED: Code<'static> = Code::new("crumbkit", "docs", "write_failed");
 
 /// The code of a failure whose skill file cannot be read.
-const SKILL_UNREADABLE: Code = Code::new("crumbkit", "skill", "unreadable");
+const SKILL_UNREADABLE: Code<'static> = Code::new("crumbkit", "skill", "unreadable");
 
 /// The code of a failure whose skill file has a section marker without its
 /// end marker.
-const UNCLOSED_SECTION: Code = Code::new("crumbkit", "skill", "unclosed_section");
+const UNCLOSED_SECTION: Code<'static> = Code::new("crumbkit", "skill", "unclosed_section");
 
 /// The code of a failure whose skill file cannot be written.
-const SKILL_WRITE_FAILED: Code = Code::new("crumbkit", "skill", "write_failed");
+const SKILL_WRITE_FAILED: Code<'static> = Code::new("crumbkit", "skill", "write_failed");
 
 /// The code of a failure whose usage directory or one of its files cannot
 /// be read.
-const USAGE_UNREADABLE: Code = Code::new("crumbkit", "usage", "unreadable");
+const USAGE_UNREADABLE: Code<'static> = Code::new("crumbkit", "usage", "unreadable");
 
 /// A failure to build a tool's binary or to run it for its command tree,
 /// which `weigh` and `docs` share. Each failure's next step is advice,

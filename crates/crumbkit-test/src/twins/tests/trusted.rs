@@ -15,9 +15,9 @@ use crate::twins::{Twin, Twins, check_twins};
 use crumbkit::tool::Failures;
 
 /// The code of a book that does not exist.
-const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
 /// A code in the `crumbkit` component that no crumbkit crate lists.
-const UNLISTED: Code = Code::new("crumbkit", "books", "unlisted");
+const UNLISTED: Code<'static> = Code::new("crumbkit", "books", "unlisted");
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books show
 /// 5` fails with crumbkit-child's code `tool::child::not_found`, `books
@@ -66,7 +66,12 @@ const SHOW_4: Twin<'_> = Twin::new(
 
 /// Returns the panic message of `check_twins` on the tool with `codes`,
 /// `pairs`, `tool` and the opt-outs `allow`, or `None` when it passes.
-fn checked(codes: &[&[&Code]], pairs: &[Twin<'_>], tool: &Tool, allow: &[Allow]) -> Option<String> {
+fn checked(
+    codes: &[&[&Code<'_>]],
+    pairs: &[Twin<'_>],
+    tool: &Tool,
+    allow: &[Allow],
+) -> Option<String> {
     let dir = TempDir::new("twins-trusted").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
@@ -89,7 +94,7 @@ fn a_twin_of_a_child_code_or_an_aliases_code_needs_no_declaration() {
 
 #[test]
 fn a_declared_child_code_or_aliases_code_needs_no_twin() {
-    let codes: &[&[&Code]] = &[&[
+    let codes: &[&[&Code<'_>]] = &[&[
         &NOT_FOUND,
         &crumbkit_child::codes::NOT_STARTED,
         &crumbkit_aliases::codes::UNREADABLE,

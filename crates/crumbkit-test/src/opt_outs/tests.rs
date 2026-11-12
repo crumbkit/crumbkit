@@ -438,7 +438,7 @@ fn the_report_names_an_example_opt_out_by_its_command_line_with_its_own_costs() 
 
 #[test]
 fn the_report_names_an_untwinned_opt_out_by_its_refused_command_line_and_its_cost() {
-    const BROKEN: crumbkit::Code = crumbkit::Code::new("shelf", "books", "broken_file");
+    const BROKEN: crumbkit::Code<'static> = crumbkit::Code::new("shelf", "books", "broken_file");
     const ALLOW: &[Allow] = &[Allow::untwinned(
         Failing::new(&BROKEN, &["books", "show", "--from", "broken file.txt"]),
         "A broken file causes it, and no single word does.",

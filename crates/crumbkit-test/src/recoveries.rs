@@ -42,14 +42,14 @@ mod tests;
 /// use crumbkit::Code;
 /// use crumbkit_test::Failing;
 ///
-/// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 ///
 /// const SHOW_7: Failing<'_> = Failing::new(&NOT_FOUND, &["books", "show", "7"]);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Failing<'a> {
     /// The code that the command line fails with.
-    code: &'a Code,
+    code: Code<'a>,
     /// The words after the tool's name.
     words: &'a [&'a str],
     /// The working directory of every run of the chain.
@@ -72,7 +72,13 @@ impl<'a> Failing<'a> {
     /// [`Examples::current_dir`], or in the test's directory, and read an
     /// empty standard input.
     #[must_use]
-    pub const fn new(code: &'a Code, words: &'a [&'a str]) -> Self {
+    pub const fn new(code: &'a Code<'a>, words: &'a [&'a str]) -> Self {
+        Self::with_code(*code, words)
+    }
+
+    /// Returns the command line of `words` that fails with `code`, held by
+    /// value, as [`Failing::new`] does.
+    pub(crate) const fn with_code(code: Code<'a>, words: &'a [&'a str]) -> Self {
         Self {
             code,
             words,
@@ -190,8 +196,8 @@ impl<'a> Failing<'a> {
     }
 
     /// Returns the code that the command line fails with.
-    pub(crate) const fn code(&self) -> &'a Code {
-        self.code
+    pub(crate) const fn code(&self) -> &Code<'a> {
+        &self.code
     }
 
     /// Returns the words after the tool's name.
@@ -225,8 +231,8 @@ impl<'a> Failing<'a> {
 /// use crumbkit::Code;
 /// use crumbkit_test::{Examples, Failing, Recoveries, Unprovoked};
 ///
-/// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-/// const GONE: Code = Code::new("shelf", "books", "removed_file");
+/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// const GONE: Code<'static> = Code::new("shelf", "books", "removed_file");
 ///
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
@@ -261,7 +267,7 @@ impl<'a> Recoveries<'a> {
     /// code, no value and at most 3 steps in a chain. [`check_recoveries`]
     /// spells the codes as the tool record does.
     #[must_use]
-    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
+    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code<'a>]]) -> Self {
         Self {
             examples,
             codes: Declared::Lists(codes),
@@ -276,7 +282,7 @@ impl<'a> Recoveries<'a> {
     /// one list of the tool's declared codes held by value, such as codes
     /// that the tool builds at run time with `Code::runtime`.
     #[must_use]
-    pub const fn from_codes(examples: Examples<'a>, codes: &'a [Code]) -> Self {
+    pub const fn from_codes(examples: Examples<'a>, codes: &'a [Code<'a>]) -> Self {
         Self {
             codes: Declared::Codes(codes),
             ..Self::new(examples, &[])
@@ -444,7 +450,7 @@ pub fn check_recoveries(command: &Command, tool: &Tool, recoveries: &Recoveries<
 
 /// Returns the spelled codes whose recoveries the check follows by name:
 /// the `declared` codes and crumbkit's codes as a run prints them.
-fn known_codes(declared: &[(String, &Code)], spelling: Spelling) -> Vec<String> {
+fn known_codes(declared: &[(String, &Code<'_>)], spelling: Spelling) -> Vec<String> {
     let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
     known.extend(
         crumbkit::codes::ALL
@@ -460,7 +466,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
     let reader = failures::reader(&recoveries.examples);
     // crumbkit's own codes print with the tool's name (ADR-0079).
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
-    let mut declared: Vec<(String, &Code)> = Vec::new();
+    let mut declared: Vec<(String, &Code<'_>)> = Vec::new();
     for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
             declared.push((spelling.spell(code), code));

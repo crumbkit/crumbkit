@@ -299,7 +299,7 @@ fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
 }
 
 /// Ten distinct codes, which a run can report as tolerated.
-static CODES: [Code; 10] = [
+static CODES: [Code<'static>; 10] = [
     Code::new("shelf", "books", "locked"),
     Code::new("shelf", "network", "timed_out"),
     Code::new("shelf", "cache", "stale"),
@@ -317,9 +317,9 @@ fn a_line_holds_each_tolerated_code_once_in_report_order_in_the_tool_s_spelling(
     let state = TempDir::new("tolerated-1");
     let mut recorder = parsed();
 
-    recorder.tolerated(&CODES[1]);
-    recorder.tolerated(&CODES[0]);
-    recorder.tolerated(&CODES[1]);
+    recorder.tolerated(CODES[1]);
+    recorder.tolerated(CODES[0]);
+    recorder.tolerated(CODES[1]);
 
     assert_eq!(
         saved(&state, recorder, false)[0]["tolerated"],
@@ -328,11 +328,43 @@ fn a_line_holds_each_tolerated_code_once_in_report_order_in_the_tool_s_spelling(
 }
 
 #[test]
+fn a_tolerated_runtime_code_is_on_the_line_after_the_text_it_borrowed_is_dropped() {
+    let state = TempDir::new("tolerated-4");
+    let mut recorder = parsed();
+
+    {
+        let answer = String::from("lending::loans::overdue");
+        let (component, area, reason) = Spelling::COLONS.split(&answer).unwrap();
+        recorder.tolerated(Code::runtime(component, area, reason).unwrap());
+    }
+
+    assert_eq!(
+        saved(&state, recorder, false)[0]["tolerated"],
+        json!(["lending::loans::overdue"])
+    );
+}
+
+#[test]
+fn a_tolerated_code_reported_twice_is_on_the_line_once() {
+    let state = TempDir::new("tolerated-5");
+    let mut recorder = parsed();
+    let reason = String::from("overdue");
+
+    recorder.tolerated(Code::runtime("lending", "loans", &reason).unwrap());
+    recorder.tolerated(Code::new("lending", "loans", "overdue"));
+
+    assert_eq!(
+        saved(&state, recorder, false)[0]["tolerated"],
+        json!(["lending::loans::overdue"])
+    );
+}
+
+#[test]
 fn a_line_holds_the_first_eight_distinct_tolerated_codes() {
     let state = TempDir::new("tolerated-2");
     let mut recorder = parsed();
 
-    for code in &CODES {
+    for code in CODES {
         recorder.tolerated(code);
     }
 

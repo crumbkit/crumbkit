@@ -367,28 +367,28 @@ fn find(id: u32, removed: &[u32]) -> Result<Book, u32> {
 }
 
 /// The code of a failure that names a book the catalogue lacks.
-pub const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+pub const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 
 /// The code of a failure whose ids file cannot be read.
-pub const UNREADABLE_IDS_FILE: Code = Code::new("shelf", "books", "unreadable_ids_file");
+pub const UNREADABLE_IDS_FILE: Code<'static> = Code::new("shelf", "books", "unreadable_ids_file");
 
 /// The code of a failure whose ids file holds a line that is not a book id.
-pub const BAD_IDS_FILE: Code = Code::new("shelf", "books", "bad_ids_file");
+pub const BAD_IDS_FILE: Code<'static> = Code::new("shelf", "books", "bad_ids_file");
 
 /// The code of a failure whose ids file holds more than 100 ids, the most
 /// that `books show` takes.
-pub const TOO_MANY_IDS: Code = Code::new("shelf", "books", "too_many_ids");
+pub const TOO_MANY_IDS: Code<'static> = Code::new("shelf", "books", "too_many_ids");
 
 /// The code of a failure whose ids file holds no id.
-pub const EMPTY_IDS_FILE: Code = Code::new("shelf", "books", "empty_ids_file");
+pub const EMPTY_IDS_FILE: Code<'static> = Code::new("shelf", "books", "empty_ids_file");
 
 /// The code of a failure whose file of removed books cannot be read or
 /// written.
-pub const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
+pub const REMOVED_FILE: Code<'static> = Code::new("shelf", "books", "removed_file");
 
 /// The code of a failure that finds no state directory for the file of
 /// removed books.
-pub const NO_STATE_DIRECTORY: Code = Code::new("shelf", "books", "no_state_directory");
+pub const NO_STATE_DIRECTORY: Code<'static> = Code::new("shelf", "books", "no_state_directory");
 
 /// A failure of a books command. A missing book's next step is `shelf books
 /// list`, which prints the ids that exist. An ids file failure's next step is

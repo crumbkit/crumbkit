@@ -11,7 +11,7 @@ use serde::Serialize;
 use crate::twins::assert_one_word_apart;
 use crate::{Call, Code, Document, Error, Failure, Prose, Recovery, Sink, finish_to};
 
-const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 
 /// The answer of a command that counts planets. Its `Display` prints `text`.
 #[derive(Serialize, JsonSchema)]
@@ -48,8 +48,8 @@ impl fmt::Display for Missing {
 impl std::error::Error for Missing {}
 
 impl Failure for Missing {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {

@@ -173,8 +173,8 @@ impl Refused {
     /// Returns the code that the refusal prints, crumbkit's
     /// [`CLI_USAGE`](crate::codes::CLI_USAGE).
     #[must_use]
-    pub fn code(&self) -> &'static Code {
-        &CLI_USAGE
+    pub const fn code(&self) -> Code<'static> {
+        CLI_USAGE
     }
 
     /// Returns the exit code that the run ends with once the refusal prints: 2,
@@ -207,7 +207,7 @@ impl Refused {
     /// ```
     #[must_use]
     pub fn exit(&self) -> u8 {
-        self.inner.output.printing().exit(&CLI_USAGE)
+        self.inner.output.printing().exit(CLI_USAGE)
     }
 
     /// Returns what the caller does next, which the refusal prints after
@@ -393,7 +393,7 @@ impl Refused {
         if let Some(json) = json {
             output.set_view(super::stop::view(json));
         }
-        let number = output.printing().exit(&CLI_USAGE);
+        let number = output.printing().exit(CLI_USAGE);
         match &error {
             Some(error) => crate::events::refused(output.command_tree(), &path, error, number),
             None => crate::events::exited(number),

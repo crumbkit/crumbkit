@@ -7,7 +7,7 @@ mod runtime;
 #[cfg(test)]
 mod tests;
 
-pub use runtime::{RuntimeCodeError, Segment};
+pub use runtime::{CodeBuf, RuntimeCodeError, Segment};
 
 /// The stable code of a failure, such as `shelf::books::not_found` in the
 /// colon spelling.
@@ -16,26 +16,31 @@ pub use runtime::{RuntimeCodeError, Segment};
 /// the tool it belongs to, and the reason. A tool declares each code as a
 /// constant and returns it from [`Failure::code`](crate::Failure::code).
 ///
+/// A code borrows its three segments for the lifetime `'a`. A declared
+/// constant is a `Code<'static>`. A code that the tool learns at run time,
+/// from [`Code::runtime`], borrows the text it was made from, and a value
+/// that keeps such a code holds a [`CodeBuf`].
+///
 /// `Code` has no `Display`, so every printed code goes through [`Spelling`].
 ///
 /// ```
 /// use crumbkit::{Code, Spelling};
 ///
-/// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 ///
 /// assert_eq!(Spelling::COLONS.spell(&NOT_FOUND), "shelf::books::not_found");
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Code {
+pub struct Code<'a> {
     /// The component that owns the code, such as `shelf`.
-    component: &'static str,
+    component: &'a str,
     /// The area of the tool, such as `books`.
-    area: &'static str,
+    area: &'a str,
     /// The reason for the failure, such as `not_found`.
-    reason: &'static str,
+    reason: &'a str,
 }
 
-impl Code {
+impl<'a> Code<'a> {
     /// Returns the code with the segments `component`, `area` and `reason`.
     ///
     /// # Panics
@@ -47,10 +52,13 @@ impl Code {
     /// other segment fails to compile:
     ///
     /// ```compile_fail
-    /// const BAD: crumbkit::Code = crumbkit::Code::new("shelf", "books", "-not-found");
+    /// const BAD: crumbkit::Code<'static> = crumbkit::Code::new("shelf", "books", "-not-found");
     /// ```
+    ///
+    /// A tool that learns the segments at run time calls [`Code::runtime`],
+    /// which returns an error in place of the panic.
     #[must_use]
-    pub const fn new(component: &'static str, area: &'static str, reason: &'static str) -> Self {
+    pub const fn new(component: &'a str, area: &'a str, reason: &'a str) -> Self {
         assert!(
             is_code_segment(component),
             "a code component is words of lowercase ASCII letters, digits and underscores joined by single hyphens"
@@ -72,26 +80,26 @@ impl Code {
 
     /// Returns the component that owns the code, such as `shelf`.
     #[must_use]
-    pub const fn component(&self) -> &'static str {
+    pub const fn component(&self) -> &'a str {
         self.component
     }
 
     /// Returns the area of the tool that the code belongs to, such as
     /// `books`.
     #[must_use]
-    pub const fn area(&self) -> &'static str {
+    pub const fn area(&self) -> &'a str {
         self.area
     }
 
     /// Returns the reason for the failure, such as `not_found`.
     #[must_use]
-    pub const fn reason(&self) -> &'static str {
+    pub const fn reason(&self) -> &'a str {
         self.reason
     }
 
     /// Returns the code with `component` in place of its own, which
     /// [`ToolName`] checked is a code component.
-    pub(crate) const fn with_component(self, component: &'static str) -> Self {
+    pub(crate) const fn with_component(self, component: &'a str) -> Self {
         Self { component, ..self }
     }
 }
@@ -126,7 +134,7 @@ impl Spelling {
     /// ```
     /// use crumbkit::{Code, Spelling, ToolName};
     ///
-    /// const USAGE: Code = Code::new("crumbkit", "cli", "usage");
+    /// const USAGE: Code<'static> = Code::new("crumbkit", "cli", "usage");
     ///
     /// let spelling = Spelling::COLONS.for_tool(ToolName::new("shelf"));
     /// assert_eq!(spelling.spell(&USAGE), "shelf::cli::usage");
@@ -149,7 +157,7 @@ impl Spelling {
     /// `crumbkit::finish` prints a failure's code this way, and a test
     /// calls it to check how a tool's codes print.
     #[must_use]
-    pub fn spell(self, code: &Code) -> String {
+    pub fn spell(self, code: &Code<'_>) -> String {
         let code = self.tool.code(code);
         format!(
             "{}{SEPARATOR}{}{SEPARATOR}{}",

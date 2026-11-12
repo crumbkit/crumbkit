@@ -9,10 +9,10 @@ use std::fmt;
 
 use crumbkit::{Call, Code, Failure, Field, FieldValue, Recovery};
 
-const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
-const NO_STATE_DIRECTORY: Code = Code::new("shelf", "books", "no_state_directory");
-const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
+const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+const REMOVED_FILE: Code<'static> = Code::new("shelf", "books", "removed_file");
+const NO_STATE_DIRECTORY: Code<'static> = Code::new("shelf", "books", "no_state_directory");
+const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
 
 /// The most ids a file may hold, which a hint names through an inline format
 /// argument.
@@ -127,9 +127,9 @@ fn names<'a>(fields: &'a [Field<'a>]) -> Vec<&'a str> {
 
 #[test]
 fn a_variant_returns_the_code_that_its_attribute_names() {
-    assert_eq!(BooksError::NotFound { ids: vec![7] }.code(), &NOT_FOUND);
-    assert_eq!(BooksError::NoStateDirectory.code(), &NO_STATE_DIRECTORY);
-    assert_eq!(Timeout.code(), &TIMED_OUT);
+    assert_eq!(BooksError::NotFound { ids: vec![7] }.code(), NOT_FOUND);
+    assert_eq!(BooksError::NoStateDirectory.code(), NO_STATE_DIRECTORY);
+    assert_eq!(Timeout.code(), TIMED_OUT);
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn a_forwarding_struct_returns_every_answer_of_the_named_field() {
         name: "summer".to_owned(),
         book: NoSuchBook { id: 7 },
     };
-    assert_eq!(failure.code(), &NOT_FOUND);
+    assert_eq!(failure.code(), NOT_FOUND);
     assert_eq!(
         failure.recovery(),
         Recovery::Run(Call::new(&["books", "list"]))
@@ -238,7 +238,7 @@ fn the_codes_list_holds_each_code_once_in_variant_order() {
 
 #[test]
 fn the_codes_list_leaves_out_forwarding_variants() {
-    assert_eq!(ReadingList::CODES, &[] as &[&Code]);
+    assert_eq!(ReadingList::CODES, &[] as &[&Code<'static>]);
     assert_eq!(NoSuchBook::CODES, &[&NOT_FOUND]);
 }
 
@@ -249,8 +249,8 @@ mod diagnostic {
     use crumbkit::{Code, Failure};
     use miette::{Diagnostic, LabeledSpan, SourceCode};
 
-    const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
-    const NO_CONFIG: Code = Code::new("shelf", "config", "missing");
+    const UNKNOWN_KEY: Code<'static> = Code::new("shelf", "config", "unknown_key");
+    const NO_CONFIG: Code<'static> = Code::new("shelf", "config", "missing");
 
     /// A key that the settings file does not know, with a label on it.
     #[derive(Debug, crumbkit_derive::Failure)]

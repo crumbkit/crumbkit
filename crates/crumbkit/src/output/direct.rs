@@ -137,7 +137,7 @@ impl Run {
     /// lists the code, or crumbkit's default of 2 for a refused command
     /// line and 1 for every other failure.
     #[must_use]
-    pub fn failure_exit(&self, code: &'static Code) -> u8 {
+    pub fn failure_exit(&self, code: Code<'_>) -> u8 {
         self.printing().exit(code)
     }
 
@@ -147,7 +147,7 @@ impl Run {
     /// caller whose failure has a default other than crumbkit's reads it,
     /// and uses its own default for `None`.
     #[must_use]
-    pub fn listed_exit(&self, code: &'static Code) -> Option<u8> {
+    pub fn listed_exit(&self, code: Code<'_>) -> Option<u8> {
         self.printing().listed_exit(code)
     }
 }

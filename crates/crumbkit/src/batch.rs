@@ -47,7 +47,7 @@ mod tests;
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
 /// # impl fmt::Display for NoSuchBook {
@@ -57,7 +57,7 @@ mod tests;
 /// # }
 /// # impl std::error::Error for NoSuchBook {}
 /// # impl Failure for NoSuchBook {
-/// #     fn code(&self) -> &'static Code { &NOT_FOUND }
+/// #     fn code(&self) -> Code<'_> { NOT_FOUND }
 /// #     fn recovery(&self) -> Recovery { Recovery::Run(Call::new(&["books", "list"])) }
 /// # }
 /// # fn find(id: u32) -> Result<Book, NoSuchBook> {

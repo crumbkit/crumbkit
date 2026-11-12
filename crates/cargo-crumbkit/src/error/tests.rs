@@ -147,7 +147,7 @@ fn a_skill_file_that_cannot_be_read_names_the_file_and_hints_at_another() {
     };
 
     assert_eq!(
-        crumbkit::Spelling::COLONS.spell(error.code()),
+        crumbkit::Spelling::COLONS.spell(&error.code()),
         "crumbkit::skill::unreadable"
     );
     assert_eq!(
@@ -193,7 +193,7 @@ fn every_failure_of_skill_draft_names_its_code_what_failed_and_what_to_change() 
     ];
 
     for (error, code, message, hint) in cases {
-        assert_eq!(crumbkit::Spelling::COLONS.spell(error.code()), code);
+        assert_eq!(crumbkit::Spelling::COLONS.spell(&error.code()), code);
         assert_eq!(rendered(&error), (message.to_owned(), hint.to_owned()));
     }
 }

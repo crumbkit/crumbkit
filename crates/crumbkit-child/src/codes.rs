@@ -10,11 +10,11 @@ use crumbkit::Code;
 mod tests;
 
 /// The code of a child program that does not exist.
-pub const NOT_FOUND: Code = Code::new("crumbkit", "child", "not_found");
+pub const NOT_FOUND: Code<'static> = Code::new("crumbkit", "child", "not_found");
 
 /// The code of a child program that the operating system refused to start
 /// or to wait for.
-pub const NOT_STARTED: Code = Code::new("crumbkit", "child", "not_started");
+pub const NOT_STARTED: Code<'static> = Code::new("crumbkit", "child", "not_started");
 
 /// Both codes above, in the order this module declares them.
-pub const ALL: &[&Code] = &[&NOT_FOUND, &NOT_STARTED];
+pub const ALL: &[&Code<'static>] = &[&NOT_FOUND, &NOT_STARTED];

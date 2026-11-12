@@ -151,7 +151,7 @@ fn print_failures<T: Rows>(
     #[cfg(feature = "tracing")]
     match (failures.first(), left_out) {
         (Some(first), _) => crate::trace::spans::failed(first.code()),
-        (None, Some(over)) => crate::trace::spans::failed(&spelling.spell(over.code)),
+        (None, Some(over)) => crate::trace::spans::failed(&spelling.spell(&over.code)),
         (None, None) => {}
     }
     // A document without the envelope has no `failures` field, so its

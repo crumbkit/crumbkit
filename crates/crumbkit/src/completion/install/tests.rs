@@ -311,7 +311,7 @@ fn install_refuses_an_unset_or_unknown_shell_and_a_shell_without_a_directory() {
         install_in(&shelf(), &args, &unknown, "COMPLETE"),
         install_with(&home.env(), Shell::Elvish, false),
     ]
-    .map(|result| *result.unwrap_err().failure().code());
+    .map(|result| result.unwrap_err().failure().code().to_buf());
 
     assert_eq!(
         codes,
@@ -320,5 +320,6 @@ fn install_refuses_an_unset_or_unknown_shell_and_a_shell_without_a_directory() {
             crate::codes::SHELL_UNKNOWN,
             crate::codes::SHELL_NO_DIRECTORY
         ]
+        .map(crate::Code::to_buf)
     );
 }

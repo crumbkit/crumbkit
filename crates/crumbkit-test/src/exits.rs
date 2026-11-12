@@ -221,7 +221,7 @@ fn listed(
     tool: &Tool,
     spelling: Spelling,
     index: usize,
-    failure: &'static Code,
+    failure: &'static Code<'static>,
     problems: &mut Vec<String>,
 ) {
     let exits = tool.get_failures().get_exits();
@@ -268,7 +268,7 @@ pub(crate) fn exit_problem(
     status: ExitStatus,
 ) -> Option<String> {
     let path: Vec<&str> = path.iter().map(String::as_str).collect();
-    let is = |code: &Code| spelling.spell(code) == printed;
+    let is = |code: &Code<'_>| spelling.spell(code) == printed;
     let exits = tool.get_failures().get_exits();
     // The failures of a range never decide a run's exit, so they count as
     // unlisted.
@@ -279,7 +279,7 @@ pub(crate) fn exit_problem(
         .find(|&code| is(code));
     let code = status.code();
     if let Some(listed) = listed {
-        let expected = tool.failure_exit(listed);
+        let expected = tool.failure_exit(*listed);
         return (code != Some(i32::from(expected))).then(|| {
             format!(
                 "fails with {printed}, which the tool record's exit code {expected} lists, and it ends with {status}"
@@ -287,7 +287,7 @@ pub(crate) fn exit_problem(
         });
     }
     if is(&crumbkit::codes::CLI_USAGE) {
-        let expected = tool.failure_exit(&crumbkit::codes::CLI_USAGE);
+        let expected = tool.failure_exit(crumbkit::codes::CLI_USAGE);
         return (code != Some(i32::from(expected))).then(|| {
             format!(
                 "fails with {printed}, which refuses the command line, and it ends with {status}, where the tool record gives a refused command line the exit code {expected}"

@@ -18,7 +18,7 @@ mod roles;
 mod terminal;
 mod usage;
 
-const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 
 /// A row type for the result that the failing command would have printed.
 #[derive(Serialize, JsonSchema)]
@@ -98,8 +98,8 @@ impl std::error::Error for Missing {
 }
 
 impl Failure for Missing {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {

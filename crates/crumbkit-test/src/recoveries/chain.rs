@@ -136,10 +136,10 @@ impl Walk<'_> {
         {
             return;
         }
-        let code = self.spelling.spell(start.code);
+        let code = self.spelling.spell(&start.code);
         // A start names its code in Rust, so crumbkit's own codes are those
         // on the built-in lists.
-        let owned = known::library_codes().any(|listed| listed == start.code);
+        let owned = known::library_codes().any(|listed| *listed == start.code);
         if !owned && !self.known.contains(&code) {
             self.problems.push(format!(
                 "{line}: the start's code {code} is not a declared code"

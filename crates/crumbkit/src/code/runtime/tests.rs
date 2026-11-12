@@ -1,10 +1,8 @@
 //! Tests for failure codes known only at run time.
 
-use std::ptr;
-
 use proptest::prelude::*;
 
-use super::{RuntimeCodeError, Segment, Table};
+use super::{RuntimeCodeError, Segment};
 use crate::Code;
 use crate::segment::is_code_segment;
 
@@ -22,7 +20,7 @@ fn a_runtime_code_whose_component_names_a_hyphenated_plugin_spells_as_itself() {
     let code = Code::runtime("book-club", "gate", "unmet").unwrap();
 
     assert_eq!(
-        crate::Spelling::COLONS.spell(code),
+        crate::Spelling::COLONS.spell(&code),
         "book-club::gate::unmet"
     );
 }
@@ -48,34 +46,70 @@ fn the_three_segments_display_as_component_area_and_reason() {
 }
 
 #[test]
-fn runtime_returns_the_same_code_each_time_it_is_given_the_same_segments() {
-    let first = Code::runtime("plugin", "sync", "conflict").unwrap();
-    let second = Code::runtime("plugin", "sync", "conflict").unwrap();
+fn three_hundred_distinct_runtime_codes_in_one_process_all_succeed() {
+    for index in 0..300 {
+        let reason = format!("reason_{index}");
 
-    assert!(ptr::eq(first, second));
+        let code = Code::runtime("plugin", "sync", &reason).unwrap();
+
+        assert_eq!(
+            crate::Spelling::COLONS.spell(&code),
+            format!("plugin::sync::{reason}")
+        );
+    }
+}
+
+#[test]
+fn a_runtime_code_borrows_the_text_it_was_made_from() {
+    let answer = String::from("lending::loans::overdue");
+    let (component, area, reason) = crate::Spelling::COLONS.split(&answer).unwrap();
+
+    let code = Code::runtime(component, area, reason).unwrap();
+
+    assert!(std::ptr::eq(code.component(), component));
+    assert!(std::ptr::eq(code.area(), area));
+    assert!(std::ptr::eq(code.reason(), reason));
 }
 
 #[test]
 fn a_runtime_code_equals_the_constant_with_the_same_segments() {
-    const CONFLICT: Code = Code::new("plugin", "sync", "conflict");
+    const CONFLICT: Code<'static> = Code::new("plugin", "sync", "conflict");
 
-    assert_eq!(Code::runtime("plugin", "sync", "conflict"), Ok(&CONFLICT));
+    assert_eq!(Code::runtime("plugin", "sync", "conflict"), Ok(CONFLICT));
 }
 
 #[test]
-fn a_full_table_refuses_a_new_code_and_still_returns_the_codes_it_holds() {
-    let mut table = Table::new();
-    let first = table.code("plugin", "sync", "one", 2).unwrap();
-    table.code("plugin", "sync", "two", 2).unwrap();
+fn an_owned_code_lends_the_same_code_it_was_made_from() {
+    let code = Code::runtime("plugin", "sync", "conflict").unwrap();
+
+    assert_eq!(code.to_buf().as_code(), code);
+}
+
+#[test]
+fn an_owned_code_outlives_the_text_it_was_made_from() {
+    let owned = {
+        let answer = String::from("lending::loans::overdue");
+        let (component, area, reason) = crate::Spelling::COLONS.split(&answer).unwrap();
+        Code::runtime(component, area, reason).unwrap().to_buf()
+    };
 
     assert_eq!(
-        table.code("plugin", "sync", "three", 2),
-        Err(RuntimeCodeError::Full)
+        crate::Spelling::COLONS.spell(&owned.as_code()),
+        "lending::loans::overdue"
     );
-    assert!(ptr::eq(
-        table.code("plugin", "sync", "one", 2).unwrap(),
-        first
-    ));
+}
+
+#[test]
+fn two_owned_codes_with_the_same_segments_are_equal() {
+    let component = String::from("plugin");
+    let first = Code::runtime("plugin", "sync", "conflict")
+        .unwrap()
+        .to_buf();
+    let second = Code::runtime(&component, "sync", "conflict")
+        .unwrap()
+        .to_buf();
+
+    assert_eq!(first, second);
 }
 
 #[test]
@@ -85,14 +119,6 @@ fn the_error_of_a_bad_segment_names_the_segment_and_its_text() {
     assert_eq!(
         error.to_string(),
         "the code area \"Sync\" is not words of lowercase ASCII letters, digits and underscores joined by single hyphens"
-    );
-}
-
-#[test]
-fn the_error_of_a_full_table_names_the_limit() {
-    assert_eq!(
-        RuntimeCodeError::Full.to_string(),
-        "the process already holds 256 codes known only at run time, the most it can hold"
     );
 }
 
@@ -110,7 +136,7 @@ proptest! {
         let [component, area, reason] = &segments;
         let first_bad = segments.iter().position(|text| !is_code_segment(text));
 
-        let outcome = Table::new().code(component, area, reason, 1);
+        let outcome = Code::runtime(component, area, reason);
 
         match first_bad {
             None => prop_assert!(outcome.is_ok()),

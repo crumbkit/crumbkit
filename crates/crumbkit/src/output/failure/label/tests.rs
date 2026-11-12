@@ -9,7 +9,7 @@ use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode};
 use super::super::{Entry, PreparedFailure};
 use crate::{Code, Failure, Recovery, Spelling};
 
-const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
+const UNKNOWN_KEY: Code<'static> = Code::new("shelf", "config", "unknown_key");
 
 /// The settings file that most tests point into. `colour` starts at byte 22
 /// on line 3.
@@ -42,8 +42,8 @@ impl<S: SourceCode + fmt::Debug> Diagnostic for UnknownKey<S> {
 }
 
 impl<S: SourceCode + fmt::Debug> Failure for UnknownKey<S> {
-    fn code(&self) -> &'static Code {
-        &UNKNOWN_KEY
+    fn code(&self) -> Code<'_> {
+        UNKNOWN_KEY
     }
 
     fn recovery(&self) -> Recovery {

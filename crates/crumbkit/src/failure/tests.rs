@@ -4,10 +4,10 @@ use std::error::Error as _;
 use std::fmt;
 
 use super::{AsFailure as _, Error, Failure, Recovery};
-use crate::Code;
+use crate::{Code, CodeBuf};
 
-const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
+const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
 
 /// A failure for a missing book.
 #[derive(Debug)]
@@ -22,8 +22,8 @@ impl fmt::Display for NoSuchBook {
 impl std::error::Error for NoSuchBook {}
 
 impl Failure for NoSuchBook {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {
@@ -44,8 +44,8 @@ impl fmt::Display for Timeout {
 impl std::error::Error for Timeout {}
 
 impl Failure for Timeout {
-    fn code(&self) -> &'static Code {
-        &TIMED_OUT
+    fn code(&self) -> Code<'_> {
+        TIMED_OUT
     }
 
     fn recovery(&self) -> Recovery {
@@ -70,12 +70,37 @@ impl std::error::Error for CannotLend {
 }
 
 impl Failure for CannotLend {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {
         Recovery::Hint("lend another book".to_owned())
+    }
+}
+
+/// A failure whose code a plugin answered with at run time.
+#[derive(Debug)]
+struct PluginFailed {
+    /// The plugin's code.
+    code: CodeBuf,
+}
+
+impl fmt::Display for PluginFailed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("the plugin failed")
+    }
+}
+
+impl std::error::Error for PluginFailed {}
+
+impl Failure for PluginFailed {
+    fn code(&self) -> Code<'_> {
+        self.code.as_code()
+    }
+
+    fn recovery(&self) -> Recovery {
+        Recovery::no_advice()
     }
 }
 
@@ -99,10 +124,24 @@ fn question_mark_converts_two_different_failure_types_into_an_error() {
     let missing = lookup(7, true).unwrap_err();
     let slow = lookup(2, false).unwrap_err();
 
-    assert_eq!(missing.failure().code(), &NOT_FOUND);
-    assert_eq!(slow.failure().code(), &TIMED_OUT);
+    assert_eq!(missing.failure().code(), NOT_FOUND);
+    assert_eq!(slow.failure().code(), TIMED_OUT);
     assert_eq!(slow.failure().recovery(), Recovery::Retry);
     assert_eq!(lookup(2, true).unwrap(), 2);
+}
+
+#[test]
+fn a_failure_that_owns_its_code_answers_with_a_code_that_borrows_from_it() {
+    let failure = PluginFailed {
+        code: Code::runtime("lending", "loans", "overdue")
+            .unwrap()
+            .to_buf(),
+    };
+
+    let code = failure.code();
+
+    assert_eq!(code, Code::new("lending", "loans", "overdue"));
+    assert!(std::ptr::eq(code.reason(), failure.code.as_code().reason()));
 }
 
 #[test]

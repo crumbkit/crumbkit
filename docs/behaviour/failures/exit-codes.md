@@ -46,9 +46,11 @@ failure exits with 1.
 
 The `Run` that `parse` returns, and the one that `Run::new` builds,
 copy the exits from the tool record. A code from
-`Code::runtime` cannot be listed, so its failure exits with 1.
+`Code::runtime` cannot be listed, so its failure exits with 1. An exit compares
+codes by their segments, so a run-time code with the same segments as a listed
+code exits with that code's number.
 
-Why: ADR-0037, ADR-0056, ADR-0103, ADR-0186.
+Why: ADR-0037, ADR-0056, ADR-0103, ADR-0186, ADR-0205.
 
 ## Listing the codes
 
