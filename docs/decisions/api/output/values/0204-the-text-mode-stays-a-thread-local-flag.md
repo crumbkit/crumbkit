@@ -33,8 +33,8 @@ struct of a reserved name, so that only values that opt in changed form.
 
 serde serializes two row shapes by buffering their fields through a private
 serializer of its own: a struct variant of an enum that a row flattens with
-`#[serde(flatten)]`, and the content of a newtype variant of an internally
-tagged enum. The private serializer does not carry the wrapper's signal, so
+`#[serde(flatten)]`, and a struct variant of an enum that a newtype variant
+of an internally tagged enum holds. The private serializer does not carry the wrapper's signal, so
 a shown value in either position printed its JSON form in a text cell. The
 flag is read by the value itself, on the thread that serializes it, so it
 reaches a value through any serializer.
