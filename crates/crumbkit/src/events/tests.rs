@@ -95,7 +95,7 @@ fn heard(slots: &Slots) -> Vec<&'static str> {
 /// A late flag that `typed` has not set.
 static UNTYPED: AtomicBool = AtomicBool::new(false);
 /// A late flag that `typed` has set.
-static TYPED: AtomicBool = AtomicBool::new(true);
+static ALREADY_TYPED: AtomicBool = AtomicBool::new(true);
 
 #[test]
 fn four_observers_install_and_hear_each_report_in_install_order() {
@@ -113,7 +113,7 @@ fn four_observers_install_and_hear_each_report_in_install_order() {
 fn an_observer_installed_after_typed_is_installed_late_and_hears_the_reports_that_follow() {
     let slots = empty_slots();
 
-    let answer = observe_in(&slots, &FIRST, false, &TYPED);
+    let answer = observe_in(&slots, &FIRST, false, &ALREADY_TYPED);
 
     assert_eq!(answer, Observing::InstalledLate);
     assert_eq!(heard(&slots), ["first"]);
@@ -151,7 +151,7 @@ fn a_run_that_answers_a_completion_request_is_completing_and_installs_no_observe
 fn a_completion_run_after_typed_with_full_slots_is_completing() {
     let slots = full_slots();
 
-    let answer = observe_in(&slots, &FIFTH, true, &TYPED);
+    let answer = observe_in(&slots, &FIFTH, true, &ALREADY_TYPED);
 
     assert_eq!(answer, Observing::Completing);
 }

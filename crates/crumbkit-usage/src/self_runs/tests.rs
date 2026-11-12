@@ -49,7 +49,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>, Value) {
         .map(|row| serde_json::to_value(row).unwrap())
         .collect();
     let summary = serde_json::to_value(listing.get_summary()).unwrap();
-    (rows, listing.total(), summary)
+    (rows, listing.total().exact(), summary)
 }
 
 #[test]

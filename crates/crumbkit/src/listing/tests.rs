@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
-use super::{Listing, NoSummary};
+use super::{Listing, NoSummary, Total};
 use crate::Rows;
 use crate::row::Sealed;
 use crate::{Call, Row, Shape, Step};
@@ -28,14 +28,14 @@ fn new_keeps_the_rows_and_the_total_it_is_given() {
     let listing = Listing::new(books(2), 41);
 
     assert_eq!(listing.rows(), books(2));
-    assert_eq!(listing.total(), Some(41));
+    assert_eq!(listing.total(), Total::Exact(41));
 }
 
 #[test]
 fn a_total_smaller_than_the_rows_becomes_the_number_of_rows() {
     let listing = Listing::new(books(3), 1);
 
-    assert_eq!(listing.total(), Some(3));
+    assert_eq!(listing.total(), Total::Exact(3));
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn an_uncounted_listing_with_more_rows_has_no_total() {
     let listing = Listing::uncounted(books(2), true);
 
     assert_eq!(listing.rows(), books(2));
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total(), Total::Unknown { more: true });
 }
 
 #[test]
@@ -51,7 +51,7 @@ fn an_uncounted_listing_without_more_rows_has_no_total() {
     let listing = Listing::uncounted(books(3), false);
 
     assert_eq!(listing.rows(), books(3));
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total(), Total::Unknown { more: false });
 }
 
 #[test]
@@ -266,10 +266,11 @@ fn from_all_counts_the_rows_that_is_problem_marks_among_the_rows_its_limit_cuts(
 }
 
 #[test]
-fn a_capped_listing_has_no_total_and_leaves_rows_out_beyond_the_rows_it_read() {
+fn a_capped_listing_has_a_lower_bound_and_no_exact_total() {
     let listing = Listing::new(books(2), 100).capped(true);
 
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total(), Total::AtLeast(100));
+    assert_eq!(Rows::total(&listing), None);
     assert!(listing.more(), "a capped listing leaves rows out");
     assert_eq!(listing.at_least(), Some(100));
 }
@@ -303,6 +304,40 @@ fn capping_an_uncounted_listing_changes_nothing() {
 fn a_summary_keeps_the_listings_cap() {
     let listing = Listing::new(books(2), 100).capped(true).summary(1);
 
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total(), Total::AtLeast(100));
     assert_eq!(listing.at_least(), Some(100));
+}
+
+#[test]
+fn a_capped_listing_stays_capped_when_capped_false_follows() {
+    let listing = Listing::new(books(2), 100).capped(true).capped(false);
+
+    assert_eq!(listing.total(), Total::AtLeast(100));
+}
+
+#[test]
+fn rows_total_gives_only_an_exact_count() {
+    assert_eq!(Rows::total(&Listing::new(books(2), 6)), Some(6));
+    assert_eq!(Rows::total(&Listing::uncounted(books(2), true)), None);
+}
+
+#[test]
+fn an_uncounted_listing_leaves_rows_out_only_when_its_source_holds_more() {
+    assert!(Listing::uncounted(books(2), true).more());
+    assert!(!Listing::uncounted(books(2), false).more());
+    assert_eq!(Listing::uncounted(books(2), true).at_least(), None);
+}
+
+#[test]
+fn an_exact_listing_leaves_rows_out_only_when_it_shows_fewer_than_its_total() {
+    assert!(Listing::new(books(2), 3).more());
+    assert!(!Listing::new(books(3), 3).more());
+}
+
+#[test]
+fn exact_returns_the_count_of_an_exact_total_only() {
+    assert_eq!(Total::Exact(6).exact(), Some(6));
+    assert_eq!(Total::AtLeast(6).exact(), None);
+    assert_eq!(Total::Unknown { more: true }.exact(), None);
+    assert_eq!(Total::Unknown { more: false }.exact(), None);
 }

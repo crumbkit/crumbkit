@@ -2,7 +2,7 @@
 //! which its own tests check, through public methods of `Listing`, `Batch`
 //! and `Prose`.
 
-use crumbkit::{Batch, Call, Code, Error, Failure, Listing, Prose, Recovery, Row};
+use crumbkit::{Batch, Call, Code, Error, Failure, Listing, Prose, Recovery, Row, Total};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -50,7 +50,7 @@ fn a_tool_reads_the_rows_and_the_total_of_a_listing() {
     let listing = Listing::from_all(books(&[1, 2, 3]), Some(2));
 
     assert_eq!(listing.rows(), books(&[1, 2]));
-    assert_eq!(listing.total(), Some(3));
+    assert_eq!(listing.total(), Total::Exact(3));
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn a_listing_without_a_summary_or_a_note_has_neither() {
 fn an_uncounted_listing_has_no_total() {
     let listing = Listing::uncounted(books(&[1]), true);
 
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total(), Total::Unknown { more: true });
 }
 
 #[test]

@@ -353,8 +353,9 @@ pub enum Observing {
     /// command line, so the observer hears every report from `typed` on.
     Installed,
     /// `observe` installed the observer after `parse` had already reported
-    /// the typed command line. The observer hears every report that follows,
-    /// and it missed [`Observer::typed`] and any report before the install.
+    /// the typed command line. The observer hears every report that follows.
+    /// It can miss [`Observer::typed`] and any report before the install,
+    /// and under a race with `parse` it can hear them.
     InstalledLate,
     /// `observe` installed nothing, because four observers are already
     /// installed. A tool that needs more installs one observer that forwards

@@ -49,6 +49,7 @@ for empty results, sources that cannot be counted, an upper bound on
 - [ADR-0159. Listing summaries](summary/README.md)
 - [ADR-0167. A listing's JSON document holds its next steps under `next`](0167-a-listing-s-json-holds-its-next-steps.md)
 - [ADR-0207. A listing names its next steps only with `Listing::step`](0207-a-listing-names-its-next-steps-only-with-step.md)
+- [ADR-0210. A listing holds its total as one enum](0210-a-listing-holds-its-total-as-one-enum.md)
 
 ## Consequences
 

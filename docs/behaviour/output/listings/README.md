@@ -15,8 +15,10 @@ that command and its `--help` shows its own default limit. The command
 returns a [`Listing`](../../../../crates/crumbkit/src/listing.rs). The
 rustdoc of both types describes how a handler builds a counted page, an
 uncounted page, or a listing from rows already in memory.
+`Listing::total` returns a `Total`: `Exact` for a counted listing,
+`AtLeast` for a capped one and `Unknown` for an uncounted one.
 
-Why: ADR-0016.
+Why: ADR-0016, ADR-0210.
 
 ## The lines that describe a listing
 
