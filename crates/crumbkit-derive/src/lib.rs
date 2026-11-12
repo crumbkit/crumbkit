@@ -1,9 +1,10 @@
 // The crate docs are the README, which links to files in the repository. The
-// derive's own docs below are the reference for its attributes (ADR-0013).
+// docs of each derive below are the reference for its attributes (ADR-0013).
 #![doc = include_str!("../README.md")]
 
 mod expand;
 mod parse;
+mod row;
 #[cfg(test)]
 mod tests;
 
@@ -162,6 +163,189 @@ mod tests;
 pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
     expand::expand(&input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+/// Writes the `Row` impl of a struct with named fields from `#[row(...)]`
+/// attributes on its fields.
+///
+/// # Keys
+///
+/// | Key | Where | What it gives |
+/// | --- | --- | --- |
+/// | `column` | field | The field's name in `COLUMNS`. |
+/// | `long` | field | The field's name in `LONG_COLUMNS`. A field gives `column` or `long`, and never both. |
+/// | `uncut` | field that gives `column` or `long` | The field's name in `UNCUT_COLUMNS` as well. |
+/// | `problem` | field | The field's name as `PROBLEM`. At most one field gives it. |
+/// | `crate = PATH` | type | The path of the crate that holds `Row`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
+///
+/// Each list keeps the order of the fields in the struct, so a type
+/// reorders its columns by reordering its fields. Each name is the field's
+/// name as serde serializes it. The derive reads the field's
+/// `#[serde(rename = "...")]` or `#[serde(rename(serialize = "..."))]`, and
+/// otherwise applies the type's `#[serde(rename_all = "...")]` or
+/// `#[serde(rename_all(serialize = "..."))]` rule to the field's Rust name.
+/// It reads no other serde key, because no other key changes the name.
+///
+/// A field without a key is in no list, so it appears only with
+/// `--json --full`. A struct whose fields give no `column` still gets an
+/// impl, and `finish` and `stream` then fail to compile for it, as they do
+/// for a hand-written impl with an empty `COLUMNS`.
+///
+/// The derive writes the four constants and leaves every other item of
+/// `Row` to its default. A row that sets `LINE`, `CHILDREN` or `WHOLE`, or
+/// overrides `cell_style`, `is_problem`, `in_default_text` or `text_line`,
+/// writes `impl Row` by hand. So does an enum, and a row whose `Serialize`
+/// impl is written by hand, because the derive reads the names from serde's
+/// attributes.
+///
+/// The impl copies the type's generic parameters and its where-clause, so
+/// the type's own bounds make it `Serialize` and `JsonSchema`.
+///
+/// # What it writes
+///
+/// For this struct:
+///
+/// ```rust,ignore
+/// #[derive(Serialize, JsonSchema, Row)]
+/// #[serde(rename_all = "camelCase")]
+/// struct Book {
+///     #[row(column, uncut)]
+///     id: u32,
+///     #[row(column)]
+///     #[serde(rename = "name")]
+///     title: String,
+///     #[row(long)]
+///     page_count: u32,
+///     #[row(column, problem)]
+///     warning: Option<String>,
+///     isbn: String,
+/// }
+/// ```
+///
+/// the derive writes this code, which a unit test of this crate compares
+/// with its output:
+///
+/// ```rust,ignore
+/// impl ::crumbkit::Row for Book {
+///     const COLUMNS: &'static [&'static str] = &["id", "name", "warning"];
+///     const LONG_COLUMNS: &'static [&'static str] = &["pageCount"];
+///     const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
+///     const PROBLEM: ::std::option::Option<&'static str> =
+///         ::std::option::Option::Some("warning");
+/// }
+/// ```
+///
+/// # Refused uses
+///
+/// Each of these is a compile error that names the field or the type. A
+/// key given twice is one too.
+///
+/// A key that `#[row(...)]` does not have:
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// # use schemars::JsonSchema;
+/// # use serde::Serialize;
+/// #[derive(Serialize, JsonSchema, Row)]
+/// struct Book {
+///     #[row(colum)]
+///     id: u32,
+/// }
+/// ```
+///
+/// `column` and `long` on one field:
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// # use schemars::JsonSchema;
+/// # use serde::Serialize;
+/// #[derive(Serialize, JsonSchema, Row)]
+/// struct Book {
+///     #[row(column, long)]
+///     id: u32,
+/// }
+/// ```
+///
+/// `uncut` on a field that gives neither `column` nor `long`:
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// # use schemars::JsonSchema;
+/// # use serde::Serialize;
+/// #[derive(Serialize, JsonSchema, Row)]
+/// struct Book {
+///     #[row(column)]
+///     id: u32,
+///     #[row(uncut)]
+///     title: String,
+/// }
+/// ```
+///
+/// Any key on a field marked `#[serde(skip)]`, `#[serde(skip_serializing)]`
+/// or `#[serde(flatten)]`, because the JSON holds no field of its name:
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// # use schemars::JsonSchema;
+/// # use serde::Serialize;
+/// #[derive(Serialize, JsonSchema, Row)]
+/// struct Book {
+///     #[row(column)]
+///     id: u32,
+///     #[row(long)]
+///     #[serde(skip)]
+///     notes: String,
+/// }
+/// ```
+///
+/// `problem` on two fields:
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// # use schemars::JsonSchema;
+/// # use serde::Serialize;
+/// #[derive(Serialize, JsonSchema, Row)]
+/// struct Check {
+///     #[row(column, problem)]
+///     error: Option<String>,
+///     #[row(column, problem)]
+///     warning: Option<String>,
+/// }
+/// ```
+///
+/// An enum, a tuple struct and a union:
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// # use schemars::JsonSchema;
+/// # use serde::Serialize;
+/// #[derive(Serialize, JsonSchema, Row)]
+/// enum State {
+///     Done,
+/// }
+/// ```
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// # use schemars::JsonSchema;
+/// # use serde::Serialize;
+/// #[derive(Serialize, JsonSchema, Row)]
+/// struct Pair(u32, u32);
+/// ```
+///
+/// ```compile_fail
+/// # use crumbkit::Row;
+/// #[derive(Row)]
+/// union Bits {
+///     whole: u32,
+/// }
+/// ```
+#[proc_macro_derive(Row, attributes(row))]
+pub fn derive_row(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = syn::parse_macro_input!(input as syn::DeriveInput);
+    row::expand(&input)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

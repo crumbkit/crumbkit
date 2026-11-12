@@ -21,3 +21,4 @@ prose and bytes.
 - [ADR-0071. One envelope choice](0071-one-envelope-choice.md)
 - [ADR-0083. Batch answers over the output budget](budget/README.md)
 - [ADR-0152. Rows with children](children/README.md)
+- [ADR-0211. A row type derives its columns from its fields](0211-a-row-type-derives-its-columns-from-its-fields.md)

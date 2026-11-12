@@ -3,9 +3,10 @@
 crumbkit-derive holds `#[derive(Failure)]`, which writes the `Failure` impl
 of [crumbkit] for an enum or a struct from `#[failure(...)]` attributes. It
 also writes a `CODES` constant that lists the type's codes for the twin and
-recovery checks. A tool does not add this crate itself. It turns on the `derive`
-feature of crumbkit, which re-exports the derive beside the trait of the
-same name.
+recovery checks. It also holds `#[derive(Row)]`, which writes the `Row` impl
+of a struct from `#[row(...)]` attributes on its fields. A tool does not add
+this crate itself. It turns on the `derive` feature of crumbkit, which
+re-exports each derive beside the trait of the same name.
 
 ## Adding it
 
@@ -59,7 +60,31 @@ assert_eq!(BooksError::CODES, &[&NOT_FOUND, &REMOVED_FILE]);
 ```
 
 The type still implements `Display` and `std::error::Error` itself, by hand
-or with another derive. The documentation of `Failure` in this crate lists
-every key and shows the code that the derive writes.
+or with another derive.
+
+Each marked field of a row is a column, named as serde serializes it:
+
+```rust
+use crumbkit::Row;
+use schemars::JsonSchema;
+use serde::Serialize;
+
+#[derive(Serialize, JsonSchema, Row)]
+#[serde(rename_all = "camelCase")]
+struct Book {
+    #[row(column, uncut)]
+    id: u32,
+    #[row(column)]
+    title: String,
+    #[row(long)]
+    page_count: u32,
+}
+
+assert_eq!(Book::COLUMNS, &["id", "title"]);
+assert_eq!(Book::LONG_COLUMNS, &["pageCount"]);
+```
+
+The documentation of each derive in this crate lists its keys and shows
+the code that it writes.
 
 [crumbkit]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit/README.md

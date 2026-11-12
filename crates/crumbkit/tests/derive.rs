@@ -1,9 +1,11 @@
 //! The behaviour of `#[derive(Failure)]` on enums and structs, through
-//! crumbkit's `Failure` trait.
+//! crumbkit's `Failure` trait, and of `#[derive(Row)]` on structs, through
+//! crumbkit's `Row` trait and the output of `finish`.
 //!
-//! The tests name the derive by its full path, `crumbkit_derive::Failure`,
-//! because a workspace build that turns on the `derive` feature also brings
-//! the derive in with the `Failure` trait.
+//! The tests name each derive by its full path, such as
+//! `crumbkit_derive::Failure`, because a workspace build that turns on the
+//! `derive` feature also brings each derive in with the trait of the same
+//! name.
 
 use std::fmt;
 
@@ -365,4 +367,264 @@ fn a_recovery_attribute_takes_a_terminal_call() {
         NeedsTerminal.recovery(),
         Recovery::Terminal(Call::new(&["books", "list"]))
     );
+}
+
+/// The behaviour of `#[derive(Row)]`.
+mod rows {
+    use clap::Parser;
+    use crumbkit::{Document, Listing, Row, Sink, Tool, ViewFlags};
+    use schemars::JsonSchema;
+    use serde::Serialize;
+
+    /// A book whose `Row` impl the derive writes.
+    mod derived {
+        use schemars::JsonSchema;
+        use serde::Serialize;
+
+        /// A book in the catalogue.
+        #[derive(Serialize, JsonSchema, crumbkit_derive::Row)]
+        #[row(crate = ::crumbkit)]
+        pub(super) struct Book {
+            /// The book's id.
+            #[row(column, uncut)]
+            pub(super) id: u32,
+            /// The book's title.
+            #[row(column)]
+            pub(super) title: &'static str,
+            /// The year the book came out.
+            #[row(long)]
+            pub(super) year: u16,
+            /// What is wrong with the book's record, if anything.
+            #[row(column, problem)]
+            pub(super) warning: Option<&'static str>,
+            /// The book's ISBN.
+            pub(super) isbn: &'static str,
+        }
+    }
+
+    /// The same book with a hand-written `Row` impl.
+    mod written {
+        use crumbkit::Row;
+        use schemars::JsonSchema;
+        use serde::Serialize;
+
+        /// A book in the catalogue.
+        #[derive(Serialize, JsonSchema)]
+        pub(super) struct Book {
+            /// The book's id.
+            pub(super) id: u32,
+            /// The book's title.
+            pub(super) title: &'static str,
+            /// The year the book came out.
+            pub(super) year: u16,
+            /// What is wrong with the book's record, if anything.
+            pub(super) warning: Option<&'static str>,
+            /// The book's ISBN.
+            pub(super) isbn: &'static str,
+        }
+
+        impl Row for Book {
+            const COLUMNS: &'static [&'static str] = &["id", "title", "warning"];
+            const LONG_COLUMNS: &'static [&'static str] = &["year"];
+            const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
+            const PROBLEM: Option<&'static str> = Some("warning");
+        }
+    }
+
+    const DERIVED: Document<Listing<derived::Book>> =
+        Document::new("shelf", "books-list", 1, "The books.");
+    const WRITTEN: Document<Listing<written::Book>> =
+        Document::new("shelf", "books-list", 1, "The books.");
+
+    /// A tool whose root takes the view flags.
+    #[derive(Parser)]
+    #[command(name = "shelf")]
+    struct Cli {
+        #[command(flatten)]
+        view: ViewFlags,
+    }
+
+    /// Prints `rows` as one listing with the view flags `flags`, and returns
+    /// the exit code and standard output, or `None` when the flags do not
+    /// parse or the output is not UTF-8.
+    fn print<R: Row>(
+        document: Document<Listing<R>>,
+        rows: Vec<R>,
+        flags: &[&str],
+    ) -> Option<(u8, String)> {
+        let mut out = Vec::new();
+        let mut err = Vec::new();
+        let words = ["shelf"].iter().chain(flags);
+        let parsed =
+            crumbkit::parse_to::<Cli>(&mut Sink::new(&mut out, &mut err), &Tool::new(), words);
+        let (_cli, run) = parsed.ok()?;
+        let mut out = Vec::new();
+        let mut err = Vec::new();
+        let code = crumbkit::finish_to(
+            &mut Sink::new(&mut out, &mut err),
+            run,
+            document,
+            Ok::<_, crumbkit::Error>(Listing::from_all(rows, None)),
+        );
+        Some((code, String::from_utf8(out).ok()?))
+    }
+
+    #[test]
+    fn a_derived_row_lists_its_marked_fields_in_field_order() {
+        assert_eq!(derived::Book::COLUMNS, &["id", "title", "warning"]);
+        assert_eq!(derived::Book::LONG_COLUMNS, &["year"]);
+        assert_eq!(derived::Book::UNCUT_COLUMNS, &["id"]);
+        assert_eq!(derived::Book::PROBLEM, Some("warning"));
+    }
+
+    #[test]
+    fn a_derived_listing_prints_as_the_same_listing_of_a_hand_written_row() {
+        let derived = || {
+            vec![
+                derived::Book {
+                    id: 1,
+                    title: "Frankenstein",
+                    year: 1818,
+                    warning: Some("no ISBN"),
+                    isbn: "",
+                },
+                derived::Book {
+                    id: 2,
+                    title: "Moby-Dick",
+                    year: 1851,
+                    warning: None,
+                    isbn: "978-0142437247",
+                },
+            ]
+        };
+        let written = || {
+            derived()
+                .into_iter()
+                .map(|book| written::Book {
+                    id: book.id,
+                    title: book.title,
+                    year: book.year,
+                    warning: book.warning,
+                    isbn: book.isbn,
+                })
+                .collect()
+        };
+        let views: [&[&str]; 5] = [
+            &[],
+            &["--long"],
+            &["--json"],
+            &["--json", "--full"],
+            &["--fields", "id,isbn"],
+        ];
+        for flags in views {
+            let from_derive = print(DERIVED, derived(), flags).unwrap();
+            let by_hand = print(WRITTEN, written(), flags).unwrap();
+            assert!(!from_derive.1.is_empty(), "{flags:?} printed nothing");
+            assert_eq!(from_derive, by_hand, "{flags:?}");
+        }
+        assert_eq!(print(DERIVED, derived(), &[]).unwrap().0, 1);
+    }
+
+    /// Defines a row type `$name` whose type attribute is
+    /// `#[serde(rename_all = $rule)]`, or none without a rule. Two of its
+    /// fields have no rename of their own, and two have one.
+    macro_rules! renamed_row {
+        ($name:ident $(, $rule:literal)?) => {
+            #[derive(Serialize, JsonSchema, crumbkit_derive::Row)]
+            $(#[serde(rename_all = $rule)])?
+            struct $name {
+                #[row(column)]
+                id: u32,
+                #[row(column)]
+                first_page_count: u32,
+                #[row(long)]
+                #[serde(rename = "Pages")]
+                page_total: u32,
+                #[row(long)]
+                #[serde(rename(serialize = "Shelf", deserialize = "shelf"))]
+                shelf_name: &'static str,
+            }
+
+            impl $name {
+                /// Returns one row of this type.
+                fn sample() -> Self {
+                    Self {
+                        id: 1,
+                        first_page_count: 2,
+                        page_total: 3,
+                        shelf_name: "fiction",
+                    }
+                }
+            }
+        };
+    }
+
+    renamed_row!(Plain);
+    renamed_row!(Lower, "lowercase");
+    renamed_row!(Upper, "UPPERCASE");
+    renamed_row!(Pascal, "PascalCase");
+    renamed_row!(Camel, "camelCase");
+    renamed_row!(Snake, "snake_case");
+    renamed_row!(ScreamingSnake, "SCREAMING_SNAKE_CASE");
+    renamed_row!(Kebab, "kebab-case");
+    renamed_row!(ScreamingKebab, "SCREAMING-KEBAB-CASE");
+
+    /// Checks that `R`'s columns are `columns` and its long columns are the
+    /// two renamed fields, and that every one of them is a key of `row`'s
+    /// JSON, which holds no other key.
+    fn assert_names_are_keys<R: Row>(row: &R, columns: &[&str]) {
+        assert_eq!(R::COLUMNS, columns);
+        assert_eq!(R::LONG_COLUMNS, &["Pages", "Shelf"]);
+        let json = serde_json::to_value(row).ok();
+        let mut keys: Option<Vec<&str>> = json
+            .as_ref()
+            .and_then(serde_json::Value::as_object)
+            .map(|object| object.keys().map(String::as_str).collect());
+        let mut names: Vec<&str> = R::COLUMNS.iter().chain(R::LONG_COLUMNS).copied().collect();
+        if let Some(keys) = keys.as_mut() {
+            keys.sort_unstable();
+        }
+        names.sort_unstable();
+        assert_eq!(Some(names), keys);
+    }
+
+    #[test]
+    fn every_derived_name_is_a_key_of_the_rows_json() {
+        assert_names_are_keys(&Plain::sample(), &["id", "first_page_count"]);
+        assert_names_are_keys(&Lower::sample(), &["id", "first_page_count"]);
+        assert_names_are_keys(&Upper::sample(), &["ID", "FIRST_PAGE_COUNT"]);
+        assert_names_are_keys(&Pascal::sample(), &["Id", "FirstPageCount"]);
+        assert_names_are_keys(&Camel::sample(), &["id", "firstPageCount"]);
+        assert_names_are_keys(&Snake::sample(), &["id", "first_page_count"]);
+        assert_names_are_keys(&ScreamingSnake::sample(), &["ID", "FIRST_PAGE_COUNT"]);
+        assert_names_are_keys(&Kebab::sample(), &["id", "first-page-count"]);
+        assert_names_are_keys(&ScreamingKebab::sample(), &["ID", "FIRST-PAGE-COUNT"]);
+    }
+
+    /// A row that holds a value of any printable type.
+    #[derive(Serialize, JsonSchema, crumbkit_derive::Row)]
+    struct Labelled<T: Serialize + JsonSchema> {
+        /// What the value is.
+        #[row(column)]
+        label: &'static str,
+        /// The value.
+        #[row(column)]
+        value: T,
+    }
+
+    const LABELLED: Document<Listing<Labelled<u32>>> =
+        Document::new("shelf", "counts", 1, "The counts.");
+
+    #[test]
+    fn a_generic_row_type_derives_row() {
+        let rows = vec![Labelled {
+            label: "books",
+            value: 3_u32,
+        }];
+        assert_eq!(Labelled::<u32>::COLUMNS, &["label", "value"]);
+        assert_eq!(
+            print(LABELLED, rows, &[]),
+            Some((0, "LABEL  VALUE\nbooks  3\n".to_owned()))
+        );
+    }
 }

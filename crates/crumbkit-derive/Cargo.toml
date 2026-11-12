@@ -1,6 +1,6 @@
 [package]
 name = "crumbkit-derive"
-description = "The derive macro for crumbkit's Failure trait"
+description = "The derive macros for crumbkit's Failure and Row traits"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,7 +16,7 @@ proc-macro = true
 
 [dependencies]
 # syn reads the type that derives `Failure` and the expressions in its
-# `#[failure(...)]` attributes. `full` parses any expression, `clone-impls`
+# `#[failure(...)]` attributes, and the fields of a type that derives `Row`. `full` parses any expression, `clone-impls`
 # lets the derive copy an expression into the generated code, and the other
 # features are the ones a derive macro needs to parse and print tokens.
 # clap_derive already builds syn 3 with these features (ADR-0003).
@@ -35,11 +35,16 @@ quote = { workspace = true, features = ["proc-macro"] }
 proc-macro2 = { workspace = true, features = ["proc-macro"] }
 
 [dev-dependencies]
-# The README example derives `Failure` through crumbkit's `derive` feature,
-# so it runs as a doctest. The entry has a path and no version, so
+# The README examples derive `Failure` and `Row` through crumbkit's `derive`
+# feature, so they run as doctests. The entry has a path and no version, so
 # `cargo publish` leaves it out, and crumbkit-derive publishes before
 # crumbkit.
 crumbkit = { path = "../crumbkit", features = ["derive"] }
+# The README's row example and the `Row` derive's refused uses derive
+# `Serialize` and `JsonSchema`, so each refused use fails for the derive's
+# own error and for no other.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
 
 [lints]
 workspace = true

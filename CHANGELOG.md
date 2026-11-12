@@ -15,6 +15,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Total` is a listing's total: `Exact` for a counted listing,
   `AtLeast` for a capped one and `Unknown` for an uncounted one, which says
   whether its source holds more rows ([behaviour/output/listings]).
+- crumbkit-derive: `#[derive(Row)]` writes a struct's `Row` impl from
+  `#[row(column)]`, `#[row(long)]`, `#[row(uncut)]` and `#[row(problem)]` on
+  its fields, with each name as serde serializes it. crumbkit's `derive`
+  feature re-exports it ([behaviour/adoption]).
 
 ### Changed
 

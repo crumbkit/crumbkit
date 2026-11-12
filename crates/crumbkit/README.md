@@ -11,7 +11,7 @@ A tool adds these dependencies:
 ```toml
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-crumbkit = "0.4"
+crumbkit = { version = "0.4", features = ["derive"] }
 schemars = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 ```
@@ -33,17 +33,15 @@ use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Step
 use schemars::JsonSchema;
 use serde::Serialize;
 
-#[derive(Serialize, JsonSchema)]
+#[derive(Serialize, JsonSchema, Row)]
 struct Book {
+    #[row(column)]
     id: u32,
+    #[row(column)]
     title: &'static str,
     author: &'static str,
+    #[row(long)]
     year: u16,
-}
-
-impl Row for Book {
-    const COLUMNS: &'static [&'static str] = &["id", "title"];
-    const LONG_COLUMNS: &'static [&'static str] = &["year"];
 }
 
 const BOOKS_LIST: Document<Listing<Book>> =
@@ -114,8 +112,9 @@ fn main() -> ExitCode {
 }
 ```
 
-The [tutorial] builds a tool step by step, and shelf's [golden files] show
-a fuller one.
+Enums and rows with a hand-written `Serialize` or other `Row` items write
+`impl Row`. The [tutorial] builds a tool step by step, and shelf's
+[golden files] show a fuller one.
 
 ## Where to read more
 
@@ -137,8 +136,8 @@ The [behaviour docs] describe each part.
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change.
 - Tests that check a tool against these conventions: [crumbkit-test].
-- The `derive` feature: `#[derive(Failure)]`, which writes a [`Failure`]
-  impl from attributes ([crumbkit-derive]).
+- The `derive` feature: `#[derive(Failure)]` and `#[derive(Row)]`
+  ([crumbkit-derive]).
 
 Licensed under Apache-2.0 or MIT, at your option.
 
