@@ -4,13 +4,16 @@
 use std::fmt;
 use std::process::ExitCode;
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use clap::{Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::testing::{give_child_env, watch};
-use super::{Observer, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in};
+use super::{
+    Observer, Observing, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in,
+};
 use crate::tool::{Exit, Failures};
 use crate::{
     Code, Document, Error, Failure, Listing, Recovery, Row, Run, Sink, Stream, Tool, finish_to,
@@ -89,45 +92,93 @@ fn heard(slots: &Slots) -> Vec<&'static str> {
     HEARD.with_borrow_mut(std::mem::take)
 }
 
+/// A late flag that `typed` has not set.
+static UNTYPED: AtomicBool = AtomicBool::new(false);
+/// A late flag that `typed` has set.
+static TYPED: AtomicBool = AtomicBool::new(true);
+
 #[test]
 fn four_observers_install_and_hear_each_report_in_install_order() {
     let slots = empty_slots();
 
     for observer in [&FIRST, &SECOND, &THIRD, &FOURTH] {
-        assert!(observe_in(&slots, observer, false));
+        let answer = observe_in(&slots, observer, false, &UNTYPED);
+        assert_eq!(answer, Observing::Installed);
     }
 
     assert_eq!(heard(&slots), ["first", "second", "third", "fourth"]);
 }
 
 #[test]
-fn a_fifth_observer_is_refused_and_the_four_installed_stay() {
+fn an_observer_installed_after_typed_is_installed_late_and_hears_the_reports_that_follow() {
+    let slots = empty_slots();
+
+    let answer = observe_in(&slots, &FIRST, false, &TYPED);
+
+    assert_eq!(answer, Observing::InstalledLate);
+    assert_eq!(heard(&slots), ["first"]);
+}
+
+/// Returns slots that hold four observers.
+fn full_slots() -> Slots {
     let slots = empty_slots();
     for observer in [&FIRST, &SECOND, &THIRD, &FOURTH] {
-        observe_in(&slots, observer, false);
+        let _ = observe_in(&slots, observer, false, &UNTYPED);
     }
+    slots
+}
 
-    assert!(!observe_in(&slots, &FIFTH, false));
+#[test]
+fn a_fifth_observer_is_refused_as_full_and_the_four_installed_stay() {
+    let slots = full_slots();
+
+    assert_eq!(observe_in(&slots, &FIFTH, false, &UNTYPED), Observing::Full);
 
     assert_eq!(heard(&slots), ["first", "second", "third", "fourth"]);
 }
 
 #[test]
-fn a_run_that_answers_a_completion_request_installs_no_observer() {
+fn a_run_that_answers_a_completion_request_is_completing_and_installs_no_observer() {
     let slots = empty_slots();
 
-    assert!(!observe_in(&slots, &FIRST, true));
+    let answer = observe_in(&slots, &FIRST, true, &UNTYPED);
 
+    assert_eq!(answer, Observing::Completing);
     assert_eq!(heard(&slots), Vec::<&str>::new());
+}
+
+#[test]
+fn a_completion_run_after_typed_with_full_slots_is_completing() {
+    let slots = full_slots();
+
+    let answer = observe_in(&slots, &FIFTH, true, &TYPED);
+
+    assert_eq!(answer, Observing::Completing);
+}
+
+#[test]
+fn installed_is_true_for_exactly_the_two_answers_that_install_an_observer() {
+    use Observing::{Completing, Full, Installed, InstalledLate};
+
+    let installed = [Installed, InstalledLate, Full, Completing].map(Observing::installed);
+
+    assert_eq!(installed, [true, true, false, false]);
+}
+
+#[test]
+fn parse_marks_the_typed_line_as_reported_so_a_later_observer_is_late() {
+    let _ = parse(&["shelf", "books", "list"]);
+
+    assert!(super::TYPED.load(Ordering::Relaxed));
 }
 
 #[test]
 fn an_observer_installed_after_a_report_hears_only_the_later_reports() {
     let slots = empty_slots();
-    observe_in(&slots, &FIRST, false);
+    let _ = observe_in(&slots, &FIRST, false, &UNTYPED);
     let before = heard(&slots);
 
-    observe_in(&slots, &SECOND, false);
+    let _ = observe_in(&slots, &SECOND, false, &UNTYPED);
 
     assert_eq!(before, ["first"]);
     assert_eq!(heard(&slots), ["first", "second"]);
@@ -140,10 +191,10 @@ fn the_interrupt_is_handled_when_any_installed_observer_handles_it() {
         ..plain("handles")
     };
     let slots = empty_slots();
-    observe_in(&slots, &FIRST, false);
+    let _ = observe_in(&slots, &FIRST, false, &UNTYPED);
     assert!(!handles_interrupt_in(&slots));
 
-    observe_in(&slots, &HANDLES, false);
+    let _ = observe_in(&slots, &HANDLES, false, &UNTYPED);
 
     assert!(handles_interrupt_in(&slots));
 }
@@ -159,8 +210,8 @@ fn child_variables_come_in_install_order_and_the_first_observer_to_give_a_name_k
         ..plain("other")
     };
     let slots = empty_slots();
-    observe_in(&slots, &TRACING, false);
-    observe_in(&slots, &OTHER, false);
+    let _ = observe_in(&slots, &TRACING, false, &UNTYPED);
+    let _ = observe_in(&slots, &OTHER, false, &UNTYPED);
 
     let env = child_env_in(&slots);
 
@@ -186,9 +237,9 @@ fn the_trace_ids_come_from_the_first_installed_observer_that_gives_them() {
         ..plain("second-ids")
     };
     let slots = empty_slots();
-    observe_in(&slots, &FIRST, false);
-    observe_in(&slots, &FIRST_IDS, false);
-    observe_in(&slots, &SECOND_IDS, false);
+    let _ = observe_in(&slots, &FIRST, false, &UNTYPED);
+    let _ = observe_in(&slots, &FIRST_IDS, false, &UNTYPED);
+    let _ = observe_in(&slots, &SECOND_IDS, false, &UNTYPED);
 
     let ids = super::trace_ids_in(&slots).unwrap();
 

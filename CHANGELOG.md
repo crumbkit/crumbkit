@@ -44,6 +44,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--fields`, `--long` or `--full` on a command that the global view flags
   reach now fails clap's debug asserts. The tool gives it another long name
   ([behaviour/parsing]).
+- crumbkit: breaking: `events::observe` returns `Observing`, which says
+  whether it installed the observer, installed it late, or refused it as
+  full or completing. A caller that used the `bool` calls `.installed()`
+  ([behaviour/run-observer]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
   `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
   codes of any lifetime, so they also accept codes from `Code::runtime` that

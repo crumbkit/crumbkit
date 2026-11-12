@@ -8,6 +8,7 @@ use serde_json::Value;
 
 use crate::recorder::{listens, start, start_under};
 use crate::testing::TempDir;
+use crumbkit::events::Observing;
 use crumbkit::tool::{Exit, Failures};
 use crumbkit::{Code, Document, Run, Sink, Spelling, Stream, Tool, ViewFlags, stream_to};
 
@@ -235,7 +236,7 @@ fn the_own_observer_test_s_child_installs_an_observer_and_then_starts_the_log() 
     if !is_child() {
         return;
     }
-    assert!(crumbkit::events::observe(&QUIET));
+    assert_eq!(crumbkit::events::observe(&QUIET), Observing::Installed);
     let log = start();
     typed(&Command::new("owned"), &["owned".into()], Spelling::COLONS);
     crumbkit::events::tolerated(STALE);
@@ -279,9 +280,39 @@ fn the_starts_test_s_child_starts_the_log_four_times_and_installs_three_observer
     }
     let logs = [start(), start(), start(), start()];
     for _ in 0..3 {
-        assert!(crumbkit::events::observe(&SILENT));
+        assert_eq!(crumbkit::events::observe(&SILENT), Observing::Installed);
     }
     drop(logs);
+}
+
+#[test]
+fn an_observer_installed_after_parse_is_installed_late() {
+    let state = TempDir::new("late");
+
+    let status = run_child(
+        "recorder::tests::processes::the_late_test_s_child_parses_and_then_installs_an_observer",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(0));
+}
+
+/// The command line of the late test's child, which takes no arguments.
+#[derive(clap::Parser)]
+#[command(name = "late")]
+struct Late {}
+
+/// Runs only as the child of the late test. It parses a command line, which
+/// reports `typed`, and then installs [`SILENT`], which must be late.
+#[test]
+fn the_late_test_s_child_parses_and_then_installs_an_observer() {
+    if !is_child() {
+        return;
+    }
+    let sink = &mut Sink::new(Vec::new(), Vec::new());
+    let _ = crumbkit::parse_to::<Late>(sink, &Tool::new(), ["late"]);
+
+    assert_eq!(crumbkit::events::observe(&SILENT), Observing::InstalledLate);
 }
 
 #[test]
