@@ -118,7 +118,7 @@ pub fn serialize<T: Shown + ?Sized, S: Serializer>(
     value: &T,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    if TextCells::active() {
+    if TEXT_CELLS.try_with(Cell::get).unwrap_or(false) {
         serializer.collect_str(value)
     } else {
         value.json(serializer)
@@ -204,44 +204,41 @@ impl<T: Shown + ?Sized> Serialize for JsonForm<'_, T> {
 }
 
 thread_local! {
-    /// Whether a shown value on this thread serializes as its `Display`,
-    /// which [`TextCells`] sets while crumbkit builds text cells.
+    /// Whether a shown value on this thread serializes as its `Display`.
+    /// Only [`text_cells`] sets it and only [`serialize`] reads it
+    /// (ADR-0204).
     static TEXT_CELLS: Cell<bool> = const { Cell::new(false) };
 }
 
-/// The text mode of this thread, which makes a shown value serialize as its
-/// `Display` until the guard is dropped. Dropping it restores the mode that
-/// [`TextCells::enter`] found, so a guard inside another leaves the outer
-/// one in effect, and a panic during the serialization ends the mode too.
+/// Runs `build` with the text mode set on this thread, so a shown value
+/// that `build` serializes writes its `Display`, and returns what `build`
+/// returns. The call restores the mode that it found when `build` returns
+/// and when `build` panics, so a call inside another leaves the outer one
+/// in the text mode.
 ///
-/// crumbkit holds one only around the serialization of rows whose value
-/// becomes the cells of a text table, of a stream's text line, or the
-/// default child lines of a row (ADR-0147).
-#[must_use = "the text mode ends when the guard is dropped"]
-pub(crate) struct TextCells {
-    /// The mode that the thread had before this guard.
-    previous: bool,
-}
+/// crumbkit calls it only around the serialization of rows whose value
+/// becomes the cells of a text table, of a stream's text line, of the table
+/// that [`Room`](crate::Room) measures, of the labels of
+/// [`pick::from_rows`](crate::pick::from_rows), or the default child lines
+/// of a row (ADR-0147).
+pub(crate) fn text_cells<T>(build: impl FnOnce() -> T) -> T {
+    /// The mode that the thread had before the call, which the drop
+    /// restores.
+    struct Restore(bool);
 
-impl TextCells {
-    /// Sets the text mode on this thread until the guard is dropped.
-    pub(crate) fn enter() -> Self {
-        let previous = TEXT_CELLS
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            // The thread-local holds a `bool`, so it has no destructor and
+            // the access fails only while the thread itself is being torn
+            // down.
+            let _ = TEXT_CELLS.try_with(|text| text.set(self.0));
+        }
+    }
+
+    let _restore = Restore(
+        TEXT_CELLS
             .try_with(|text| text.replace(true))
-            .unwrap_or(false);
-        Self { previous }
-    }
-
-    /// Reports whether this thread is building text cells.
-    pub(crate) fn active() -> bool {
-        TEXT_CELLS.try_with(Cell::get).unwrap_or(false)
-    }
-}
-
-impl Drop for TextCells {
-    fn drop(&mut self) {
-        // The thread-local holds a `bool`, so it has no destructor and the
-        // access fails only while the thread itself is being torn down.
-        let _ = TEXT_CELLS.try_with(|text| text.set(self.previous));
-    }
+            .unwrap_or(false),
+    );
+    build()
 }

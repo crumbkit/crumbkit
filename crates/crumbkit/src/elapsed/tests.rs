@@ -8,7 +8,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::Elapsed;
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 
 /// Returns the JSON form of `duration` as a string, without its quotes.
 fn iso(duration: Std) -> String {
@@ -129,10 +129,8 @@ fn a_smaller_unit_after_a_zero_next_unit_is_left_out() {
 
 #[test]
 fn a_duration_serializes_as_its_compact_form_while_the_text_mode_is_set() {
-    let value = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(Elapsed::new(Std::from_secs(4 * 60 + 10))).unwrap()
-    };
+    let value =
+        text_cells(|| serde_json::to_value(Elapsed::new(Std::from_secs(4 * 60 + 10))).unwrap());
 
     assert_eq!(value, json!("4m 10s"));
 }

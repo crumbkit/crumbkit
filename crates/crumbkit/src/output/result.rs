@@ -17,7 +17,7 @@ use super::layout::JsonLayout;
 use super::table::{self, Table};
 use super::{Run, children, fields, lines, listing, problems, prose};
 use crate::help::view::{Kind, Printed};
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 use crate::sink::role::{Deliver, Message, Role};
 use crate::step::RenderedStep;
 use crate::view::View;
@@ -217,9 +217,11 @@ fn write_rows<T: Rows>(
     // its JSON form.
     let rule = problems::DefaultText::of(&document, settings.view);
     let shown: Vec<&T::Row> = problems::shown(value.rows(), rule).collect();
-    let values = {
-        let _cells = (!settings.is_json()).then(TextCells::enter);
-        values(&columns, shown.into_iter())?
+    let serialize = || values(&columns, shown.into_iter());
+    let values = if settings.is_json() {
+        serialize()?
+    } else {
+        text_cells(serialize)?
     };
     let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(Failures::of);

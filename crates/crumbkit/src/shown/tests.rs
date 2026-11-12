@@ -9,7 +9,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, schema_for};
 use serde::{Serialize, Serializer};
 use serde_json::json;
 
-use super::{JsonForm, Shown, TextCells};
+use super::{JsonForm, Shown, text_cells};
 
 /// A shelf's state, which reads the same in text and JSON.
 #[derive(Clone, Copy)]
@@ -103,10 +103,7 @@ fn a_value_with_its_own_json_form_serializes_in_that_form_outside_text_mode() {
 
 #[test]
 fn a_value_serializes_as_its_display_while_the_text_mode_is_set() {
-    let value = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(shelf()).unwrap()
-    };
+    let value = text_cells(|| serde_json::to_value(shelf()).unwrap());
 
     assert_eq!(
         value,
@@ -124,10 +121,7 @@ fn a_row_of_shown_values_serializes_in_their_json_forms_outside_text_mode() {
 
 #[test]
 fn the_json_form_ignores_the_text_mode() {
-    let value = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(JsonForm(&Pages(7))).unwrap()
-    };
+    let value = text_cells(|| serde_json::to_value(JsonForm(&Pages(7))).unwrap());
 
     assert_eq!(value, json!(7));
 }
@@ -181,32 +175,31 @@ fn the_schema_id_names_the_module_and_the_type() {
 }
 
 #[test]
-fn the_text_mode_ends_when_its_guard_is_dropped() {
-    drop(TextCells::enter());
+fn the_text_mode_ends_when_the_call_returns() {
+    let inside = text_cells(|| serde_json::to_value(Pages(1)).unwrap());
 
-    assert!(!TextCells::active());
+    assert_eq!(inside, json!("1 pages"));
     assert_eq!(serde_json::to_value(Pages(1)).unwrap(), json!(1));
 }
 
 #[test]
-fn an_inner_guard_restores_the_text_mode_that_it_found() {
-    let outer = TextCells::enter();
-
-    drop(TextCells::enter());
-    let value = serde_json::to_value(Pages(1)).unwrap();
-    drop(outer);
+fn an_inner_call_leaves_the_outer_call_in_the_text_mode() {
+    let value = text_cells(|| {
+        text_cells(|| ());
+        serde_json::to_value(Pages(1)).unwrap()
+    });
 
     assert_eq!(value, json!("1 pages"));
-    assert!(!TextCells::active());
+    assert_eq!(serde_json::to_value(Pages(1)).unwrap(), json!(1));
 }
 
 #[test]
 fn the_text_mode_of_one_thread_leaves_another_thread_in_the_json_form() {
-    let _cells = TextCells::enter();
-
-    let other = std::thread::spawn(|| serde_json::to_value(Pages(3)).unwrap())
-        .join()
-        .unwrap();
+    let other = text_cells(|| {
+        std::thread::spawn(|| serde_json::to_value(Pages(3)).unwrap())
+            .join()
+            .unwrap()
+    });
 
     assert_eq!(other, json!(3));
 }
@@ -238,10 +231,7 @@ fn the_macro_takes_a_generic_type_with_its_parameters_filled_in() {
     let count = Count::<u8>(3, std::marker::PhantomData);
 
     assert_eq!(serde_json::to_value(&count).unwrap(), json!(3));
-    let text = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(&count).unwrap()
-    };
+    let text = text_cells(|| serde_json::to_value(&count).unwrap());
     assert_eq!(text, json!("3 items"));
     assert_eq!(
         schema_for!(Count<u8>).to_value().get("type"),
@@ -264,11 +254,8 @@ crate::shown!(Broken);
 
 #[test]
 fn a_panic_during_a_text_serialization_leaves_the_text_mode_unset() {
-    let caught = std::panic::catch_unwind(|| {
-        let _cells = TextCells::enter();
-        serde_json::to_value(Broken)
-    });
+    let caught = std::panic::catch_unwind(|| text_cells(|| serde_json::to_value(Broken)));
 
     assert!(caught.is_err());
-    assert!(!TextCells::active());
+    assert_eq!(serde_json::to_value(Pages(1)).unwrap(), json!(1));
 }

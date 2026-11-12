@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::Age;
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 
 /// The time 2026-10-07T12:01:07.120Z.
 fn at() -> SystemTime {
@@ -170,10 +170,7 @@ fn an_age_serializes_as_its_time_in_rfc_3339_with_milliseconds() {
 fn an_age_serializes_as_its_compact_age_while_the_text_mode_is_set() {
     let age = Age::since(at(), at() + Duration::from_secs(3 * 3_600));
 
-    let value = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(age).unwrap()
-    };
+    let value = text_cells(|| serde_json::to_value(age).unwrap());
 
     assert_eq!(value, json!("3h"));
 }
@@ -203,10 +200,7 @@ fn a_time_before_1970_still_prints_its_compact_age_in_text() {
     let before = UNIX_EPOCH - Duration::from_secs(1);
     let age = Age::since(before, UNIX_EPOCH + Duration::from_secs(1));
 
-    let value = {
-        let _cells = TextCells::enter();
-        serde_json::to_value(age).unwrap()
-    };
+    let value = text_cells(|| serde_json::to_value(age).unwrap());
 
     assert_eq!(value, json!("2s"));
 }

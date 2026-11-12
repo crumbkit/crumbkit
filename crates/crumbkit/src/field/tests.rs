@@ -6,7 +6,7 @@ use std::fmt;
 use serde::Serializer;
 
 use super::{Field, FieldValue};
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 use crate::{Elapsed, Shown};
 
 #[test]
@@ -249,10 +249,7 @@ fn a_shown_field_whose_json_form_has_a_fraction_holds_the_text_form() {
 
 #[test]
 fn a_shown_field_holds_the_json_form_while_the_text_mode_is_set() {
-    let field = {
-        let _cells = TextCells::enter();
-        Field::shown("weight", &Grams(1_500))
-    };
+    let field = text_cells(|| Field::shown("weight", &Grams(1_500)));
 
     assert_eq!(field.value(), &FieldValue::Unsigned(1_500));
 }

@@ -7,7 +7,7 @@ use super::Streaming;
 use crate::Row;
 use crate::output::envelope::{Extras, Selected, write_document};
 use crate::output::{JsonLayout, children, lines, table, unwrapped};
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 
 impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// Writes `item` to the line, in the format that the flags choose.
@@ -37,9 +37,11 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         // The serialized row becomes the selected fields of the JSON line
         // with `--json` and the cells of the text line without it, so a
         // shown value writes its `Display` only in text.
-        let row = {
-            let _cells = (!self.view.is_json()).then(TextCells::enter);
-            serde_json::to_value(item)?
+        let serialize = || serde_json::to_value(item);
+        let row = if self.view.is_json() {
+            serialize()?
+        } else {
+            text_cells(serialize)?
         };
         if self.view.is_json() {
             let selected = Selected {
