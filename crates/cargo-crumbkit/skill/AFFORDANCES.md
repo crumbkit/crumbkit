@@ -96,7 +96,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `Page<N, MOST>`, `first_of`, `listing`, `uncounted` | Own `--limit` and `--all` | A limit field and a `take` | `limit:\s*(Option<)?usize` `\.take\(` | 0.1 | `page-listing` |
 | `Listing::new`, `from_all`, `uncounted`, `capped` | Hand-written "showing N of M" | A footer string in a handler | `Showing ` | 0.1 | `page-listing` |
 | `Listing::described`, `singular`, `summary`, `note`, `long_note` | Lines printed around a table | `eprintln!` next to rows | `eprintln!` | 0.1 | `page-listing` |
-| `Listing::next`, `Listing::step`, `Step::call` | A sentence naming the next command | A note or row names a tool command | `\.note\(` `reason:` | 0.1, JSON `next` 0.1.1 | `row-command` |
+| `Listing::step`, `Step::call` | A sentence naming the next command | A note or row names a tool command | `\.note\(` `reason:` | 0.1, JSON `next` 0.1.1 | `row-command` |
 | `Step::run`, `Program` | A sentence naming another program's command | A note or row says to run another program | `\.note\(` `reason:` | 0.1 | `program-step` |
 | `Row::PROBLEM`, `is_problem` | Setting exit 1 by hand when a row is bad | A handler counts bad rows and exits | `ExitCode::FAILURE` | 0.1 | `problem-rows` |
 | `Document::only_problems` | A `--problems` filter | A flag that hides healthy rows | `only_problems` `problems:\s*bool` | 0.1 | `problem-rows` |
@@ -225,7 +225,7 @@ These are places where crumbkit offers nothing. They are candidates for
   a row's reason is a string. `Listing::step` works per listing, and
   `RenderCall::render` returns a string that the handler must place itself.
 - Rendering a `Call` does not require the required arguments of its command.
-- No check parses a `Listing::next` or `Step::call` line. `check_recoveries`
+- No check parses a `Step::call` line. `check_recoveries`
   parses only recoveries. `check_examples` pins the printed line in a golden
   file.
 - `check_recoveries` records a `Recovery::Hint` and moves on, so nothing parses

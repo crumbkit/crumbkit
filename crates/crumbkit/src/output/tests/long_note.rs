@@ -8,9 +8,9 @@ use std::process::ExitCode;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{PLANET_LISTING, Planet, finish_with, mercury, saturn};
+use super::{PLANET_LISTING, Planet, finish_with, mercury, saturn, show_step};
 use crate::twins::assert_one_word_apart;
-use crate::{Call, Document, Listing, Row};
+use crate::{Document, Listing, Row};
 
 /// The disk space that one directory takes, without long columns.
 #[derive(Serialize, JsonSchema)]
@@ -57,7 +57,7 @@ fn noted_planets() -> Listing<Planet> {
         .described("planets")
         .note("Pluto is not a planet.")
         .long_note("Moons are counted from the 2023 survey.")
-        .next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+        .step(show_step())
 }
 
 #[test]
@@ -75,7 +75,8 @@ fn under_long_the_long_note_prints_on_standard_error_after_the_note_and_before_t
 Showing 2 of 8 planets. --all shows every one.
 Pluto is not a planet.
 Moons are counted from the 2023 survey.
-Next: tool show <NAME>... shows planets by name.
+Next: Show planets by name.
+  tool show <NAME>...
 "
     );
 }
@@ -89,7 +90,8 @@ fn the_default_text_leaves_out_the_long_note() {
         "\
 Showing 2 of 8 planets. --all shows every one.
 Pluto is not a planet.
-Next: tool show <NAME>... shows planets by name.
+Next: Show planets by name.
+  tool show <NAME>...
 "
     );
 }

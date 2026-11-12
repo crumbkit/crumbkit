@@ -1,1 +1,2 @@
-Next: shelf schemas show <ID>... prints the JSON Schema of each document.
+Next: Print the JSON Schema of each document.
+  shelf schemas show <ID>...

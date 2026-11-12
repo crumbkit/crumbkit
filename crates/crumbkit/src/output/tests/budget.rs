@@ -20,7 +20,7 @@ use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{
     AsFailure, Batch, Call, Code, Document, Error, Failure, JsonLayout, Listing, Prose, Recovery,
-    Row, Run, Tool,
+    Row, Run, Step, Tool,
 };
 
 /// A budget that a few rows pass.
@@ -172,7 +172,7 @@ fn a_cut_listing_keeps_its_next_step_in_the_text_and_under_next_before_cut_in_js
     let listing = || {
         Listing::new(stars(20), 20)
             .described("stars")
-            .next(Call::new(&["show"]).arg("names"), "shows stars by name.")
+            .step(Step::new("Show stars by name.").call(Call::new(&["show"]).arg("names")))
     };
 
     let text = finish_small(&[], STAR_LISTING, listing());
@@ -180,12 +180,12 @@ fn a_cut_listing_keeps_its_next_step_in_the_text_and_under_next_before_cut_in_js
 
     assert!(
         text.err
-            .ends_with("\nNext: tool show <NAME>... shows stars by name.\n"),
+            .ends_with("\nNext: Show stars by name.\n  tool show <NAME>...\n"),
         "{}",
         text.err
     );
     assert!(json.out.len() <= BUDGET, "{}", json.out.len());
-    let next = r#""next":[{"text":"shows stars by name.","commands":[{"call":"tool show <NAME>..."}]}],"cut":"#;
+    let next = r#""next":[{"text":"Show stars by name.","commands":[{"call":"tool show <NAME>..."}]}],"cut":"#;
     assert!(json.out.contains(next), "{}", json.out);
 }
 

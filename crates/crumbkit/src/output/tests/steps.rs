@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use super::{
     Cli, PLANET_LISTING, Planet, finish_output, finish_with, mercury, parse_against, saturn,
+    show_step,
 };
 use crate::conforms::conforms;
 use crate::schemas::document_schema;
@@ -44,10 +45,10 @@ Next: Commit the planets, then show them.
 }
 
 #[test]
-fn steps_print_in_the_order_they_were_added_after_the_next_line_and_the_note() {
+fn steps_print_in_the_order_they_were_added_after_the_note() {
     let listing = two_of_eight()
         .note("Planets from the 2006 definition.")
-        .next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+        .step(show_step())
         .step(commit_step())
         .step(Step::new("Push the commit.").run(GIT, ["push"]));
 
@@ -56,7 +57,8 @@ fn steps_print_in_the_order_they_were_added_after_the_next_line_and_the_note() {
     let expected = "\
 Showing 2 of 8. --all shows every one.
 Planets from the 2006 definition.
-Next: tool show <NAME>... shows planets by name.
+Next: Show planets by name.
+  tool show <NAME>...
 Next: Commit the planets, then show them.
   git commit -m 'Add planets'
   tool show <NAME>...
@@ -97,9 +99,9 @@ fn a_step_with_a_call_that_does_not_resolve_is_left_out_whole_and_the_exit_code_
 }
 
 #[test]
-fn json_holds_the_next_step_and_then_each_step_under_next_with_its_text_and_commands() {
+fn json_holds_each_step_under_next_in_the_order_added_with_its_text_and_commands() {
     let listing = two_of_eight()
-        .next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+        .step(show_step())
         .step(commit_step())
         .step(Step::new("Restart your shell."));
 
@@ -109,7 +111,7 @@ fn json_holds_the_next_step_and_then_each_step_under_next_with_its_text_and_comm
         r#"{"schema":"solar/planet-listing/v1","#,
         r#""data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"#,
         r#""total":8,"truncated":true,"next":["#,
-        r#"{"text":"shows planets by name.","commands":[{"call":"tool show <NAME>..."}]},"#,
+        r#"{"text":"Show planets by name.","commands":[{"call":"tool show <NAME>..."}]},"#,
         r#"{"text":"Commit the planets, then show them.","commands":[{"run":"git commit -m 'Add planets'"},{"call":"tool show <NAME>..."}]},"#,
         r#"{"text":"Restart your shell.","commands":[]}]}"#,
         "\n"
@@ -119,9 +121,9 @@ fn json_holds_the_next_step_and_then_each_step_under_next_with_its_text_and_comm
 }
 
 #[test]
-fn the_json_of_a_listing_with_a_next_step_and_steps_matches_the_document_schema() {
+fn the_json_of_a_listing_with_steps_matches_the_document_schema() {
     let listing = two_of_eight()
-        .next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+        .step(show_step())
         .step(commit_step())
         .step(Step::new("Restart your shell."));
 

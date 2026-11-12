@@ -29,7 +29,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use crumbkit::Tool;
-use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, ViewFlags};
+use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Step, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -100,7 +100,7 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
     }
     Ok(Listing::from_all(books, cli.page.limit())
         .described("books")
-        .next(Call::new(&[]).arg("author"), "lists one author's books."))
+        .step(Step::new("List one author's books.").call(Call::new(&[]).arg("author"))))
 }
 
 fn main() -> ExitCode {

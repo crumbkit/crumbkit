@@ -3,9 +3,12 @@
 
 use clap::{CommandFactory as _, Parser};
 
-use super::{Cli, PLANET_LISTING, Planet, built_with, finish_output, finish_with, mercury, saturn};
+use super::{
+    Cli, PLANET_LISTING, Planet, SHOW_STEP_LINES, built_with, finish_output, finish_with, mercury,
+    saturn, show_step,
+};
 use crate::tool::Output;
-use crate::{Call, Listing, Page, Tool};
+use crate::{Listing, Page, Tool};
 
 /// Returns `count` planets, alternating Mercury and Saturn.
 fn planets(count: usize) -> Vec<Planet> {
@@ -150,15 +153,17 @@ fn a_capped_listing_prints_the_tools_note_and_next_step_after_its_footer() {
     let listing = two_of_at_least_100()
         .described("planets")
         .note("Read the newest 100 planets.")
-        .next(Call::new(&["show"]).arg("names"), "shows planets by name.");
+        .step(show_step());
 
     let finished = finish_with(&[], PLANET_LISTING, listing);
 
     assert_eq!(
         finished.err,
-        "Showing 2 of at least 100 planets. --all shows 100 of them.\n\
-         Read the newest 100 planets.\n\
-         Next: tool show <NAME>... shows planets by name.\n"
+        format!(
+            "Showing 2 of at least 100 planets. --all shows 100 of them.\n\
+             Read the newest 100 planets.\n\
+             {SHOW_STEP_LINES}"
+        )
     );
 }
 

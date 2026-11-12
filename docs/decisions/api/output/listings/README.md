@@ -1,7 +1,7 @@
 # ADR-0050. Listings
 
 - Date: 2026-10-12
-- Status: amended by ADR-0077, ADR-0087, ADR-0096, ADR-0142, ADR-0153, ADR-0155, ADR-0158 and ADR-0167
+- Status: amended by ADR-0077, ADR-0087, ADR-0096, ADR-0142, ADR-0153, ADR-0155, ADR-0158, ADR-0167 and ADR-0207
 
 ## Context
 
@@ -48,6 +48,7 @@ for empty results, sources that cannot be counted, an upper bound on
 - [ADR-0157. A row type chooses which rows the default text lists](default-text/README.md)
 - [ADR-0159. Listing summaries](summary/README.md)
 - [ADR-0167. A listing's JSON document holds its next steps under `next`](0167-a-listing-s-json-holds-its-next-steps.md)
+- [ADR-0207. A listing names its next steps only with `Listing::step`](0207-a-listing-names-its-next-steps-only-with-step.md)
 
 ## Consequences
 

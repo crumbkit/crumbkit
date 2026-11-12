@@ -24,8 +24,8 @@ When a listing shows fewer rows than its total, or leaves out rows that the
 tool did not count, a footer says so and names `--all`. crumbkit owns the
 wording, and the tool supplies only the description.
 
-A listing may carry a summary, a note, a [long note](#a-note-for---long),
-one next step and any number of [further steps](#several-next-steps). The
+A listing may carry a summary, a note, a [long note](#a-note-for---long)
+and any number of [next steps](#next-steps). The
 summary prints its `Display` above the table on standard output, and the
 JSON document holds it under `summary`. Each line feed in the text ends a
 line, so a summary can print several lines, such as a few counts, and a
@@ -41,7 +41,7 @@ document ([next steps in JSON](#next-steps-in-json)).
 On standard output, the text order is the summary, the header and the rows.
 On standard error, it is the footer or the empty note, the note of the rows
 that report a problem, the tool's note, the long note under `--long`, the
-`Next:` line, the lines of each further step and the dry-run line.
+lines of each next step and the dry-run line.
 [Output](../README.md#standard-output-and-standard-error) describes how these
 lines reach standard error.
 
@@ -318,13 +318,14 @@ from the document which view flags a leaf offers before the handler runs.
 
 Why: ADR-0139.
 
-## Several next steps
+## Next steps
 
-[`Listing::step`](../../../../crates/crumbkit/src/listing.rs) adds a
+A listing names each of its next steps with
+[`Listing::step`](../../../../crates/crumbkit/src/listing.rs), which adds a
 [`Step`](../../../../crates/crumbkit/src/step.rs): a sentence and the
 commands that carry it out. The text prints each step on standard error
-after the `Next:` line of `Listing::next`, in the order added, as
-`Next: {sentence}` followed by each command indented by two spaces:
+after the notes, in the order added, as `Next: {sentence}` followed by each
+command indented by two spaces:
 
 ```text
 Next: Commit the shelf, then list the books.
@@ -345,20 +346,19 @@ Next: Commit the shelf, then list the books.
   a control character or a Unicode format character is left out whole.
 - A step without commands prints its `Next:` line alone.
 
-Why: ADR-0155.
+Why: ADR-0155, ADR-0207.
 
 ## Next steps in JSON
 
 A listing's JSON document holds its next steps under `next`, after
-`summary` and before `cut`, in the order the text prints them. The step of
-`Listing::next` comes first, with its phrase as `text` and its call as its
-one command, and each step of `Listing::step` follows with its sentence as
-`text`. Each command is `{"call": ...}` for the tool's own command or
-`{"run": ...}` for another program's, holding the line that the text
-prints. shelf's `books list --json` ends with:
+`summary` and before `cut`, in the order the text prints them. Each step
+holds its sentence as `text` and its commands under `commands`. Each
+command is `{"call": ...}` for the tool's own command or `{"run": ...}` for
+another program's, holding the line that the text prints. shelf's
+`books list --json` ends with:
 
 ```json
-"next":[{"text":"takes up to 100 ids in one call.","commands":[{"call":"shelf books show <ID>..."}]}]
+"next":[{"text":"Show books by id, up to 100 in one call.","commands":[{"call":"shelf books show <ID>..."}]}]
 ```
 
 - A step that the text leaves out, because a call does not resolve or an
@@ -372,4 +372,4 @@ prints. shelf's `books list --json` ends with:
 - Every listing's JSON Schema has the optional `next` property, and the
   documents keep their `v1` ids.
 
-Why: ADR-0167.
+Why: ADR-0167, ADR-0207.

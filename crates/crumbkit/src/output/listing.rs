@@ -137,26 +137,22 @@ pub(super) fn write_empty_note<T: Rows>(
     }
 }
 
-/// Returns the next steps of `value` with their commands rendered against
-/// `command`: the next step of a listing, then each of its further steps
-/// ([`crate::Step`]). A next step whose call does not resolve in `command`,
-/// and a step with such a call, is left out: when a call names a missing or
-/// hidden command or argument, the tool still prints its result and
-/// crumbkit advertises nothing the tool hid. `finish` renders the steps
-/// once, before it writes the result, so the text's `Next:` lines and the
-/// JSON document's `next` name the same steps (ADR-0167).
+/// Returns the next steps of `value` ([`crate::Step`]) with their commands
+/// rendered against `command`, in the order the listing added them. A step
+/// with a call that does not resolve in `command` is left out: when a call
+/// names a missing or hidden command or argument, the tool still prints its
+/// result and crumbkit advertises nothing the tool hid. `finish` renders the
+/// steps once, before it writes the result, so the text's `Next:` lines and
+/// the JSON document's `next` name the same steps (ADR-0167).
 pub(super) fn next_steps<'a, T: Rows>(
     command: &mut Command,
     value: &'a T,
 ) -> Vec<RenderedStep<'a>> {
-    let mut steps = Vec::new();
-    if let Some((call, phrase)) = value.next_step()
-        && let Ok(rendered) = crate::call::render(call, command)
-    {
-        steps.push(RenderedStep::next(rendered, phrase));
-    }
-    steps.extend(value.steps().iter().filter_map(|step| step.render(command)));
-    steps
+    value
+        .steps()
+        .iter()
+        .filter_map(|step| step.render(command))
+        .collect()
 }
 
 /// Returns the lines of `summary`, the text of a summary's `Display`, as the

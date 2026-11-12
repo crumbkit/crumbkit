@@ -7,9 +7,12 @@ use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{Cli, Planet, built_with, finish_output, finish_with, mercury, saturn};
+use super::{
+    Cli, Planet, SHOW_STEP_LINES, built_with, finish_output, finish_with, mercury, saturn,
+    show_step,
+};
 use crate::tool::Output;
-use crate::{Call, Document, Listing, Tool};
+use crate::{Document, Listing, Tool};
 
 /// The summary of a listing of planets.
 #[derive(Serialize, JsonSchema)]
@@ -173,14 +176,14 @@ fn a_listing_with_a_summary_and_no_rows_prints_the_summary_alone_without_a_heade
 
 #[test]
 fn a_listing_with_a_summary_and_no_rows_still_prints_its_empty_note_and_next_step() {
-    let listing = empty_census().next(Call::new(&["show"]).arg("names"), "shows planets by name.");
+    let listing = empty_census().step(show_step());
 
     let finished = finish_with(&[], CENSUS, listing);
 
     assert_eq!(finished.out, "0 planets around the Sun.\n");
     assert_eq!(
         finished.err,
-        "note: no planets match\nNext: tool show <NAME>... shows planets by name.\n"
+        format!("note: no planets match\n{SHOW_STEP_LINES}")
     );
 }
 

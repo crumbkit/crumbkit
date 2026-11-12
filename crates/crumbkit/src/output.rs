@@ -317,11 +317,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `Showing 4 books, and more match. --all shows every one.` A listing
 /// with no rows and no more rows prints an empty note, such as `note: no
 /// books match`. A listing's note follows on its own line. When a listing
-/// has a next step, a `Next:` line follows, such as
-/// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
-/// is left out of the text and of `next` when the step's
-/// [`Call`](crate::Call) does not resolve in the command tree that `run`
-/// holds, and the exit code stays 0.
+/// has a next step, a `Next:` line with its sentence follows, such as
+/// `Next: Show books by id, up to 100 in one call.`, and then each of its
+/// commands on its own line, indented by two spaces. A step is left out of
+/// the text and of `next` when one of its [`Call`](crate::Call)s does not
+/// resolve in the command tree that `run` holds, and the exit code stays 0.
 ///
 /// `finish` takes `run` by value, because it is the last call of a run:
 /// it builds the branch of the command tree that a next step's call or a
