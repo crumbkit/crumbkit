@@ -29,7 +29,7 @@ The unpublished `xtask` crate runs the repository checks, and a `#[test]`
 calls each one. xtask parses its arguments with clap. Its rustdoc in
 [`xtask/src/main.rs`](../../xtask/src/main.rs) lists the commands.
 
-- `cargo xtask check` enforces the line limit of RUST-8, so a person or an
+- `cargo xtask check` enforces the code line limit of RUST-8, so a person or an
   agent can read each `.rs` file whole, and the word limit of DOCS-1 on
   `AGENTS.md`, because an agent reads that file at the start of every
   session. It lists files with `git ls-files`, including untracked files
@@ -53,7 +53,7 @@ calls each one. xtask parses its arguments with clap. Its rustdoc in
   directories under `target/run-time/`. [Testing](testing.md) states the
   limits.
 
-Why: ADR-0010, ADR-0017, ADR-0074.
+Why: ADR-0010, ADR-0017, ADR-0074, ADR-0203.
 
 ## Supply-chain checks
 
