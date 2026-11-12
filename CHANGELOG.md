@@ -30,9 +30,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Code<'_>` by value. A caller drops the `&` before the code. An observer
   that keeps a tolerated code stores `code.to_buf()`
   ([behaviour/failures/exit-codes]).
-- crumbkit-test: `Unprovoked::from_code`, `Recoveries::from_codes` and
-  `Twins::from_codes` take `Code<'a>` values, so they also accept codes from
-  `Code::runtime` that borrow the test's own text ([behaviour/failures]).
+- crumbkit: breaking: `Refused::code` is a `const fn` and returns
+  `Code<'static>` by value, where it returned `&'static Code`. A caller drops
+  the `*` or `&` it used on the result ([behaviour/failures]).
+- crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
+  `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
+  codes of any lifetime, so they also accept codes from `Code::runtime` that
+  borrow the test's own text ([behaviour/failures]).
+- crumbkit-test: `Recoveries::new`, `Recoveries::from_codes`, `Twins::new`
+  and `Twins::from_codes` take codes of any lifetime, so they also accept
+  codes from `Code::runtime` that borrow the test's own text
+  ([behaviour/failures]).
 
 ### Removed
 

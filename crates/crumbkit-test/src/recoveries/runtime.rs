@@ -224,10 +224,11 @@ impl RuntimeFailing {
     //
     // RUST-10: `Allow` holds a `'static` refused line, and a `'static`
     // line also lets a test keep its starts and twins anywhere, so this
-    // leaks the code's three segments, the strings and the paths for the rest
-    // of the test process. A test calls it once for each command line it
-    // builds, so the leak is bounded by the codes and lines the test passes,
-    // and each is the size of that line and of its code. A `Failing` that
+    // leaks the boxed `CodeBuf` itself as well as its three segments, the
+    // strings and the paths for the rest of the test process. A test calls
+    // it once for each command line it builds, so the leak is bounded by the
+    // codes and lines the test passes, and each is the size of that line and
+    // of its code. A `Failing` that
     // borrows from a `RuntimeFailing` replaces this if a process needs to
     // build many lines.
     #[must_use]
