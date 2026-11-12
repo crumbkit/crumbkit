@@ -126,7 +126,7 @@ pub(crate) fn list(args: &BooksList, removed: Option<&Path>) -> Result<Listing<B
         .page
         .first_of(books)
         .described("books")
-        .next(show_call(), "takes up to 100 ids in one call.");
+        .step(Step::new("Show books by id, up to 100 in one call.").call(show_call()));
     Ok(match removed.filter(|_| emptied) {
         Some(path) => listing.step(restore_step(path)),
         None => listing,

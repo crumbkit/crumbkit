@@ -1,14 +1,14 @@
 PATH                      SHORT_HELP  OUTPUT  PATH_TOTAL  RUNS  HELP_BEFORE
 shelf                     548         -       548         0     0
 shelf books               594         -       1142        0     0
-shelf books list          504         512     2158        0     0
+shelf books list          504         522     2168        0     0
 shelf books show          534         111     1787        0     0
 shelf books summarize     477         101     1720        0     0
 shelf books remove        716         114     1972        0     0
 shelf commands            367         -       915         0     0
 shelf commands list       702         2840    4457        0     0
 shelf schemas             424         -       972         0     0
-shelf schemas list        502         2578    4052        0     0
+shelf schemas list        502         2579    4053        0     0
 shelf schemas show        484         3426    4882        0     0
 shelf self                468         -       1016        0     0
 shelf self usage          720         -       1736        0     0

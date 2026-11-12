@@ -3,9 +3,9 @@
 
 use std::process::ExitCode;
 
-use super::{PLANET_LISTING, Planet, finish_with, mercury, saturn};
+use super::{PLANET_LISTING, Planet, finish_with, mercury, saturn, show_step};
 use crate::Envelope;
-use crate::{Call, Document, Listing};
+use crate::{Document, Listing};
 
 /// Returns a listing with no rows out of no matching rows.
 fn none() -> Listing<Planet> {
@@ -42,14 +42,15 @@ fn the_note_comes_before_the_listings_own_note_and_next_step() {
     let listing = none()
         .described("planets")
         .note("Catalogue: solar.toml")
-        .next(Call::new(&["show"]).arg("names"), "shows planets by name.");
+        .step(show_step());
 
     let finished = finish_with(&[], PLANET_LISTING, listing);
 
     let expected = "\
 note: no planets match
 Catalogue: solar.toml
-Next: tool show <NAME>... shows planets by name.
+Next: Show planets by name.
+  tool show <NAME>...
 ";
     assert_eq!(finished.err, expected);
 }

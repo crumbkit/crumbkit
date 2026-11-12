@@ -22,7 +22,8 @@
 //! FINDING           RUNS  COMMAND     SUGGESTION
 //! one id at a time  212   books show  pass every id to one call
 //! identical repeat  88    books list  the same call ran again within 60 s
-//! Next: shelf self usage --json --full adds the figures of each finding's command.
+//! Next: Show the figures of each finding's command.
+//!   shelf self usage --json --full
 //! ```
 //!
 //! It never prints a hash, a session, or a time finer than a day.
@@ -40,7 +41,7 @@ use serde::Serialize;
 
 use super::program::{self, Program};
 use super::report::{Entry, Figures, Finding, Kind, Report, Tally, read};
-use crumbkit::{Call, Document, Listing, Run, Tool};
+use crumbkit::{Call, Document, Listing, Run, Step, Tool};
 
 #[cfg(test)]
 mod tests;
@@ -313,9 +314,9 @@ fn report_from(
     Listing::new(rows, total)
         .described("findings")
         .summary(summary)
-        .next(
-            Call::new(&["self", "usage"]).arg("json").arg("full"),
-            "adds the figures of each finding's command.",
+        .step(
+            Step::new("Show the figures of each finding's command.")
+                .call(Call::new(&["self", "usage"]).arg("json").arg("full")),
         )
 }
 

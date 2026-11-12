@@ -13,13 +13,13 @@ use std::rc::Rc;
 use clap::CommandFactory as _;
 
 use super::{
-    Cli, PLANET_LISTING, PLANETS, Planet, built_with, finish_output, finish_with, mercury,
-    parse_against, saturn,
+    Cli, PLANET_LISTING, PLANETS, Planet, SHOW_STEP_LINES, built_with, finish_output, finish_with,
+    mercury, parse_against, saturn, show_step,
 };
 use crate::answered::answered;
 use crate::tool::Output;
 use crate::{
-    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Tool, finish_to,
+    Batch, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Tool, finish_to,
 };
 
 /// Returns a listing of Mercury and Saturn out of 8 planets, with a note and
@@ -28,7 +28,7 @@ fn two_of_eight() -> Listing<Planet> {
     Listing::new(vec![mercury(), saturn()], 8)
         .described("planets")
         .note("Pluto is not a planet.")
-        .next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+        .step(show_step())
 }
 
 #[test]
@@ -43,7 +43,8 @@ fn a_listings_footer_note_and_next_line_print_on_standard_error_and_standard_out
         "\
 Showing 2 of 8 planets. --all shows every one.
 Pluto is not a planet.
-Next: tool show <NAME>... shows planets by name.
+Next: Show planets by name.
+  tool show <NAME>...
 "
     );
 }
@@ -140,7 +141,7 @@ fn the_notes_reach_standard_error_in_one_write_so_no_note_is_split_between_other
     );
 
     assert_eq!(err.writes, 1);
-    assert!(err.bytes.ends_with(b"by name.\n"));
+    assert!(err.bytes.ends_with(SHOW_STEP_LINES.as_bytes()));
 }
 
 const GONE: Code<'static> = Code::new("solar", "planets", "gone");

@@ -1,7 +1,7 @@
 # ADR-0167. A listing's JSON document holds its next steps under `next`
 
 - Date: 2026-11-01
-- Status: accepted
+- Status: amended by ADR-0207
 - Supersedes: ADR-0050 and ADR-0155, which it amends
 
 ## Context

@@ -138,7 +138,8 @@ fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_b
     );
     let expected = format!(
         "note: no books match\n\
-         Next: shelf books show <ID>... takes up to 100 ids in one call.\n\
+         Next: Show books by id, up to 100 in one call.\n  \
+         shelf books show <ID>...\n\
          Next: Delete the file of removed books to put every book back, then list them.\n  \
          {rm}\n  \
          shelf books list\n"
@@ -152,7 +153,7 @@ fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_b
     let expected_json = format!(
         concat!(
             r#"{{"schema":"shelf/books-list/v1","data":[],"total":0,"truncated":false,"next":["#,
-            r#"{{"text":"takes up to 100 ids in one call.","commands":[{{"call":"shelf books show <ID>..."}}]}},"#,
+            r#"{{"text":"Show books by id, up to 100 in one call.","commands":[{{"call":"shelf books show <ID>..."}}]}},"#,
             r#"{{"text":"Delete the file of removed books to put every book back, then list them.","commands":[{{"run":{}}},{{"call":"shelf books list"}}]}}]}}"#,
             "\n"
         ),

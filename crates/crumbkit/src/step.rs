@@ -70,8 +70,9 @@ impl Program {
 /// A next step: a sentence that says what to do, and the commands that do it,
 /// in order.
 ///
-/// `crumbkit::finish` prints each step of a listing on standard error in text,
-/// after the `Next:` line of [`Listing::next`](crate::Listing::next), as the
+/// A listing names each of its next steps with
+/// [`Listing::step`](crate::Listing::step). `crumbkit::finish` prints each
+/// step of a listing on standard error in text, in the order added, as the
 /// line `Next: {sentence}` followed by each command on its own line, indented
 /// by two spaces. The JSON document holds each step as an entry of `next`:
 /// `{"text": {sentence}, "commands": [...]}`, where each command is
@@ -187,73 +188,41 @@ impl Step {
                 }
             });
         }
-        Some(RenderedStep::Step {
+        Some(RenderedStep {
             sentence: &self.sentence,
             commands,
         })
     }
 }
 
-/// A next step whose commands are rendered, which the text prints as its
-/// `Next:` lines and the JSON document holds as one entry of `next`
-/// (ADR-0167).
-pub(crate) enum RenderedStep<'a> {
-    /// A listing's next step, whose call prints before its phrase on one
-    /// `Next:` line, as `Next: {call} {phrase}`.
-    Next {
-        /// The rendered call of [`Listing::next`](crate::Listing::next).
-        call: RenderedCommand,
-        /// The phrase that follows the call.
-        phrase: &'a str,
-    },
-    /// A [`Step`], which prints its sentence on a `Next:` line and each
-    /// command on its own line.
-    Step {
-        /// The sentence that says what to do.
-        sentence: &'a str,
-        /// The rendered commands, in order.
-        commands: Vec<RenderedCommand>,
-    },
+/// A [`Step`] whose commands are rendered, which the text prints as its
+/// sentence on a `Next:` line and each command on its own line, and the JSON
+/// document holds as one entry of `next` (ADR-0167).
+pub(crate) struct RenderedStep<'a> {
+    /// The sentence that says what to do.
+    sentence: &'a str,
+    /// The rendered commands, in order.
+    commands: Vec<RenderedCommand>,
 }
 
-impl<'a> RenderedStep<'a> {
-    /// Returns the next step of a listing: the rendered call `call` and the
-    /// phrase that follows it on its `Next:` line.
-    pub(crate) const fn next(call: String, phrase: &'a str) -> Self {
-        Self::Next {
-            call: RenderedCommand::Call(call),
-            phrase,
-        }
-    }
-
+impl RenderedStep<'_> {
     /// Writes the text lines of the step to `out`, each with its line feed:
-    /// `Next: {call} {phrase}` for a listing's next step, and otherwise the
-    /// line `Next: {sentence}` and each command indented by two spaces.
+    /// the line `Next: {sentence}`, then each command indented by two spaces.
     pub(crate) fn write_lines(&self, out: &mut impl Write) -> io::Result<()> {
-        match self {
-            Self::Next { call, phrase } => writeln!(out, "Next: {} {phrase}", call.line()),
-            Self::Step { sentence, commands } => {
-                writeln!(out, "Next: {sentence}")?;
-                for command in commands {
-                    writeln!(out, "  {}", command.line())?;
-                }
-                Ok(())
-            }
+        writeln!(out, "Next: {}", self.sentence)?;
+        for command in &self.commands {
+            writeln!(out, "  {}", command.line())?;
         }
+        Ok(())
     }
 }
 
-/// Serializes the step as `{"text": ..., "commands": [...]}`, with a
-/// listing's next step as its phrase and its one call.
+/// Serializes the step as `{"text": ..., "commands": [...]}`.
 impl Serialize for RenderedStep<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let (text, commands) = match self {
-            Self::Next { call, phrase } => (*phrase, std::slice::from_ref(call)),
-            Self::Step { sentence, commands } => (*sentence, commands.as_slice()),
-        };
         let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry("text", text)?;
-        map.serialize_entry("commands", commands)?;
+        map.serialize_entry("text", self.sentence)?;
+        map.serialize_entry("commands", &self.commands)?;
         map.end()
     }
 }

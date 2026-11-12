@@ -10,7 +10,8 @@ use serde::Serialize;
 use clap::CommandFactory as _;
 
 use super::{
-    Cli, PLANET, PLANET_LISTING, PLANETS, Planet, finish_with, mercury, parse_against, saturn,
+    Cli, PLANET, PLANET_LISTING, PLANETS, Planet, SHOW_STEP_LINES, finish_with, mercury,
+    parse_against, saturn, show_step,
 };
 use crate::Envelope;
 use crate::answered::answered;
@@ -109,7 +110,7 @@ fn fields_select_the_fields_of_an_unwrapped_document() {
 fn json_prints_one_page_of_an_unwrapped_listing_without_its_total_or_its_next_steps() {
     let listing = Listing::from_all(vec![mercury(), saturn()], Some(1))
         .described("planets")
-        .next(Call::new(&["show"]).arg("names"), "shows each planet.");
+        .step(show_step());
 
     let finished = finish_with(
         &["--json"],
@@ -128,14 +129,11 @@ fn json_prints_one_page_of_an_unwrapped_listing_without_its_total_or_its_next_st
 fn text_output_of_an_unwrapped_listing_prints_its_footer_and_next_step_on_standard_error() {
     let listing = Listing::from_all(vec![mercury(), saturn()], Some(1))
         .described("planets")
-        .next(Call::new(&["show"]).arg("names"), "shows each planet.");
+        .step(show_step());
 
     let finished = finish_with(&[], PLANET_LISTING.envelope(Envelope::Without), listing);
 
-    let expected = "\
-Showing 1 of 2 planets. --all shows every one.
-Next: tool show <NAME>... shows each planet.
-";
+    let expected = format!("Showing 1 of 2 planets. --all shows every one.\n{SHOW_STEP_LINES}");
     assert_eq!(finished.out, "NAME     MOONS\nMercury  0\n");
     assert_eq!(finished.err, expected);
 }

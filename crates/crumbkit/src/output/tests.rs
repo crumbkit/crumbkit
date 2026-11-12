@@ -11,7 +11,7 @@ use serde::{Serialize, Serializer};
 use super::{Run, finish_to};
 use crate::twins::assert_one_word_apart;
 use crate::view::{Selection, View};
-use crate::{Document, Error, Listing, Row, Rows, Sink, Stop, Tool, ViewFlags};
+use crate::{Call, Document, Error, Listing, Row, Rows, Sink, Step, Stop, Tool, ViewFlags};
 
 mod about;
 mod adds_nothing;
@@ -89,6 +89,15 @@ fn saturn() -> Planet {
         distance: 9.54,
     }
 }
+
+/// Returns the step that shows planets by name, which the tests' listings
+/// name as their next step.
+fn show_step() -> Step {
+    Step::new("Show planets by name.").call(Call::new(&["show"]).arg("names"))
+}
+
+/// The lines that the text output prints for [`show_step`].
+const SHOW_STEP_LINES: &str = "Next: Show planets by name.\n  tool show <NAME>...\n";
 
 /// A tool with two subcommands, so the tests can put the flags after one and
 /// a listing can name the other as its next step.

@@ -127,14 +127,8 @@ pub trait Sealed {
         None
     }
 
-    /// Returns the command that the output names as the next step, and the
-    /// phrase that follows it. Only a `Listing` returns one.
-    fn next_step(&self) -> Option<(&Call, &str)> {
-        None
-    }
-
-    /// Returns the steps that the output names after the next step, in
-    /// order. Only a `Listing` returns any.
+    /// Returns the next steps that the output names, in order. Only a
+    /// `Listing` returns any.
     fn steps(&self) -> &[Step] {
         &[]
     }

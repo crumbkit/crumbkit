@@ -6,14 +6,14 @@ use std::fmt;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Serialize, Serializer};
 
-use crate::{Call, Row, Shape, Step};
+use crate::{Row, Shape, Step};
 
 #[cfg(test)]
 mod tests;
 
 /// One page of rows, the total number of rows that matched when the tool
 /// counted them, an optional phrase that names them, an optional summary, an optional note, an
-/// optional long note, an optional next step and any further steps.
+/// optional long note and any next steps.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens `crumbkit::Page` into its arguments so the caller can
@@ -25,21 +25,24 @@ mod tests;
 /// and more match. --all shows every one.` for a listing without a total,
 /// or `Showing 4 of at least 100 books. --all shows 100 of them.` for a
 /// listing from a capped source ([`Listing::capped`]), then the note, under
-/// `--long` the long note, then the next step, such as `Next: shelf
-/// books show <ID>... takes up to 100 ids in one call.`, and then each
-/// further step ([`Listing::step`]). The JSON document holds the next step
-/// and the further steps under `next`.
+/// `--long` the long note, and then each next step ([`Listing::step`]), such
+/// as the line `Next: Show books by id, up to 100 in one call.` followed by
+/// the command `  shelf books show <ID>...`. The JSON document holds the
+/// steps under `next`.
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::{Call, Listing};
+/// use crumbkit::{Call, Listing, Step};
 ///
 /// let books: Vec<Book> = (1..=6).map(|id| Book { id }).collect();
 /// let listing = Listing::from_all(books, Some(4))
 ///     .described("books")
-///     .next(Call::new(&["books", "show"]).arg("ids"), "takes up to 100 ids in one call.");
+///     .step(
+///         Step::new("Show books by id, up to 100 in one call.")
+///             .call(Call::new(&["books", "show"]).arg("ids")),
+///     );
 /// ```
 ///
 /// The summary `S` is a value that prints as one or more lines above the
@@ -75,10 +78,7 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The line that the text output prints after the note under `--long`
     /// only, such as how the figures of the rows were measured.
     long_note: Option<String>,
-    /// The command that the output names as the next step, and the phrase
-    /// that follows it on the `Next:` line.
-    next: Option<(Call, String)>,
-    /// The steps that the output names after the next step, in order.
+    /// The next steps that the output names, in order.
     steps: Vec<Step>,
     /// The most rows that the command's `--limit` takes, which the footer
     /// names, or `None` when `--limit` has no upper bound.
@@ -118,7 +118,6 @@ impl<R: Row> Listing<R> {
             summary: None,
             note: None,
             long_note: None,
-            next: None,
             steps: Vec::new(),
             bound: None,
             problems: None,
@@ -244,7 +243,6 @@ impl<R: Row, S> Listing<R, S> {
             summary: Some(summary),
             note: self.note,
             long_note: self.long_note,
-            next: self.next,
             steps: self.steps,
             bound: self.bound,
             problems: self.problems,
@@ -280,30 +278,16 @@ impl<R: Row, S> Listing<R, S> {
         self
     }
 
-    /// Sets the next step that the text output names on standard error after
-    /// the footer and the note: the line `Next: {call} {phrase}`, such as
-    /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The
-    /// JSON document holds it as the first entry of `next`, with the phrase
-    /// under `text` and the call as its one command, such as
-    /// `{"text": "takes up to 100 ids in one call.", "commands": [{"call":
-    /// "shelf books show <ID>..."}]}` (ADR-0167).
-    ///
-    /// `crumbkit::finish` renders `call` against the command that the run's
-    /// `crumbkit::Run` holds, and leaves the step out of the text and the
-    /// JSON when `call` does not resolve. The phrase prints unchanged, so it
-    /// carries its own full stop.
-    #[must_use]
-    pub fn next(mut self, call: Call, phrase: impl Into<String>) -> Self {
-        self.next = Some((call, phrase.into()));
-        self
-    }
-
     /// Adds `step` after the steps already added. The text output prints each
-    /// step on standard error after the `Next:` line of [`Listing::next`]: the
-    /// line `Next: {sentence}`, then each of its commands indented by two
-    /// spaces. The JSON document holds each step under `next`, after the step
-    /// of [`Listing::next`], as `{"text": {sentence}, "commands": [...]}`
-    /// (ADR-0155, ADR-0167).
+    /// step on standard error after the footer and the notes, in the order
+    /// added: the line `Next: {sentence}`, then each of its commands indented
+    /// by two spaces. The JSON document holds each step as an entry of
+    /// `next`, as `{"text": {sentence}, "commands": [...]}` (ADR-0155,
+    /// ADR-0167, ADR-0207).
+    ///
+    /// `crumbkit::finish` renders each of the step's calls against the
+    /// command that the run's `crumbkit::Run` holds, and leaves the whole
+    /// step out of the text and the JSON when one of them does not resolve.
     ///
     /// ```
     /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -462,12 +446,6 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Li
 
     fn long_note(&self) -> Option<&str> {
         self.long_note.as_deref()
-    }
-
-    fn next_step(&self) -> Option<(&Call, &str)> {
-        self.next
-            .as_ref()
-            .map(|(call, phrase)| (call, phrase.as_str()))
     }
 
     fn steps(&self) -> &[Step] {

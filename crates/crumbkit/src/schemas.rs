@@ -107,7 +107,7 @@ pub(crate) use self::envelope::{envelope, file_format};
 pub use self::row::{SchemaRow, SchemaShowRow};
 pub use self::served::{Served, documents};
 use crate::{
-    Batch, Call, Code, Document, Error, Failure, Listing, Page, Recovery, Run, Tool, codes,
+    Batch, Call, Code, Document, Error, Failure, Listing, Page, Recovery, Run, Step, Tool, codes,
 };
 
 #[cfg(test)]
@@ -203,9 +203,8 @@ pub struct SchemasShow {
 pub fn list(run: &mut Run, tool: &Tool, args: &SchemasList) -> Result<Listing<SchemaRow>, Error> {
     let root = run.command();
     let rows = documents(root, tool).iter().map(SchemaRow::new).collect();
-    Ok(args.page.first_of(rows).described("documents").next(
-        Call::new(SHOW_PATH).arg("ids"),
-        "prints the JSON Schema of each document.",
+    Ok(args.page.first_of(rows).described("documents").step(
+        Step::new("Print the JSON Schema of each document.").call(Call::new(SHOW_PATH).arg("ids")),
     ))
 }
 

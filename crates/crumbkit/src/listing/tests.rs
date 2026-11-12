@@ -7,7 +7,7 @@ use serde_json::json;
 use super::{Listing, NoSummary};
 use crate::Rows;
 use crate::row::Sealed;
-use crate::{Call, Row, Shape};
+use crate::{Call, Row, Shape, Step};
 
 #[derive(Serialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 struct Book {
@@ -92,13 +92,15 @@ fn a_listing_has_no_description_until_one_is_set() {
 }
 
 #[test]
-fn a_listing_has_no_next_step_until_one_is_set() {
-    let plain = Listing::new(books(1), 3);
-    let call = Call::new(&["books", "show"]).arg("ids");
-    let with_next = Listing::new(books(1), 3).next(call.clone(), "takes many ids.");
+fn a_listing_keeps_its_steps_in_the_order_they_were_added() {
+    let show = Step::new("Show books by id.").call(Call::new(&["books", "show"]).arg("ids"));
+    let list = Step::new("List the books.").call(Call::new(&["books", "list"]));
 
-    assert_eq!(plain.next_step(), None);
-    assert_eq!(with_next.next_step(), Some((&call, "takes many ids.")));
+    let listing = Listing::new(books(1), 3)
+        .step(show.clone())
+        .step(list.clone());
+
+    assert_eq!(listing.steps(), [show, list]);
 }
 
 #[test]
@@ -112,15 +114,15 @@ fn a_listing_serializes_as_the_array_of_its_rows() {
 }
 
 #[test]
-fn a_single_row_and_a_vec_have_no_total_no_description_and_no_next_step() {
+fn a_single_row_and_a_vec_have_no_total_no_description_and_no_steps() {
     let book = Book { id: 1 };
 
     assert_eq!(book.total(), None);
     assert_eq!(book.description(), None);
-    assert_eq!(book.next_step(), None);
+    assert_eq!(book.steps(), []);
     assert_eq!(books(2).total(), None);
     assert_eq!(books(2).description(), None);
-    assert_eq!(books(2).next_step(), None);
+    assert_eq!(books(2).steps(), []);
 }
 
 /// A summary of the books: how many there are, which prints as a line.

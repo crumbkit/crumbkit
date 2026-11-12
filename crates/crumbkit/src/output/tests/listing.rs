@@ -6,9 +6,10 @@ use std::process::ExitCode;
 use clap::{Arg, Command, CommandFactory as _, Parser};
 
 use super::{
-    Cli, PLANET_LISTING, Planet, finish_output, finish_with, mercury, parse_against, saturn,
+    Cli, PLANET_LISTING, Planet, SHOW_STEP_LINES, finish_output, finish_with, mercury,
+    parse_against, saturn, show_step,
 };
-use crate::{Call, Listing, Page};
+use crate::{Call, Listing, Page, Step};
 
 /// Returns a listing of Mercury and Saturn out of `total` planets.
 fn two_of(total: usize) -> Listing<Planet> {
@@ -18,7 +19,7 @@ fn two_of(total: usize) -> Listing<Planet> {
 /// Returns a listing of Mercury and Saturn out of `total` planets whose next
 /// step is `tool show <NAME>...`.
 fn two_of_with_next(total: usize) -> Listing<Planet> {
-    two_of(total).next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+    two_of(total).step(show_step())
 }
 
 #[test]
@@ -292,10 +293,7 @@ fn a_listings_json_has_the_total_with_fields() {
 fn the_next_line_follows_the_footer() {
     let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(8));
 
-    let expected = "\
-Showing 2 of 8. --all shows every one.
-Next: tool show <NAME>... shows planets by name.
-";
+    let expected = format!("Showing 2 of 8. --all shows every one.\n{SHOW_STEP_LINES}");
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.err, expected);
 }
@@ -304,10 +302,7 @@ Next: tool show <NAME>... shows planets by name.
 fn the_next_line_is_the_only_note_when_there_is_no_footer() {
     let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(2));
 
-    assert_eq!(
-        finished.err,
-        "Next: tool show <NAME>... shows planets by name.\n"
-    );
+    assert_eq!(finished.err, SHOW_STEP_LINES);
 }
 
 /// Returns [`two_of_with_next`] with the note `Planets from the 2006
@@ -320,11 +315,9 @@ fn two_of_with_note(total: usize) -> Listing<Planet> {
 fn a_note_prints_after_the_footer_and_before_the_next_line() {
     let finished = finish_with(&[], PLANET_LISTING, two_of_with_note(8));
 
-    let expected = "\
-Showing 2 of 8. --all shows every one.
-Planets from the 2006 definition.
-Next: tool show <NAME>... shows planets by name.
-";
+    let expected = format!(
+        "Showing 2 of 8. --all shows every one.\nPlanets from the 2006 definition.\n{SHOW_STEP_LINES}"
+    );
     assert_eq!(finished.err, expected);
 }
 
@@ -339,7 +332,7 @@ fn json_output_has_no_note() {
 
 #[test]
 fn a_next_step_whose_call_does_not_resolve_is_left_out_and_the_exit_code_is_0() {
-    let listing = || two_of(8).next(Call::new(&["remove"]), "removes a planet.");
+    let listing = || two_of(8).step(Step::new("Remove a planet.").call(Call::new(&["remove"])));
 
     let finished = finish_with(&[], PLANET_LISTING, listing());
     let json = finish_with(&["--json"], PLANET_LISTING, listing());
@@ -360,12 +353,12 @@ fn a_next_step_into_a_branch_the_run_did_not_parse_names_a_global_flag_of_the_ro
     let moons = Command::new("moons").subcommand(Command::new("show").arg(names));
     let output = parse_against(Cli::command().subcommand(moons), &[]);
     let call = Call::new(&["moons", "show"]).arg("names").arg("json");
-    let listing = two_of(2).next(call, "shows moons as JSON.");
+    let listing = two_of(2).step(Step::new("Show moons as JSON.").call(call));
 
     let finished = finish_output(output, PLANET_LISTING, listing);
 
     assert_eq!(
         finished.err,
-        "Next: tool moons show <NAME>... --json shows moons as JSON.\n"
+        "Next: Show moons as JSON.\n  tool moons show <NAME>... --json\n"
     );
 }
