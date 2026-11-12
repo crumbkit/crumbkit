@@ -48,6 +48,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   whether it installed the observer, installed it late, or refused it as
   full or completing. A caller that used the `bool` calls `.installed()`
   ([behaviour/run-observer]).
+- crumbkit: breaking: `Listing::total` returns `Total`: an exact count, a
+  lower bound or no count. A caller that used the `Option<usize>` calls
+  `Total::exact` ([behaviour/output/listings]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
   `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
   codes of any lifetime, so they also accept codes from `Code::runtime` that

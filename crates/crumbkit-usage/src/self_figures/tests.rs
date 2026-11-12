@@ -44,7 +44,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>) {
         .iter()
         .map(|row| serde_json::to_value(row).unwrap())
         .collect();
-    (rows, listing.total())
+    (rows, listing.total().exact())
 }
 
 #[test]

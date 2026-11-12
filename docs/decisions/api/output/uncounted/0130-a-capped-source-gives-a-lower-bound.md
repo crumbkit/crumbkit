@@ -1,7 +1,7 @@
 # ADR-0130. A capped source gives a lower bound
 
 - Date: 2026-10-21
-- Status: accepted
+- Status: amended by ADR-0210
 
 ## Context
 

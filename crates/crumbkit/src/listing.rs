@@ -1,5 +1,5 @@
-//! A page of rows with the total number of matching rows, when the tool
-//! counted them.
+//! A page of rows with the total number of matching rows, as far as the
+//! tool counted them.
 
 use std::fmt;
 
@@ -53,17 +53,10 @@ mod tests;
 pub struct Listing<R: Row, S = NoSummary> {
     /// The rows to print, in order.
     rows: Vec<R>,
-    /// The number of rows that matched, or that the tool read when the
-    /// listing is capped, which `new` keeps at least `rows.len()`, or
-    /// `None` when the tool did not count them.
-    total: Option<usize>,
-    /// Whether the source of a listing without a total holds rows after
-    /// these. A listing with a total reads this from the total instead.
-    more: bool,
-    /// Whether the tool read only part of its source, so `total` counts
-    /// the rows it read and the source holds more. Only a listing with a
-    /// total is capped.
-    capped: bool,
+    /// The number of rows that matched, the number that the tool read from
+    /// a source that holds more, or neither when the tool did not count
+    /// them. A count is at least `rows.len()`.
+    total: Total,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
     /// The phrase that names one row in the footer and the cut line of a
@@ -110,9 +103,7 @@ impl<R: Row> Listing<R> {
         };
         Self {
             rows,
-            total: Some(total),
-            more: false,
-            capped: false,
+            total: Total::Exact(total),
             description: None,
             singular: None,
             summary: None,
@@ -141,8 +132,7 @@ impl<R: Row> Listing<R> {
     #[must_use]
     pub const fn uncounted(rows: Vec<R>, more: bool) -> Self {
         let mut listing = Self::new(rows, 0);
-        listing.total = None;
-        listing.more = more;
+        listing.total = Total::Unknown { more };
         listing
     }
 
@@ -236,8 +226,6 @@ impl<R: Row, S> Listing<R, S> {
         Listing {
             rows: self.rows,
             total: self.total,
-            more: self.more,
-            capped: self.capped,
             description: self.description,
             singular: self.singular,
             summary: Some(summary),
@@ -358,7 +346,9 @@ impl<R: Row, S> Listing<R, S> {
     /// ```
     #[must_use]
     pub const fn capped(mut self, capped: bool) -> Self {
-        self.capped = capped && self.total.is_some();
+        if let (true, Total::Exact(read)) = (capped, self.total) {
+            self.total = Total::AtLeast(read);
+        }
         self
     }
 
@@ -369,13 +359,15 @@ impl<R: Row, S> Listing<R, S> {
         &self.rows
     }
 
-    /// Returns the number of rows that matched, which the footer and the
-    /// JSON document's `total` give, or `None` when the tool did not count
-    /// them ([`Listing::uncounted`]) or read only some of them
-    /// ([`Listing::capped`]).
+    /// Returns the listing's total: the number of rows that matched, the
+    /// number that the tool read from a source that holds more
+    /// ([`Listing::capped`]), or no count ([`Listing::uncounted`]).
+    /// [`Total::exact`] returns the number of rows that matched, which the
+    /// footer and the JSON document's `total` give, or `None` for the
+    /// other two.
     #[must_use]
-    pub const fn total(&self) -> Option<usize> {
-        if self.capped { None } else { self.total }
+    pub const fn total(&self) -> Total {
+        self.total
     }
 
     /// Returns the summary that [`Listing::summary`] set, or `None` when
@@ -408,7 +400,7 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::Rows for Listing<R
     }
 
     fn total(&self) -> Option<usize> {
-        Listing::total(self)
+        self.total.exact()
     }
 }
 
@@ -418,14 +410,18 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Li
     const SHAPE: Shape = Shape::Listing;
 
     fn at_least(&self) -> Option<usize> {
-        self.total.filter(|_| self.capped)
+        match self.total {
+            Total::AtLeast(read) => Some(read),
+            Total::Exact(_) | Total::Unknown { .. } => None,
+        }
     }
 
     fn more(&self) -> bool {
-        self.capped
-            || self
-                .total
-                .map_or(self.more, |total| self.rows.len() < total)
+        match self.total {
+            Total::Exact(total) => self.rows.len() < total,
+            Total::AtLeast(_) => true,
+            Total::Unknown { more } => more,
+        }
     }
 
     fn description(&self) -> Option<&str> {
@@ -459,6 +455,54 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Li
     fn problems(&self) -> usize {
         self.problems
             .unwrap_or_else(|| crate::row::problems::count(&self.rows))
+    }
+}
+
+/// The total of a [`Listing`]: how many rows matched, as far as the tool
+/// knows. [`Listing::total`] returns it.
+///
+/// ```
+/// # #[derive(serde::Serialize, schemars::JsonSchema)]
+/// # struct Book { id: u32 }
+/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// use crumbkit::{Listing, Total};
+///
+/// let books: Vec<Book> = (1..=6).map(|id| Book { id }).collect();
+/// let listing = Listing::from_all(books, Some(4));
+///
+/// assert_eq!(listing.total(), Total::Exact(6));
+/// assert_eq!(listing.total().exact(), Some(6));
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Total {
+    /// The tool counted every matching row, and this many matched.
+    /// [`Listing::new`] and [`Listing::from_all`] give it. The listing
+    /// leaves rows out when it shows fewer rows than the count. The JSON
+    /// document prints the count under `total`.
+    Exact(usize),
+    /// The tool read this many rows from a source that holds more, so at
+    /// least this many matched. [`Listing::capped`] gives it. The listing
+    /// always leaves rows out, and its text footer gives the count as a
+    /// lower bound.
+    AtLeast(usize),
+    /// The tool did not count the matching rows. [`Listing::uncounted`]
+    /// gives it. `more` says whether the source holds rows after the
+    /// listing's rows, and the listing leaves rows out when it does.
+    Unknown {
+        /// Whether the source holds rows after the listing's rows.
+        more: bool,
+    },
+}
+
+impl Total {
+    /// Returns the number of rows that matched for an [`Total::Exact`]
+    /// total, or `None` for a lower bound or an unknown total.
+    #[must_use]
+    pub const fn exact(self) -> Option<usize> {
+        match self {
+            Self::Exact(total) => Some(total),
+            Self::AtLeast(_) | Self::Unknown { .. } => None,
+        }
     }
 }
 

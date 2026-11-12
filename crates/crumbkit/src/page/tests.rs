@@ -340,7 +340,7 @@ fn listing_keeps_the_rows_and_the_total_and_carries_the_bound() {
     let listing = page.listing(rows(2), 40);
 
     assert_eq!(listing.limit_bound(), Some(10));
-    assert_eq!(listing.total(), Some(40));
+    assert_eq!(listing.total().exact(), Some(40));
 }
 
 #[test]
@@ -366,7 +366,7 @@ fn uncounted_keeps_every_row_without_a_total_when_the_source_ends_within_the_pag
     let listing = page.uncounted(rows(2));
 
     assert_eq!(listing, Listing::uncounted(rows(2), false).bounded(10));
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total().exact(), None);
 }
 
 #[test]
@@ -380,7 +380,7 @@ fn uncounted_stops_reading_the_source_one_row_past_the_page() {
 
     let listing = page.uncounted(source);
 
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total().exact(), None);
     assert_eq!(read, 3);
 }
 
@@ -391,5 +391,5 @@ fn uncounted_with_all_reads_every_row_and_gives_no_total() {
     let listing = page.uncounted(rows(30));
 
     assert_eq!(listing, Listing::uncounted(rows(30), false).bounded(10));
-    assert_eq!(listing.total(), None);
+    assert_eq!(listing.total().exact(), None);
 }

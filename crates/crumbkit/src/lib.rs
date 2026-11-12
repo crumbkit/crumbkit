@@ -102,7 +102,7 @@ pub use crate::expect::Expect;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::fetch::fetch_each;
 pub use crate::field::{Field, FieldValue};
-pub use crate::listing::{Listing, NoSummary};
+pub use crate::listing::{Listing, NoSummary, Total};
 pub use crate::output::{
     DryRun, JsonLayout, Room, Run, Streaming, ViewFlags, Yes, finish, finish_to, stream, stream_to,
 };
