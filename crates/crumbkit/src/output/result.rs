@@ -1,6 +1,17 @@
 //! `write_result`, which writes a result that is not a failure in the
 //! format that the output flags choose, within the output budget
 //! (ADR-0046).
+//!
+//! A listing or a list that passes the output budget prints its first rows,
+//! marked as cut short (ADR-0046). A document without the envelope writes
+//! its JSON bare (ADR-0016).
+//!
+//! A result's final write fits its text table to the width that the sink
+//! gives the result, after the output budget measured the unfitted table.
+//! `finish` gives its sink the width of the terminal that standard output
+//! is, and a tool gives its own sink a width with `Sink::fitted` (ADR-0121,
+//! ADR-0128, ADR-0134). The same final write gives the table's cells their
+//! styles, which the budget does not count either (ADR-0150).
 
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -13,7 +24,7 @@ use super::budget::{self, Cut, Over, OverBudget};
 use super::columns::{columns, values};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
-use super::layout::JsonLayout;
+use super::layout::{self, JsonLayout};
 use super::table::{self, Table};
 use super::{Run, children, fields, lines, listing, problems, prose};
 use crate::help::view::{Kind, Printed};
@@ -24,11 +35,8 @@ use crate::view::View;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
-mod cut;
-mod fitted;
 pub(super) mod headed;
 mod rerun;
-mod unwrapped;
 
 /// What [`write_result`] printed of a result.
 #[derive(Debug)]
@@ -588,5 +596,155 @@ impl<'a, T: Rows> Prepared<'a, T> {
             out.write_all(line.as_bytes())?;
         }
         Ok(())
+    }
+
+    /// Writes the most first rows of a listing or a list that fit in
+    /// `budget`, marked as cut short with `code`, which `spelled` spells.
+    /// A document that always prints its first answer prints at least one
+    /// row.
+    fn cut(
+        &mut self,
+        sink: &mut dyn Deliver,
+        spelled: String,
+        code: &'static Code,
+        budget: usize,
+    ) -> io::Result<(Answer, usize)> {
+        let rows = self.rows;
+        let cut = Cut {
+            code: spelled,
+            budget,
+        };
+        let low = usize::from(self.document.get_always_print_first());
+        let mut fits = |shown| {
+            let bytes = budget::measure(|counter| self.write(counter, shown, Some(&cut), None))?;
+            Ok(bytes <= budget)
+        };
+        let shown = budget::largest(low, rows - 1, &mut fits)?;
+        if shown == 0 && !fits(0)? {
+            // Even the result without rows passes the budget, as a long
+            // summary can, so the result is refused as a single row is.
+            let over = OverBudget {
+                code,
+                budget,
+                over: Over::Row,
+            };
+            return Ok((Answer::Refused(over), 0));
+        }
+        let bytes = self.measured_write(sink, shown, Some(&cut), None)?;
+        self.send_notes(sink, &mut Vec::new(), shown, Some(&cut));
+        Ok((Answer::Cut(code), bytes))
+    }
+
+    /// Writes the line that says the budget cut the result short to `out`.
+    fn write_cut_line(&self, out: &mut impl Write, shown: usize, cut: &Cut) -> io::Result<()> {
+        let listing = T::SHAPE == Shape::Listing;
+        // A list holds every row it has, and a listing without a total has
+        // no count to give.
+        let total = match self.value.total() {
+            None if !listing => Some(self.value.rows().len()),
+            total => total,
+        };
+        budget::write_cut_line(
+            out,
+            shown,
+            total,
+            self.value.description(),
+            self.value.singular(),
+            cut.budget,
+            listing,
+        )
+    }
+
+    /// Measures the result as [`Prepared::write`] writes it, then delivers
+    /// it to `sink` as [`Prepared::deliver_fitted`] does, and returns the
+    /// number of bytes measured. The budget counts the unfitted table, so
+    /// the rows that print never depend on the terminal.
+    fn measured_write(
+        &mut self,
+        sink: &mut dyn Deliver,
+        shown: usize,
+        cut: Option<&Cut>,
+        failures: Option<Failures<'_>>,
+    ) -> io::Result<usize> {
+        let bytes = budget::measure(|counter| self.write(counter, shown, cut, failures))?;
+        self.deliver_fitted(sink, bytes, shown, cut, failures)?;
+        Ok(bytes)
+    }
+
+    /// Composes the result with its first `shown` rows as
+    /// [`Prepared::write`] writes it, with the text table fitted to the
+    /// width that `sink` gives the result (ADR-0121) and its cells in their
+    /// styles when the sink wants styles (ADR-0150), and delivers it to
+    /// `sink` as the result in one piece. `measured` is the number of bytes
+    /// of the unfitted result, which the fitted result does not pass.
+    fn deliver_fitted(
+        &mut self,
+        sink: &mut dyn Deliver,
+        measured: usize,
+        shown: usize,
+        cut: Option<&Cut>,
+        failures: Option<Failures<'_>>,
+    ) -> io::Result<()> {
+        let mut piece = Vec::with_capacity(measured);
+        self.final_write = true;
+        let written = self.write(&mut piece, shown, cut, failures);
+        self.final_write = false;
+        written?;
+        sink.deliver(Role::Result, &piece)
+    }
+
+    /// Delivers `measured`, the bytes that [`Prepared::write`] wrote for the
+    /// whole result, to `sink` as the result. A text table that the sink
+    /// gives a width, or whose cells have styles, is composed again fitted
+    /// to that width and with those styles (ADR-0150).
+    fn write_measured(
+        &mut self,
+        sink: &mut dyn Deliver,
+        measured: &[u8],
+        shown: usize,
+        failures: Option<Failures<'_>>,
+    ) -> io::Result<()> {
+        let decorated = self
+            .table
+            .as_ref()
+            .is_some_and(|table| self.width.is_some() || table.is_styled());
+        if decorated {
+            return self.deliver_fitted(sink, measured.len(), shown, None, failures);
+        }
+        sink.deliver(Role::Result, measured)
+    }
+
+    /// Writes the JSON of a document without the envelope with its first
+    /// `shown` rows, or the whole result when `all` is set (ADR-0016).
+    ///
+    /// Without `--fields`, the whole result prints as its type serializes it,
+    /// so a command prints an existing document unchanged, and its first
+    /// rows print as an array. With `--fields`, only those fields of each row
+    /// print, in that order, as an object for a single row and as an array
+    /// otherwise.
+    fn write_unwrapped(&self, out: &mut impl Write, shown: usize, all: bool) -> io::Result<()> {
+        let rows = self.value.rows();
+        if self.view.names().is_none() {
+            return match rows.get(..shown) {
+                Some(first) if !all => layout::write(out, first, self.layout),
+                _ => layout::write(out, self.value, self.layout),
+            };
+        }
+        match self.values {
+            [single] if T::SHAPE == Shape::Row => {
+                let selected = Selected {
+                    row: single,
+                    columns: self.columns,
+                };
+                layout::write(out, &selected, self.layout)
+            }
+            list => {
+                let selected = SelectedRows {
+                    rows: list.get(..shown).unwrap_or(list),
+                    columns: self.columns,
+                };
+                layout::write(out, &selected, self.layout)
+            }
+        }
     }
 }
