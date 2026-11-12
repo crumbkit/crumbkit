@@ -525,13 +525,13 @@ mod rows {
         assert_eq!(print(DERIVED, derived(), &[]).unwrap().0, 1);
     }
 
-    /// Defines a row type `$name` whose type attribute is
-    /// `#[serde(rename_all = $rule)]`, or none without a rule. Two of its
+    /// Defines a row type `$name` whose type attribute is `#[serde(...)]`
+    /// with the given keys, or none without keys. Two of its
     /// fields have no rename of their own, and two have one.
     macro_rules! renamed_row {
-        ($name:ident $(, $rule:literal)?) => {
+        ($name:ident $(, $($serde:tt)+)?) => {
             #[derive(Serialize, JsonSchema, crumbkit_derive::Row)]
-            $(#[serde(rename_all = $rule)])?
+            $(#[serde($($serde)+)])?
             struct $name {
                 #[row(column)]
                 id: u32,
@@ -560,14 +560,15 @@ mod rows {
     }
 
     renamed_row!(Plain);
-    renamed_row!(Lower, "lowercase");
-    renamed_row!(Upper, "UPPERCASE");
-    renamed_row!(Pascal, "PascalCase");
-    renamed_row!(Camel, "camelCase");
-    renamed_row!(Snake, "snake_case");
-    renamed_row!(ScreamingSnake, "SCREAMING_SNAKE_CASE");
-    renamed_row!(Kebab, "kebab-case");
-    renamed_row!(ScreamingKebab, "SCREAMING-KEBAB-CASE");
+    renamed_row!(Lower, rename_all = "lowercase");
+    renamed_row!(Upper, rename_all = "UPPERCASE");
+    renamed_row!(Pascal, rename_all = "PascalCase");
+    renamed_row!(Camel, rename_all = "camelCase");
+    renamed_row!(Snake, rename_all = "snake_case");
+    renamed_row!(ScreamingSnake, rename_all = "SCREAMING_SNAKE_CASE");
+    renamed_row!(Kebab, rename_all = "kebab-case");
+    renamed_row!(ScreamingKebab, rename_all = "SCREAMING-KEBAB-CASE");
+    renamed_row!(KebabForSerialize, rename_all(serialize = "kebab-case"));
 
     /// Checks that `R`'s columns are `columns` and its long columns are the
     /// two renamed fields, and that every one of them is a key of `row`'s
@@ -599,6 +600,7 @@ mod rows {
         assert_names_are_keys(&ScreamingSnake::sample(), &["ID", "FIRST_PAGE_COUNT"]);
         assert_names_are_keys(&Kebab::sample(), &["id", "first-page-count"]);
         assert_names_are_keys(&ScreamingKebab::sample(), &["ID", "FIRST-PAGE-COUNT"]);
+        assert_names_are_keys(&KebabForSerialize::sample(), &["id", "first-page-count"]);
     }
 
     /// A row that holds a value of any printable type.

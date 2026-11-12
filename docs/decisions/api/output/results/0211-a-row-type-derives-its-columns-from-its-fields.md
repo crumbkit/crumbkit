@@ -26,9 +26,10 @@ that it did not check. crumbkit-derive derived only `Failure`.
   1 copied by hand, because serde_derive does not export them and
   serde_derive_internals would add a dependency.
 - An unknown key, a key given twice, `column` with `long`, `uncut` without
-  either, any key on a field that serde skips or flattens, `problem` on two
-  fields, and an enum, a union, a tuple struct or a unit struct are compile
-  errors.
+  either, `problem` without `column`, `problem` on two fields, any key on a
+  field that serde skips or flattens, a type marked
+  `#[serde(transparent)]`, and an enum, a union, a tuple struct or a unit
+  struct are compile errors. Unit tests check each message.
 - The derive writes only the four constants. A row that sets another item
   of `Row`, an enum, and a row whose `Serialize` is written by hand keep a
   hand-written impl.
@@ -40,8 +41,8 @@ that it did not check. crumbkit-derive derived only `Failure`.
 
 A derived row type cannot name a column that is not a field of its JSON.
 The other items of `Row` can gain keys in a later minor release without a
-break. The README's example runs as a doctest only when the `derive`
-feature is on.
+break. The README's example derives `Row`, so crumbkit's doctests run with
+the `derive` feature.
 
 Considered: `rename` alone, which gives wrong names to a type that uses
 `rename_all`; the `derive` feature on by default, which builds one more

@@ -177,7 +177,7 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// | `column` | field | The field's name in `COLUMNS`. |
 /// | `long` | field | The field's name in `LONG_COLUMNS`. A field gives `column` or `long`, and never both. |
 /// | `uncut` | field that gives `column` or `long` | The field's name in `UNCUT_COLUMNS` as well. |
-/// | `problem` | field | The field's name as `PROBLEM`. At most one field gives it. |
+/// | `problem` | field that gives `column` | The field's name as `PROBLEM`. At most one field gives it. |
 /// | `crate = PATH` | type | The path of the crate that holds `Row`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each list keeps the order of the fields in the struct, so a type
@@ -228,6 +228,7 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// with its output:
 ///
 /// ```rust,ignore
+/// #[automatically_derived]
 /// impl ::crumbkit::Row for Book {
 ///     const COLUMNS: &'static [&'static str] = &["id", "name", "warning"];
 ///     const LONG_COLUMNS: &'static [&'static str] = &["pageCount"];
@@ -239,109 +240,13 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 ///
 /// # Refused uses
 ///
-/// Each of these is a compile error that names the field or the type. A
-/// key given twice is one too.
-///
-/// A key that `#[row(...)]` does not have:
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// # use schemars::JsonSchema;
-/// # use serde::Serialize;
-/// #[derive(Serialize, JsonSchema, Row)]
-/// struct Book {
-///     #[row(colum)]
-///     id: u32,
-/// }
-/// ```
-///
-/// `column` and `long` on one field:
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// # use schemars::JsonSchema;
-/// # use serde::Serialize;
-/// #[derive(Serialize, JsonSchema, Row)]
-/// struct Book {
-///     #[row(column, long)]
-///     id: u32,
-/// }
-/// ```
-///
-/// `uncut` on a field that gives neither `column` nor `long`:
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// # use schemars::JsonSchema;
-/// # use serde::Serialize;
-/// #[derive(Serialize, JsonSchema, Row)]
-/// struct Book {
-///     #[row(column)]
-///     id: u32,
-///     #[row(uncut)]
-///     title: String,
-/// }
-/// ```
-///
-/// Any key on a field marked `#[serde(skip)]`, `#[serde(skip_serializing)]`
-/// or `#[serde(flatten)]`, because the JSON holds no field of its name:
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// # use schemars::JsonSchema;
-/// # use serde::Serialize;
-/// #[derive(Serialize, JsonSchema, Row)]
-/// struct Book {
-///     #[row(column)]
-///     id: u32,
-///     #[row(long)]
-///     #[serde(skip)]
-///     notes: String,
-/// }
-/// ```
-///
-/// `problem` on two fields:
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// # use schemars::JsonSchema;
-/// # use serde::Serialize;
-/// #[derive(Serialize, JsonSchema, Row)]
-/// struct Check {
-///     #[row(column, problem)]
-///     error: Option<String>,
-///     #[row(column, problem)]
-///     warning: Option<String>,
-/// }
-/// ```
-///
-/// An enum, a tuple struct and a union:
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// # use schemars::JsonSchema;
-/// # use serde::Serialize;
-/// #[derive(Serialize, JsonSchema, Row)]
-/// enum State {
-///     Done,
-/// }
-/// ```
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// # use schemars::JsonSchema;
-/// # use serde::Serialize;
-/// #[derive(Serialize, JsonSchema, Row)]
-/// struct Pair(u32, u32);
-/// ```
-///
-/// ```compile_fail
-/// # use crumbkit::Row;
-/// #[derive(Row)]
-/// union Bits {
-///     whole: u32,
-/// }
-/// ```
+/// Each of these is a compile error that names the field or the type: an
+/// unknown key, a key given twice, `column` with `long`, `uncut` without
+/// either, `problem` without `column`, `problem` on a second field, and any
+/// key on a field marked `#[serde(skip)]`, `#[serde(skip_serializing)]` or
+/// `#[serde(flatten)]`. The derive also refuses a type marked
+/// `#[serde(transparent)]`, an enum, a union, a tuple struct and a unit
+/// struct.
 #[proc_macro_derive(Row, attributes(row))]
 pub fn derive_row(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);

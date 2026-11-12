@@ -21,18 +21,6 @@ fn refusal(input: TokenStream) -> String {
     }
 }
 
-/// Returns the `COLUMNS` that the derive writes for a struct with the
-/// type attributes `attrs` and one column, `first_page_count`.
-fn column_of(attrs: &TokenStream) -> String {
-    expanded(quote! {
-        #attrs
-        struct Book {
-            #[row(column)]
-            first_page_count: u32,
-        }
-    })
-}
-
 #[test]
 fn the_expansion_of_the_sample_struct_matches_the_documented_expansion() {
     let input = quote! {
@@ -51,6 +39,7 @@ fn the_expansion_of_the_sample_struct_matches_the_documented_expansion() {
         }
     };
     let expected = quote! {
+        #[automatically_derived]
         impl ::crumbkit::Row for Book {
             const COLUMNS: &'static [&'static str] = &["id", "name", "warning"];
             const LONG_COLUMNS: &'static [&'static str] = &["pageCount"];
@@ -70,6 +59,7 @@ fn a_struct_without_row_keys_gets_empty_lists_and_no_problem_field() {
         }
     });
     let expected = quote! {
+        #[automatically_derived]
         impl ::crumbkit::Row for Empty {
             const COLUMNS: &'static [&'static str] = &[];
             const LONG_COLUMNS: &'static [&'static str] = &[];
@@ -78,47 +68,6 @@ fn a_struct_without_row_keys_gets_empty_lists_and_no_problem_field() {
         }
     };
     assert_eq!(output, expected.to_string());
-}
-
-#[test]
-fn each_rename_all_rule_changes_a_field_name_as_serde_does() {
-    let rules = [
-        ("lowercase", "first_page_count"),
-        ("UPPERCASE", "FIRST_PAGE_COUNT"),
-        ("PascalCase", "FirstPageCount"),
-        ("camelCase", "firstPageCount"),
-        ("snake_case", "first_page_count"),
-        ("SCREAMING_SNAKE_CASE", "FIRST_PAGE_COUNT"),
-        ("kebab-case", "first-page-count"),
-        ("SCREAMING-KEBAB-CASE", "FIRST-PAGE-COUNT"),
-    ];
-    for (rule, name) in rules {
-        let output = column_of(&quote!(#[serde(rename_all = #rule)]));
-        let columns = format!("const COLUMNS : & 'static [& 'static str] = & [{name:?}] ;");
-        assert!(output.contains(&columns), "{rule}: {output}");
-    }
-}
-
-#[test]
-fn a_rename_all_rule_for_serialize_alone_changes_the_field_name() {
-    let output = column_of(&quote!(#[serde(rename_all(serialize = "kebab-case"))]));
-    assert!(output.contains(r#"& ["first-page-count"]"#), "{output}");
-}
-
-#[test]
-fn a_rename_on_the_field_wins_over_the_rename_all_rule() {
-    let output = expanded(quote! {
-        #[serde(rename_all = "UPPERCASE")]
-        struct Book {
-            #[row(column)]
-            #[serde(rename = "Title")]
-            title: String,
-            #[row(column)]
-            #[serde(rename(serialize = "Year", deserialize = "year"))]
-            year: u16,
-        }
-    });
-    assert!(output.contains(r#"& ["Title" , "Year"]"#), "{output}");
 }
 
 #[test]
@@ -157,13 +106,11 @@ fn the_impl_copies_the_generic_parameters_and_the_where_clause() {
             value: T,
         }
     });
-    assert!(
-        output.starts_with(
-            &quote!(impl<'a, T: Serialize> ::crumbkit::Row for Labelled<'a, T> where T: JsonSchema,)
-                .to_string()
-        ),
-        "{output}"
-    );
+    let head = quote! {
+        #[automatically_derived]
+        impl<'a, T: Serialize> ::crumbkit::Row for Labelled<'a, T> where T: JsonSchema,
+    };
+    assert!(output.starts_with(&head.to_string()), "{output}");
 }
 
 #[test]
@@ -180,182 +127,95 @@ fn the_crate_key_changes_the_path_of_the_trait() {
 }
 
 #[test]
-fn an_unknown_key_is_refused_with_the_field_name_and_the_accepted_keys() {
-    let message = refusal(quote! {
-        struct Book {
-            #[row(colum)]
-            id: u32,
-        }
-    });
-    assert_eq!(
-        message,
-        "the field `id` gives `colum`, and #[row(...)] has no such key. Its keys are `column`, `long`, `uncut` and `problem` on a field, and `crate` on the type"
-    );
-}
-
-#[test]
-fn a_key_given_twice_is_refused() {
-    let message = refusal(quote! {
-        struct Book {
-            #[row(column)]
-            #[row(column)]
-            id: u32,
-        }
-    });
-    assert_eq!(message, "the field `id` gives `column` twice");
-}
-
-#[test]
-fn a_field_with_both_column_and_long_is_refused() {
-    let message = refusal(quote! {
-        struct Book {
-            #[row(column, long)]
-            id: u32,
-        }
-    });
-    assert_eq!(
-        message,
-        "the field `id` gives both `column` and `long`, and a field is in only one of the two lists"
-    );
-}
-
-#[test]
-fn uncut_without_column_or_long_is_refused() {
-    let message = refusal(quote! {
-        struct Book {
-            #[row(uncut)]
-            id: u32,
-        }
-    });
-    assert_eq!(
-        message,
-        "the field `id` gives `uncut` without `column` or `long`, and only a column can be uncut"
-    );
-}
-
-#[test]
-fn a_row_key_on_a_field_that_serde_skips_or_flattens_is_refused() {
-    for key in ["skip", "skip_serializing", "flatten"] {
-        let key = syn::Ident::new(key, proc_macro2::Span::call_site());
-        let message = refusal(quote! {
-            struct Book {
-                #[serde(#key)]
-                #[row(long)]
-                notes: String,
-            }
-        });
-        assert_eq!(
-            message,
-            format!(
-                "the field `notes` is marked #[serde({key})], so the JSON holds no field of that name, and it takes no #[row(...)] key"
-            )
-        );
+fn each_refused_use_is_a_compile_error_that_names_the_field_or_the_type() {
+    let dropped = |key: &str| {
+        format!(
+            "the field `notes` is marked #[serde({key})], so the JSON holds no field of that name, and it takes no #[row(...)] key"
+        )
+    };
+    let keys =
+        "Its keys are `column`, `long`, `uncut` and `problem` on a field, and `crate` on the type";
+    let refused = "#[derive(Row)] supports a struct with named fields, and";
+    let cases = [
+        (
+            quote! { struct Book { #[row(colum)] id: u32 } },
+            format!("the field `id` gives `colum`, and #[row(...)] has no such key. {keys}"),
+        ),
+        (
+            quote! { #[row(colum)] struct Book { id: u32 } },
+            format!("the type gives `colum`, and #[row(...)] has no such key. {keys}"),
+        ),
+        (
+            quote! { struct Book { #[row(column)] #[row(column)] id: u32 } },
+            "the field `id` gives `column` twice".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(column, long)] id: u32 } },
+            "the field `id` gives both `column` and `long`, and a field is in only one of the two lists".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(uncut)] id: u32 } },
+            "the field `id` gives `uncut` without `column` or `long`, and only a column can be uncut".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(long, problem)] error: Option<String> } },
+            "the field `error` gives `problem` without `column`, and the problem field is one of the compact columns".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[serde(skip)] #[row(long)] notes: String } },
+            dropped("skip"),
+        ),
+        (
+            quote! { struct Book { #[serde(skip_serializing)] #[row(long)] notes: String } },
+            dropped("skip_serializing"),
+        ),
+        (
+            quote! { struct Book { #[serde(flatten)] #[row(long)] notes: Notes } },
+            dropped("flatten"),
+        ),
+        (
+            quote! {
+                struct Check {
+                    #[row(column, problem)] error: Option<String>,
+                    #[row(column, problem)] warning: Option<String>,
+                }
+            },
+            "the fields `error` and `warning` both give `problem`, and a row has at most one problem field".to_owned(),
+        ),
+        (
+            quote! { #[row(column)] struct Book { id: u32 } },
+            "`column` goes in the #[row(...)] attribute of a field".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(crate = ::crumbkit)] id: u32 } },
+            "`crate` goes in the #[row(...)] attribute of the type".to_owned(),
+        ),
+        (
+            quote! { #[serde(transparent)] struct Id { #[row(column)] id: u32 } },
+            "the type `Id` is marked #[serde(transparent)], so its JSON has no field names for #[derive(Row)] to list".to_owned(),
+        ),
+        (
+            quote! { enum State { Done } },
+            format!("{refused} `State` is an enum, so it writes `impl Row` by hand"),
+        ),
+        (
+            quote! { union Bits { whole: u32 } },
+            format!("{refused} `Bits` is a union"),
+        ),
+        (
+            quote! { struct Pair(u32, u32); },
+            format!("{refused} `Pair` is a tuple struct"),
+        ),
+        (
+            quote! { struct Nothing; },
+            format!("{refused} `Nothing` is a unit struct"),
+        ),
+        (
+            quote! { #[serde(rename_all = "Title Case")] struct Book { #[row(column)] id: u32 } },
+            "#[serde(rename_all)] has no rule \"Title Case\". Its rules are \"lowercase\", \"UPPERCASE\", \"PascalCase\", \"camelCase\", \"snake_case\", \"SCREAMING_SNAKE_CASE\", \"kebab-case\" and \"SCREAMING-KEBAB-CASE\"".to_owned(),
+        ),
+    ];
+    for (input, message) in cases {
+        assert_eq!(refusal(input.clone()), message, "{input}");
     }
-}
-
-#[test]
-fn a_problem_key_on_two_fields_is_refused_with_both_names() {
-    let message = refusal(quote! {
-        struct Check {
-            #[row(column, problem)]
-            error: Option<String>,
-            #[row(column, problem)]
-            warning: Option<String>,
-        }
-    });
-    assert_eq!(
-        message,
-        "the fields `error` and `warning` both give `problem`, and a row has at most one problem field"
-    );
-}
-
-#[test]
-fn a_field_key_on_the_type_is_refused() {
-    let message = refusal(quote! {
-        #[row(column)]
-        struct Book {
-            id: u32,
-        }
-    });
-    assert_eq!(
-        message,
-        "`column` goes in the #[row(...)] attribute of a field"
-    );
-}
-
-#[test]
-fn the_crate_key_on_a_field_is_refused() {
-    let message = refusal(quote! {
-        struct Book {
-            #[row(crate = ::crumbkit)]
-            id: u32,
-        }
-    });
-    assert_eq!(
-        message,
-        "`crate` goes in the #[row(...)] attribute of the type"
-    );
-}
-
-#[test]
-fn an_enum_is_refused() {
-    let message = refusal(quote! {
-        enum State {
-            Done,
-        }
-    });
-    assert_eq!(
-        message,
-        "#[derive(Row)] supports a struct with named fields, and `State` is an enum, so it writes `impl Row` by hand"
-    );
-}
-
-#[test]
-fn a_union_is_refused() {
-    let message = refusal(quote! {
-        union Bits {
-            whole: u32,
-        }
-    });
-    assert_eq!(
-        message,
-        "#[derive(Row)] supports a struct with named fields, and `Bits` is a union"
-    );
-}
-
-#[test]
-fn a_tuple_struct_is_refused() {
-    let message = refusal(quote! {
-        struct Pair(u32, u32);
-    });
-    assert_eq!(
-        message,
-        "#[derive(Row)] supports a struct with named fields, and `Pair` is a tuple struct"
-    );
-}
-
-#[test]
-fn a_unit_struct_is_refused() {
-    let message = refusal(quote! {
-        struct Nothing;
-    });
-    assert_eq!(
-        message,
-        "#[derive(Row)] supports a struct with named fields, and `Nothing` is a unit struct"
-    );
-}
-
-#[test]
-fn an_unknown_rename_all_rule_is_refused() {
-    let message = refusal(quote! {
-        #[serde(rename_all = "Title Case")]
-        struct Book {
-            #[row(column)]
-            id: u32,
-        }
-    });
-    assert_eq!(
-        message,
-        "#[serde(rename_all)] has no rule \"Title Case\". Its rules are \"lowercase\", \"UPPERCASE\", \"PascalCase\", \"camelCase\", \"snake_case\", \"SCREAMING_SNAKE_CASE\", \"kebab-case\" and \"SCREAMING-KEBAB-CASE\""
-    );
 }

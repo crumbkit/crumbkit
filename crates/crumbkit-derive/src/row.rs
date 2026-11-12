@@ -18,6 +18,9 @@ mod tests;
 /// lists them.
 const KEYS: &str = "`column`, `long`, `uncut` and `problem` on a field, and `crate` on the type";
 
+/// The keys that `#[row(...)]` accepts on a field.
+const FIELD_KEYS: [&str; 4] = ["column", "long", "uncut", "problem"];
+
 /// Returns the code that `#[derive(Row)]` writes for `input`, or the compile
 /// error that names what the input gets wrong.
 pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
@@ -66,9 +69,13 @@ fn read(input: &DeriveInput) -> syn::Result<RowType> {
         uncut: Vec::new(),
         problem: None,
     };
-    let rule = rename_all(&input.attrs)?;
-    for field in fields {
-        read_field(&mut row, field, rule)?;
+    let rule = rename_all(&input.attrs, name)?;
+    // Every field of `Fields::Named` has a name.
+    for (field, ident) in fields
+        .iter()
+        .filter_map(|field| Some((field, field.ident.as_ref()?)))
+    {
+        read_field(&mut row, field, ident, rule)?;
     }
     Ok(row)
 }
@@ -81,9 +88,13 @@ fn type_crate(attrs: &[Attribute]) -> syn::Result<Path> {
         attr.parse_nested_meta(|meta| {
             if !meta.path.is_ident("crate") {
                 let key = meta.path.to_token_stream().to_string();
-                return Err(meta.error(format!(
-                    "`{key}` goes in the #[row(...)] attribute of a field"
-                )));
+                return Err(meta.error(if FIELD_KEYS.contains(&key.as_str()) {
+                    format!("`{key}` goes in the #[row(...)] attribute of a field")
+                } else {
+                    format!(
+                        "the type gives `{key}`, and #[row(...)] has no such key. Its keys are {KEYS}"
+                    )
+                }));
             }
             if krate.is_some() {
                 return Err(meta.error("the type gives `crate` twice"));
@@ -96,10 +107,7 @@ fn type_crate(attrs: &[Attribute]) -> syn::Result<Path> {
 }
 
 /// Adds `field` to the lists that its `#[row(...)]` keys name.
-fn read_field(row: &mut RowType, field: &Field, rule: RenameAll) -> syn::Result<()> {
-    let Some(ident) = &field.ident else {
-        return Ok(());
-    };
+fn read_field(row: &mut RowType, field: &Field, ident: &Ident, rule: RenameAll) -> syn::Result<()> {
     let keys = Keys::read(&field.attrs, ident)?;
     let Some(span) = keys.first() else {
         return Ok(());
@@ -142,6 +150,14 @@ fn read_field(row: &mut RowType, field: &Field, rule: RenameAll) -> syn::Result<
         row.uncut.push(name.clone());
     }
     if let Some(problem) = keys.problem {
+        if keys.column.is_none() {
+            return Err(syn::Error::new(
+                problem,
+                format!(
+                    "the field `{ident}` gives `problem` without `column`, and the problem field is one of the compact columns"
+                ),
+            ));
+        }
         if let Some((first, _)) = &row.problem {
             return Err(syn::Error::new(
                 problem,
@@ -155,17 +171,13 @@ fn read_field(row: &mut RowType, field: &Field, rule: RenameAll) -> syn::Result<
     Ok(())
 }
 
-/// The `#[row(...)]` keys on one field, each with the span where it was
-/// written.
+/// The `#[row(...)]` keys on one field, each field named after its key and
+/// holding the span where the key was written.
 #[derive(Default)]
 struct Keys {
-    /// `column`.
     column: Option<Span>,
-    /// `long`.
     long: Option<Span>,
-    /// `uncut`.
     uncut: Option<Span>,
-    /// `problem`.
     problem: Option<Span>,
 }
 
@@ -246,11 +258,18 @@ impl SerdeField {
 }
 
 /// Returns the type's `#[serde(rename_all = "...")]` rule for serializing,
-/// or [`RenameAll::None`] when it gives none.
-fn rename_all(attrs: &[Attribute]) -> syn::Result<RenameAll> {
+/// or [`RenameAll::None`] when it gives none. It refuses a type marked
+/// `#[serde(transparent)]`, whose JSON is the value of its one field and has
+/// no field names.
+fn rename_all(attrs: &[Attribute], name: &Ident) -> syn::Result<RenameAll> {
     let mut rule = RenameAll::None;
     for attr in attrs.iter().filter(|attr| attr.path().is_ident("serde")) {
         attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("transparent") {
+                return Err(meta.error(format!(
+                    "the type `{name}` is marked #[serde(transparent)], so its JSON has no field names for #[derive(Row)] to list"
+                )));
+            }
             if !meta.path.is_ident("rename_all") {
                 return skip_value(&meta);
             }
@@ -410,6 +429,7 @@ fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
         |(_, field)| quote!(::std::option::Option::Some(#field)),
     );
     quote! {
+        #[automatically_derived]
         impl #impl_generics #krate::Row for #name #type_generics #where_clause {
             const COLUMNS: &'static [&'static str] = &[#(#columns),*];
             const LONG_COLUMNS: &'static [&'static str] = &[#(#long),*];

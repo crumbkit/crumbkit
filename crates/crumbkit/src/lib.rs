@@ -33,12 +33,9 @@
 //! [crumbkit-derive]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-derive/README.md
 //! [crumbkit-child]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-child/README.md
 //! [behaviour docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/README.md
-// The README's example derives `Row`, which needs the `derive` feature. The
-// crate docs always hold the README, and its example runs as a doctest only
-// when the feature is on, so `cargo test --doc` passes without the feature.
-// A workspace run turns the feature on through crumbkit-derive's
-// dev-dependency on crumbkit.
-#![cfg_attr(any(feature = "derive", not(doctest)), doc = include_str!("../README.md"))]
+// The README's example derives `Row`, so crumbkit's doctests run with the
+// `derive` feature.
+#![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
 #![cfg_attr(docsrs, feature(doc_cfg))]

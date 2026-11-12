@@ -6,8 +6,8 @@ A change is ready when these pass:
 
 ```sh
 cargo test --workspace
-cargo test -p crumbkit
-cargo test -p crumbkit --features miette
+cargo test -p crumbkit --features derive
+cargo test -p crumbkit --features miette,derive
 cargo test -p crumbkit-child
 CARGO_BUILD_WARNINGS=deny cargo clippy --workspace --all-targets
 CARGO_BUILD_WARNINGS=deny cargo clippy -p crumbkit --all-targets

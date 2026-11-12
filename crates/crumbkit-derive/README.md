@@ -60,31 +60,7 @@ assert_eq!(BooksError::CODES, &[&NOT_FOUND, &REMOVED_FILE]);
 ```
 
 The type still implements `Display` and `std::error::Error` itself, by hand
-or with another derive.
-
-Each marked field of a row is a column, named as serde serializes it:
-
-```rust
-use crumbkit::Row;
-use schemars::JsonSchema;
-use serde::Serialize;
-
-#[derive(Serialize, JsonSchema, Row)]
-#[serde(rename_all = "camelCase")]
-struct Book {
-    #[row(column, uncut)]
-    id: u32,
-    #[row(column)]
-    title: String,
-    #[row(long)]
-    page_count: u32,
-}
-
-assert_eq!(Book::COLUMNS, &["id", "title"]);
-assert_eq!(Book::LONG_COLUMNS, &["pageCount"]);
-```
-
-The documentation of each derive in this crate lists its keys and shows
-the code that it writes.
+or with another derive. The documentation of each derive in this crate
+lists its keys and shows the code that it writes.
 
 [crumbkit]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit/README.md
