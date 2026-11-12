@@ -71,8 +71,8 @@ fn a_changing_leaf_without_a_document_passes_when_its_command_has_only_its_own_j
 }
 
 #[test]
-fn a_changing_leaf_without_a_document_fails_when_a_command_above_it_declares_its_own_json_argument()
-{
+fn a_changing_leaf_without_a_document_fails_when_the_root_takes_the_json_view_flag_and_a_command_above_it_has_its_own_json_argument()
+ {
     let tool = shelf()
         .arg(view_json())
         .mut_subcommand("books", |books| books.arg(own_json("from-json")));

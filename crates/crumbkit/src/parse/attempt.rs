@@ -101,9 +101,9 @@ pub(super) fn refusal(
 ) -> Result<View, Box<Refusal>> {
     // `value_source` needs an id that the matches know, and the matches of
     // a tool without the view flags know none of their ids, so the id is
-    // looked up among them first.
+    // checked with `try_contains_id` first.
     let typed = |id: &str| {
-        level.ids().any(|known| known == id)
+        matches!(level.try_contains_id(id), Ok(true))
             && level.value_source(id) == Some(ValueSource::CommandLine)
     };
     let leaf = tool

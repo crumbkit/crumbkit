@@ -197,18 +197,4 @@ fn each_view_flag_has_a_reserved_crumbkit_id_and_keeps_its_long_name() {
             ("crumbkit_full", Some("full")),
         ]
     );
-    assert_eq!(
-        [
-            crate::ViewFlags::JSON_ID,
-            crate::ViewFlags::FIELDS_ID,
-            crate::ViewFlags::LONG_ID,
-            crate::ViewFlags::FULL_ID,
-        ],
-        [
-            "crumbkit_json",
-            "crumbkit_fields",
-            "crumbkit_long",
-            "crumbkit_full"
-        ]
-    );
 }

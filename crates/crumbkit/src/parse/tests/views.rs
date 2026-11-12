@@ -110,23 +110,35 @@ const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "watch"]).stream(WATCH),
     Leaf::new(&["books", "read"]).document(READ),
     Leaf::new(&["books", "plain"]),
+    Leaf::new(&["books", "own"]).document(COUNT),
     Leaf::new(&["books", "shelves"]).document(SHELVES),
     Leaf::new(&["books", "query"]).document(QUERY),
 ]));
 
 /// A tool with crumbkit's output flags on its root and one group of leaves.
+/// The leaf `own` declares its own argument with the id `long` and the
+/// long name `--count-long`.
 fn tree() -> Command {
     let leaves = [
         "list", "ids", "count", "export", "dump", "watch", "read", "plain", "shelves", "query",
     ]
     .map(|name| Command::new(name).about("A leaf"));
+    let own = Command::new("own")
+        .about("A leaf with its own long argument")
+        .arg(
+            Arg::new("long")
+                .long("count-long")
+                .action(ArgAction::SetTrue)
+                .help("Count the long books"),
+        );
     crate::ViewFlags::augment_args(Command::new("tool"))
         .subcommand_required(true)
         .subcommand(
             Command::new("books")
                 .about("Work with books")
                 .subcommand_required(true)
-                .subcommands(leaves),
+                .subcommands(leaves)
+                .subcommand(own),
         )
 }
 
@@ -361,25 +373,34 @@ fn fields_on_a_bytes_leaf_is_refused_with_the_bytes_wording() {
     );
 }
 
+#[test]
+fn a_tool_s_own_long_argument_on_a_leaf_is_neither_hidden_nor_refused() {
+    let page = long_help(&["books", "own"]);
+    let parsed = parse(&["tool", "books", "own", "--count-long"]);
+
+    assert!(page.contains("Count the long books"), "{page}");
+    assert_eq!(parsed.code, None, "{}", parsed.err);
+}
+
 /// Returns a tool with the view flags on its root and a leaf `import`
-/// whose own argument has the id `json` and the long name `long`.
-fn importing(long: &'static str) -> Command {
+/// whose own argument has the id `json` and the long name `--from-json`.
+fn importing() -> Command {
     let import = Command::new("import").arg(
         Arg::new("json")
-            .long(long)
+            .long("from-json")
             .action(ArgAction::SetTrue)
             .help("Read the books as JSON"),
     );
     crate::ViewFlags::augment_args(Command::new("tool")).subcommand(import)
 }
 
-/// Parses `args` against `importing("from-json")`, and returns whether the
-/// run prints JSON.
+/// Parses `args` against `importing()`, and returns whether the run prints
+/// JSON.
 fn import_is_json(args: &[&str]) -> bool {
     let mut err = Vec::new();
     let result = parse_tree_to::<()>(
         &mut Sink::new(Vec::new(), &mut err),
-        importing("from-json"),
+        importing(),
         &Tool::new(),
         args,
     );
@@ -394,31 +415,6 @@ fn a_tool_s_own_argument_with_the_id_json_parses_and_does_not_turn_on_the_json_v
     assert!(!import_is_json(&["tool", "import", "--from-json"]));
     assert!(import_is_json(&["tool", "import", "--from-json", "--json"]));
     assert!(import_is_json(&["tool", "--json", "import"]));
-}
-
-/// clap copies the global `--json` of `ViewFlags` into every subcommand,
-/// and its debug asserts refuse two arguments of one command with the same
-/// long name. A release build skips the asserts.
-#[cfg(debug_assertions)]
-#[test]
-fn a_tool_s_own_json_long_name_beside_the_global_json_view_flag_fails_clap_s_debug_asserts() {
-    let panic = std::panic::catch_unwind(|| {
-        let mut sink = Sink::new(Vec::new(), Vec::new());
-        let _ = parse_tree_to::<()>(
-            &mut sink,
-            importing("json"),
-            &Tool::new(),
-            ["tool", "import", "--json"],
-        );
-    })
-    .unwrap_err();
-
-    assert_eq!(
-        panic.downcast_ref::<String>().map(String::as_str),
-        Some(
-            "Command import: Long option names must be unique for each argument, but '--json' is in use by both 'json' and 'crumbkit_json'"
-        )
-    );
 }
 
 #[test]

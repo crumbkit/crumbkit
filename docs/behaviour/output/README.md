@@ -143,7 +143,7 @@ check parsed ones. `parse` reads a view flag
 by its argument id, so the tool's own arguments get the refusals before
 the handler runs, and an unoffered flag leaves the leaf's help, only when
 their ids are those of `ViewFlags`, such as `crumbkit_json`
-([parsing](../parsing/README.md)), and they are global.
+([parsing](../parsing/README.md)).
 
 On a command that changes something and whose leaf declares no document,
 an agent may repeat a write that already happened, because the refusal
