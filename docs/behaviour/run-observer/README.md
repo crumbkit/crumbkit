@@ -11,11 +11,27 @@ calls. This page states the rules that the rustdoc leaves to the records.
 
 An observer is a `&'static dyn Observer`. A process holds up to four, in a
 fixed array of four `OnceLock` slots, and `observe` fills the first free
-slot. When all four slots are full, `observe` installs nothing and returns
-false, and a tool that needs more installs one observer that forwards to
-several. The [usage log](../usage-log/README.md)'s `start` calls `observe`,
-so a tool's own observer and the log both hear each run, in either order of
-installation.
+slot. A tool that needs more than four installs one observer that forwards
+to several. The [usage log](../usage-log/README.md)'s `start` calls
+`observe`, so a tool's own observer and the log both hear each run, in
+either order of installation.
+
+`observe` returns an `Observing`, which gives one of four answers:
+
+- `Completing`: the run's completion variable asks for completion, by the
+  rule that `complete` reads, so `observe` installs nothing and no observer
+  hears a Tab press ([shell completion](../parsing/completion.md)). The
+  `complete` module owns that read in every build. This answer wins over
+  the other three.
+- `Full`: all four slots are full, so `observe` installs nothing.
+- `InstalledLate`: `observe` installed the observer after `parse` reported
+  the typed command line, so the observer missed that report and any other
+  report before the install.
+- `Installed`: `observe` installed the observer before that report.
+
+`Observing::installed` is true for `Installed` and `InstalledLate`. The
+`typed` report sets one process-wide flag on its first report, with or
+without an observer, and `observe` reads it to tell the two apart.
 
 Each report goes to every installed observer in the order they were
 installed. An observer installed after a report hears only the reports that
@@ -24,17 +40,12 @@ again, so that observer would hear each report twice. The usage log's
 `start` therefore installs its observer only on its first call in a
 process.
 
-`observe` installs nothing in a run whose completion variable asks for
-completion, by the rule that `complete` reads, so no observer hears a Tab
-press ([shell completion](../parsing/completion.md)). The `complete` module
-owns that read in every build.
-
 The `events` module has no cargo feature, so a call site in crumbkit has no
 `cfg` of its own and every build compiles the same reports. The reports take
 no tool record, because `ended`, `tolerated`, crumbkit-aliases' `aliased`, the
 usage log's signal thread and `trace::child_env` have none.
 
-Why: ADR-0057, ADR-0075, ADR-0048.
+Why: ADR-0057, ADR-0075, ADR-0048, ADR-0209.
 
 ## What crumbkit reports
 
@@ -79,6 +90,7 @@ A report with no observer installed is one atomic load and a branch. A
 report with observers installed loads one more slot after the last
 observer, unless all four slots are full. Work that only an observer needs,
 such as the command path of a help topic, happens after the first check. `finish_to` always counts the bytes it writes,
-which adds one addition per write.
+which adds one addition per write. The `typed` report also stores one
+atomic value, the late flag.
 
-Why: ADR-0057, ADR-0075, ADR-0002, ADR-0160.
+Why: ADR-0057, ADR-0075, ADR-0002, ADR-0160, ADR-0209.

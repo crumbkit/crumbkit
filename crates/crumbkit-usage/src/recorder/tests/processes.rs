@@ -8,6 +8,7 @@ use serde_json::Value;
 
 use crate::recorder::{listens, start, start_under};
 use crate::testing::TempDir;
+use crumbkit::events::Observing;
 use crumbkit::tool::{Exit, Failures};
 use crumbkit::{Code, Document, Run, Sink, Spelling, Stream, Tool, ViewFlags, stream_to};
 
@@ -235,7 +236,7 @@ fn the_own_observer_test_s_child_installs_an_observer_and_then_starts_the_log() 
     if !is_child() {
         return;
     }
-    assert!(crumbkit::events::observe(&QUIET));
+    assert_eq!(crumbkit::events::observe(&QUIET), Observing::Installed);
     let log = start();
     typed(&Command::new("owned"), &["owned".into()], Spelling::COLONS);
     crumbkit::events::tolerated(STALE);
@@ -279,7 +280,7 @@ fn the_starts_test_s_child_starts_the_log_four_times_and_installs_three_observer
     }
     let logs = [start(), start(), start(), start()];
     for _ in 0..3 {
-        assert!(crumbkit::events::observe(&SILENT));
+        assert_eq!(crumbkit::events::observe(&SILENT), Observing::Installed);
     }
     drop(logs);
 }

@@ -26,6 +26,7 @@ its trace context.
 - [ADR-0096. Rows decide their problems](0096-rows-decide-their-problems.md)
 - [ADR-0162. Compile-fail guards for removed items deleted](0162-removed-item-guards-deleted.md)
 - [ADR-0192. Agent skills](0192-agent-skills.md)
+- [ADR-0209. observe says whether it installed an observer](0209-observe-says-whether-it-installed-an-observer.md)
 - [ADR-0196. Completion](completion/README.md)
 - [ADR-0054. Adoption](adoption/README.md)
 - [ADR-0055. Failures](failures/README.md)

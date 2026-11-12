@@ -1,7 +1,7 @@
 # ADR-0075. Several run observers
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: amended by ADR-0209
 - Supersedes: ADR-0057, which it amends
 - Missed: ADR-0057 told a tool that wants two observers to install one that forwards to both, but the usage log's observer is private to crumbkit-usage, so a tool could not forward to it and had to choose between the log and its own observer.
 

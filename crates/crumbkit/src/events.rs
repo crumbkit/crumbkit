@@ -7,7 +7,9 @@
 //! [`handed_over`], and the tool and crumbkit-aliases report through
 //! [`aliased`], [`tolerated`] and [`ended`]. Each report goes to every
 //! [`Observer`] that [`observe`] installed, in the order they were installed.
-//! Without one, a report reads one atomic value and does nothing else.
+//! Without one, a report reads one atomic value and does nothing else, and
+//! the report of the typed command line also sets one flag, so that
+//! [`observe`] reports an observer installed after that report as late.
 //!
 //! A tool does not usually call [`observe`] itself. The usage log's `start`
 //! calls it, and a tool that wants its own observer installs it the same
@@ -16,7 +18,7 @@
 //! ```
 //! use std::sync::atomic::{AtomicU8, Ordering};
 //!
-//! use crumbkit::events::{Observer, observe};
+//! use crumbkit::events::{Observer, Observing, observe};
 //!
 //! /// Keeps the exit code that the tool reported last.
 //! struct LastExit(AtomicU8);
@@ -29,13 +31,14 @@
 //!
 //! static LAST_EXIT: LastExit = LastExit(AtomicU8::new(0));
 //!
-//! // First in `main`, before `parse`.
-//! let _installed = observe(&LAST_EXIT);
+//! // First in `main`, before `parse`, so the observer hears the whole run.
+//! assert_eq!(observe(&LAST_EXIT), Observing::Installed);
 //! ```
 
 use std::ffi::OsString;
 use std::process::ExitCode;
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use clap::{Arg, ArgMatches, Command};
 
@@ -338,30 +341,107 @@ impl TraceIds {
     }
 }
 
+/// What [`observe`] did with an observer (ADR-0209).
+///
+/// A caller that only needs to know whether the observer was installed
+/// calls [`Observing::installed`].
+#[must_use]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Observing {
+    /// `observe` installed the observer before `parse` reported the typed
+    /// command line, so the observer hears the whole run.
+    Installed,
+    /// `observe` installed the observer after `parse` had already reported
+    /// the typed command line. The observer hears every report that follows,
+    /// and it missed [`Observer::typed`] and any report before the install.
+    InstalledLate,
+    /// `observe` installed nothing, because four observers are already
+    /// installed. A tool that needs more installs one observer that forwards
+    /// to several.
+    Full,
+    /// `observe` installed nothing, because the run answers a shell's
+    /// completion request (ADR-0048).
+    Completing,
+}
+
+impl Observing {
+    /// Reports whether `observe` installed the observer, which is true for
+    /// [`Observing::Installed`] and [`Observing::InstalledLate`].
+    #[must_use]
+    pub const fn installed(self) -> bool {
+        matches!(self, Self::Installed | Self::InstalledLate)
+    }
+}
+
+/// Whether [`typed`] has reported the typed command line in this process.
+/// `typed` sets it on its first report, with or without an observer, and
+/// nothing clears it.
+///
+/// The flag uses `Relaxed` ordering. It guards no other memory, so no
+/// reader needs to see other writes through it, and a single atomic's
+/// modification order already keeps a thread that has read true from
+/// reading false again. When a tool installs its observers first in `main`
+/// and parses on the same thread, program order alone makes the answer
+/// exact. When `observe` and `parse` run at once on different threads, the
+/// answer reflects the moment `observe` read the flag, and no ordering
+/// would make that race exact.
+static TYPED: AtomicBool = AtomicBool::new(false);
+
+/// Reports whether [`typed`] has reported the typed command line in this
+/// process.
+pub(crate) fn typed_yet() -> bool {
+    TYPED.load(Ordering::Relaxed)
+}
+
 /// Installs `observer` for the rest of the process, after the observers
-/// already installed, and returns whether it did.
+/// already installed, and returns what it did as an [`Observing`].
 ///
 /// A process holds up to four observers. Each report goes to every
 /// installed observer in the order they were installed, and an observer
-/// installed after a report hears only the reports that follow. When four
-/// observers are installed, `observe` installs nothing and returns false.
-/// It also installs nothing when the run answers a shell's completion
-/// request, because a Tab press is no run of the tool (ADR-0048). The
-/// completion variable is `COMPLETE`, or the name that the tool passed to
-/// `complete_with` before it called `observe`.
+/// installed after a report hears only the reports that follow.
+///
+/// - `observe` returns [`Observing::Completing`] and installs nothing when
+///   the run answers a shell's completion request, because a Tab press is
+///   no run of the tool (ADR-0048). The completion variable is `COMPLETE`,
+///   or the name that the tool passed to `complete_with` before it called
+///   `observe`.
+/// - It returns [`Observing::Full`] and installs nothing when four
+///   observers are installed.
+/// - It returns [`Observing::InstalledLate`] when it installed the observer
+///   after `parse` reported the typed command line, and
+///   [`Observing::Installed`] otherwise.
 ///
 /// `observe` installs an observer again when it is called with it again,
 /// and that observer then hears each report twice. A crate whose start
 /// function a tool may call more than once installs its observer only on
 /// the first call, as the usage log's `start` does.
-pub fn observe(observer: &'static dyn Observer) -> bool {
-    observe_in(&OBSERVERS, observer, crate::complete::completing())
+pub fn observe(observer: &'static dyn Observer) -> Observing {
+    observe_in(
+        &OBSERVERS,
+        observer,
+        crate::complete::completing(),
+        typed_yet(),
+    )
 }
 
 /// Installs `observer` in the first free slot of `slots` unless the run is
-/// `completing`, as [`observe`] describes.
-pub(crate) fn observe_in(slots: &Slots, observer: &'static dyn Observer, completing: bool) -> bool {
-    !completing && slots.iter().any(|slot| slot.set(observer).is_ok())
+/// `completing`, as [`observe`] describes. `late` says that `typed` has
+/// already reported the typed command line.
+pub(crate) fn observe_in(
+    slots: &Slots,
+    observer: &'static dyn Observer,
+    completing: bool,
+    late: bool,
+) -> Observing {
+    if completing {
+        Observing::Completing
+    } else if !slots.iter().any(|slot| slot.set(observer).is_ok()) {
+        Observing::Full
+    } else if late {
+        Observing::InstalledLate
+    } else {
+        Observing::Installed
+    }
 }
 
 /// Returns the observers in `slots` in the order they were installed. The
@@ -448,8 +528,10 @@ pub fn ended(exit: u8, out_bytes: Option<u64>) -> ExitCode {
     ExitCode::from(exit)
 }
 
-/// Reports [`Observer::typed`].
+/// Reports [`Observer::typed`], and marks the typed command line as
+/// reported, so a later [`observe`] answers [`Observing::InstalledLate`].
 pub(crate) fn typed(command: &Command, args: &[OsString], spelling: Spelling) {
+    TYPED.store(true, Ordering::Relaxed);
     for observer in observers() {
         observer.typed(command, args, spelling);
     }

@@ -244,7 +244,7 @@ fn begin() -> Log {
     let started = Instant::now();
     let first = !OBSERVING.swap(true, Ordering::SeqCst);
     let active = first
-        && crumbkit::events::observe(&UsageLog)
+        && crumbkit::events::observe(&UsageLog).installed()
         && context::read()
             .is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     Log { active }
