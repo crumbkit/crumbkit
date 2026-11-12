@@ -131,12 +131,14 @@ jobs:
       # shelf turns on crumbkit's `miette` and `tracing` features and uses
       # crumbkit-usage, so the workspace runs test crumbkit with both
       # features and with the usage log, and run crumbkit-child's tests.
-      # crumbkit's tests and doctests run again on their own in the default
-      # build and with `miette`.
+      # crumbkit's tests run again on their own in the default build and with
+      # `miette`. Its doctests run with the `derive` feature as well, because
+      # the README example derives `Row`, and the feature adds only the two
+      # derive re-exports.
       - run: cargo nextest run -p crumbkit --profile ci
-      - run: cargo test -p crumbkit --doc
+      - run: cargo test -p crumbkit --features derive --doc
       - run: cargo nextest run -p crumbkit --features miette --profile ci
-      - run: cargo test -p crumbkit --features miette --doc
+      - run: cargo test -p crumbkit --features miette,derive --doc
       # The workspace runs test crumbkit-process with its `forward` feature,
       # which crumbkit-usage's Unix dev-dependency turns on, so its tests run
       # again alone, without `forward`, as an adopter's default build has it.

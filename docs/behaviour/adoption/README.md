@@ -132,8 +132,8 @@ would hold.
   JSON does not copy the conversion. It puts serde_json's major version into
   crumbkit's API.
 - The `derive` feature re-exports
-  [`#[derive(Failure)]`](../failures/derive.md) from crumbkit-derive beside
-  the trait of the same name, and crumbkit holds
+  [`#[derive(Failure)]`](../failures/derive.md) and `#[derive(Row)]` from
+  crumbkit-derive beside the traits of the same names, and crumbkit holds
   [`Error::unclassified`](../failures/README.md#unclassified-errors).
 - The `miette` feature adds `Failure::diagnostic` and the conversion of a
   `miette::Report` into `Error`.

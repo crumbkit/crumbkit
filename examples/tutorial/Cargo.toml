@@ -13,8 +13,9 @@ publish = false
 # user-facing features that a binary chooses: help, usage lines and the
 # context of a refusal.
 clap = { workspace = true, features = ["derive", "help", "usage", "error-context"] }
-# Steps 1 to 3 parse, print and fail through crumbkit.
-crumbkit = { workspace = true }
+# Steps 1 to 3 parse, print and fail through crumbkit, and derive `Row` for
+# the jars they print through its `derive` feature.
+crumbkit = { workspace = true, features = ["derive"] }
 # Steps 1 to 3 derive `Serialize` and `JsonSchema` for the jars they print.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }

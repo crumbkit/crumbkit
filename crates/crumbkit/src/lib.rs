@@ -33,6 +33,8 @@
 //! [crumbkit-derive]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-derive/README.md
 //! [crumbkit-child]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-child/README.md
 //! [behaviour docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/README.md
+// The README's example derives `Row`, so crumbkit's doctests run with the
+// `derive` feature.
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
@@ -129,6 +131,11 @@ pub use crate::tool_name::ToolName;
 /// crumbkit-derive documents its attributes.
 #[cfg(feature = "derive")]
 pub use crumbkit_derive::Failure;
+/// Writes the [`Row`] impl of a struct with named fields from `#[row(...)]`
+/// attributes on its fields. The `derive` feature adds it, and
+/// crumbkit-derive documents its attributes.
+#[cfg(feature = "derive")]
+pub use crumbkit_derive::Row;
 
 /// The schemars crate that crumbkit builds against, so a tool can name
 /// `crumbkit::schemars::{Schema, json_schema}` without a schemars

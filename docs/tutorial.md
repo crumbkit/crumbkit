@@ -38,23 +38,22 @@ fn main() {
 
 In [`step_1.rs`](../examples/tutorial/src/bin/step_1.rs), the handler
 returns its rows, and crumbkit prints them as a table or as JSON. A row
-type derives `Serialize` and `JsonSchema`, and implements `Row` to name the
-columns that the table shows. A `Document` names the JSON document that
-the command prints:
+type derives `Serialize`, `JsonSchema` and `Row`, and `#[row(column)]`
+marks each field that the table shows. A `Document` names the JSON
+document that the command prints:
 
 ```rust
-#[derive(Serialize, JsonSchema)]
+#[derive(Serialize, JsonSchema, Row)]
 struct Jar {
     /// The jar's id.
+    #[row(column)]
     id: u32,
     /// What the jar holds.
+    #[row(column)]
     name: &'static str,
     /// The shelf the jar stands on.
+    #[row(column)]
     shelf: &'static str,
-}
-
-impl Row for Jar {
-    const COLUMNS: &'static [&'static str] = &["id", "name", "shelf"];
 }
 
 /// The document that `pantry jars list` prints.

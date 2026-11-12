@@ -50,6 +50,14 @@ pub(crate) use fields::{can_be_empty, properties};
 /// ```
 ///
 /// Here `isbn` is in neither list, so it appears only with `--json --full`.
+///
+/// With the `derive` feature, a struct with named fields derives the impl
+/// with `#[derive(Row)]` and marks each column with `#[row(column)]` or
+/// `#[row(long)]`. The derive writes each name as serde serializes the
+/// field, so a column always names a field. It writes `COLUMNS`,
+/// `LONG_COLUMNS`, `UNCUT_COLUMNS` and `PROBLEM`, and crumbkit-derive
+/// documents its keys. An enum and a row that sets any other item write the
+/// impl by hand.
 pub trait Row: Serialize + JsonSchema {
     /// The columns that the compact output shows, in display order.
     ///

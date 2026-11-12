@@ -36,7 +36,7 @@ schemars = { workspace = true }
 # through `miette::Diagnostic` and converts a `miette::Report` into `Error`
 # (ADR-0001). crumbkit needs no miette feature.
 miette = { workspace = true, optional = true }
-# The `derive` feature re-exports the `Failure` derive (ADR-0001).
+# The `derive` feature re-exports the `Failure` and `Row` derives (ADR-0001).
 crumbkit-derive = { workspace = true, optional = true }
 # The `miette` feature measures the text before and under a label with
 # unicode-width, so the caret underline lines up after wide characters
@@ -81,11 +81,12 @@ tracing = ["dep:tracing"]
 # unstable dynamic completion, so a crumbkit minor release may change it
 # (ADR-0002).
 complete = ["dep:clap_complete"]
-# `derive` is off by default, so a tool that writes its `Failure` impls by
-# hand does not build crumbkit-derive. The feature adds no syn build, because
-# clap_derive, which crumbkit always enables, already builds syn (ADR-0003).
-# It re-exports `#[derive(Failure)]` beside the trait of the same name, at
-# `crumbkit::Failure`.
+# `derive` is off by default, so a tool that writes its `Failure` and `Row`
+# impls by hand does not build crumbkit-derive. The feature adds no syn
+# build, because clap_derive, which crumbkit always enables, already builds
+# syn (ADR-0003). It re-exports `#[derive(Failure)]` and `#[derive(Row)]`
+# beside the traits of the same names, at `crumbkit::Failure` and
+# `crumbkit::Row`.
 derive = ["dep:crumbkit-derive"]
 # `color` is off by default, so a binary chooses clap's colour (ADR-0003).
 # It turns on clap's `color` feature, whose `StyledStr::ansi` lets `parse_to`
@@ -117,9 +118,9 @@ tracing = { workspace = true }
 regex-lite = { workspace = true }
 # The test subscriber names the entered span with `tracing_core::span::Current`.
 tracing-core = { workspace = true }
-# `tests/derive.rs` checks what `#[derive(Failure)]` generates against the
-# `Failure` trait. The tests live here, so crumbkit-derive needs no
-# dependency on the crate that re-exports it.
+# `tests/derive.rs` checks what `#[derive(Failure)]` and `#[derive(Row)]`
+# generate against the `Failure` and `Row` traits. The tests live here, so
+# crumbkit-derive needs no dependency on the crate that re-exports it.
 crumbkit-derive = { workspace = true }
 # The completion and files tests install into a temporary home of their
 # own, which tempfile removes when the test ends.

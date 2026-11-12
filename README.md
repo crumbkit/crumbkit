@@ -17,8 +17,8 @@ dependencies that a tool needs.
 
 - [crumbkit](crates/crumbkit/README.md) holds the command grammar, the
   output, the help tree and the failures.
-- [crumbkit-derive](crates/crumbkit-derive/README.md) derives `Failure`,
-  behind crumbkit's `derive` feature.
+- [crumbkit-derive](crates/crumbkit-derive/README.md) derives `Failure`
+  and `Row`, behind crumbkit's `derive` feature.
 - [crumbkit-test](crates/crumbkit-test/README.md) checks a tool against the
   conventions from a `#[test]`.
 - [crumbkit-aliases](crates/crumbkit-aliases/README.md) expands a person's
