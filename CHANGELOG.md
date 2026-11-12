@@ -49,7 +49,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Full` arm ([behaviour/failures]).
 - crumbkit: breaking: `Listing::next` is removed. A caller changes
   `.next(call, "phrase.")` to `.step(Step::new("Sentence.").call(call))`,
-  and the step prints on two lines: `Next: Sentence.`, then the command
+  and the step prints on two lines: `Next: Sentence.`, then the command.
+  It prints where it is called, so a call moved to the front prints first
   ([behaviour/output/listings]).
 
 ## [0.4.1](https://github.com/crumbkit/crumbkit/compare/v0.4.0...v0.4.1) - 2026-11-12### Added
