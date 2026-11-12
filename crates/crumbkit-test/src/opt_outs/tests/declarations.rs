@@ -116,7 +116,7 @@ fn a_leaf_that_prints_no_result_adds_nothing_to_the_report() {
 
 #[test]
 fn an_exit_that_lists_the_tool_s_own_code_is_no_declaration() {
-    const MINE: Code = Code::new("shelf", "books", "not_found");
+    const MINE: Code<'static> = Code::new("shelf", "books", "not_found");
     const TOOL: Tool = Tool::new()
         .failures(Failures::new().exits(&[Exit::new(3, "No such book.").failures(&[&MINE])]));
     let dir = TempDir::new("opt-outs-own-exit").unwrap();

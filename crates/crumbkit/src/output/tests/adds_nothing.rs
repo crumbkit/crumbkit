@@ -23,7 +23,7 @@ const FULL_NOTE: &str =
 
 const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.\n";
 
-const GONE: Code = Code::new("solar", "planets", "gone");
+const GONE: Code<'static> = Code::new("solar", "planets", "gone");
 
 /// A failure of a planet that is gone.
 #[derive(Debug)]
@@ -38,8 +38,8 @@ impl fmt::Display for Gone {
 impl std::error::Error for Gone {}
 
 impl Failure for Gone {
-    fn code(&self) -> &'static Code {
-        &GONE
+    fn code(&self) -> Code<'_> {
+        GONE
     }
 
     fn recovery(&self) -> Recovery {

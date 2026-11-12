@@ -77,7 +77,7 @@ const JARS_LIST: Document<Listing<Jar>> = Document::new(
 );
 
 /// The code of a shelf that holds no jar.
-const SHELF_NOT_FOUND: Code = Code::new("pantry", "shelves", "not_found");
+const SHELF_NOT_FOUND: Code<'static> = Code::new("pantry", "shelves", "not_found");
 
 /// No jar stands on the shelf that the caller named.
 #[derive(Debug)]
@@ -92,8 +92,8 @@ impl fmt::Display for ShelfNotFound {
 impl std::error::Error for ShelfNotFound {}
 
 impl Failure for ShelfNotFound {
-    fn code(&self) -> &'static Code {
-        &SHELF_NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        SHELF_NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {

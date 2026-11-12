@@ -269,11 +269,11 @@ impl fmt::Display for ShellError {
 impl std::error::Error for ShellError {}
 
 impl Failure for ShellError {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         match self {
-            Self::Unset => &codes::SHELL_UNSET,
-            Self::Unknown { .. } => &codes::SHELL_UNKNOWN,
-            Self::NoDirectory { .. } => &codes::SHELL_NO_DIRECTORY,
+            Self::Unset => codes::SHELL_UNSET,
+            Self::Unknown { .. } => codes::SHELL_UNKNOWN,
+            Self::NoDirectory { .. } => codes::SHELL_NO_DIRECTORY,
         }
     }
 

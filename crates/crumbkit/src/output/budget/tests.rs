@@ -98,7 +98,7 @@ fn a_budget_of_1_is_named_as_1_byte_in_the_cut_line_and_in_each_over_budget_mess
     let mut line = Vec::new();
     write_cut_line(&mut line, 0, Some(5), Some("books"), None, 1, true).unwrap();
     let message = |over: Over| {
-        let code = &crate::codes::OUTPUT_OVER_BUDGET;
+        let code = crate::codes::OUTPUT_OVER_BUDGET;
         OverBudget {
             code,
             budget: 1,

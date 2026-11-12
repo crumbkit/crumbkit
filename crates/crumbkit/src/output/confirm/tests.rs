@@ -60,7 +60,7 @@ fn confirm_with(tool: &Tool, words: &[&str], input: &str, interactive: bool) -> 
 /// Returns the code of `result`'s failure in the colon spelling.
 fn code(result: &Result<(), Error>) -> String {
     let failure = result.as_ref().unwrap_err().failure();
-    Spelling::COLONS.spell(failure.code())
+    Spelling::COLONS.spell(&failure.code())
 }
 
 #[test]

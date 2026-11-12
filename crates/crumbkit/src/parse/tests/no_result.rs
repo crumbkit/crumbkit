@@ -130,7 +130,7 @@ fn the_help_of_a_leaf_that_prints_no_result_prints_the_output_line_and_no_view_f
 struct Interrupted;
 
 /// The code of [`Interrupted`].
-const INTERRUPTED: Code = Code::new("tool", "server", "interrupted");
+const INTERRUPTED: Code<'static> = Code::new("tool", "server", "interrupted");
 
 impl fmt::Display for Interrupted {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -141,8 +141,8 @@ impl fmt::Display for Interrupted {
 impl std::error::Error for Interrupted {}
 
 impl Failure for Interrupted {
-    fn code(&self) -> &'static Code {
-        &INTERRUPTED
+    fn code(&self) -> Code<'_> {
+        INTERRUPTED
     }
 
     fn recovery(&self) -> Recovery {
@@ -162,5 +162,5 @@ fn a_failure_of_a_leaf_that_prints_no_result_prints_a_failure_document_with_json
     assert!(out.starts_with(r#"{"schema":"tool/failure/v1""#), "{out}");
     assert!(out.contains("tool::server::interrupted"), "{out}");
     assert_eq!(String::from_utf8(err).unwrap(), "");
-    assert_eq!(output.failure_exit(&INTERRUPTED), 1);
+    assert_eq!(output.failure_exit(INTERRUPTED), 1);
 }

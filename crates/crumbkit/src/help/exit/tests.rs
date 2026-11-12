@@ -8,7 +8,7 @@ use crate::help::{Help, Leaf};
 use crate::tool::Failures;
 use crate::{Code, Tool};
 
-const LOCKED: Code = Code::new("ledger", "rows", "locked");
+const LOCKED: Code<'static> = Code::new("ledger", "rows", "locked");
 
 /// A code that every command returns.
 const BUSY: Exit = Exit::new(3, "The catalogue was locked by another run.");
@@ -198,8 +198,16 @@ const USAGE_EXIT: Tool = Tool::new().failures(Failures::new().exits(&[
 
 #[test]
 fn a_failure_exits_with_the_number_that_the_tool_lists_for_its_code() {
-    assert_eq!(USAGE_EXIT.failure_exit(&CLI_USAGE), 64);
-    assert_eq!(USAGE_EXIT.failure_exit(&LOCKED), 3);
+    assert_eq!(USAGE_EXIT.failure_exit(CLI_USAGE), 64);
+    assert_eq!(USAGE_EXIT.failure_exit(LOCKED), 3);
+}
+
+#[test]
+fn a_runtime_code_with_the_segments_of_a_listed_code_exits_with_that_code_s_number() {
+    let reason = String::from("locked");
+    let code = Code::runtime("ledger", "rows", &reason).unwrap();
+
+    assert_eq!(USAGE_EXIT.failure_exit(code), 3);
 }
 
 #[test]
@@ -208,14 +216,14 @@ fn a_range_that_lists_a_failure_code_does_not_decide_the_exit_of_that_failure() 
         Exit::range(64, 78, "The importer ended with its own code.").failures(&[&LOCKED]),
     ]));
 
-    assert_eq!(RANGE.failure_exit(&LOCKED), 1);
+    assert_eq!(RANGE.failure_exit(LOCKED), 1);
 }
 
 #[test]
 fn a_failure_that_no_exit_lists_exits_with_1_and_a_refusal_with_2() {
-    assert_eq!(USAGE_EXIT.failure_exit(&VERSION_CONFLICT), 1);
-    assert_eq!(Tool::new().failure_exit(&LOCKED), 1);
-    assert_eq!(Tool::new().failure_exit(&CLI_USAGE), 2);
+    assert_eq!(USAGE_EXIT.failure_exit(VERSION_CONFLICT), 1);
+    assert_eq!(Tool::new().failure_exit(LOCKED), 1);
+    assert_eq!(Tool::new().failure_exit(CLI_USAGE), 2);
 }
 
 #[test]

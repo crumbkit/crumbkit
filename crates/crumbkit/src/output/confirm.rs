@@ -138,10 +138,10 @@ impl fmt::Display for ConfirmError {
 impl std::error::Error for ConfirmError {}
 
 impl Failure for ConfirmError {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         match self {
-            Self::Declined => &codes::CONFIRM_DECLINED,
-            Self::NeedsYes(_) => &codes::CONFIRM_NEEDS_YES,
+            Self::Declined => codes::CONFIRM_DECLINED,
+            Self::NeedsYes(_) => codes::CONFIRM_NEEDS_YES,
         }
     }
 

@@ -15,6 +15,7 @@
 //! [`Failure`]: crate::Failure
 //! [`Recovery`]: crate::Recovery
 //! [`Code`]: crate::Code
+//! [`CodeBuf`]: crate::CodeBuf
 //! [`Spelling`]: crate::Spelling
 //! [`Error`]: crate::Error
 //! [`parse`]: crate::parse()
@@ -92,7 +93,7 @@ pub use crate::age::Age;
 pub use crate::batch::Batch;
 pub use crate::bytes::Bytes;
 pub use crate::call::{Call, CallArg, CallError, CallTarget, RenderCall};
-pub use crate::code::{Code, RuntimeCodeError, Segment, Spelling};
+pub use crate::code::{Code, CodeBuf, RuntimeCodeError, Segment, Spelling};
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
 pub use crate::document::{Document, Envelope};

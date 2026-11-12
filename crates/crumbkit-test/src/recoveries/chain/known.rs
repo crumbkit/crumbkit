@@ -9,7 +9,7 @@ use super::{Chain, Walk};
 
 /// The codes of crumbkit's add-on crates: crumbkit-child's `codes::ALL` and
 /// crumbkit-aliases's `codes::ALL`. A test compares this list with theirs.
-pub(crate) const ADD_ON_CODES: &[&Code] = &[
+pub(crate) const ADD_ON_CODES: &[&Code<'static>] = &[
     &Code::new("crumbkit", "child", "not_found"),
     &Code::new("crumbkit", "child", "not_started"),
     &Code::new("crumbkit", "aliases", "unreadable"),
@@ -18,7 +18,7 @@ pub(crate) const ADD_ON_CODES: &[&Code] = &[
 /// Returns the codes of crumbkit and of its add-on crates: the one source
 /// of the codes that the recovery check and the twin check treat as
 /// raised by a crumbkit crate.
-pub(crate) fn library_codes() -> impl Iterator<Item = &'static Code> {
+pub(crate) fn library_codes() -> impl Iterator<Item = &'static Code<'static>> {
     crumbkit::codes::ALL.iter().chain(ADD_ON_CODES).copied()
 }
 
@@ -61,7 +61,7 @@ impl Walk<'_> {
 
 /// Returns the text that `spelling` writes before the area of every code in
 /// `component`, such as `shelf::`.
-pub(in crate::recoveries) fn spelled_prefix(spelling: Spelling, component: &'static str) -> String {
+pub(in crate::recoveries) fn spelled_prefix(spelling: Spelling, component: &str) -> String {
     let code = Code::new(component, "area", "reason");
     format!("{}::", spelling.tool().code(&code).component())
 }

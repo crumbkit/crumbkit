@@ -342,14 +342,14 @@ fn file(dir: Option<&Path>, name: &str) -> Result<PathBuf, EntriesError> {
 }
 
 /// The code of a failure whose list does not exist.
-pub const NOT_FOUND: Code = Code::new("reading", "entries", "not_found");
+pub const NOT_FOUND: Code<'static> = Code::new("reading", "entries", "not_found");
 
 /// The code of a failure whose list's file cannot be read.
-pub const UNREADABLE: Code = Code::new("reading", "entries", "unreadable");
+pub const UNREADABLE: Code<'static> = Code::new("reading", "entries", "unreadable");
 
 /// The code of a failure whose `--position` is more than one past the last
 /// entry of its list.
-pub const OUT_OF_RANGE: Code = Code::new("reading", "entries", "out_of_range");
+pub const OUT_OF_RANGE: Code<'static> = Code::new("reading", "entries", "out_of_range");
 
 /// A failure of a command that prints a list's entries.
 #[derive(Debug)]
@@ -387,7 +387,8 @@ pub(crate) enum EntriesError {
 impl EntriesError {
     /// Every code that an `EntriesError` returns, which reading's tests pass
     /// to crumbkit-test's codes and recovery checks.
-    pub(crate) const CODES: &'static [&'static Code] = &[&NOT_FOUND, &UNREADABLE, &OUT_OF_RANGE];
+    pub(crate) const CODES: &'static [&'static Code<'static>] =
+        &[&NOT_FOUND, &UNREADABLE, &OUT_OF_RANGE];
 }
 
 /// Prints `reading has no list named unread`, `cannot read the list
@@ -425,11 +426,11 @@ impl std::error::Error for EntriesError {
 /// unreadable list also offers its `edit` command, which a person runs in a
 /// terminal because it opens their editor.
 impl Failure for EntriesError {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         match self {
-            Self::NotFound { .. } => &NOT_FOUND,
-            Self::Unreadable { .. } | Self::CannotOpen { .. } => &UNREADABLE,
-            Self::OutOfRange { .. } => &OUT_OF_RANGE,
+            Self::NotFound { .. } => NOT_FOUND,
+            Self::Unreadable { .. } | Self::CannotOpen { .. } => UNREADABLE,
+            Self::OutOfRange { .. } => OUT_OF_RANGE,
         }
     }
 

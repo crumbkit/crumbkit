@@ -23,12 +23,12 @@ use crate::testing::panic_message;
 use crate::twins::{Twins, check_twins};
 
 /// The code of a list that does not exist.
-const NOT_FOUND: Code = Code::new("tool", "lists", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("tool", "lists", "not_found");
 /// The code of a list file that holds no list.
-const UNREADABLE: Code = Code::new("tool", "lists", "unreadable");
+const UNREADABLE: Code<'static> = Code::new("tool", "lists", "unreadable");
 
 /// The tool's declared codes.
-const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &UNREADABLE]];
+const CODES: &[&[&Code<'static>]] = &[&[&NOT_FOUND, &UNREADABLE]];
 
 /// The script's answers, with or without `--json` at the end:
 ///
@@ -196,6 +196,21 @@ fn a_runtime_failing_takes_its_code_by_value() {
 
     assert_eq!(*failing.code(), NOT_FOUND);
     assert_eq!(failing.words(), ["lists", "check"]);
+}
+
+#[test]
+fn a_runtime_failing_keeps_a_runtime_code_after_the_text_it_was_made_from_is_dropped() {
+    let runtime = {
+        let reason = String::from("not_found");
+        RuntimeFailing::new(
+            Code::runtime("tool", "lists", &reason).unwrap(),
+            ["lists", "check"],
+        )
+    };
+
+    let failing = runtime.into_failing();
+
+    assert_eq!(*failing.code(), NOT_FOUND);
 }
 
 #[test]

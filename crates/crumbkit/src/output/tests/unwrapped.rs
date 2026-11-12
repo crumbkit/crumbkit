@@ -18,7 +18,7 @@ use crate::{
     Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, finish_to,
 };
 
-const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 
 /// A failure that names a planet the solar system lacks.
 #[derive(Debug)]
@@ -33,8 +33,8 @@ impl fmt::Display for Missing {
 impl std::error::Error for Missing {}
 
 impl Failure for Missing {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {

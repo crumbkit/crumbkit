@@ -8,7 +8,7 @@ use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode};
 use super::super::PreparedFailure;
 use crate::{Code, Failure, Recovery, Spelling};
 
-const BAD_CONFIG: Code = Code::new("shelf", "config", "bad");
+const BAD_CONFIG: Code<'static> = Code::new("shelf", "config", "bad");
 
 /// The settings file that the failure points into. `colour` starts at byte
 /// 22 on line 3 and `size` at byte 37 on line 4.
@@ -124,8 +124,8 @@ impl Diagnostic for BadConfig {
 }
 
 impl Failure for BadConfig {
-    fn code(&self) -> &'static Code {
-        &BAD_CONFIG
+    fn code(&self) -> Code<'_> {
+        BAD_CONFIG
     }
 
     fn recovery(&self) -> Recovery {
@@ -256,8 +256,8 @@ impl Diagnostic for Loop {
 }
 
 impl Failure for Loop {
-    fn code(&self) -> &'static Code {
-        &BAD_CONFIG
+    fn code(&self) -> Code<'_> {
+        BAD_CONFIG
     }
 
     fn recovery(&self) -> Recovery {

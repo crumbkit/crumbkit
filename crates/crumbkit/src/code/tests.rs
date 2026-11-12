@@ -7,7 +7,7 @@ use proptest::prelude::*;
 use super::{Code, Spelling};
 use crate::segment::is_code_segment;
 
-const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 
 #[test]
 fn a_code_keeps_its_component_area_and_reason() {

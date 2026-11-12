@@ -117,7 +117,7 @@ fn a_stream_that_ends_with_a_mapped_failure_records_the_declared_exit_and_its_by
 
 /// The code of the failure that the stream-exit test's child ends with,
 /// which its tool record maps to 124.
-const TIMED_OUT: Code = Code::new("watching", "watch", "timed_out");
+const TIMED_OUT: Code<'static> = Code::new("watching", "watch", "timed_out");
 
 /// A row of the stream-exit test's child.
 #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -142,8 +142,8 @@ impl std::fmt::Display for TimedOut {
 impl std::error::Error for TimedOut {}
 
 impl crumbkit::Failure for TimedOut {
-    fn code(&self) -> &'static Code {
-        &TIMED_OUT
+    fn code(&self) -> Code<'_> {
+        TIMED_OUT
     }
 
     fn recovery(&self) -> crumbkit::Recovery {
@@ -212,14 +212,14 @@ fn a_start_after_the_tool_installed_its_own_observer_writes_the_line_and_both_he
 }
 
 /// The code that the own-observer test's child tolerates.
-const STALE: Code = Code::new("owned", "cache", "stale");
+const STALE: Code<'static> = Code::new("owned", "cache", "stale");
 
 /// An observer of the tool's own, which notes that it heard a tolerated
 /// code.
 struct Quiet(std::sync::atomic::AtomicBool);
 
 impl crumbkit::events::Observer for Quiet {
-    fn tolerated(&self, _code: &'static Code) {
+    fn tolerated(&self, _code: Code<'_>) {
         self.0.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 }
@@ -238,7 +238,7 @@ fn the_own_observer_test_s_child_installs_an_observer_and_then_starts_the_log() 
     assert!(crumbkit::events::observe(&QUIET));
     let log = start();
     typed(&Command::new("owned"), &["owned".into()], Spelling::COLONS);
-    crumbkit::events::tolerated(&STALE);
+    crumbkit::events::tolerated(STALE);
     drop(log);
     if !QUIET.0.load(std::sync::atomic::Ordering::SeqCst) {
         #[expect(

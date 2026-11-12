@@ -26,59 +26,59 @@ mod tests;
 /// value that crumbkit refused, such as an unknown `--fields` name. The run
 /// exits with code 2 unless the tool record lists another exit for the
 /// code.
-pub const CLI_USAGE: Code = Code::new("crumbkit", "cli", "usage");
+pub const CLI_USAGE: Code<'static> = Code::new("crumbkit", "cli", "usage");
 
 /// The code of a `commands list` `PATH` that names no visible command
 /// (ADR-0026).
-pub const COMMANDS_NOT_FOUND: Code = Code::new("crumbkit", "commands", "not_found");
+pub const COMMANDS_NOT_FOUND: Code<'static> = Code::new("crumbkit", "commands", "not_found");
 
 /// The code of a `schemas show` id that names no document the tool prints
 /// (ADR-0035).
-pub const SCHEMAS_NOT_FOUND: Code = Code::new("crumbkit", "schemas", "not_found");
+pub const SCHEMAS_NOT_FOUND: Code<'static> = Code::new("crumbkit", "schemas", "not_found");
 
 /// The code of a question that the person at the terminal did not answer
 /// with yes (ADR-0039).
-pub const CONFIRM_DECLINED: Code = Code::new("crumbkit", "confirmation", "declined");
+pub const CONFIRM_DECLINED: Code<'static> = Code::new("crumbkit", "confirmation", "declined");
 
 /// The code of a question that no person can answer, because standard input
 /// or standard error is not a terminal (ADR-0039).
-pub const CONFIRM_NEEDS_YES: Code = Code::new("crumbkit", "confirmation", "needs_yes");
+pub const CONFIRM_NEEDS_YES: Code<'static> = Code::new("crumbkit", "confirmation", "needs_yes");
 
 /// The code of a write whose target is not at the version that `--expect`
 /// names, so the command changed nothing (ADR-0047).
-pub const VERSION_CONFLICT: Code = Code::new("crumbkit", "version", "conflict");
+pub const VERSION_CONFLICT: Code<'static> = Code::new("crumbkit", "version", "conflict");
 
 /// The code of a result that does not fit in the output budget: a single
 /// row or a prose result that crumbkit refused, the ids of a batch that it
 /// left out, a stream that it stopped, and the mark of a listing that it cut
 /// short. A document can set its own code in place of this one (ADR-0046).
-pub const OUTPUT_OVER_BUDGET: Code = Code::new("crumbkit", "output", "over_budget");
+pub const OUTPUT_OVER_BUDGET: Code<'static> = Code::new("crumbkit", "output", "over_budget");
 
 /// The code of a failure that the tool did not classify: an error passed to
 /// [`Error::unclassified`](crate::Error::unclassified), and a
 /// `miette::Report` converted into an [`Error`](crate::Error) under the
 /// `miette` feature (ADR-0001).
-pub const REPORT_UNCHECKED: Code = Code::new("crumbkit", "report", "unchecked");
+pub const REPORT_UNCHECKED: Code<'static> = Code::new("crumbkit", "report", "unchecked");
 
 /// The code of a completion command that names no shell: no `--shell` and
 /// an unset or empty `SHELL` (ADR-0195).
-pub const SHELL_UNSET: Code = Code::new("crumbkit", "shell", "unset");
+pub const SHELL_UNSET: Code<'static> = Code::new("crumbkit", "shell", "unset");
 
 /// The code of a completion command whose `SHELL` names a shell that
 /// completion does not serve, such as `tcsh` (ADR-0195).
-pub const SHELL_UNKNOWN: Code = Code::new("crumbkit", "shell", "unknown");
+pub const SHELL_UNKNOWN: Code<'static> = Code::new("crumbkit", "shell", "unknown");
 
 /// The code of a `completion install` or `completion check` for a shell
 /// without a completion directory that install knows, such as elvish
 /// (ADR-0195).
-pub const SHELL_NO_DIRECTORY: Code = Code::new("crumbkit", "shell", "no_directory");
+pub const SHELL_NO_DIRECTORY: Code<'static> = Code::new("crumbkit", "shell", "no_directory");
 
 /// The reason of the `Recovery::None` of an unclassified failure that gives
 /// no advice of its own, which `Recovery::no_advice` builds.
 pub(crate) const NO_ADVICE: &str = "the error gives no advice";
 
 /// Every code above, in the order this module declares them.
-pub const ALL: &[&Code] = &[
+pub const ALL: &[&Code<'static>] = &[
     &CLI_USAGE,
     &COMMANDS_NOT_FOUND,
     &SCHEMAS_NOT_FOUND,

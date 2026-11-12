@@ -137,11 +137,11 @@ impl std::fmt::Display for Offline {
 
 impl std::error::Error for Offline {}
 
-static OFFLINE: crate::Code = crate::Code::new("tool", "catalogue", "offline");
+static OFFLINE: crate::Code<'static> = crate::Code::new("tool", "catalogue", "offline");
 
 impl crate::Failure for Offline {
-    fn code(&self) -> &'static crate::Code {
-        &OFFLINE
+    fn code(&self) -> crate::Code<'_> {
+        OFFLINE
     }
 
     fn recovery(&self) -> crate::Recovery {

@@ -21,7 +21,7 @@ mod trusted;
 mod variable;
 
 /// The code of a refused command line.
-const USAGE: Code = crumbkit::codes::CLI_USAGE;
+const USAGE: Code<'static> = crumbkit::codes::CLI_USAGE;
 
 /// The tool record of a tool that declares nothing.
 const TOOL: Tool = Tool::new();
@@ -91,7 +91,7 @@ fn a_twin_passes_when_the_refused_line_fails_with_its_code_and_the_admitted_line
 
 #[test]
 fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
-    const OTHER: Code = Code::new("tool", "books", "not_found");
+    const OTHER: Code<'static> = Code::new("tool", "books", "not_found");
     let (_dir, path) = tool("twins-refused");
     let examples = Examples::new(&path, "");
 

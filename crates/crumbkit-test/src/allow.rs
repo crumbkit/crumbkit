@@ -223,7 +223,7 @@ impl Allow {
     /// use crumbkit::Code;
     /// use crumbkit_test::{Allow, Failing};
     ///
-    /// const UNREADABLE: Code = Code::new("reading", "lists", "unreadable");
+    /// const UNREADABLE: Code<'static> = Code::new("reading", "lists", "unreadable");
     ///
     /// const ALLOW: &[Allow] = &[Allow::untwinned(
     ///     Failing::new(&UNREADABLE, &["entries", "list", "--list", "locked"]),

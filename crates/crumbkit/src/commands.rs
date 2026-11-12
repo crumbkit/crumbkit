@@ -335,9 +335,9 @@ impl fmt::Display for CommandsError {
 impl std::error::Error for CommandsError {}
 
 impl Failure for CommandsError {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         match self {
-            Self::NotFound { .. } => &codes::COMMANDS_NOT_FOUND,
+            Self::NotFound { .. } => codes::COMMANDS_NOT_FOUND,
         }
     }
 

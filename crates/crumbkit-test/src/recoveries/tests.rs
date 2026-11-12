@@ -33,14 +33,14 @@ mod words;
 mod xdg;
 
 /// The code of a book that does not exist.
-const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
 /// The code of a list of ids that cannot be read.
-const UNREADABLE: Code = Code::new("tool", "books", "unreadable");
+const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
 /// The code of a book file that disappeared, which no command line provokes.
-const REMOVED: Code = Code::new("tool", "books", "removed_file");
+const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
 
 /// The tool's declared codes.
-const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
+const CODES: &[&[&Code<'static>]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
 
 /// The listed code that no command line provokes, for a test whose
 /// starts provoke `NOT_FOUND` and `UNREADABLE`.
@@ -443,7 +443,7 @@ fn an_undeclared_code_from_a_declared_component_fails_the_check() {
 
 #[test]
 fn every_declared_code_is_provoked_or_listed_and_each_listed_code_is_declared_and_unprovoked() {
-    const STRAY: Code = Code::new("tool", "stray", "gone");
+    const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let setup = Setup::new(
         "recoveries-codes",
@@ -483,7 +483,7 @@ fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_
     let answers = [("books show 7 --json", 1, show.as_str(), "")];
     let from_lists = Setup::new("recoveries-owned-codes-lists", &answers);
     let from_codes = Setup::new("recoveries-owned-codes-codes", &answers);
-    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE, REMOVED];
+    let codes: Vec<Code<'_>> = vec![NOT_FOUND, UNREADABLE, REMOVED];
     let owned = [
         Unprovoked::from_code(codes[1], "Only a broken file provokes it."),
         Unprovoked::from_code(codes[2], "Only a full disk provokes it."),

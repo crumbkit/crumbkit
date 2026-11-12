@@ -38,7 +38,7 @@ fn print_serves_elvish_and_powershell_too() {
 fn print_refuses_an_unset_shell() {
     let refused = print_in(&shelf(), None, &Env::default(), "COMPLETE").unwrap_err();
 
-    assert_eq!(refused.failure().code(), &crate::codes::SHELL_UNSET);
+    assert_eq!(refused.failure().code(), crate::codes::SHELL_UNSET);
 }
 
 #[test]

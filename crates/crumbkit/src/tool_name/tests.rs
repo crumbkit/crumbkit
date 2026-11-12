@@ -4,8 +4,8 @@
 use super::ToolName;
 use crate::{Code, Document, Spelling};
 
-const USAGE: Code = Code::new("crumbkit", "cli", "usage");
-const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+const USAGE: Code<'static> = Code::new("crumbkit", "cli", "usage");
+const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 const FAILURE: Document<()> = Document::new("crumbkit", "failure", 1, "A failure.");
 const BOOKS_LIST: Document<()> = Document::new("shelf", "books-list", 1, "The books.");
 

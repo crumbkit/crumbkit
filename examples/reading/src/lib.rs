@@ -29,7 +29,7 @@ mod tests;
 
 /// Every failure code that reading declares, which reading's tests pass to
 /// crumbkit-test's codes and recovery checks.
-pub const CODES: &[&crumbkit::Code] = lists::EntriesError::CODES;
+pub const CODES: &[&crumbkit::Code<'static>] = lists::EntriesError::CODES;
 
 /// Parses the process's command line, runs the command and returns the
 /// process's exit code.

@@ -211,7 +211,7 @@ impl Refusal {
             self.page.as_ref(),
             Some(&restyle),
         );
-        printing.exit(&codes::CLI_USAGE)
+        printing.exit(codes::CLI_USAGE)
     }
 }
 
@@ -322,8 +322,8 @@ fn clap_fields(error: &clap::Error) -> Vec<(&'static str, String)> {
 }
 
 impl Failure for Refusal {
-    fn code(&self) -> &'static Code {
-        &codes::CLI_USAGE
+    fn code(&self) -> Code<'_> {
+        codes::CLI_USAGE
     }
 
     fn recovery(&self) -> Recovery {

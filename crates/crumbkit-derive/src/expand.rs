@@ -50,7 +50,7 @@ fn write(failure: &FailureType) -> TokenStream {
 
         impl #name {
             #[doc = #doc]
-            #visibility const CODES: &'static [&'static #krate::Code] = &[#(&#codes),*];
+            #visibility const CODES: &'static [&'static #krate::Code<'static>] = &[#(&#codes),*];
         }
     }
 }
@@ -61,12 +61,12 @@ fn code(krate: &Path, arms: &[Arm]) -> TokenStream {
         Answers::Own(own) => {
             let pattern = unbound(arm);
             let code = &own.code;
-            quote!(#pattern => &#code,)
+            quote!(#pattern => #code,)
         }
         Answers::Forward { field, .. } => forward(krate, arm, field, "code"),
     });
     quote! {
-        fn code(&self) -> &'static #krate::Code {
+        fn code(&self) -> #krate::Code<'_> {
             match self {
                 #(#arms)*
             }

@@ -8,10 +8,12 @@ use std::fmt;
 use clap::{Parser, Subcommand};
 
 use super::{PLANETS, Planet};
-use crate::{Code, Failure, Recovery, Sink, Spelling, Tool, ViewFlags, finish_to, parse_to};
+use crate::{
+    Code, CodeBuf, Failure, Recovery, Sink, Spelling, Tool, ViewFlags, finish_to, parse_to,
+};
 
 /// The tool's own code for a plugin answer whose code the tool cannot read.
-const PLUGIN_FAILED: Code = Code::new("tool", "plugin", "failed");
+const PLUGIN_FAILED: Code<'static> = Code::new("tool", "plugin", "failed");
 
 /// The tool record.
 const TOOL: Tool = Tool::new();
@@ -20,8 +22,8 @@ const TOOL: Tool = Tool::new();
 #[derive(Debug)]
 struct PluginFailure {
     /// The plugin's code, or the tool's own code when the plugin's code
-    /// cannot be read.
-    code: &'static Code,
+    /// cannot be read, which the failure owns.
+    code: CodeBuf,
     /// The plugin's message.
     message: String,
 }
@@ -36,7 +38,8 @@ impl PluginFailure {
         let code = Spelling::COLONS
             .split(code)
             .and_then(|(component, area, reason)| Code::runtime(component, area, reason).ok())
-            .unwrap_or(&PLUGIN_FAILED);
+            .unwrap_or(PLUGIN_FAILED)
+            .to_buf();
         Self {
             code,
             message: message.to_owned(),
@@ -53,8 +56,8 @@ impl fmt::Display for PluginFailure {
 impl std::error::Error for PluginFailure {}
 
 impl Failure for PluginFailure {
-    fn code(&self) -> &'static Code {
-        self.code
+    fn code(&self) -> Code<'_> {
+        self.code.as_code()
     }
 
     fn recovery(&self) -> Recovery {
@@ -113,6 +116,6 @@ fn a_plugin_code_that_the_spelling_cannot_split_or_that_breaks_the_segment_rule_
     for answer in ["lending::overdue", "lending::Loans::overdue"] {
         let failure = PluginFailure::from_answer(answer, "the loan is late");
 
-        assert_eq!(failure.code(), &PLUGIN_FAILED, "{answer}");
+        assert_eq!(failure.code(), PLUGIN_FAILED, "{answer}");
     }
 }

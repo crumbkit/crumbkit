@@ -12,8 +12,8 @@ use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
 use crate::{Code, Failure, Recovery, Run, Sink, Tool};
 
-const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
-const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
+const TIMED_OUT: Code<'static> = Code::new("solar", "charts", "timed_out");
+const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 
 /// A tool record that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
 const TOOL: Tool = Tool::new().failures(
@@ -23,7 +23,7 @@ const TOOL: Tool = Tool::new().failures(
 
 /// A failure with the code it was given.
 #[derive(Debug)]
-struct Failed(&'static Code);
+struct Failed(Code<'static>);
 
 impl fmt::Display for Failed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -34,7 +34,7 @@ impl fmt::Display for Failed {
 impl std::error::Error for Failed {}
 
 impl Failure for Failed {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         self.0
     }
 
@@ -89,23 +89,23 @@ fn printed<R>(print: impl FnOnce(&mut Sink<&mut Vec<u8>, &mut Vec<u8>>) -> R) ->
 #[test]
 fn listed_exit_gives_the_exit_that_the_tool_lists_and_none_for_an_unlisted_code() {
     let output = output_of(&[]);
-    assert_eq!(output.listed_exit(&TIMED_OUT), Some(124));
-    assert_eq!(output.listed_exit(&NOT_FOUND), None);
+    assert_eq!(output.listed_exit(TIMED_OUT), Some(124));
+    assert_eq!(output.listed_exit(NOT_FOUND), None);
 }
 
 #[test]
 fn failure_exit_gives_the_listed_exit_or_crumbkit_s_default() {
     let output = output_of(&[]);
-    assert_eq!(output.failure_exit(&TIMED_OUT), 124);
-    assert_eq!(output.failure_exit(&NOT_FOUND), 1);
-    assert_eq!(output.failure_exit(&crate::codes::CLI_USAGE), 2);
+    assert_eq!(output.failure_exit(TIMED_OUT), 124);
+    assert_eq!(output.failure_exit(NOT_FOUND), 1);
+    assert_eq!(output.failure_exit(crate::codes::CLI_USAGE), 2);
 }
 
 #[test]
 fn print_failure_prints_a_failure_as_finish_prints_it() {
     let mut output = output_of(&[]);
     let printed = printed(|sink| {
-        output.print_failure(sink, &Failed(&NOT_FOUND));
+        output.print_failure(sink, &Failed(NOT_FOUND));
     });
     assert_eq!(printed.out, "");
     assert_eq!(
@@ -157,7 +157,7 @@ fn fail_prints_the_failure_and_returns_the_exit_that_the_tool_gives_its_code() {
 
     let mut code = None;
     let seen = crate::events::testing::watch(|| {
-        code = Some(output.fail(&mut Sink::new(&mut out, &mut err), &Failed(&TIMED_OUT)));
+        code = Some(output.fail(&mut Sink::new(&mut out, &mut err), &Failed(TIMED_OUT)));
     });
 
     assert_eq!(code, Some(ExitCode::from(124)));

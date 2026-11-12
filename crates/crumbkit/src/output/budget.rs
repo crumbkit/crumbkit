@@ -244,7 +244,7 @@ pub(super) enum Over {
 #[derive(Debug)]
 pub(super) struct OverBudget {
     /// The over-budget code: the document's own, or crumbkit's.
-    pub(super) code: &'static Code,
+    pub(super) code: Code<'static>,
     /// The bytes that the result had to fit in.
     pub(super) budget: usize,
     /// What passed the budget.
@@ -287,7 +287,7 @@ impl fmt::Display for OverBudget {
 impl std::error::Error for OverBudget {}
 
 impl Failure for OverBudget {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         self.code
     }
 

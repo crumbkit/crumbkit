@@ -14,12 +14,12 @@ use crate::twins::{Twin, Twins, check_twin, check_twins};
 use crumbkit::tool::Failures;
 
 /// The code of a download that ran out of time.
-const TIMED_OUT: Code = Code::new("tool", "books", "timed_out");
+const TIMED_OUT: Code<'static> = Code::new("tool", "books", "timed_out");
 /// The code of a book that does not exist.
-const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
 
 /// The tool's code of a downloader that it ran and that failed.
-const DOWNLOAD_FAILED: Code = Code::new("tool", "books", "download_failed");
+const DOWNLOAD_FAILED: Code<'static> = Code::new("tool", "books", "download_failed");
 
 /// The exit code 124, which `TIMED_OUT` ends a run with.
 const EXITS: &[Exit] = &[Exit::new(124, "The download ran out of time.").failures(&[&TIMED_OUT])];
@@ -65,14 +65,14 @@ esac
 /// `code` and admitting the same line with `3` in place of its last word,
 /// or `books show 2` for `books show`, and returns its panic message, or
 /// `None` when it passes.
-fn checked(code: &'static Code, refused: &'static [&'static str]) -> Option<String> {
+fn checked(code: &'static Code<'static>, refused: &'static [&'static str]) -> Option<String> {
     checked_with(&TOOL, code, refused)
 }
 
 /// Runs `check_twin` as [`checked`] does, with `tool`.
 fn checked_with(
     tool: &Tool,
-    code: &'static Code,
+    code: &'static Code<'static>,
     refused: &'static [&'static str],
 ) -> Option<String> {
     let mut admitted: Vec<&str> = refused.to_vec();
@@ -180,12 +180,12 @@ fn a_refused_line_whose_failure_no_exit_lists_fails_the_check_when_it_exits_with
 
 #[test]
 fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins() {
-    const GONE: Code = Code::new("tool", "books", "gone");
+    const GONE: Code<'static> = Code::new("tool", "books", "gone");
     const LISTING: Tool = Tool::new().failures(Failures::new().exits(&[
         Exit::new(124, "Slow.").failures(&[&TIMED_OUT]),
         Exit::new(3, "Gone.").failures(&[&GONE]),
     ]));
-    const CODES: &[&[&Code]] = &[&[&TIMED_OUT]];
+    const CODES: &[&[&Code<'static>]] = &[&[&TIMED_OUT]];
     const PAIRS: &[Twin<'_>] = &[Twin::new(
         Failing::new(&TIMED_OUT, &["books", "get", "1"]),
         &["books", "get", "3"],

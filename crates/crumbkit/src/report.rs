@@ -29,7 +29,7 @@ use crate::{Code, Error, Failure, Recovery};
 /// ```
 /// # use std::fmt;
 /// # use crumbkit::{Code, Failure, Recovery};
-/// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
 /// # impl fmt::Display for NoSuchBook {
@@ -40,7 +40,7 @@ use crate::{Code, Error, Failure, Recovery};
 /// # impl std::error::Error for NoSuchBook {}
 /// # impl miette::Diagnostic for NoSuchBook {}
 /// # impl Failure for NoSuchBook {
-/// #     fn code(&self) -> &'static Code { &NOT_FOUND }
+/// #     fn code(&self) -> Code<'_> { NOT_FOUND }
 /// #     fn recovery(&self) -> Recovery { Recovery::Retry }
 /// # }
 /// fn classify(report: miette::Report) -> crumbkit::Error {
@@ -51,7 +51,7 @@ use crate::{Code, Error, Failure, Recovery};
 /// }
 ///
 /// let error = classify(miette::Report::new(NoSuchBook(7)));
-/// assert_eq!(error.failure().code(), &NOT_FOUND);
+/// assert_eq!(error.failure().code(), NOT_FOUND);
 /// ```
 //
 // This impl and the blanket `impl<E: Failure + Send + Sync + 'static>
@@ -97,8 +97,8 @@ impl std::error::Error for ReportFailure {
 }
 
 impl Failure for ReportFailure {
-    fn code(&self) -> &'static Code {
-        &REPORT_UNCHECKED
+    fn code(&self) -> Code<'_> {
+        REPORT_UNCHECKED
     }
 
     fn recovery(&self) -> Recovery {

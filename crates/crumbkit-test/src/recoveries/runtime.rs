@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
-use crumbkit::Code;
+use crumbkit::{Code, CodeBuf};
 
 use super::Failing;
 use crate::allow::Allow;
@@ -43,8 +43,8 @@ mod tests;
 /// use crumbkit::Code;
 /// use crumbkit_test::{Allow, Failing, RuntimeFailing, Twin};
 ///
-/// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-/// const UNREADABLE: Code = Code::new("shelf", "books", "unreadable");
+/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// const UNREADABLE: Code<'static> = Code::new("shelf", "books", "unreadable");
 ///
 /// let id = 7.to_string();
 /// let place = RuntimeFailing::at("tests/fixtures/shelf").env("SHELF_DEPTH", "1");
@@ -64,8 +64,10 @@ mod tests;
 /// owned value, and a `const fn` cannot drop the value it replaces.
 #[derive(Clone, Debug)]
 pub struct RuntimeFailing {
-    /// The code that the command line fails with.
-    code: Code,
+    /// The code that the command line fails with, as an owned copy, because
+    /// a code that the tool builds at run time borrows text that the test
+    /// may drop.
+    code: CodeBuf,
     /// The words after the tool's name.
     words: Vec<String>,
     /// The directory, input, fixture, values and variables of the chain.
@@ -93,9 +95,9 @@ impl RuntimeFailing {
     /// name, which fails with `code`, as [`Failing::new`] does. The code may
     /// be one that the tool builds at run time.
     #[must_use]
-    pub fn new(code: Code, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn new(code: Code<'_>, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
-            code,
+            code: code.to_buf(),
             words: owned(words),
             settings: Settings::default(),
         }
@@ -126,19 +128,19 @@ impl RuntimeFailing {
     /// directory, input, fixture, values and variables of `self`, so one
     /// set of settings serves several command lines.
     #[must_use]
-    pub fn line(&self, code: Code, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn line(&self, code: Code<'_>, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self::with_settings(code, words, self.settings.clone())
     }
 
     /// Returns the command line of `words` that fails with `code`, with
     /// `settings`.
     fn with_settings(
-        code: Code,
+        code: Code<'_>,
         words: impl IntoIterator<Item = impl Into<String>>,
         settings: Settings,
     ) -> Self {
         Self {
-            code,
+            code: code.to_buf(),
             words: owned(words),
             settings,
         }
@@ -222,10 +224,12 @@ impl RuntimeFailing {
     //
     // RUST-10: `Allow` holds a `'static` refused line, and a `'static`
     // line also lets a test keep its starts and twins anywhere, so this
-    // leaks the code, strings and paths for the rest of the test process. A test
-    // calls it once for each command line it builds, and the leak is the
-    // size of that line and of its code. A `Failing` that borrows from a `RuntimeFailing`
-    // replaces this if a process needs to build many lines.
+    // leaks the code's three segments, the strings and the paths for the rest
+    // of the test process. A test calls it once for each command line it
+    // builds, so the leak is bounded by the codes and lines the test passes,
+    // and each is the size of that line and of its code. A `Failing` that
+    // borrows from a `RuntimeFailing` replaces this if a process needs to
+    // build many lines.
     #[must_use]
     pub fn into_failing(self) -> Failing<'static> {
         let Settings {
@@ -243,8 +247,10 @@ impl RuntimeFailing {
             .into_iter()
             .map(|(name, value)| (&*name.leak(), value.map(|value| &*value.leak())))
             .collect();
-        let code: &'static Code = Box::leak(Box::new(self.code));
-        let mut failing = Failing::new(code, leak_words(self.words))
+        // The `Failing` holds its code by value, so only the owned
+        // segments are leaked, once for each command line.
+        let code: &'static CodeBuf = Box::leak(Box::new(self.code));
+        let mut failing = Failing::with_code(code.as_code(), leak_words(self.words))
             .values(values.leak())
             .env(env.leak());
         if let Some(dir) = dir {

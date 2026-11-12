@@ -5,6 +5,41 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- crumbkit: `CodeBuf` is a failure code that owns its three segments.
+  `Code::to_buf` makes one and `CodeBuf::as_code` lends the code back. A
+  failure that learns its code at run time stores a `CodeBuf`
+  ([behaviour/failures]).
+
+### Changed
+
+- crumbkit: breaking: `Code` is `Code<'a>` and borrows its segments. A
+  declared constant is written `Code<'static>`, as in
+  `const NOT_FOUND: Code<'static> = Code::new(..)` ([behaviour/failures]).
+- crumbkit: breaking: `Code::runtime` returns a `Code<'a>` that borrows the
+  text it was given and keeps no copy, so a process makes any number of
+  run-time codes ([behaviour/failures]).
+- crumbkit: breaking: `Failure::code` returns `Code<'_>` by value. A
+  hand-written impl changes `fn code(&self) -> &'static Code { &X }` to
+  `fn code(&self) -> Code<'_> { X }`, and `#[derive(Failure)]` emits the new
+  signature ([behaviour/failures]).
+- crumbkit: breaking: `Tool::failure_exit`, `Run::failure_exit`,
+  `Run::listed_exit`, `events::tolerated` and `Observer::tolerated` take a
+  `Code<'_>` by value. A caller drops the `&` before the code. An observer
+  that keeps a tolerated code stores `code.to_buf()`
+  ([behaviour/failures/exit-codes]).
+- crumbkit-test: `Unprovoked::from_code`, `Recoveries::from_codes` and
+  `Twins::from_codes` take `Code<'a>` values, so they also accept codes from
+  `Code::runtime` that borrow the test's own text ([behaviour/failures]).
+
+### Removed
+
+- crumbkit: breaking: `RuntimeCodeError::Full` and the limit of 256 run-time
+  codes for each process are removed. A match on `RuntimeCodeError` drops the
+  `Full` arm ([behaviour/failures]).
+
 ## [0.4.1](https://github.com/crumbkit/crumbkit/compare/v0.4.0...v0.4.1) - 2026-11-12### Added
 
 - crumbkit: the module `queries` holds the command lines that a program

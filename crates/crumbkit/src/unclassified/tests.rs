@@ -28,7 +28,7 @@ impl std::error::Error for Context {
 fn an_unclassified_error_has_the_unchecked_code_and_no_next_step() {
     let error = Error::unclassified(io::Error::other("disk full"));
     let failure = error.failure();
-    assert_eq!(failure.code(), &REPORT_UNCHECKED);
+    assert_eq!(failure.code(), REPORT_UNCHECKED);
     assert_eq!(
         failure.recovery(),
         Recovery::None {
@@ -55,5 +55,5 @@ fn an_unclassified_error_prints_its_display_and_its_source_chain() {
 fn a_string_converts_into_an_unclassified_error_with_the_string_as_its_message() {
     let error = Error::unclassified("the catalogue is locked");
     assert_eq!(error.to_string(), "the catalogue is locked");
-    assert_eq!(error.failure().code(), &REPORT_UNCHECKED);
+    assert_eq!(error.failure().code(), REPORT_UNCHECKED);
 }

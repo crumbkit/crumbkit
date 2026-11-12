@@ -75,11 +75,11 @@ mod tests;
 ///
 /// ```rust,ignore
 /// impl ::crumbkit::Failure for BooksError {
-///     fn code(&self) -> &'static ::crumbkit::Code {
+///     fn code(&self) -> ::crumbkit::Code<'_> {
 ///         match self {
-///             Self::NotFound { .. } => &NOT_FOUND,
-///             Self::RemovedFile { .. } => &REMOVED_FILE,
-///             Self::NoStateDirectory => &NO_STATE_DIRECTORY,
+///             Self::NotFound { .. } => NOT_FOUND,
+///             Self::RemovedFile { .. } => REMOVED_FILE,
+///             Self::NoStateDirectory => NO_STATE_DIRECTORY,
 ///             Self::Book(f0) => ::crumbkit::Failure::code(f0),
 ///         }
 ///     }
@@ -141,7 +141,7 @@ mod tests;
 /// impl BooksError {
 ///     /// Every code that a `BooksError` returns, in the order of its
 ///     /// variants. ...
-///     pub(crate) const CODES: &'static [&'static ::crumbkit::Code] =
+///     pub(crate) const CODES: &'static [&'static ::crumbkit::Code<'static>] =
 ///         &[&NOT_FOUND, &REMOVED_FILE, &NO_STATE_DIRECTORY];
 /// }
 /// ```

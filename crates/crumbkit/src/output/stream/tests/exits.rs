@@ -12,8 +12,8 @@ use super::{Cli, SIGHTINGS, Writer, kingfisher, robin};
 use crate::tool::{Exit, Failures};
 use crate::{Code, Failure, Recovery, Run, Sink, Tool, stream_to};
 
-const TIMED_OUT: Code = Code::new("birds", "watch", "timed_out");
-const UNREADABLE: Code = Code::new("birds", "sightings", "unreadable");
+const TIMED_OUT: Code<'static> = Code::new("birds", "watch", "timed_out");
+const UNREADABLE: Code<'static> = Code::new("birds", "sightings", "unreadable");
 
 /// A tool record that maps `TIMED_OUT` to 124 and leaves `UNREADABLE` unmapped.
 const TOOL: Tool = Tool::new().failures(
@@ -22,7 +22,7 @@ const TOOL: Tool = Tool::new().failures(
 
 /// A failure with the code it was given.
 #[derive(Debug)]
-struct Failed(&'static Code);
+struct Failed(Code<'static>);
 
 impl fmt::Display for Failed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -33,7 +33,7 @@ impl fmt::Display for Failed {
 impl std::error::Error for Failed {}
 
 impl Failure for Failed {
-    fn code(&self) -> &'static Code {
+    fn code(&self) -> Code<'_> {
         self.0
     }
 
@@ -77,22 +77,22 @@ fn stream(failures: &[Failed], end: Result<(), Failed>) -> ExitCode {
 
 #[test]
 fn a_stream_that_ends_with_a_mapped_failure_exits_with_its_declared_code() {
-    assert_eq!(stream(&[], Err(Failed(&TIMED_OUT))), ExitCode::from(124));
+    assert_eq!(stream(&[], Err(Failed(TIMED_OUT))), ExitCode::from(124));
 }
 
 #[test]
 fn a_stream_that_ends_with_an_unmapped_failure_exits_with_code_1() {
-    assert_eq!(stream(&[], Err(Failed(&UNREADABLE))), ExitCode::FAILURE);
+    assert_eq!(stream(&[], Err(Failed(UNREADABLE))), ExitCode::FAILURE);
 }
 
 #[test]
 fn a_stream_that_printed_a_mapped_failure_and_ended_ok_exits_with_its_declared_code() {
-    assert_eq!(stream(&[Failed(&TIMED_OUT)], Ok(())), ExitCode::from(124));
+    assert_eq!(stream(&[Failed(TIMED_OUT)], Ok(())), ExitCode::from(124));
 }
 
 #[test]
 fn a_stream_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_is_mapped() {
-    let code = stream(&[Failed(&UNREADABLE)], Err(Failed(&TIMED_OUT)));
+    let code = stream(&[Failed(UNREADABLE)], Err(Failed(TIMED_OUT)));
     assert_eq!(code, ExitCode::FAILURE);
 }
 
@@ -106,7 +106,7 @@ fn a_stream_whose_reader_closed_the_pipe_keeps_the_declared_code_of_its_failure(
 
     assert_eq!(streaming.item(&robin()), ControlFlow::Continue(()));
     assert_eq!(streaming.item(&kingfisher()), ControlFlow::Break(()));
-    let code = streaming.end(Err(Failed(&TIMED_OUT)));
+    let code = streaming.end(Err(Failed(TIMED_OUT)));
 
     assert_eq!(code, ExitCode::from(124));
 }

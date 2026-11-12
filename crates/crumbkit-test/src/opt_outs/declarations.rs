@@ -56,7 +56,7 @@ pub(super) fn declarations(command: &Command, tool: &Tool, allow: &[Allow]) -> V
                     "A failure with {} exits with {}, where the default is {}.",
                     spelling.spell(listed),
                     exit.code(),
-                    Tool::new().failure_exit(listed)
+                    Tool::new().failure_exit(*listed)
                 ),
                 reason: None,
             });

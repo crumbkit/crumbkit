@@ -199,7 +199,7 @@ impl Name {
 
     /// Returns `code` in the tool's `spelling`, such as
     /// `shelf::books::not_found`.
-    pub(super) fn code(spelling: Spelling, code: &Code) -> Self {
+    pub(super) fn code(spelling: Spelling, code: &Code<'_>) -> Self {
         Self(spelling.spell(code))
     }
 

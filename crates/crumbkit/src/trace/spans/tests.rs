@@ -21,8 +21,8 @@ use crate::events::testing::give_trace_ids;
 use crate::tool::{Exit, Failures};
 use crate::{Code, Document, Error, Failure, Recovery, Row, Run, Sink, Tool, finish_to, parse_to};
 
-const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
-const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
+const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const TIMED_OUT: Code<'static> = Code::new("solar", "charts", "timed_out");
 
 /// A tool record that maps `TIMED_OUT` to 124 (ADR-0037).
 const TOOL: Tool = Tool::new().failures(
@@ -231,8 +231,8 @@ impl fmt::Display for Missing {
 impl std::error::Error for Missing {}
 
 impl Failure for Missing {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {
@@ -484,8 +484,8 @@ impl fmt::Display for TimedOut {
 impl std::error::Error for TimedOut {}
 
 impl Failure for TimedOut {
-    fn code(&self) -> &'static Code {
-        &TIMED_OUT
+    fn code(&self) -> Code<'_> {
+        TIMED_OUT
     }
 
     fn recovery(&self) -> Recovery {

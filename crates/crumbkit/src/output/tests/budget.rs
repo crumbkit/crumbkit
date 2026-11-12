@@ -34,7 +34,7 @@ const STAR_BATCH: Document<Batch<Star, Error>> =
     Document::new("sky", "star-batch", 1, "The test rows.");
 const CHART: Document<Prose<String, Error>> = Document::new("sky", "chart", 1, "The test text.");
 
-const TOO_MUCH: Code = Code::new("sky", "stars", "too_much");
+const TOO_MUCH: Code<'static> = Code::new("sky", "stars", "too_much");
 
 /// A tool record with the budget of [`BUDGET`] that lists crumbkit's
 /// over-budget code under 9.
@@ -406,8 +406,8 @@ impl fmt::Display for Dim {
 impl std::error::Error for Dim {}
 
 impl Failure for Dim {
-    fn code(&self) -> &'static Code {
-        &TOO_MUCH
+    fn code(&self) -> Code<'_> {
+        TOO_MUCH
     }
 
     fn recovery(&self) -> Recovery {

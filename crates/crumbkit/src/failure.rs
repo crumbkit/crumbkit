@@ -24,7 +24,7 @@ mod tests;
 ///
 /// use crumbkit::{Call, Code, Failure, Recovery};
 ///
-/// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 ///
 /// #[derive(Debug)]
 /// struct NoSuchBook(u32);
@@ -38,8 +38,8 @@ mod tests;
 /// impl std::error::Error for NoSuchBook {}
 ///
 /// impl Failure for NoSuchBook {
-///     fn code(&self) -> &'static Code {
-///         &NOT_FOUND
+///     fn code(&self) -> Code<'_> {
+///         NOT_FOUND
 ///     }
 ///
 ///     fn recovery(&self) -> Recovery {
@@ -57,7 +57,7 @@ mod tests;
 /// ```
 /// # use std::fmt;
 /// # use crumbkit::{Call, Code, Failure, Field, Recovery};
-/// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
 /// # impl fmt::Display for NoSuchBook {
@@ -67,7 +67,7 @@ mod tests;
 /// # }
 /// # impl std::error::Error for NoSuchBook {}
 /// # impl Failure for NoSuchBook {
-/// #     fn code(&self) -> &'static Code { &NOT_FOUND }
+/// #     fn code(&self) -> Code<'_> { NOT_FOUND }
 /// #     fn recovery(&self) -> Recovery { Recovery::Run(Call::new(&["books", "list"])) }
 /// # }
 /// /// A failure to read a reading list, caused by the book it names.
@@ -90,7 +90,7 @@ mod tests;
 /// }
 ///
 /// impl Failure for ReadingList {
-///     fn code(&self) -> &'static Code {
+///     fn code(&self) -> Code<'_> {
 ///         self.book.code()
 ///     }
 ///
@@ -125,7 +125,12 @@ pub trait Failure: std::error::Error {
     /// crumbkit-test's `check_twins` and `check_recoveries`. A code from
     /// [`Code::runtime`], which the tool learns only at run time, is in no such
     /// list.
-    fn code(&self) -> &'static Code;
+    ///
+    /// The code is returned by value. A declared failure returns its
+    /// constant, and a failure that holds a [`CodeBuf`](crate::CodeBuf)
+    /// returns a code that borrows from it. A caller that keeps the code
+    /// after the failure is gone stores [`Code::to_buf`].
+    fn code(&self) -> Code<'_>;
 
     /// Returns what the caller can do next, the preferred repair.
     fn recovery(&self) -> Recovery;
@@ -145,7 +150,7 @@ pub trait Failure: std::error::Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Call, Code, Failure, Recovery};
-    /// # const NO_LOGIN: Code = Code::new("shelf", "auth", "no_login");
+    /// # const NO_LOGIN: Code<'static> = Code::new("shelf", "auth", "no_login");
     /// # #[derive(Debug)]
     /// # struct NoLogin;
     /// # impl fmt::Display for NoLogin {
@@ -153,8 +158,8 @@ pub trait Failure: std::error::Error {
     /// # }
     /// # impl std::error::Error for NoLogin {}
     /// impl Failure for NoLogin {
-    ///     fn code(&self) -> &'static Code {
-    ///         &NO_LOGIN
+    ///     fn code(&self) -> Code<'_> {
+    ///         NO_LOGIN
     ///     }
     ///
     ///     fn recovery(&self) -> Recovery {
@@ -188,7 +193,7 @@ pub trait Failure: std::error::Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Call, Code, Failure, Field, Recovery};
-    /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+    /// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
     /// # #[derive(Debug)]
     /// # struct NoSuchBook(u32);
     /// # impl fmt::Display for NoSuchBook {
@@ -198,8 +203,8 @@ pub trait Failure: std::error::Error {
     /// # }
     /// # impl std::error::Error for NoSuchBook {}
     /// impl Failure for NoSuchBook {
-    ///     fn code(&self) -> &'static Code {
-    ///         &NOT_FOUND
+    ///     fn code(&self) -> Code<'_> {
+    ///         NOT_FOUND
     ///     }
     ///
     ///     fn recovery(&self) -> Recovery {
@@ -240,7 +245,7 @@ pub trait Failure: std::error::Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Code, Failure, Recovery};
-    /// # const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
+    /// # const UNKNOWN_KEY: Code<'static> = Code::new("shelf", "config", "unknown_key");
     /// # #[derive(Debug)]
     /// # struct UnknownKey { source: String, at: usize }
     /// # impl fmt::Display for UnknownKey {
@@ -261,8 +266,8 @@ pub trait Failure: std::error::Error {
     /// }
     ///
     /// impl Failure for UnknownKey {
-    ///     fn code(&self) -> &'static Code {
-    ///         &UNKNOWN_KEY
+    ///     fn code(&self) -> Code<'_> {
+    ///         UNKNOWN_KEY
     ///     }
     ///
     ///     fn recovery(&self) -> Recovery {
@@ -361,7 +366,7 @@ impl Recovery {
 /// ```
 /// # use std::fmt;
 /// # use crumbkit::{Code, Failure, Recovery, Spelling};
-/// # const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
+/// # const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
 /// # #[derive(Debug)]
 /// # struct Timeout;
 /// # impl fmt::Display for Timeout {
@@ -369,7 +374,7 @@ impl Recovery {
 /// # }
 /// # impl std::error::Error for Timeout {}
 /// # impl Failure for Timeout {
-/// #     fn code(&self) -> &'static Code { &TIMED_OUT }
+/// #     fn code(&self) -> Code<'_> { TIMED_OUT }
 /// #     fn recovery(&self) -> Recovery { Recovery::Retry }
 /// # }
 /// fn fetch() -> Result<String, Timeout> {
@@ -384,7 +389,7 @@ impl Recovery {
 /// let error = handler().unwrap_err();
 /// assert_eq!(error.to_string(), "timed out");
 /// assert_eq!(error.failure().recovery(), Recovery::Retry);
-/// assert_eq!(Spelling::COLONS.spell(error.failure().code()), "shelf::network::timed_out");
+/// assert_eq!(Spelling::COLONS.spell(&error.failure().code()),"shelf::network::timed_out");
 /// ```
 pub struct Error(Box<dyn Failure + Send + Sync>);
 

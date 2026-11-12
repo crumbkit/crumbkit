@@ -73,13 +73,13 @@ impl Printing {
 
     /// Returns the exit code of a run whose first failure has `code`, as
     /// [`Tool::failure_exit`] describes.
-    pub(crate) fn exit(self, code: &'static Code) -> u8 {
+    pub(crate) fn exit(self, code: Code<'_>) -> u8 {
         exit::failure_exit(self.exits, code)
     }
 
     /// Returns the exit code of the exit that lists `code`, or `None`, as
     /// [`Run::listed_exit`](crate::Run::listed_exit) describes.
-    pub(crate) fn listed_exit(self, code: &'static Code) -> Option<u8> {
+    pub(crate) fn listed_exit(self, code: Code<'_>) -> Option<u8> {
         exit::listed_exit(self.exits, code)
     }
 }
@@ -245,7 +245,7 @@ impl<'a> PreparedFailure<'a> {
         let code = failure.code();
         // Every code that crumbkit prints is spelled here, so crumbkit
         // reports the run's code to the observer here (ADR-0057).
-        crate::events::failed(spelling, code);
+        crate::events::failed(spelling, &code);
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
@@ -267,7 +267,7 @@ impl<'a> PreparedFailure<'a> {
         };
         #[cfg(feature = "miette")]
         let diagnostic = failure.diagnostic();
-        let code = spelling.spell(code);
+        let code = spelling.spell(&code);
         if cfg!(debug_assertions) {
             for reason in &unrendered {
                 warn(

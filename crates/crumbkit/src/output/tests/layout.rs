@@ -30,7 +30,7 @@ fn finish_pretty<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Fi
     finish_output(pretty(flags), document, value)
 }
 
-const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 
 /// A failure whose recovery names `tool list`.
 #[derive(Debug)]
@@ -45,8 +45,8 @@ impl fmt::Display for Missing {
 impl std::error::Error for Missing {}
 
 impl Failure for Missing {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {

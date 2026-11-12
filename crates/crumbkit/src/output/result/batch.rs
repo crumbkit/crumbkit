@@ -20,7 +20,7 @@ pub(super) struct LeftOut<'c> {
     /// The tool's command, which the failure's call renders against.
     pub(super) command: &'c mut Command,
     /// The over-budget code that the run prints.
-    pub(super) code: &'static Code,
+    pub(super) code: Code<'static>,
     /// The bytes that the result had to fit in.
     pub(super) budget: usize,
     /// The caller's words split at the place of the keys, which the

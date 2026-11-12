@@ -47,11 +47,11 @@ fn the_expansion_of_the_sample_enum_matches_the_documented_expansion() {
     };
     let expected = quote! {
         impl ::crumbkit::Failure for BooksError {
-            fn code(&self) -> &'static ::crumbkit::Code {
+            fn code(&self) -> ::crumbkit::Code<'_> {
                 match self {
-                    Self::NotFound { .. } => &NOT_FOUND,
-                    Self::RemovedFile { .. } => &REMOVED_FILE,
-                    Self::NoStateDirectory => &NO_STATE_DIRECTORY,
+                    Self::NotFound { .. } => NOT_FOUND,
+                    Self::RemovedFile { .. } => REMOVED_FILE,
+                    Self::NoStateDirectory => NO_STATE_DIRECTORY,
                     Self::Book(f0) => ::crumbkit::Failure::code(f0),
                 }
             }
@@ -110,7 +110,7 @@ fn the_expansion_of_the_sample_enum_matches_the_documented_expansion() {
 
         impl BooksError {
             #[doc = "Every code that a `BooksError` returns, in the order of its variants. `#[derive(Failure)]` writes this list, and it leaves out the codes of a failure that a variant forwards to."]
-            pub(crate) const CODES: &'static [&'static ::crumbkit::Code] =
+            pub(crate) const CODES: &'static [&'static ::crumbkit::Code<'static>] =
                 &[&NOT_FOUND, &REMOVED_FILE, &NO_STATE_DIRECTORY];
         }
     };
@@ -125,9 +125,9 @@ fn a_type_without_alternatives_fields_urls_or_diagnostics_gets_only_code_and_rec
     };
     let expected = quote! {
         impl ::crumbkit::Failure for Timeout {
-            fn code(&self) -> &'static ::crumbkit::Code {
+            fn code(&self) -> ::crumbkit::Code<'_> {
                 match self {
-                    Self => &TIMED_OUT,
+                    Self => TIMED_OUT,
                 }
             }
 
@@ -140,10 +140,23 @@ fn a_type_without_alternatives_fields_urls_or_diagnostics_gets_only_code_and_rec
 
         impl Timeout {
             #[doc = "Every code that a `Timeout` returns, in the order of its variants. `#[derive(Failure)]` writes this list, and it leaves out the codes of a failure that a variant forwards to."]
-            const CODES: &'static [&'static ::crumbkit::Code] = &[&TIMED_OUT];
+            const CODES: &'static [&'static ::crumbkit::Code<'static>] = &[&TIMED_OUT];
         }
     };
     assert_eq!(expanded(input), expected.to_string());
+}
+
+#[test]
+fn the_derive_emits_a_code_method_that_returns_the_code_by_value() {
+    let output = expanded(quote! {
+        #[failure(code = TIMED_OUT, recovery = Recovery::Retry)]
+        struct Timeout;
+    });
+    assert!(
+        output.contains("fn code (& self) -> :: crumbkit :: Code < '_ >"),
+        "{output}"
+    );
+    assert!(output.contains("Self => TIMED_OUT ,"), "{output}");
 }
 
 #[test]
@@ -191,7 +204,9 @@ fn a_forward_to_a_named_field_binds_only_that_field() {
         "{output}"
     );
     assert!(
-        output.contains("const CODES : & 'static [& 'static :: crumbkit :: Code] = & [] ;"),
+        output.contains(
+            "const CODES : & 'static [& 'static :: crumbkit :: Code < 'static >] = & [] ;"
+        ),
         "{output}"
     );
 }

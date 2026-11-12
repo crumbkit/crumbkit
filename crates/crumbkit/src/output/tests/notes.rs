@@ -143,7 +143,7 @@ fn the_notes_reach_standard_error_in_one_write_so_no_note_is_split_between_other
     assert!(err.bytes.ends_with(b"by name.\n"));
 }
 
-const GONE: Code = Code::new("solar", "planets", "gone");
+const GONE: Code<'static> = Code::new("solar", "planets", "gone");
 
 /// A planet that the batch could not find.
 #[derive(Debug)]
@@ -158,8 +158,8 @@ impl fmt::Display for Gone {
 impl std::error::Error for Gone {}
 
 impl Failure for Gone {
-    fn code(&self) -> &'static Code {
-        &GONE
+    fn code(&self) -> Code<'_> {
+        GONE
     }
 
     fn recovery(&self) -> Recovery {

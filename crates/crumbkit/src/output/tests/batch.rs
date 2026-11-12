@@ -14,7 +14,7 @@ use crate::{
     AsFailure, Batch, Call, Code, Document, Error, Failure, Recovery, Row, Run, Sink, finish_to,
 };
 
-const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows.
@@ -83,8 +83,8 @@ impl std::error::Error for Missing {
 }
 
 impl Failure for Missing {
-    fn code(&self) -> &'static Code {
-        &NOT_FOUND
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
     }
 
     fn recovery(&self) -> Recovery {
