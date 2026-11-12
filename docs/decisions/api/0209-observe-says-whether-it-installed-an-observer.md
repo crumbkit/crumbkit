@@ -34,13 +34,17 @@ said why.
   on its first report, with or without an observer. An observer installed
   after that report counts as late, even when it then hears every report
   that remains.
+- `observe` reads the flag after the install, and a `SeqCst` fence in
+  `typed` and in `observe` orders the two, so `Installed` means the
+  observer hears `typed`. Under a race between threads, an observer that
+  heard it can get `InstalledLate`.
 
 ## Consequences
 
 A caller that compared the result of `observe` with `true` fails to build
 and calls `.installed()`. A tool can warn when its observer was installed
-late. The `typed` report stores one atomic value more, with or without an
-observer.
+late. The `typed` report stores one atomic value and runs one fence more,
+with or without an observer.
 
 Considered: keeping the `bool` and adding a function that reports a late
 install, which leaves the two refusals indistinguishable; refusing a late

@@ -31,14 +31,15 @@
 //!
 //! static LAST_EXIT: LastExit = LastExit(AtomicU8::new(0));
 //!
-//! // First in `main`, before `parse`, so the observer hears the whole run.
+//! // First in `main`, before `parse`, so the observer hears every report
+//! // from `typed` on.
 //! assert_eq!(observe(&LAST_EXIT), Observing::Installed);
 //! ```
 
 use std::ffi::OsString;
 use std::process::ExitCode;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering, fence};
 
 use clap::{Arg, ArgMatches, Command};
 
@@ -349,7 +350,7 @@ impl TraceIds {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Observing {
     /// `observe` installed the observer before `parse` reported the typed
-    /// command line, so the observer hears the whole run.
+    /// command line, so the observer hears every report from `typed` on.
     Installed,
     /// `observe` installed the observer after `parse` had already reported
     /// the typed command line. The observer hears every report that follows,
@@ -374,24 +375,9 @@ impl Observing {
 }
 
 /// Whether [`typed`] has reported the typed command line in this process.
-/// `typed` sets it on its first report, with or without an observer, and
-/// nothing clears it.
-///
-/// The flag uses `Relaxed` ordering. It guards no other memory, so no
-/// reader needs to see other writes through it, and a single atomic's
-/// modification order already keeps a thread that has read true from
-/// reading false again. When a tool installs its observers first in `main`
-/// and parses on the same thread, program order alone makes the answer
-/// exact. When `observe` and `parse` run at once on different threads, the
-/// answer reflects the moment `observe` read the flag, and no ordering
-/// would make that race exact.
-static TYPED: AtomicBool = AtomicBool::new(false);
-
-/// Reports whether [`typed`] has reported the typed command line in this
-/// process.
-pub(crate) fn typed_yet() -> bool {
-    TYPED.load(Ordering::Relaxed)
-}
+/// A `SeqCst` fence in `typed` and in `observe_in` means an observer that got
+/// `Installed` hears `typed`. Under a race, one that heard it can get `InstalledLate`.
+pub(crate) static TYPED: AtomicBool = AtomicBool::new(false);
 
 /// Installs `observer` for the rest of the process, after the observers
 /// already installed, and returns what it did as an [`Observing`].
@@ -416,28 +402,28 @@ pub(crate) fn typed_yet() -> bool {
 /// function a tool may call more than once installs its observer only on
 /// the first call, as the usage log's `start` does.
 pub fn observe(observer: &'static dyn Observer) -> Observing {
-    observe_in(
-        &OBSERVERS,
-        observer,
-        crate::complete::completing(),
-        typed_yet(),
-    )
+    observe_in(&OBSERVERS, observer, crate::complete::completing(), &TYPED)
 }
 
 /// Installs `observer` in the first free slot of `slots` unless the run is
-/// `completing`, as [`observe`] describes. `late` says that `typed` has
-/// already reported the typed command line.
+/// `completing`, as [`observe`] describes. `typed` is the flag that says
+/// the typed command line was reported, which it reads after the install.
 pub(crate) fn observe_in(
     slots: &Slots,
     observer: &'static dyn Observer,
     completing: bool,
-    late: bool,
+    typed: &AtomicBool,
 ) -> Observing {
     if completing {
-        Observing::Completing
-    } else if !slots.iter().any(|slot| slot.set(observer).is_ok()) {
-        Observing::Full
-    } else if late {
+        return Observing::Completing;
+    }
+    if !slots.iter().any(|slot| slot.set(observer).is_ok()) {
+        return Observing::Full;
+    }
+    // Pairs with the fence in `typed`, so either `typed` sees the new slot
+    // or this load sees the flag.
+    fence(Ordering::SeqCst);
+    if typed.load(Ordering::Relaxed) {
         Observing::InstalledLate
     } else {
         Observing::Installed
@@ -532,6 +518,8 @@ pub fn ended(exit: u8, out_bytes: Option<u64>) -> ExitCode {
 /// reported, so a later [`observe`] answers [`Observing::InstalledLate`].
 pub(crate) fn typed(command: &Command, args: &[OsString], spelling: Spelling) {
     TYPED.store(true, Ordering::Relaxed);
+    // Pairs with the fence in `observe_in`, as `TYPED` describes.
+    fence(Ordering::SeqCst);
     for observer in observers() {
         observer.typed(command, args, spelling);
     }

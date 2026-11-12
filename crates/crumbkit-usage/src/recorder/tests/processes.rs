@@ -286,6 +286,36 @@ fn the_starts_test_s_child_starts_the_log_four_times_and_installs_three_observer
 }
 
 #[test]
+fn an_observer_installed_after_parse_is_installed_late() {
+    let state = TempDir::new("late");
+
+    let status = run_child(
+        "recorder::tests::processes::the_late_test_s_child_parses_and_then_installs_an_observer",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(0));
+}
+
+/// The command line of the late test's child, which takes no arguments.
+#[derive(clap::Parser)]
+#[command(name = "late")]
+struct Late {}
+
+/// Runs only as the child of the late test. It parses a command line, which
+/// reports `typed`, and then installs [`SILENT`], which must be late.
+#[test]
+fn the_late_test_s_child_parses_and_then_installs_an_observer() {
+    if !is_child() {
+        return;
+    }
+    let sink = &mut Sink::new(Vec::new(), Vec::new());
+    let _ = crumbkit::parse_to::<Late>(sink, &Tool::new(), ["late"]);
+
+    assert_eq!(crumbkit::events::observe(&SILENT), Observing::InstalledLate);
+}
+
+#[test]
 fn a_run_whose_extension_panics_while_the_line_is_written_keeps_its_exit_code() {
     let state = TempDir::new("broken-exit");
 
