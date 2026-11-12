@@ -233,3 +233,177 @@ fn a_failure_prints_a_shown_field_as_text_in_its_message_and_json_in_its_fields(
         "{json}"
     );
 }
+
+/// Runs `loans list` with `flags` on `rows` of any row type, and returns
+/// standard output, or `None` when the run does not print.
+fn print<R: Row>(flags: &[&str], rows: Vec<R>) -> Option<String> {
+    let document: Document<Vec<R>> = Document::new("loans", "loans", 1, "The loans.");
+    let output = parse(flags)?;
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let result: Result<Vec<R>, Overdue> = Ok(rows);
+    let code = crumbkit::finish_to(&mut Sink::new(&mut out, &mut err), output, document, result);
+    assert_eq!(code, 0);
+    String::from_utf8(out).ok()
+}
+
+/// Runs `loans list` on `rows` of any row type, and returns the text table,
+/// or `None` when the run does not print.
+fn table<R: Row>(rows: Vec<R>) -> Option<String> {
+    print(&[], rows)
+}
+
+/// Runs `loans list --json` on `rows` of any row type, and returns the
+/// document's data, or `None` when the run does not print JSON.
+fn data<R: Row>(rows: Vec<R>) -> Option<Value> {
+    let json: Value = serde_json::from_str(&print(&["--json"], rows)?).ok()?;
+    json.get("data").cloned()
+}
+
+/// The length of a book, which a row flattens or a variant holds.
+#[derive(Serialize, JsonSchema)]
+struct Size {
+    /// The book's length.
+    pages: Pages,
+}
+
+/// A row that is an internally tagged enum.
+#[derive(Serialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+enum Entry {
+    /// A struct variant with a shown field.
+    Book {
+        /// The book's length.
+        pages: Pages,
+    },
+    /// A newtype variant whose struct has a shown field.
+    Issue(Size),
+}
+
+impl Row for Entry {
+    const COLUMNS: &'static [&'static str] = &["kind", "pages"];
+}
+
+#[test]
+fn a_row_that_is_an_internally_tagged_enum_shows_a_shown_field_as_its_display() {
+    let rows = || {
+        vec![
+            Entry::Book { pages: Pages(432) },
+            Entry::Issue(Size { pages: Pages(48) }),
+        ]
+    };
+
+    let expected = "\
+KIND   PAGES
+book   432 pages
+issue  48 pages
+";
+    assert_eq!(table(rows()).unwrap(), expected);
+    assert_eq!(
+        data(rows()),
+        Some(json!([
+            {"kind": "book", "pages": 432},
+            {"kind": "issue", "pages": 48},
+        ]))
+    );
+}
+
+/// A row that flattens a struct with a shown field.
+#[derive(Serialize, JsonSchema)]
+struct Flat {
+    /// The book's title.
+    title: &'static str,
+    /// The book's length.
+    #[serde(flatten)]
+    size: Size,
+}
+
+impl Row for Flat {
+    const COLUMNS: &'static [&'static str] = &["title", "pages"];
+}
+
+#[test]
+fn a_row_that_flattens_a_struct_shows_its_shown_field_as_its_display() {
+    let rows = || {
+        vec![Flat {
+            title: "Emma",
+            size: Size { pages: Pages(474) },
+        }]
+    };
+
+    assert_eq!(table(rows()).unwrap(), "TITLE  PAGES\nEmma   474 pages\n");
+    assert_eq!(data(rows()), Some(json!([{"title": "Emma", "pages": 474}])));
+}
+
+/// An enum whose struct variant has a shown field.
+#[derive(Serialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+enum Edition {
+    /// A printed edition.
+    Print {
+        /// The edition's length.
+        pages: Pages,
+    },
+}
+
+/// A row that flattens an enum, whose struct variant serde buffers.
+#[derive(Serialize, JsonSchema)]
+struct FlatEdition {
+    /// The book's title.
+    title: &'static str,
+    /// The book's edition.
+    #[serde(flatten)]
+    edition: Edition,
+}
+
+impl Row for FlatEdition {
+    const COLUMNS: &'static [&'static str] = &["title", "print"];
+}
+
+/// A row that is an internally tagged enum whose newtype variant holds an
+/// enum, whose struct variant serde buffers.
+#[derive(Serialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+enum Tagged {
+    /// A book in one edition.
+    Book(Edition),
+}
+
+impl Row for Tagged {
+    const COLUMNS: &'static [&'static str] = &["kind", "print"];
+}
+
+#[test]
+fn a_shown_field_of_a_struct_variant_that_a_row_flattens_shows_its_display() {
+    let rows = || {
+        vec![FlatEdition {
+            title: "Emma",
+            edition: Edition::Print { pages: Pages(474) },
+        }]
+    };
+
+    let expected = "\
+TITLE  PRINT
+Emma   {\"pages\":\"474 pages\"}
+";
+    assert_eq!(table(rows()).unwrap(), expected);
+    assert_eq!(
+        data(rows()),
+        Some(json!([{"title": "Emma", "print": {"pages": 474}}]))
+    );
+}
+
+#[test]
+fn a_shown_field_of_a_struct_variant_inside_a_tagged_newtype_variant_shows_its_display() {
+    let rows = || vec![Tagged::Book(Edition::Print { pages: Pages(474) })];
+
+    let expected = "\
+KIND  PRINT
+book  {\"pages\":\"474 pages\"}
+";
+    assert_eq!(table(rows()).unwrap(), expected);
+    assert_eq!(
+        data(rows()),
+        Some(json!([{"kind": "book", "print": {"pages": 474}}]))
+    );
+}

@@ -8,6 +8,7 @@
 ## Children
 
 - [ADR-0148. A length of time is a row field type](0148-a-length-of-time-is-a-row-field-type.md)
+- [ADR-0204. The text mode stays a thread-local flag](0204-the-text-mode-stays-a-thread-local-flag.md)
 
 ## Context
 

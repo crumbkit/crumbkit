@@ -18,7 +18,7 @@ use serde_json::Value;
 
 pub use self::menu::Menu;
 use crate::output::table::{cell, escape_controls};
-use crate::shown::TextCells;
+use crate::shown::text_cells;
 use crate::{Error, Row};
 
 mod menu;
@@ -242,10 +242,7 @@ impl Choices {
 pub fn from_rows<T: Row + Serialize>(rows: &[T], id: &str) -> Vec<Choice> {
     rows.iter()
         .filter_map(|row| {
-            let text = {
-                let _cells = TextCells::enter();
-                serde_json::to_value(row).ok()?
-            };
+            let text = text_cells(|| serde_json::to_value(row)).ok()?;
             let row = serde_json::to_value(row).ok()?;
             let value = match row.get(id)? {
                 Value::Null => return None,
