@@ -76,7 +76,7 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The most rows that the command's `--limit` takes, which the footer
     /// names, or `None` when `--limit` has no upper bound.
     bound: Option<usize>,
-    /// The number of rows that report a problem ([`Row::is_problem`])
+    /// The number of rows that report a problem ([`Row::PROBLEM`])
     /// among every row that [`Listing::from_all`] was given, when its limit
     /// cut some of them and at least one of them reports a problem, or
     /// `None` when the listing counts the rows it holds.
@@ -144,7 +144,7 @@ impl<R: Row> Listing<R> {
     /// remote backend fetches one page and calls [`Listing::new`] instead.
     ///
     /// When the limit cuts rows, it counts the rows that report a problem
-    /// ([`Row::is_problem`]) among
+    /// ([`Row::PROBLEM`]) among
     /// every row before it cuts them, so `crumbkit::finish` exits with the
     /// problem exit and its note counts every such row although the page
     /// holds fewer. A listing from [`Listing::new`] or

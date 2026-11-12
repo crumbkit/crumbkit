@@ -111,10 +111,11 @@ mod tests;
 ///   column of the table whole when the table fits a terminal (ADR-0121);
 /// - a leaf column without a description, naming the field whose doc
 ///   comment is missing, because `--help` lists the column without one;
-/// - a leaf whose row type's `Row::PROBLEM` names a field that is not one
-///   of its `Row::COLUMNS`, because the compact table then hides the
-///   problem that makes the run exit with 1;
-/// - a leaf whose problem field's type is not a string, a boolean or a
+/// - a leaf whose row type's `Row::PROBLEM` names a column, with
+///   `Problem::field` or `Problem::by`, that is not one of its
+///   `Row::COLUMNS`, because the compact table then hides the problem that
+///   makes the run exit with 1;
+/// - a leaf whose `Problem::field` field's type is not a string, a boolean or a
 ///   value that can be null, because no value of it then means that the
 ///   row has no problem;
 /// - a topic whose name is the name or an alias of a command directly under
@@ -376,7 +377,7 @@ fn check_leaves(
 
 /// Adds a problem to `problems` for each column of the leaf at `text` that
 /// is not a field of its row type or has no description, for the problem
-/// field that `check_problem` refuses, for a headed leaf's `text` or
+/// column that `check_problem` refuses, for a headed leaf's `text` or
 /// `base64` that is not at the top level of the row type, and for rows
 /// whose row type has no compact column.
 fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
@@ -384,8 +385,14 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
         return;
     };
     let columns = document.column_descriptions();
-    if let Some(field) = document.problem() {
-        check_problem(text, field, &columns, problems);
+    if let Some(column) = document.problem_column() {
+        check_problem(
+            text,
+            column,
+            document.problem().is_some(),
+            &columns,
+            problems,
+        );
     }
     let headed = document.document().is_headed();
     // Prose and bytes have no rows, a headed batch prints each row's bytes
@@ -468,19 +475,28 @@ fn check_uncut(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     }
 }
 
-/// Adds a problem to `problems` when `field`, the field that `Row::PROBLEM`
-/// names for the leaf at `text`, is not one of `columns` without `--long`,
-/// or when its type has no value that means no problem.
-fn check_problem(text: &str, field: &str, columns: &[Column], problems: &mut Vec<String>) {
+/// Adds a problem to `problems` when `name`, the column that `Row::PROBLEM`
+/// names for the leaf at `text`, is not one of `columns` without `--long`.
+/// When the row type names the column with `Problem::field`, so `field` is
+/// true, it also adds one when the column's type has no value that means no
+/// problem.
+fn check_problem(
+    text: &str,
+    name: &str,
+    field: bool,
+    columns: &[Column],
+    problems: &mut Vec<String>,
+) {
+    let kind = if field { "field" } else { "column" };
     let column = columns
         .iter()
-        .find(|column| column.name() == field && !column.is_long());
+        .find(|column| column.name() == name && !column.is_long());
     match column {
         None => problems.push(format!(
-            "{text}: the problem field `{field}` is not one of the row type's COLUMNS, so the compact table hides the problem that decides the exit"
+            "{text}: the problem {kind} `{name}` is not one of the row type's COLUMNS, so the compact table hides the problem that decides the exit"
         )),
-        Some(column) if column.is_property() && !column.can_be_empty() => problems.push(format!(
-            "{text}: the problem field `{field}` is not a string, a boolean or a value that can be null, so no value of it means that the row has no problem"
+        Some(column) if field && column.is_property() && !column.can_be_empty() => problems.push(format!(
+            "{text}: the problem field `{name}` is not a string, a boolean or a value that can be null, so no value of it means that the row has no problem"
         )),
         Some(_) => {}
     }

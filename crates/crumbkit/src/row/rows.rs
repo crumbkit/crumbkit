@@ -141,7 +141,7 @@ pub trait Sealed {
     }
 
     /// Returns the number of rows that report a problem
-    /// ([`Row::is_problem`]), which `crumbkit::finish` reads for the
+    /// ([`Row::PROBLEM`]), which `crumbkit::finish` reads for the
     /// exit code and the note. Every result counts the rows it holds, and a
     /// listing that [`Listing::from_all`](crate::Listing::from_all) cut to
     /// its limit also counts the rows it cut.

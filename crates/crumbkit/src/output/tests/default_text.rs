@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Document, Listing, Row, Tool};
+use crate::{Document, Listing, Problem, Row, Tool};
 
 /// An item of a cleanup run: a dry run removes nothing, and a real run
 /// removes each item unless removing it needs the caller's own step.
@@ -32,7 +32,7 @@ struct Item {
 impl Row for Item {
     const COLUMNS: &'static [&'static str] = &["path", "removed", "step"];
     const LONG_COLUMNS: &'static [&'static str] = &["bytes"];
-    const PROBLEM: Option<&'static str> = Some("unreadable");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("unreadable"));
 
     fn in_default_text(&self) -> bool {
         !self.removed || self.step.is_some()

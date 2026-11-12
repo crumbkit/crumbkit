@@ -429,7 +429,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// flag adds nothing (ADR-0149).
 ///
 /// A run without a failure whose rows report a problem, as
-/// [`Row::is_problem`](crate::Row::is_problem) decides, exits with 1, also
+/// [`Row::PROBLEM`](crate::Row::PROBLEM) decides, exits with 1, also
 /// after the reader closed the pipe early. The exit reads every row that
 /// the result holds, including rows that the budget left unprinted, and a
 /// listing from `Listing::from_all` also counts the rows that its limit

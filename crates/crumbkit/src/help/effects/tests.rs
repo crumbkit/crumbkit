@@ -386,7 +386,7 @@ struct Check {
 
 impl crate::Row for Check {
     const COLUMNS: &'static [&'static str] = &["name", "problem"];
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<crate::Problem<Self>> = Some(crate::Problem::field("problem"));
 }
 
 /// The tool record of `tree()`, whose leaf prints rows that can report a

@@ -65,6 +65,7 @@ each row. A handler that filtered its own rows would also filter the JSON.
 
 - [ADR-0138. A listing can list only its problem rows](0138-a-listing-lists-only-its-problem-rows.md)
 - [ADR-0140. The `Rows:` line names every view that lists every row](0140-the-rows-line-names-every-view-that-lists-every-row.md)
+- [ADR-0212. A row type declares its problem as one value](0212-a-row-type-declares-its-problem-as-one-value.md)
 
 ## Consequences
 

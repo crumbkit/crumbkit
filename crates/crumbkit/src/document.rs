@@ -353,7 +353,7 @@ impl<R: Headed, E: AsFailure> Document<Batch<R, E>> {
 
 impl<R: Row, S> Document<Listing<R, S>> {
     /// Returns the same listing document with a default text that lists
-    /// only the rows that report a problem, as [`Row::is_problem`] decides,
+    /// only the rows that report a problem, as [`Row::PROBLEM`] decides,
     /// such as the failed checks of a check command (ADR-0138).
     ///
     /// Without `--json`, `--long` or `--fields`, `crumbkit::finish` prints
@@ -379,7 +379,8 @@ impl<R: Row, S> Document<Listing<R, S>> {
     /// # struct Check { package: String, passed: bool }
     /// # impl crumbkit::Row for Check {
     /// #     const COLUMNS: &'static [&'static str] = &["package", "passed"];
-    /// #     fn is_problem(&self) -> bool { !self.passed }
+    /// #     const PROBLEM: Option<crumbkit::Problem<Self>> =
+    /// #         Some(crumbkit::Problem::by("passed", |check| !check.passed));
     /// # }
     /// use crumbkit::{Document, Listing};
     ///

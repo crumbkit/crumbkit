@@ -96,8 +96,9 @@ fn a_check_puts_the_sections_that_would_change_first() {
             (Section::Usage, Status::Kept),
         ]
     );
-    assert!(draft.rows[0].is_problem());
-    assert!(!draft.rows[1].is_problem());
+    let reports = |row: &Drafted| Drafted::PROBLEM.is_some_and(|problem| problem.reports(row));
+    assert!(reports(&draft.rows[0]));
+    assert!(!reports(&draft.rows[1]));
 }
 
 #[test]

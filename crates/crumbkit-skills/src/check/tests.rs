@@ -126,12 +126,12 @@ fn every_current_copy_reports_no_problem() {
     let listing = check_in(&[SKILL], home.agent_dirs.clone(), &SkillsCheck::default());
 
     assert_eq!(states(listing.rows()), [Checked::Current, Checked::Current]);
-    assert!(
-        listing
-            .rows()
-            .iter()
-            .all(|row| !crumbkit::Row::is_problem(row))
-    );
+    assert!(!listing.rows().iter().any(reports));
+}
+
+/// Reports whether `row` reports a problem, so check exits with 1.
+fn reports(row: &CheckRow) -> bool {
+    <CheckRow as crumbkit::Row>::PROBLEM.is_some_and(|problem| problem.reports(row))
 }
 
 #[test]
@@ -195,7 +195,7 @@ fn a_tool_folder_that_links_elsewhere_is_linked_and_no_problem() {
         rows[1].reason.as_deref(),
         Some(format!("linked to {}", real.display()).as_str())
     );
-    assert!(rows.iter().all(|row| !crumbkit::Row::is_problem(row)));
+    assert!(!rows.iter().any(reports));
 }
 
 #[cfg(unix)]

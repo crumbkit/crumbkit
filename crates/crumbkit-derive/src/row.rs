@@ -426,7 +426,7 @@ fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
     } = row;
     let problem = problem.as_ref().map_or_else(
         || quote!(::std::option::Option::None),
-        |(_, field)| quote!(::std::option::Option::Some(#field)),
+        |(_, field)| quote!(::std::option::Option::Some(#krate::Problem::field(#field))),
     );
     quote! {
         #[automatically_derived]
@@ -434,7 +434,7 @@ fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
             const COLUMNS: &'static [&'static str] = &[#(#columns),*];
             const LONG_COLUMNS: &'static [&'static str] = &[#(#long),*];
             const UNCUT_COLUMNS: &'static [&'static str] = &[#(#uncut),*];
-            const PROBLEM: ::std::option::Option<&'static str> = #problem;
+            const PROBLEM: ::std::option::Option<#krate::Problem<Self>> = #problem;
         }
     }
 }

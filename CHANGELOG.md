@@ -19,6 +19,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `#[row(column)]`, `#[row(long)]`, `#[row(uncut)]` and `#[row(problem)]` on
   its fields, with each name as serde serializes it. crumbkit's `derive`
   feature re-exports it ([behaviour/adoption]).
+- crumbkit: `Problem` says which rows of a row type report a problem.
+  `Problem::field` names a field whose value marks a problem, and
+  `Problem::by` takes a function that decides and names the column that
+  shows the state ([behaviour/output/listings]).
 
 ### Changed
 
@@ -59,6 +63,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   lower bound or no count. A caller that used the `Option<usize>` calls
   `Total::exact`. `Listing::capped(false)` no longer undoes an earlier
   `capped(true)` ([behaviour/output/listings]).
+- crumbkit: breaking: `Row::PROBLEM` is an `Option<Problem<Self>>`. A row
+  type changes `Some("status")` to `Some(Problem::field("status"))`
+  ([behaviour/output/listings]).
+- crumbkit-test: breaking: `check_help` fails a `Problem::by` whose column
+  is not one of the row type's `COLUMNS`, as it fails such a
+  `Problem::field` ([behaviour/output/listings]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
   `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
   codes of any lifetime, so they also accept codes from `Code::runtime` that
@@ -77,6 +87,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `.next(call, "phrase.")` to `.step(Step::new("Sentence.").call(call))`,
   and the step prints on two lines: `Next: Sentence.`, then the command.
   It prints where it is called, so a call moved to the front prints first
+  ([behaviour/output/listings]).
+- crumbkit: breaking: `Row::is_problem` is removed. A row type that
+  overrode it sets `PROBLEM` to `Some(Problem::by("state", Self::failed))`,
+  with the method's body in `failed` and the column that shows the state. A
+  caller that asked a row writes
+  `R::PROBLEM.is_some_and(|problem| problem.reports(row))`
   ([behaviour/output/listings]).
 
 ## [0.4.1](https://github.com/crumbkit/crumbkit/compare/v0.4.0...v0.4.1) - 2026-11-12### Added

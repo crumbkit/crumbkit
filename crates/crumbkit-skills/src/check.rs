@@ -19,7 +19,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use clap::Args;
-use crumbkit::{Document, Listing, Row};
+use crumbkit::{Document, Listing, Problem, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -94,9 +94,9 @@ impl Row for CheckRow {
     // A copy that is missing, differs or cannot be read makes check exit
     // with 1, and the document lists only those rows in text. A linked
     // folder does not, because install skips it and its owner chose it.
-    fn is_problem(&self) -> bool {
-        !matches!(self.state, Checked::Current | Checked::Linked)
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("state", |row| {
+        !matches!(row.state, Checked::Current | Checked::Linked)
+    }));
 }
 
 /// Compares the copy of each skill of `skills` in each agent skills

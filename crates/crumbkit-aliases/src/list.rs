@@ -7,7 +7,7 @@ use std::path::Path;
 
 use clap::{Args, Command};
 use crumbkit::help::quote;
-use crumbkit::{Document, Error, Failure, Listing, Page, Row, Run};
+use crumbkit::{Document, Error, Failure, Listing, Page, Problem, Row, Run};
 use schemars::JsonSchema;
 use serde::Serialize;
 use toml::de::{DeTable, DeValue};
@@ -75,7 +75,7 @@ impl Row for AliasRow {
     const COLUMNS: &'static [&'static str] = &["name", "command", "problem", "from"];
     // An entry that does not work makes `aliases list` exit with 1, so a
     // check of the aliases file fails on it.
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
 /// Returns the built-in aliases of the command tree that `run` holds and

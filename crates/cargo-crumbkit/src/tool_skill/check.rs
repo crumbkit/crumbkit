@@ -6,7 +6,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crumbkit::{Document, Listing, Row};
+use crumbkit::{Document, Listing, Problem, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -63,7 +63,7 @@ pub(crate) struct Checked {
 
 impl Row for Checked {
     const COLUMNS: &'static [&'static str] = &["file", "line", "span", "reason"];
-    const PROBLEM: Option<&'static str> = Some("reason");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("reason"));
     const LINE: Option<&'static str> = Some("<FILE>:<LINE>: <SPAN>: <REASON>");
 
     fn text_line(&self) -> Option<String> {

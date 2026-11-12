@@ -1,7 +1,7 @@
-//! Tests for the tool record check of the field that `Row::PROBLEM` names.
+//! Tests for the tool record check of the column that `Row::PROBLEM` names.
 
 use crumbkit::help::Help;
-use crumbkit::{Document, Row, Tool};
+use crumbkit::{Document, Problem, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -18,7 +18,7 @@ struct CheckedBook {
 
 impl Row for CheckedBook {
     const COLUMNS: &'static [&'static str] = &["id", "problem"];
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
 /// A book whose problem field is only a long column.
@@ -33,7 +33,7 @@ struct LongProblemBook {
 impl Row for LongProblemBook {
     const COLUMNS: &'static [&'static str] = &["id"];
     const LONG_COLUMNS: &'static [&'static str] = &["problem"];
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
 /// A book whose problem field is a number, which no value marks as no
@@ -48,7 +48,38 @@ struct CountedBook {
 
 impl Row for CountedBook {
     const COLUMNS: &'static [&'static str] = &["id", "problems"];
-    const PROBLEM: Option<&'static str> = Some("problems");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problems"));
+}
+
+/// A loan that reports a problem when it is overdue, which its compact
+/// `overdue` column shows.
+#[derive(Serialize, JsonSchema)]
+struct Loan {
+    /// The loan's id.
+    id: u32,
+    /// How many days the loan is overdue.
+    overdue: u32,
+}
+
+impl Row for Loan {
+    const COLUMNS: &'static [&'static str] = &["id", "overdue"];
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("overdue", |loan| loan.overdue > 0));
+}
+
+/// A loan that reports a problem when it is overdue, which only its long
+/// `overdue` column shows.
+#[derive(Serialize, JsonSchema)]
+struct LongLoan {
+    /// The loan's id.
+    id: u32,
+    /// How many days the loan is overdue.
+    overdue: u32,
+}
+
+impl Row for LongLoan {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const LONG_COLUMNS: &'static [&'static str] = &["overdue"];
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("overdue", |loan| loan.overdue > 0));
 }
 
 #[test]
@@ -104,5 +135,41 @@ fn check_tool_fails_on_a_problem_field_whose_type_is_a_number() {
         panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
         "the command tree breaks crumbkit's help rules:\n\
          shelf books list: the problem field `problems` is not a string, a boolean or a value that can be null, so no value of it means that the row has no problem"
+    );
+}
+
+#[test]
+fn a_problem_by_a_function_whose_column_is_a_compact_column_of_any_type_passes() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
+        leaf(&["books", "list"]).document(Document::<Vec<Loan>>::new(
+            "shelf",
+            "books-list",
+            1,
+            "The test rows.",
+        )),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]));
+
+    check_help(&shelf(), &TOOL, &[]);
+}
+
+#[test]
+fn check_tool_fails_on_a_problem_by_a_function_whose_column_is_not_a_compact_column() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
+        leaf(&["books", "list"]).document(Document::<Vec<LongLoan>>::new(
+            "shelf",
+            "books-list",
+            1,
+            "The test rows.",
+        )),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]));
+
+    assert_eq!(
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
+         shelf books list: the problem column `overdue` is not one of the row type's COLUMNS, so the compact table hides the problem that decides the exit"
     );
 }

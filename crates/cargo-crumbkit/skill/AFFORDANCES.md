@@ -98,7 +98,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `Listing::described`, `singular`, `summary`, `note`, `long_note` | Lines printed around a table | `eprintln!` next to rows | `eprintln!` | 0.1 | `page-listing` |
 | `Listing::step`, `Step::call` | A sentence naming the next command | A note or row names a tool command | `\.note\(` `reason:` | 0.1, JSON `next` 0.1.1 | `row-command` |
 | `Step::run`, `Program` | A sentence naming another program's command | A note or row says to run another program | `\.note\(` `reason:` | 0.1 | `program-step` |
-| `Row::PROBLEM`, `is_problem` | Setting exit 1 by hand when a row is bad | A handler counts bad rows and exits | `ExitCode::FAILURE` | 0.1 | `problem-rows` |
+| `Row::PROBLEM`, `Problem` | Setting exit 1 by hand when a row is bad | A handler counts bad rows and exits | `ExitCode::FAILURE` | 0.1, `Problem` 0.5 | `problem-rows` |
 | `Document::only_problems` | A `--problems` filter | A flag that hides healthy rows | `only_problems` `problems:\s*bool` | 0.1 | `problem-rows` |
 | `Row::in_default_text` | Filtering rows before `finish`, which also drops them from JSON | A handler filters rows only for text | `is_json\(\)` | 0.1 | `row-shape` |
 | `Row::UNCUT_COLUMNS` | Widening a table so an id survives | Read: rows with a copyable id | Read `Row` impls | 0.1 | `row-shape` |

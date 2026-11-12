@@ -12,7 +12,7 @@ use serde::Serialize;
 
 use crate::help::{Help, Leaf};
 use crate::twins::assert_one_word_apart;
-use crate::{Document, Listing, Row, Sink, Tool};
+use crate::{Document, Listing, Problem, Row, Sink, Tool};
 
 /// A check of one package, without long columns.
 #[derive(Serialize, JsonSchema)]
@@ -26,10 +26,7 @@ struct Check {
 impl Row for Check {
     const COLUMNS: &'static [&'static str] = &["package", "passed"];
     const WHOLE: bool = true;
-
-    fn is_problem(&self) -> bool {
-        !self.passed
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("passed", |check| !check.passed));
 }
 
 /// A row with a long column that a tool's readers expect whole.

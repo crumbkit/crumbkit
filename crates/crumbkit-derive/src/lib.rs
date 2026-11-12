@@ -177,8 +177,8 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// | `column` | field | The field's name in `COLUMNS`. |
 /// | `long` | field | The field's name in `LONG_COLUMNS`. A field gives `column` or `long`, and never both. |
 /// | `uncut` | field that gives `column` or `long` | The field's name in `UNCUT_COLUMNS` as well. |
-/// | `problem` | field that gives `column` | The field's name as `PROBLEM`. At most one field gives it. |
-/// | `crate = PATH` | type | The path of the crate that holds `Row`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
+/// | `problem` | field that gives `column` | The field's name in `PROBLEM`, as `Problem::field`. At most one field gives it. |
+/// | `crate = PATH` | type | The path of the crate that holds `Row` and `Problem`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each list keeps the order of the fields in the struct, so a type
 /// reorders its columns by reordering its fields. Each name is the field's
@@ -194,9 +194,9 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// for a hand-written impl with an empty `COLUMNS`.
 ///
 /// The derive writes the four constants and leaves every other item of
-/// `Row` to its default. A row that sets `LINE`, `CHILDREN` or `WHOLE`, or
-/// overrides `cell_style`, `is_problem`, `in_default_text` or `text_line`,
-/// writes `impl Row` by hand. So does an enum, and a row whose `Serialize`
+/// `Row` to its default. A row that sets `LINE`, `CHILDREN` or `WHOLE`,
+/// sets `PROBLEM` with `Problem::by`, or overrides `cell_style`,
+/// `in_default_text` or `text_line`, writes `impl Row` by hand. So does an enum, and a row whose `Serialize`
 /// impl is written by hand, because the derive reads the names from serde's
 /// attributes.
 ///
@@ -233,8 +233,8 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 ///     const COLUMNS: &'static [&'static str] = &["id", "name", "warning"];
 ///     const LONG_COLUMNS: &'static [&'static str] = &["pageCount"];
 ///     const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
-///     const PROBLEM: ::std::option::Option<&'static str> =
-///         ::std::option::Option::Some("warning");
+///     const PROBLEM: ::std::option::Option<::crumbkit::Problem<Self>> =
+///         ::std::option::Option::Some(::crumbkit::Problem::field("warning"));
 /// }
 /// ```
 ///

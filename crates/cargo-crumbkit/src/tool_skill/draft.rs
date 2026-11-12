@@ -7,7 +7,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use crumbkit::{Document, Listing, Row};
+use crumbkit::{Document, Listing, Problem, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -91,9 +91,9 @@ pub(crate) struct Drafted {
 impl Row for Drafted {
     const COLUMNS: &'static [&'static str] = &["section", "status"];
 
-    fn is_problem(&self) -> bool {
-        self.status == Status::WouldChange
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("status", |row| {
+        row.status == Status::WouldChange
+    }));
 }
 
 /// The figures of one draft: the file, the tool and the usage it read.
