@@ -68,7 +68,7 @@ fn tree() -> Command {
         .version("1.0.0")
         .disable_help_subcommand(true)
         .arg(
-            Arg::new("json")
+            Arg::new(crate::ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue)

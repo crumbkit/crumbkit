@@ -64,7 +64,7 @@ fn check_tool_fails_on_an_example_that_types_a_view_flag_which_adds_nothing_to_i
 }
 
 #[test]
-fn check_tool_reports_an_unoffered_flag_below_a_command_that_declares_its_own_json() {
+fn check_tool_reports_an_unoffered_flag_below_a_command_that_declares_its_own_json_argument() {
     const TOOL: Tool = Tool::new().help(
         Help::new().leaves(&[
             leaf(&["books", "list"])
@@ -77,8 +77,7 @@ fn check_tool_reports_an_unoffered_flag_below_a_command_that_declares_its_own_js
     let tool = ViewFlags::augment_args(shelf()).mut_subcommand("books", |books| {
         books.arg(
             Arg::new("json")
-                .long("json")
-                .global(false)
+                .long("from-json")
                 .action(ArgAction::SetTrue),
         )
     });

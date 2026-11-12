@@ -57,7 +57,12 @@ impl Drop for TempDir {
 pub(super) fn tree() -> Command {
     let flag = |name: &'static str| Arg::new(name).long(name).action(ArgAction::SetTrue);
     let mut tool = Command::new("shelf")
-        .arg(flag("full").global(true))
+        .arg(
+            Arg::new(crumbkit::ViewFlags::FULL_ID)
+                .long("full")
+                .global(true)
+                .action(ArgAction::SetTrue),
+        )
         .subcommand(
             Command::new("books")
                 .subcommand(

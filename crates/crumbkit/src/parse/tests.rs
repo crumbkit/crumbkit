@@ -10,7 +10,7 @@ use clap::{Arg, ArgAction, Command};
 use super::message::message;
 use super::{Stop, Unparsed, try_parse_to};
 use crate::twins::assert_one_word_apart;
-use crate::{Run, Sink, Tool};
+use crate::{Run, Sink, Tool, ViewFlags};
 
 mod aliases;
 mod alternatives;
@@ -45,22 +45,23 @@ pub(crate) fn parse_tree_to<C: clap::FromArgMatches>(
     try_parse_to(sink, command, tool, args).map_err(|unparsed| unparsed.print_to(sink))
 }
 
-/// A tool with two global flags, a version, and a group that holds a visible
-/// leaf with an alias and a hidden leaf.
+/// A tool with the global view flags `--json` and `--fields`, declared by
+/// hand, a version, and a group that holds a visible leaf with an alias and
+/// a hidden leaf.
 fn tree() -> Command {
     Command::new("tool")
         .version("1.2.3")
         .about("Explore a small solar system")
         .subcommand_required(true)
         .arg(
-            Arg::new("json")
+            Arg::new(ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue)
                 .help("Print JSON"),
         )
         .arg(
-            Arg::new("fields")
+            Arg::new(ViewFlags::FIELDS_ID)
                 .long("fields")
                 .value_name("FIELD")
                 .global(true)
@@ -97,6 +98,7 @@ fn tree() -> Command {
 /// returns the tool's own type.
 #[derive(clap::Args)]
 struct Flags {
+    #[arg(id = ViewFlags::JSON_ID, long = "json")]
     json: bool,
 }
 

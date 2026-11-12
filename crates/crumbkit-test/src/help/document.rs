@@ -3,6 +3,7 @@
 //! result (ADR-0016, ADR-0105, ADR-0115, ADR-0143).
 
 use clap::Command;
+use crumbkit::ViewFlags;
 use crumbkit::help::Leaf;
 
 use crate::allow::{Allowances, Rule};
@@ -49,13 +50,11 @@ pub(super) fn check_document(
 }
 
 /// Reports whether the command at `path` below `command` takes a view
-/// flag: an argument with the id `json`, `fields`, `long` or `full` that
-/// is global, which `parse` reads as a view flag. The tree is unbuilt, so
-/// the check walks from the leaf's command up to `command` and asks, for
-/// each id, the nearest command that declares an argument with it. clap's
-/// build copies a global argument down only to a command that has no
-/// argument with its id, so that nearest argument is the one the leaf's
-/// command parses, and it is a view flag only when it is global.
+/// flag: an argument with one of the ids of crumbkit's `ViewFlags`, such
+/// as `ViewFlags::JSON_ID`, which `parse` reads as a view flag. The tree
+/// is unbuilt, so a global argument still sits only on the command that
+/// declares it. The leaf's command takes the flag when it declares the
+/// argument itself or when a command above it declares it global.
 fn takes_view_flag(command: &Command, path: &[&str]) -> bool {
     let mut chain = vec![command];
     for &name in path {
@@ -64,11 +63,16 @@ fn takes_view_flag(command: &Command, path: &[&str]) -> bool {
         };
         chain.push(child);
     }
-    ["json", "fields", "long", "full"].into_iter().any(|id| {
-        chain
-            .iter()
-            .rev()
-            .find_map(|node| node.get_arguments().find(|arg| arg.get_id() == id))
-            .is_some_and(clap::Arg::is_global_set)
+    let ids = [
+        ViewFlags::JSON_ID,
+        ViewFlags::FIELDS_ID,
+        ViewFlags::LONG_ID,
+        ViewFlags::FULL_ID,
+    ];
+    let leaf = chain.len() - 1;
+    chain.iter().enumerate().any(|(depth, node)| {
+        node.get_arguments().any(|arg| {
+            ids.contains(&arg.get_id().as_str()) && (depth == leaf || arg.is_global_set())
+        })
     })
 }

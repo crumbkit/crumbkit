@@ -41,7 +41,7 @@ use serde::Serialize;
 
 use super::program::{self, Program};
 use super::report::{Entry, Figures, Finding, Kind, Report, Tally, read};
-use crumbkit::{Call, Document, Listing, Run, Step, Tool};
+use crumbkit::{Call, Document, Listing, Run, Step, Tool, ViewFlags};
 
 #[cfg(test)]
 mod tests;
@@ -315,8 +315,11 @@ fn report_from(
         .described("findings")
         .summary(summary)
         .step(
-            Step::new("Show the figures of each finding's command.")
-                .call(Call::new(&["self", "usage"]).arg("json").arg("full")),
+            Step::new("Show the figures of each finding's command.").call(
+                Call::new(&["self", "usage"])
+                    .arg(ViewFlags::JSON_ID)
+                    .arg(ViewFlags::FULL_ID),
+            ),
         )
 }
 

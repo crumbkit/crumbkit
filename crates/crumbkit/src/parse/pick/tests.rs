@@ -21,7 +21,7 @@ fn tree() -> Command {
     Command::new("tool")
         .subcommand_required(true)
         .arg(
-            Arg::new("json")
+            Arg::new(crate::ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue),
@@ -372,7 +372,10 @@ fn a_failed_source_s_stop_reports_the_path_to_the_command_that_it_picked_for() {
     let stop = run.result.as_ref().err();
 
     assert_eq!(stop.map(Stop::path), Some(&["find".to_owned()][..]));
-    assert_eq!(stop.map(Stop::flags), Some(vec!["json".to_owned()]));
+    assert_eq!(
+        stop.map(Stop::flags),
+        Some(vec!["crumbkit_json".to_owned()])
+    );
 }
 
 #[test]
@@ -389,7 +392,10 @@ fn a_failed_source_after_a_pick_reports_only_the_flags_that_the_caller_typed() {
 
     assert!(run.err.contains("pick LIST"), "{}", run.err);
     assert_eq!(stop.map(Stop::printed), Some(crate::Printed::Failure));
-    assert_eq!(stop.map(Stop::flags), Some(vec!["json".to_owned()]));
+    assert_eq!(
+        stop.map(Stop::flags),
+        Some(vec!["crumbkit_json".to_owned()])
+    );
     assert_eq!(stop.and_then(|stop| stop.value("list")), None);
 }
 

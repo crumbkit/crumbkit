@@ -33,6 +33,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `Refused::code` is a `const fn` and returns
   `Code<'static>` by value, where it returned `&'static Code`. A caller drops
   the `*` or `&` it used on the result ([behaviour/failures]).
+- crumbkit: breaking: the view flags have the clap ids `crumbkit_json`,
+  `crumbkit_fields`, `crumbkit_long` and `crumbkit_full`. A tool that
+  declares them by hand, or names one in `Call::arg`, uses
+  `ViewFlags::JSON_ID` and the other constants ([behaviour/output]).
+- crumbkit: breaking: `Refused::flags` and `Refused::value` report a typed
+  view flag by its new id, such as `crumbkit_json` for `--json`
+  ([behaviour/parsing]).
+- crumbkit: breaking: a tool's own argument with the long name `--json`,
+  `--fields`, `--long` or `--full` on a command that the global view flags
+  reach now fails clap's debug asserts. The tool gives it another long name
+  ([behaviour/parsing]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
   `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
   codes of any lifetime, so they also accept codes from `Code::runtime` that

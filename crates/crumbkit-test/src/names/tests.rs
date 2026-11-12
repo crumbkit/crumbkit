@@ -118,7 +118,7 @@ fn an_argument_with_a_visible_long_or_short_alias_fails() {
 fn a_global_argument_with_a_visible_alias_fails_once_on_the_command_that_defines_it() {
     let shelf = Command::new("shelf")
         .arg(
-            Arg::new("json")
+            Arg::new(crumbkit::ViewFlags::JSON_ID)
                 .long("json")
                 .visible_alias("as-json")
                 .global(true)

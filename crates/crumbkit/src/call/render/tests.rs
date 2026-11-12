@@ -3,16 +3,17 @@
 use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::RenderCall as _;
-use crate::{Call, CallError};
+use crate::{Call, CallError, ViewFlags};
 
-/// A tool with a visible branch, a hidden command and a hidden argument.
+/// A tool with the view flags, a visible branch, a hidden command and a
+/// hidden argument.
 #[derive(Parser)]
 #[command(name = "shelf")]
 struct Tool {
     #[command(subcommand)]
     resource: Resource,
-    #[arg(long, global = true)]
-    json: bool,
+    #[command(flatten)]
+    view: ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -77,7 +78,7 @@ fn a_call_with_no_arguments_renders_the_tool_name_and_the_path() {
 
 #[test]
 fn a_call_finds_a_global_argument_on_the_subcommand_it_names() {
-    let call = Call::new(&["books", "list"]).arg("json");
+    let call = Call::new(&["books", "list"]).arg(ViewFlags::JSON_ID);
 
     assert_eq!(render(&call).unwrap(), "shelf books list --json");
 }
@@ -205,18 +206,19 @@ fn a_value_for_a_hidden_argument_is_a_hidden_argument() {
 
 #[test]
 fn a_value_for_a_flag_is_refused_because_the_flag_takes_no_value() {
-    let error = render(&Call::new(&["books", "list"]).value("json", "yes")).unwrap_err();
+    let call = Call::new(&["books", "list"]).value(ViewFlags::JSON_ID, "yes");
+    let error = render(&call).unwrap_err();
 
     assert_eq!(
         error,
         CallError::TakesNoValue {
             command: "shelf books list".to_owned(),
-            id: "json".to_owned(),
+            id: "crumbkit_json".to_owned(),
         }
     );
     assert_eq!(
         error.to_string(),
-        "'shelf books list' takes no value for its argument 'json'"
+        "'shelf books list' takes no value for its argument 'crumbkit_json'"
     );
 }
 
@@ -356,13 +358,13 @@ fn an_all_argument_for_an_argument_that_takes_one_value_is_refused() {
 
 #[test]
 fn an_all_argument_for_a_flag_is_refused_because_the_flag_takes_no_value() {
-    let call = Call::new(&["books", "list"]).all("json", "left_out");
+    let call = Call::new(&["books", "list"]).all(ViewFlags::JSON_ID, "left_out");
 
     assert_eq!(
         render(&call),
         Err(CallError::TakesNoValue {
             command: "shelf books list".to_owned(),
-            id: "json".to_owned(),
+            id: "crumbkit_json".to_owned(),
         })
     );
 }

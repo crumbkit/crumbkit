@@ -116,18 +116,21 @@ const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
 ]));
 
 /// A tool with crumbkit's output flags on its root and one group of leaves.
-/// The leaf `own` declares its own `--long`, which is not global.
+/// The leaf `own` declares its own argument with the id `long` and the
+/// long name `--count-long`.
 fn tree() -> Command {
     let leaves = [
         "list", "ids", "count", "export", "dump", "watch", "read", "plain", "shelves", "query",
     ]
     .map(|name| Command::new(name).about("A leaf"));
-    let own = Command::new("own").about("A leaf with its own --long").arg(
-        Arg::new("long")
-            .long("long")
-            .action(ArgAction::SetTrue)
-            .help("Count the long books"),
-    );
+    let own = Command::new("own")
+        .about("A leaf with its own long argument")
+        .arg(
+            Arg::new("long")
+                .long("count-long")
+                .action(ArgAction::SetTrue)
+                .help("Count the long books"),
+        );
     crate::ViewFlags::augment_args(Command::new("tool"))
         .subcommand_required(true)
         .subcommand(
@@ -373,10 +376,45 @@ fn fields_on_a_bytes_leaf_is_refused_with_the_bytes_wording() {
 #[test]
 fn a_tool_s_own_long_argument_on_a_leaf_is_neither_hidden_nor_refused() {
     let page = long_help(&["books", "own"]);
-    let parsed = parse(&["tool", "books", "own", "--long"]);
+    let parsed = parse(&["tool", "books", "own", "--count-long"]);
 
     assert!(page.contains("Count the long books"), "{page}");
     assert_eq!(parsed.code, None, "{}", parsed.err);
+}
+
+/// Returns a tool with the view flags on its root and a leaf `import`
+/// whose own argument has the id `json` and the long name `--from-json`.
+fn importing() -> Command {
+    let import = Command::new("import").arg(
+        Arg::new("json")
+            .long("from-json")
+            .action(ArgAction::SetTrue)
+            .help("Read the books as JSON"),
+    );
+    crate::ViewFlags::augment_args(Command::new("tool")).subcommand(import)
+}
+
+/// Parses `args` against `importing()`, and returns whether the run prints
+/// JSON.
+fn import_is_json(args: &[&str]) -> bool {
+    let mut err = Vec::new();
+    let result = parse_tree_to::<()>(
+        &mut Sink::new(Vec::new(), &mut err),
+        importing(),
+        &Tool::new(),
+        args,
+    );
+    let Ok(((), run)) = result else {
+        panic!("{args:?} is refused: {}", String::from_utf8(err).unwrap());
+    };
+    run.is_json()
+}
+
+#[test]
+fn a_tool_s_own_argument_with_the_id_json_parses_and_does_not_turn_on_the_json_view() {
+    assert!(!import_is_json(&["tool", "import", "--from-json"]));
+    assert!(import_is_json(&["tool", "import", "--from-json", "--json"]));
+    assert!(import_is_json(&["tool", "--json", "import"]));
 }
 
 #[test]

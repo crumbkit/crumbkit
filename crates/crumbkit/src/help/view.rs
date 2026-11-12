@@ -4,7 +4,7 @@
 
 use crate::document::ListingText;
 use crate::refusal::Refusal;
-use crate::{Document, Row, Shape};
+use crate::{Document, Row, Shape, ViewFlags};
 
 #[cfg(test)]
 mod tests;
@@ -46,18 +46,19 @@ impl ViewFlag {
         }
     }
 
-    /// Returns the id of the flag's argument in [`Run`](crate::Run),
-    /// such as `long`.
+    /// Returns the clap id of the flag's argument in
+    /// [`ViewFlags`](crate::ViewFlags), such as `crumbkit_long`.
     pub(crate) const fn id(self) -> &'static str {
         match self {
-            Self::Fields => "fields",
-            Self::Long => "long",
-            Self::Full => "full",
+            Self::Fields => ViewFlags::FIELDS_ID,
+            Self::Long => ViewFlags::LONG_ID,
+            Self::Full => ViewFlags::FULL_ID,
         }
     }
 
-    /// Returns the view flag whose argument id in [`Run`](crate::Run)
-    /// is `id`, or `None` when `id` names no view flag.
+    /// Returns the view flag whose clap id in
+    /// [`ViewFlags`](crate::ViewFlags) is `id`, or `None` when `id` names
+    /// no view flag.
     pub(crate) fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|flag| flag.id() == id)
     }

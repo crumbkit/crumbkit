@@ -30,12 +30,17 @@ use crate::{Sink, Spelling, Tool};
 ///   conflicts with `--long` and `--full`.
 ///
 /// [`parse`](crate::parse()) reads the four flags from clap's matches by
-/// their ids, `json`, `fields`, `long` and `full`, before the tool's type
-/// takes the values, and puts them in the [`Run`] that it returns. The
-/// tool's own copy of `ViewFlags` is then unused. A tool that defines the
-/// flags in its own parser gives its arguments those ids and marks them
-/// global, and `parse` reads them the same way. A tool without the flags
-/// parses with every view flag off.
+/// their ids, [`JSON_ID`](Self::JSON_ID), [`FIELDS_ID`](Self::FIELDS_ID),
+/// [`LONG_ID`](Self::LONG_ID) and [`FULL_ID`](Self::FULL_ID), before the
+/// tool's type takes the values, and puts them in the [`Run`] that it
+/// returns. The tool's own copy of `ViewFlags` is then unused. The ids
+/// start with `crumbkit_`, so a tool's own argument with the id `json` or
+/// `long` is never read as a view flag. A tool that defines the flags in
+/// its own parser gives its arguments those ids and marks them global, and
+/// `parse` reads them the same way. A [`Call`](crate::Call) that names a
+/// view flag names it by the same constant, as in
+/// `Call::new(&["books", "list"]).arg(ViewFlags::JSON_ID)`. A tool without
+/// the flags parses with every view flag off.
 ///
 /// A tool that parses with clap alone passes the `ViewFlags` that clap
 /// parsed to [`Run::new`], which refuses `--full` without `--json` and
@@ -56,7 +61,8 @@ use crate::{Sink, Spelling, Tool};
 pub struct ViewFlags {
     /// `--json`, which prints the result as a JSON document.
     #[arg(
-        long,
+        id = ViewFlags::JSON_ID,
+        long = "json",
         global = true,
         help = "Print the result as a JSON document. The default prints text."
     )]
@@ -64,7 +70,8 @@ pub struct ViewFlags {
 
     /// `--fields`, the names of the fields to print, in order.
     #[arg(
-        long,
+        id = ViewFlags::FIELDS_ID,
+        long = "fields",
         global = true,
         value_name = "FIELD",
         value_delimiter = ',',
@@ -74,7 +81,8 @@ pub struct ViewFlags {
 
     /// `--long`, which adds the row type's long columns.
     #[arg(
-        long,
+        id = ViewFlags::LONG_ID,
+        long = "long",
         global = true,
         help = "Add the long columns after the compact ones. The default prints only the compact columns."
     )]
@@ -82,7 +90,8 @@ pub struct ViewFlags {
 
     /// `--full`, which prints every field of every row with `--json`.
     #[arg(
-        long,
+        id = ViewFlags::FULL_ID,
+        long = "full",
         global = true,
         help = "With --json, print every field of every row. The default prints only the fields of the columns."
     )]
@@ -90,6 +99,26 @@ pub struct ViewFlags {
 }
 
 impl ViewFlags {
+    /// The clap id of `--json`, `crumbkit_json`. A [`Call`](crate::Call)
+    /// names the flag with it, and a tool that declares the flag by hand
+    /// gives its argument this id.
+    pub const JSON_ID: &'static str = "crumbkit_json";
+
+    /// The clap id of `--fields`, `crumbkit_fields`. A
+    /// [`Call`](crate::Call) names the flag with it, and a tool that
+    /// declares the flag by hand gives its argument this id.
+    pub const FIELDS_ID: &'static str = "crumbkit_fields";
+
+    /// The clap id of `--long`, `crumbkit_long`. A [`Call`](crate::Call)
+    /// names the flag with it, and a tool that declares the flag by hand
+    /// gives its argument this id.
+    pub const LONG_ID: &'static str = "crumbkit_long";
+
+    /// The clap id of `--full`, `crumbkit_full`. A [`Call`](crate::Call)
+    /// names the flag with it, and a tool that declares the flag by hand
+    /// gives its argument this id.
+    pub const FULL_ID: &'static str = "crumbkit_full";
+
     /// Returns the view flags with every flag off, the same value as
     /// `ViewFlags::default()`.
     #[must_use]
@@ -132,39 +161,29 @@ impl ViewFlags {
         self
     }
 
-    /// Returns the view flags in `matches`, the matches of `node`, the
-    /// deepest command that the caller typed.
+    /// Returns the view flags in `matches`, the matches of the deepest
+    /// command that the caller typed.
     ///
     /// clap copies the value of a global argument to every command on the
     /// path, so `matches` holds a flag that the caller typed before the
-    /// command path too. A flag counts only when `node`'s argument with the
-    /// flag's id is global and holds the type that `ViewFlags` gives it, so
-    /// a tool's own argument with that id is left alone.
-    pub(crate) fn read(node: &Command, matches: &ArgMatches) -> Self {
-        let global = |id: &str| {
-            node.get_arguments()
-                .any(|arg| arg.get_id() == id && arg.is_global_set())
-        };
+    /// command path too. The flags' ids start with `crumbkit_`, so a tool's
+    /// own argument cannot share an id with one of them.
+    pub(crate) fn read(matches: &ArgMatches) -> Self {
         // The `try_` getters return an error for an id that the matches do
-        // not know or a value of another type, where the plain getters
-        // panic.
-        let flag =
-            |id: &str| global(id) && matches.try_get_one::<bool>(id).ok().flatten() == Some(&true);
-        let fields = if global("fields") {
-            matches
-                .try_get_many::<String>("fields")
-                .ok()
-                .flatten()
-                .map(|names| names.cloned().collect())
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
+        // not know, which is every view flag of a tool without them, or for
+        // a value of another type, where the plain getters panic.
+        let flag = |id: &str| matches.try_get_one::<bool>(id).ok().flatten() == Some(&true);
+        let fields = matches
+            .try_get_many::<String>(Self::FIELDS_ID)
+            .ok()
+            .flatten()
+            .map(|names| names.cloned().collect())
+            .unwrap_or_default();
         Self {
-            json: flag("json"),
+            json: flag(Self::JSON_ID),
             fields,
-            long: flag("long"),
-            full: flag("full"),
+            long: flag(Self::LONG_ID),
+            full: flag(Self::FULL_ID),
         }
     }
 }

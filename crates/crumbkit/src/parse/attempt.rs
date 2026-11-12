@@ -43,9 +43,9 @@ pub(super) fn attempt<C: FromArgMatches>(
     let mut matches = command.try_get_matches_from_mut(args)?;
     crate::events::parsed(command, &matches);
     let no_input = pick::no_input(&matches);
-    let (path, node, level) = deepest(command, &matches);
+    let (path, level) = deepest(command, &matches);
     let dry_run = dry_run::typed(level);
-    let view = refusal(node, level, &path, tool);
+    let view = refusal(level, &path, tool);
     C::from_arg_matches_mut(&mut matches).map(|parsed| Attempt {
         parsed,
         view,
@@ -54,12 +54,12 @@ pub(super) fn attempt<C: FromArgMatches>(
     })
 }
 
-/// Returns the path of the deepest command in `matches`, that command in
-/// `command`, and its matches.
+/// Returns the path of the deepest command of `command` in `matches`, and
+/// its matches.
 pub(super) fn deepest<'a>(
     command: &'a Command,
     matches: &'a ArgMatches,
-) -> (Vec<&'a str>, &'a Command, &'a ArgMatches) {
+) -> (Vec<&'a str>, &'a ArgMatches) {
     let mut path: Vec<&str> = Vec::new();
     let mut node = command;
     let mut level = matches;
@@ -70,7 +70,7 @@ pub(super) fn deepest<'a>(
         node = subcommand;
         level = next;
     }
-    (path, node, level)
+    (path, level)
 }
 
 /// Returns the view that the typed view flags select, or the refusal of
@@ -80,8 +80,8 @@ pub(super) fn deepest<'a>(
 /// `--full`, that the leaf of `tool` at `path` does not offer (ADR-0016),
 /// unless the flag adds nothing to the leaf's JSON, as
 /// `LeafDocument::adds_nothing` decides (ADR-0149). `finish` and `stream` print
-/// the note for such a flag. `path` names `node`, the deepest command that
-/// the caller typed, and `level` holds its matches. On a leaf whose
+/// the note for such a flag. `path` names the deepest command that the
+/// caller typed, and `level` holds its matches. On a leaf whose
 /// document is headed, it then refuses `--fields` without `--json`, as
 /// [`view::headed`] describes (ADR-0062). It then refuses two typed flags
 /// that cannot work together, on every command, as [`View::try_from`]
@@ -91,23 +91,19 @@ pub(super) fn deepest<'a>(
 ///
 /// clap copies the value of a global flag to every command on the path, so
 /// the deepest command's matches hold a view flag that the caller typed
-/// before the command path too. A flag counts only when the command's
-/// argument with the flag's id is global, so a tool's own argument with
-/// that id is never refused.
+/// before the command path too. The view flags' ids start with
+/// `crumbkit_`, so a tool's own argument never shares an id with one of
+/// them and is never refused.
 pub(super) fn refusal(
-    node: &Command,
     level: &ArgMatches,
     path: &[&str],
     tool: &Tool,
 ) -> Result<View, Box<Refusal>> {
+    // `value_source` needs an id that the matches know, and the matches of
+    // a tool without the view flags know none of their ids, so the id is
+    // checked with `try_contains_id` first.
     let typed = |id: &str| {
-        let global = node
-            .get_arguments()
-            .any(|arg| arg.get_id() == id && arg.is_global_set());
-        // `value_source` needs an id that the matches know, so the id is
-        // looked up among them first.
-        global
-            && level.ids().any(|known| known == id)
+        matches!(level.try_contains_id(id), Ok(true))
             && level.value_source(id) == Some(ValueSource::CommandLine)
     };
     let leaf = tool
@@ -115,7 +111,7 @@ pub(super) fn refusal(
         .get_leaves()
         .iter()
         .find(|leaf| leaf.path() == path);
-    let json = typed("json");
+    let json = typed(ViewFlags::JSON_ID);
     let unoffered = leaf.and_then(|leaf| {
         ViewFlag::ALL.into_iter().find_map(|flag| {
             let reason = leaf.unoffered(flag)?;
@@ -134,7 +130,7 @@ pub(super) fn refusal(
     if headed && let Some(refusal) = view::headed(typed(ViewFlag::Fields.id()), json) {
         return Err(Box::new(refusal));
     }
-    let view = View::try_from(ViewFlags::read(node, level)).map_err(Box::new)?;
+    let view = View::try_from(ViewFlags::read(level)).map_err(Box::new)?;
     if let Some(leaf) = leaf
         && let Some(refusal) = unknown_field(&view, leaf)
     {
