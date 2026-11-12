@@ -173,7 +173,7 @@ fn a_topic_followed_by_an_option_in_the_name_equals_value_form_prints_the_topic(
 #[test]
 fn a_topic_followed_by_a_flag_prints_the_topic_as_text() {
     let tool = tree().arg(
-        Arg::new("json")
+        Arg::new(crate::ViewFlags::JSON_ID)
             .long("json")
             .global(true)
             .action(clap::ArgAction::SetTrue),

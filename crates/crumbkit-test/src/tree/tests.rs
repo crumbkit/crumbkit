@@ -9,7 +9,7 @@ fn shelf() -> Command {
     Command::new("shelf")
         .version("1.0.0")
         .arg(
-            Arg::new("json")
+            Arg::new(crumbkit::ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue),
@@ -58,7 +58,7 @@ fn the_walk_sees_the_tree_as_the_tool_built_it_without_the_parts_clap_generates(
                 .map(|arg| (visit.path(), arg.get_id().as_str()))
         })
         .collect();
-    assert_eq!(arguments, [("shelf", "json")]);
+    assert_eq!(arguments, [("shelf", crumbkit::ViewFlags::JSON_ID)]);
     assert!(
         visits
             .iter()

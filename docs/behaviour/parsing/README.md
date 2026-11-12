@@ -35,8 +35,17 @@ passed `--no-input` or `--dry-run`. `Run::confirm` repeats those words with
 A tool flattens [`ViewFlags`](../../../crates/crumbkit/src/output/build.rs)
 into its clap types to accept `--json`, `--fields`, `--long` and `--full`.
 `parse` reads them before the tool's type takes its values, so a handler
-reads them through the `Run`. A tool that does not flatten `ViewFlags`
-parses with every view flag off.
+reads them through the `Run`. `parse` finds them by their clap ids,
+`crumbkit_json`, `crumbkit_fields`, `crumbkit_long` and `crumbkit_full`,
+which `ViewFlags::JSON_ID`, `ViewFlags::FIELDS_ID`, `ViewFlags::LONG_ID`
+and `ViewFlags::FULL_ID` hold. A tool that declares the flags by hand
+gives its arguments these ids, and a `Call` names a view flag by its
+constant, as in `Call::new(&["books", "list"]).arg(ViewFlags::JSON_ID)`.
+A tool's own argument with the id `json` is never read as a view flag.
+It cannot have the long name of a view flag on a command that the global
+flag reaches, because clap's debug asserts panic on two arguments of one
+command with the same long name. A tool that does not flatten
+`ViewFlags` parses with every view flag off.
 
 A tool that parses with clap alone builds its `Run` with `Run::new(view,
 dry_run, command, &TOOL, args)`, where `dry_run` is the `DryRun` that the
@@ -54,7 +63,7 @@ A tool with personal aliases passes its arguments through
 A tool that reads a refused command line before it prints calls `try_parse_to`
 ([a refusal that the tool prints](#a-refusal-that-the-tool-prints)).
 
-Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002, ADR-0102.
+Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002, ADR-0102, ADR-0208.
 
 ## The Stop of a run that parse ended
 
@@ -222,7 +231,9 @@ A `Refused` holds what the refusal prints and what the run knew:
   flags, in the order typed, with each flag of a group such as `-qv`. The
   caller's words are `typed` without the word `help` that crumbkit
   answered, so that word gives no flag, a `--help` that the caller typed
-  gives clap's help id, and a value that a picker added gives nothing;
+  gives clap's help id, and a value that a picker added gives nothing.
+  A typed view flag gives its crumbkit id, such as `crumbkit_json` for
+  `--json`;
 - `value`, the last value that the caller's words give an option by its
   clap id, whether the option is the deepest command's own or a global
   option of a command above it, typed as the next word or after `=`;
@@ -268,7 +279,7 @@ holding an `Unparsed` matches `Unparsed::Refused(refused)` and calls
 `refused.as_json(..)`, because `Unparsed::print` prints in the form that
 the words chose.
 
-Why: ADR-0100, ADR-0107, ADR-0109, ADR-0123, ADR-0125, ADR-0136.
+Why: ADR-0100, ADR-0107, ADR-0109, ADR-0123, ADR-0125, ADR-0136, ADR-0208.
 
 ## Reading clap's matches after parsing
 

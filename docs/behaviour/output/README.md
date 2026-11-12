@@ -142,7 +142,8 @@ A tool that defines the view flags in its own parser cannot also flatten
 check parsed ones. `parse` reads a view flag
 by its argument id, so the tool's own arguments get the refusals before
 the handler runs, and an unoffered flag leaves the leaf's help, only when
-their ids are `json`, `fields`, `long` and `full` and they are global.
+their ids are those of `ViewFlags`, such as `crumbkit_json`
+([parsing](../parsing/README.md)), and they are global.
 
 On a command that changes something and whose leaf declares no document,
 an agent may repeat a write that already happened, because the refusal
@@ -150,8 +151,8 @@ comes after the handler has run. crumbkit-test's `check_help` therefore
 fails a leaf whose effects change something, whose command takes a view
 flag and that declares neither a document nor `Leaf::prints_no_result`
 ([help checks](../help/checks.md)).
-A command takes a view flag when it reaches a global argument whose id is
-`json`, `fields`, `long` or `full`, as `parse` reads one. A leaf whose
+A command takes a view flag when it declares an argument with one of
+those ids, or a command above it declares one global. A leaf whose
 command takes no view flag needs no document, because no caller can type
 a view flag that crumbkit would refuse after the change. A tool that
 prints its own output for a leaf that the rule covers opts out of
@@ -162,7 +163,7 @@ on a program's exit code needs no document, because crumbkit-child's
 `hand_over` refuses `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105, ADR-0110, ADR-0115, ADR-0143, ADR-0149.
+Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105, ADR-0110, ADR-0115, ADR-0143, ADR-0149, ADR-0208.
 
 ## Following the caller's format
 

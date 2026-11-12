@@ -73,7 +73,7 @@ fn a_command_line_that_stops_at_a_group_with_json_prints_the_failure_document_th
 fn a_group_s_failure_document_names_its_visible_subcommands_in_declaration_order() {
     let tool = || {
         tool_with_three_leaves().arg(
-            Arg::new("json")
+            Arg::new(crate::ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue),

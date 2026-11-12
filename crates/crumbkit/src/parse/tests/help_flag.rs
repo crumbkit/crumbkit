@@ -163,7 +163,7 @@ fn a_refusal_on_a_path_where_no_command_has_a_help_flag_offers_no_step_and_says_
 #[test]
 fn the_refusal_document_of_a_path_without_a_help_flag_has_a_none_recovery_with_its_reason() {
     let refused = ["tool", "query", "--json", "--help"];
-    let json = Arg::new("json")
+    let json = Arg::new(crate::ViewFlags::JSON_ID)
         .long("json")
         .global(true)
         .action(ArgAction::SetTrue);

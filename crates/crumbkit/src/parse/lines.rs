@@ -138,15 +138,15 @@ fn add_global_flags(node: &mut Command, flags: &mut Vec<(String, String)>) {
     }
 }
 
-/// Hides from the help of `node`, the command of `leaf`, each global view
-/// flag that the leaf does not offer (ADR-0016). An argument that is not
-/// global keeps its help, so a tool's own `--long` on the command stays.
+/// Hides from the help of `node`, the command of `leaf`, each view flag
+/// that the leaf does not offer (ADR-0016). A view flag has a `crumbkit_`
+/// id, so a tool's own argument with the id `long` keeps its help.
 fn hide_unoffered(node: &mut Command, leaf: &Leaf) {
     *node = std::mem::take(node).mut_args(|arg| {
-        if arg.is_global_set() && !offers(leaf, arg.get_id().as_str()) {
-            arg.hide(true)
-        } else {
+        if offers(leaf, arg.get_id().as_str()) {
             arg
+        } else {
+            arg.hide(true)
         }
     });
 }

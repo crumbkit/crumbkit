@@ -21,7 +21,7 @@ fn tree() -> Command {
         .about("Explore a small solar system")
         .subcommand_required(true)
         .arg(
-            Arg::new("json")
+            Arg::new(crate::ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue)

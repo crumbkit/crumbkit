@@ -1,8 +1,8 @@
 //! Tests for the help pages that the help checks read.
 
 use clap::{Arg, ArgAction, Command};
-use crumbkit::Tool;
 use crumbkit::help::{Example, Goal, Group, Help, Leaf};
+use crumbkit::{Tool, ViewFlags};
 
 use super::{Pages, pages};
 #[cfg(unix)]
@@ -17,7 +17,7 @@ use crate::testing::help_binary;
 fn tree() -> Command {
     Command::new("tool")
         .arg(
-            Arg::new("json")
+            Arg::new(ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue)
@@ -100,7 +100,9 @@ fn clap_page(tool: &Command, path: &[&str], long: bool) -> String {
 fn a_clap_page_is_the_page_that_clap_renders_for_the_command_and_flag() {
     // clap prints `--help` in the long layout only when some help is long,
     // so the global flag gets a long description on every command.
-    let tool = tree().mut_arg("json", |arg| arg.long_help("Print the result as JSON"));
+    let tool = tree().mut_arg(ViewFlags::JSON_ID, |arg| {
+        arg.long_help("Print the result as JSON")
+    });
     let mut problems = Vec::new();
 
     let short = pages(&tool, Pages::clap(), "-h", &mut problems);

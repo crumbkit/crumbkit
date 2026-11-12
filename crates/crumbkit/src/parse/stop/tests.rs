@@ -160,7 +160,7 @@ fn the_stop_of_a_refused_view_flag_reports_the_path_and_an_option_s_value() {
 
     assert_eq!(stop.printed(), crate::Printed::Refusal);
     assert_eq!(stop.path(), ["list"]);
-    assert_eq!(stop.flags(), ["format", "full"]);
+    assert_eq!(stop.flags(), ["format", "crumbkit_full"]);
     assert_eq!(stop.value("format"), Some(OsStr::new("json")));
 }
 
@@ -189,6 +189,6 @@ fn the_stop_of_output_new_s_refused_view_flags_reports_the_path_the_flags_and_an
     };
 
     assert_eq!(stop.path(), ["list"]);
-    assert_eq!(stop.flags(), ["format", "full"]);
+    assert_eq!(stop.flags(), ["format", "crumbkit_full"]);
     assert_eq!(stop.value("format"), Some(OsStr::new("json")));
 }

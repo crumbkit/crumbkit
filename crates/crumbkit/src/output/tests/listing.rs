@@ -9,7 +9,7 @@ use super::{
     Cli, PLANET_LISTING, Planet, SHOW_STEP_LINES, finish_output, finish_with, mercury,
     parse_against, saturn, show_step,
 };
-use crate::{Call, Listing, Page, Step};
+use crate::{Call, Listing, Page, Step, ViewFlags};
 
 /// Returns a listing of Mercury and Saturn out of `total` planets.
 fn two_of(total: usize) -> Listing<Planet> {
@@ -352,7 +352,9 @@ fn a_next_step_into_a_branch_the_run_did_not_parse_names_a_global_flag_of_the_ro
         .value_name("NAME");
     let moons = Command::new("moons").subcommand(Command::new("show").arg(names));
     let output = parse_against(Cli::command().subcommand(moons), &[]);
-    let call = Call::new(&["moons", "show"]).arg("names").arg("json");
+    let call = Call::new(&["moons", "show"])
+        .arg("names")
+        .arg(ViewFlags::JSON_ID);
     let listing = two_of(2).step(Step::new("Show moons as JSON.").call(call));
 
     let finished = finish_output(output, PLANET_LISTING, listing);

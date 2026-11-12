@@ -11,13 +11,13 @@ use crate::record::{Name, Run};
 fn tree() -> Command {
     Command::new("shelf")
         .arg(
-            Arg::new("json")
+            Arg::new(crumbkit::ViewFlags::JSON_ID)
                 .long("json")
                 .global(true)
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("fields")
+            Arg::new(crumbkit::ViewFlags::FIELDS_ID)
                 .long("fields")
                 .global(true)
                 .value_name("FIELD"),

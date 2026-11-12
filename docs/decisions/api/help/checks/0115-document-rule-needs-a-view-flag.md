@@ -1,7 +1,7 @@
 # ADR-0115. The document rule of check_guide covers only a command that takes a view flag
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0208
 - Supersedes: ADR-0105, which it amends
 - Missed: ADR-0105 added the opt-out and missed that a leaf whose command takes no view flag has nothing for the rule to protect.
 

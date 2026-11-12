@@ -4,7 +4,7 @@
 use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
 use crumbkit::help::{Column, Leaf, LeafDocument, ViewFlag, quote};
-use crumbkit::{Shape, Tool};
+use crumbkit::{Shape, Tool, ViewFlags};
 
 use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, DASHED_NAME, is_dashed};
@@ -61,11 +61,12 @@ mod tests;
 ///   every view flag, and only `finish` or `stream` refuses a flag that
 ///   the output cannot use, after the handler has made its change
 ///   (ADR-0016), unless an opt-out from [`Rule::HelpDocument`] in `allow`
-///   covers it. A command takes a view flag when it reaches a global
-///   argument with the id `json`, `fields`, `long` or `full`, which is how
-///   `parse` recognises one (ADR-0115). A read-only leaf, a leaf without
-///   effects and a leaf whose command takes no view flag pass without a
-///   document. So does a leaf that passes on a program's exit code
+///   covers it. A command takes a view flag when it declares an argument
+///   with one of the ids of [`ViewFlags`], such as `ViewFlags::JSON_ID`,
+///   or reaches one that a command above it declares global, which is how
+///   `parse` recognises one (ADR-0115, ADR-0208). A read-only leaf, a leaf
+///   without effects and a leaf whose command takes no view flag pass
+///   without a document. So does a leaf that passes on a program's exit code
 ///   (`Leaf::passes_on_exit`), because `crumbkit_child::hand_over` refuses
 ///   `--json` and `--fields` before the program starts, and a leaf that
 ///   prints no result (`Leaf::prints_no_result`), because it offers no
@@ -325,7 +326,7 @@ fn check_leaves(
             let line = command_line(&text, example.words());
             match parser.try_get_matches_from_mut(args) {
                 Ok(matches) => {
-                    for (flag, adds_nothing) in flagged_view_flags(leaf, node, &matches) {
+                    for (flag, adds_nothing) in flagged_view_flags(leaf, &matches) {
                         let flag = flag.name();
                         let outcome = if adds_nothing {
                             "adds nothing to the command's JSON, so crumbkit prints a note that says so"
@@ -493,37 +494,37 @@ fn check_problem(text: &str, field: &str, columns: &[Column], problems: &mut Vec
 ///
 /// The flag's value sits in the matches of the leaf's command, at the end
 /// of the path of subcommands, also when the example types it before that
-/// path. A flag whose name `node`, the leaf's command, declares as its own
-/// argument that is not global does not count, because it is the tool's
-/// own flag.
-fn flagged_view_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<(ViewFlag, bool)> {
+/// path. crumbkit's `ViewFlags` gives each view flag an id that starts
+/// with `crumbkit_`, such as `ViewFlags::JSON_ID`, so a tool's own argument
+/// never counts as a view flag.
+fn flagged_view_flags(leaf: &Leaf, matches: &ArgMatches) -> Vec<(ViewFlag, bool)> {
     let mut level = matches;
     while let Some((_, next)) = level.subcommand() {
         level = next;
     }
-    // crumbkit's `ViewFlags` gives each view flag the id of its long name.
-    // A command above the leaf that declares its own `--json` that is not
-    // global can leave the id in `ids()` while `value_source` panics on it,
-    // so `try_contains_id` checks first that the leaf's matches accept it.
+    // The matches of a tool without the view flags do not know their ids,
+    // and `value_source` panics on an id that the matches do not know, so
+    // `try_contains_id` checks first that the leaf's matches accept it.
     let typed = |id: &str| {
         matches!(level.try_contains_id(id), Ok(true))
             && level.value_source(id) == Some(ValueSource::CommandLine)
-            && !node
-                .get_arguments()
-                .any(|arg| arg.get_id() == id && !arg.is_global_set())
     };
-    let json = typed("json");
-    [ViewFlag::Fields, ViewFlag::Long, ViewFlag::Full]
-        .into_iter()
-        .filter(|flag| typed(flag.name().trim_start_matches('-')))
-        .map(|flag| {
-            let adds_nothing = leaf
-                .get_document()
-                .is_some_and(|document| document.adds_nothing(flag, json));
-            (flag, adds_nothing)
-        })
-        .filter(|(flag, adds_nothing)| *adds_nothing || !leaf.offers(*flag))
-        .collect()
+    let json = typed(ViewFlags::JSON_ID);
+    [
+        (ViewFlag::Fields, ViewFlags::FIELDS_ID),
+        (ViewFlag::Long, ViewFlags::LONG_ID),
+        (ViewFlag::Full, ViewFlags::FULL_ID),
+    ]
+    .into_iter()
+    .filter_map(|(flag, id)| typed(id).then_some(flag))
+    .map(|flag| {
+        let adds_nothing = leaf
+            .get_document()
+            .is_some_and(|document| document.adds_nothing(flag, json));
+        (flag, adds_nothing)
+    })
+    .filter(|(flag, adds_nothing)| *adds_nothing || !leaf.offers(*flag))
+    .collect()
 }
 
 /// Returns the command line of an example as help prints it: `text`, the

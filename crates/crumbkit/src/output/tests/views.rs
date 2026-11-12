@@ -155,25 +155,60 @@ fn the_help_of_each_view_flag_states_what_the_command_prints_without_it() {
     };
 
     assert_eq!(
-        help("json").as_deref(),
+        help(crate::ViewFlags::JSON_ID).as_deref(),
         Some("Print the result as a JSON document. The default prints text.")
     );
     assert_eq!(
-        help("fields").as_deref(),
+        help(crate::ViewFlags::FIELDS_ID).as_deref(),
         Some(
             "Print only these comma-separated fields, in this order. The default prints the compact columns."
         )
     );
     assert_eq!(
-        help("long").as_deref(),
+        help(crate::ViewFlags::LONG_ID).as_deref(),
         Some(
             "Add the long columns after the compact ones. The default prints only the compact columns."
         )
     );
     assert_eq!(
-        help("full").as_deref(),
+        help(crate::ViewFlags::FULL_ID).as_deref(),
         Some(
             "With --json, print every field of every row. The default prints only the fields of the columns."
         )
+    );
+}
+
+#[test]
+fn each_view_flag_has_a_reserved_crumbkit_id_and_keeps_its_long_name() {
+    use clap::Args as _;
+
+    let command = crate::ViewFlags::augment_args(clap::Command::new("tool"));
+    let flags: Vec<(&str, Option<&str>)> = command
+        .get_arguments()
+        .map(|arg| (arg.get_id().as_str(), arg.get_long()))
+        .collect();
+
+    assert_eq!(
+        flags,
+        [
+            ("crumbkit_json", Some("json")),
+            ("crumbkit_fields", Some("fields")),
+            ("crumbkit_long", Some("long")),
+            ("crumbkit_full", Some("full")),
+        ]
+    );
+    assert_eq!(
+        [
+            crate::ViewFlags::JSON_ID,
+            crate::ViewFlags::FIELDS_ID,
+            crate::ViewFlags::LONG_ID,
+            crate::ViewFlags::FULL_ID,
+        ],
+        [
+            "crumbkit_json",
+            "crumbkit_fields",
+            "crumbkit_long",
+            "crumbkit_full"
+        ]
     );
 }

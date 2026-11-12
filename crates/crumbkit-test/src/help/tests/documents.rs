@@ -31,17 +31,24 @@ const SHOW: Document<Prose<String>> = Document::new("shelf", "books-show", 1, "O
 const SHOW_PROBLEM: &str = "the command tree breaks crumbkit's help rules:\n\
      shelf books show: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream";
 
-/// Returns a `--json` flag with the id `json`, global when `global` is set.
-fn json(global: bool) -> Arg {
-    Arg::new("json")
+/// Returns crumbkit's `--json` view flag as a tool declares it by hand: a
+/// global flag with the id `ViewFlags::JSON_ID`.
+fn view_json() -> Arg {
+    Arg::new(ViewFlags::JSON_ID)
         .long("json")
-        .global(global)
+        .global(true)
         .action(ArgAction::SetTrue)
 }
 
+/// Returns a tool's own argument with the id `json` and the long name
+/// `long`, which is not a view flag.
+fn own_json(long: &'static str) -> Arg {
+    Arg::new("json").long(long).action(ArgAction::SetTrue)
+}
+
 #[test]
-fn a_changing_leaf_without_a_document_fails_when_the_root_takes_global_json() {
-    let tool = shelf().arg(json(true));
+fn a_changing_leaf_without_a_document_fails_when_the_root_takes_the_global_json_view_flag() {
+    let tool = shelf().arg(view_json());
 
     assert_eq!(
         panic_message(|| check_help(&tool, &ADDING_SHOW, &[])).unwrap(),
@@ -55,22 +62,25 @@ fn a_changing_leaf_without_a_document_passes_when_its_command_takes_no_view_flag
 }
 
 #[test]
-fn a_changing_leaf_without_a_document_passes_when_its_own_json_is_not_global() {
+fn a_changing_leaf_without_a_document_passes_when_its_command_has_only_its_own_json_argument() {
     let tool = shelf().mut_subcommand("books", |books| {
-        books.mut_subcommand("show", |show| show.arg(json(false)))
+        books.mut_subcommand("show", |show| show.arg(own_json("json")))
     });
 
     check_help(&tool, &ADDING_SHOW, &[]);
 }
 
 #[test]
-fn a_changing_leaf_without_a_document_passes_when_a_command_above_it_declares_json_that_is_not_global()
- {
+fn a_changing_leaf_without_a_document_fails_when_a_command_above_it_declares_its_own_json_argument()
+{
     let tool = shelf()
-        .arg(json(true))
-        .mut_subcommand("books", |books| books.arg(json(false)));
+        .arg(view_json())
+        .mut_subcommand("books", |books| books.arg(own_json("from-json")));
 
-    check_help(&tool, &ADDING_SHOW, &[]);
+    assert_eq!(
+        panic_message(|| check_help(&tool, &ADDING_SHOW, &[])).unwrap(),
+        SHOW_PROBLEM
+    );
 }
 
 #[test]
