@@ -1,5 +1,5 @@
 //! Tests for the exit code and the note of a result whose rows report a
-//! problem through the field that `Row::PROBLEM` names (ADR-0050).
+//! problem, as `Row::PROBLEM` decides (ADR-0050).
 
 use std::fmt;
 use std::io;
@@ -14,7 +14,8 @@ use super::{Cli, Failing, finish_output, finish_with};
 use crate::answered::answered;
 use crate::tool::Failures;
 use crate::{
-    Batch, Code, Document, Error, Failure, Listing, Recovery, Row, Run, Sink, Tool, finish_to,
+    Batch, Code, Document, Error, Failure, Listing, Problem, Recovery, Row, Run, Sink, Tool,
+    finish_to,
 };
 
 const CHECKS: Document<Listing<Check>> = Document::new("lint", "checks", 1, "The test rows.");
@@ -36,7 +37,7 @@ struct Check {
 
 impl Row for Check {
     const COLUMNS: &'static [&'static str] = &["name", "problem"];
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
 /// Returns a check named `name` whose `problem` field holds `problem`.
@@ -332,8 +333,7 @@ enum State {
     Failed,
 }
 
-/// A row whose type decides its problems from its state with
-/// `Row::is_problem`, and names no problem field.
+/// A row whose type decides its problems from its state with `Problem::by`.
 #[derive(Serialize, JsonSchema)]
 struct Job {
     /// The name of the job.
@@ -344,10 +344,9 @@ struct Job {
 
 impl Row for Job {
     const COLUMNS: &'static [&'static str] = &["name", "state"];
-
-    fn is_problem(&self) -> bool {
-        matches!(self.state, State::Failed)
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("state", |job| {
+        matches!(job.state, State::Failed)
+    }));
 }
 
 const JOBS: Document<Listing<Job>> = Document::new("lint", "jobs", 1, "The test rows.");

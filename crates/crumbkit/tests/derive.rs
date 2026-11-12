@@ -404,7 +404,7 @@ mod rows {
 
     /// The same book with a hand-written `Row` impl.
     mod written {
-        use crumbkit::Row;
+        use crumbkit::{Problem, Row};
         use schemars::JsonSchema;
         use serde::Serialize;
 
@@ -427,7 +427,7 @@ mod rows {
             const COLUMNS: &'static [&'static str] = &["id", "title", "warning"];
             const LONG_COLUMNS: &'static [&'static str] = &["year"];
             const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
-            const PROBLEM: Option<&'static str> = Some("warning");
+            const PROBLEM: Option<Problem<Self>> = Some(Problem::field("warning"));
         }
     }
 
@@ -474,7 +474,22 @@ mod rows {
         assert_eq!(derived::Book::COLUMNS, &["id", "title", "warning"]);
         assert_eq!(derived::Book::LONG_COLUMNS, &["year"]);
         assert_eq!(derived::Book::UNCUT_COLUMNS, &["id"]);
-        assert_eq!(derived::Book::PROBLEM, Some("warning"));
+        let problem = derived::Book::PROBLEM.unwrap();
+        assert_eq!(problem.get_field(), Some("warning"));
+    }
+
+    #[test]
+    fn a_derived_row_reports_a_problem_through_its_problem_field() {
+        let book = |warning| derived::Book {
+            id: 1,
+            title: "Frankenstein",
+            year: 1818,
+            warning,
+            isbn: "",
+        };
+        let problem = derived::Book::PROBLEM.unwrap();
+        assert!(problem.reports(&book(Some("no ISBN"))));
+        assert!(!problem.reports(&book(None)));
     }
 
     #[test]

@@ -72,7 +72,8 @@ impl Column {
     }
 
     /// Reports whether the column's type has a value that means no
-    /// problem when the column is the field that [`Row::PROBLEM`] names:
+    /// problem when the column is the field that [`Row::PROBLEM`] names
+    /// with [`Problem::field`](crate::Problem::field):
     /// its JSON Schema type is a string or a boolean, or it can be null.
     /// crumbkit-test's `check_help` reads it for that field.
     //

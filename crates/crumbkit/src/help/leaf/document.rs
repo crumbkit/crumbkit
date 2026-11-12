@@ -6,7 +6,7 @@ use schemars::{JsonSchema, Schema};
 use super::Column;
 use crate::help::ViewFlag;
 use crate::help::view::{self, Kind, Printed};
-use crate::{Children, Document, Row, Rows, Shape, Stream, row};
+use crate::{Children, Document, Problem, Row, Rows, Shape, Stream, row};
 
 /// The document that a leaf's command prints and the columns of its row
 /// type, as [`Leaf::document`](super::Leaf::document) or
@@ -24,8 +24,11 @@ pub struct LeafDocument {
     long: &'static [&'static str],
     /// The row type's [`Row::UNCUT_COLUMNS`].
     uncut: &'static [&'static str],
-    /// The row type's [`Row::PROBLEM`].
+    /// The field that the row type's [`Row::PROBLEM`] names with
+    /// [`Problem::field`].
     problem: Option<&'static str>,
+    /// The column of the row type's [`Row::PROBLEM`].
+    problem_column: Option<&'static str>,
     /// The row type's [`Row::LINE`].
     line: Option<&'static str>,
     /// The row type's [`Row::CHILDREN`].
@@ -52,7 +55,8 @@ impl LeafDocument {
             compact: <T::Row as Row>::COLUMNS,
             long: <T::Row as Row>::LONG_COLUMNS,
             uncut: <T::Row as Row>::UNCUT_COLUMNS,
-            problem: <T::Row as Row>::PROBLEM,
+            problem: problem_field(<T::Row as Row>::PROBLEM),
+            problem_column: problem_column(<T::Row as Row>::PROBLEM),
             line: <T::Row as Row>::LINE,
             children: <T::Row as Row>::CHILDREN,
             schema: schema::<T::Row>,
@@ -70,7 +74,8 @@ impl LeafDocument {
             compact: R::COLUMNS,
             long: R::LONG_COLUMNS,
             uncut: R::UNCUT_COLUMNS,
-            problem: R::PROBLEM,
+            problem: problem_field(R::PROBLEM),
+            problem_column: problem_column(R::PROBLEM),
             line: R::LINE,
             children: R::CHILDREN,
             schema: schema::<R>,
@@ -147,12 +152,23 @@ impl LeafDocument {
         self.whole
     }
 
-    /// Returns the field that marks a row as reporting a problem, the row
-    /// type's [`Row::PROBLEM`], or `None` when the row type names no such
-    /// field.
+    /// Returns the field that marks a row as reporting a problem, which the
+    /// row type's [`Row::PROBLEM`] names with [`Problem::field`], or `None`
+    /// when the row type names no such field. The leaf's help prints a
+    /// `Problems:` line only for this field.
     #[must_use]
     pub const fn problem(&self) -> Option<&'static str> {
         self.problem
+    }
+
+    /// Returns the column that shows whether a row reports a problem, from
+    /// the row type's [`Row::PROBLEM`] of either kind, or `None` when the
+    /// row type names no problem.
+    // crumbkit-test's `check_help` reads this.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn problem_column(&self) -> Option<&'static str> {
+        self.problem_column
     }
 
     /// Returns the form of the text line that each row prints, the row
@@ -271,4 +287,20 @@ fn schema<R: JsonSchema>() -> Schema {
     crate::schemas::settings()
         .into_generator()
         .into_root_schema_for::<R>()
+}
+
+/// Returns the field that `problem` names with [`Problem::field`].
+const fn problem_field<R: ?Sized>(problem: Option<Problem<R>>) -> Option<&'static str> {
+    match problem {
+        Some(problem) => problem.get_field(),
+        None => None,
+    }
+}
+
+/// Returns the column of `problem`.
+const fn problem_column<R: ?Sized>(problem: Option<Problem<R>>) -> Option<&'static str> {
+    match problem {
+        Some(problem) => Some(problem.get_column()),
+        None => None,
+    }
 }

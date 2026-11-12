@@ -88,7 +88,7 @@ pub(crate) fn listing<R: Row>(
             Err((dir, reason)) => all.push(refused(skill, dir, reason)),
         }
     }
-    all.sort_by_key(|row| !row.is_problem());
+    all.sort_by_key(|row| !R::PROBLEM.is_some_and(|problem| problem.reports(row)));
     Listing::from_all(all, None).described("skills directories")
 }
 

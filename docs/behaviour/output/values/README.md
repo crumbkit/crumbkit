@@ -23,8 +23,8 @@ crumbkit switches the form with a mode that it sets on the current thread
 only while it serializes rows into text cells, so a tool never sets it.
 The tool's own code that runs inside that serialization, such as a
 `serialize_with` function, a hand-written `Serialize` or a `Display`, sees
-the text form of every value type. crumbkit decides `Row::is_problem`
-before it sets the mode, so the default judges the JSON form.
+the text form of every value type. crumbkit decides `Row::PROBLEM` before
+it sets the mode, so `Problem::field` judges the JSON form.
 
 Why: ADR-0147.
 

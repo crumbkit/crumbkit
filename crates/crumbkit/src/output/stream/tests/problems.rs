@@ -1,6 +1,5 @@
 //! Tests for the exit code and the note of a stream whose items report a
-//! problem through the field that `Row::PROBLEM` names (ADR-0041,
-//! ADR-0050).
+//! problem, as `Row::PROBLEM` decides (ADR-0041, ADR-0050).
 
 use std::ops::ControlFlow;
 use std::process::ExitCode;
@@ -9,7 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Unreadable, parse};
-use crate::{Document, Row, Sink, Stream, stream_to};
+use crate::{Document, Problem, Row, Sink, Stream, stream_to};
 
 /// A nest whose `problem` field marks a problem when it holds a value.
 #[derive(Serialize, JsonSchema)]
@@ -22,7 +21,7 @@ struct Nest {
 
 impl Row for Nest {
     const COLUMNS: &'static [&'static str] = &["bird", "problem"];
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
 const NESTS: Document<Stream<Nest>> = Document::new("birds", "nests", 1, "Each nest.");
@@ -82,8 +81,7 @@ fn a_stream_failure_decides_the_exit_before_an_item_that_reports_a_problem() {
     assert!(!err.contains("reports a problem"), "{err}");
 }
 
-/// An egg whose type decides its problems with `Row::is_problem`, and names
-/// no problem field.
+/// An egg whose type decides its problems with `Problem::by`.
 #[derive(Serialize, JsonSchema)]
 struct Egg {
     /// Whether the egg cracked.
@@ -92,10 +90,7 @@ struct Egg {
 
 impl Row for Egg {
     const COLUMNS: &'static [&'static str] = &["cracked"];
-
-    fn is_problem(&self) -> bool {
-        self.cracked
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("cracked", |egg| egg.cracked));
 }
 
 #[test]

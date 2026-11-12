@@ -1,4 +1,4 @@
-//! The note of the rows that report a problem, as `Row::is_problem`
+//! The note of the rows that report a problem, as `Row::PROBLEM`
 //! decides, which make a run without a failure exit with
 //! [`exit::problem_rows`](crate::exit::problem_rows) (ADR-0050), and the
 //! rows that the default text of a listing prints, which `Row::in_default_text`
@@ -6,7 +6,7 @@
 //! `row::problems` module decides which rows report one.
 
 use crate::view::{Table, View};
-use crate::{Document, Row, Rows, Shape, exit};
+use crate::{Document, Row, Rows, Shape, exit, row};
 
 /// The rule that picks the rows that the default text of a listing lists
 /// (ADR-0138, ADR-0157): each row that reports a problem, and each other
@@ -31,12 +31,12 @@ impl DefaultText {
 
     /// Reports whether the default text lists `row`. `Row::in_default_text`
     /// is asked first, because its default answers without the work that
-    /// `Row::is_problem` can do, such as serializing the problem field.
+    /// `Row::PROBLEM` can do, such as serializing the problem field.
     fn lists<R: Row>(self, row: &R) -> bool {
         if self.only_problems {
-            row.is_problem()
+            row::problems::reports(row)
         } else {
-            row.in_default_text() || row.is_problem()
+            row.in_default_text() || row::problems::reports(row)
         }
     }
 }

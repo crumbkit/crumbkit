@@ -13,7 +13,7 @@ use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
 
 use super::shell::Shell;
-use crate::Row;
+use crate::{Problem, Row};
 
 /// Returns the schema of a row's `shell` field, with the description that
 /// a leaf's help shows for the column.
@@ -67,9 +67,8 @@ impl Row for InstallRow {
 
     // A failed file makes install exit with 1. A skipped one does not,
     // because the person or program that owns that file chose it.
-    fn is_problem(&self) -> bool {
-        self.state == Installed::Failed
-    }
+    const PROBLEM: Option<Problem<Self>> =
+        Some(Problem::by("state", |row| row.state == Installed::Failed));
 }
 
 impl Serialize for InstallRow {
@@ -162,9 +161,9 @@ impl Row for CheckRow {
     // A file that is missing, differs or cannot be read makes check exit
     // with 1, and the document lists only those rows in text. A linked file
     // does not, because install skips it and its owner chose it.
-    fn is_problem(&self) -> bool {
-        !matches!(self.state, Checked::Current | Checked::Linked)
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("state", |row| {
+        !matches!(row.state, Checked::Current | Checked::Linked)
+    }));
 }
 
 impl Serialize for CheckRow {

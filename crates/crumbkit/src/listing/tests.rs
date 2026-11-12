@@ -7,7 +7,7 @@ use serde_json::json;
 use super::{Listing, NoSummary, Total};
 use crate::Rows;
 use crate::row::Sealed;
-use crate::{Call, Row, Shape, Step};
+use crate::{Call, Problem, Row, Shape, Step};
 
 #[derive(Serialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 struct Book {
@@ -198,7 +198,7 @@ struct Check {
 
 impl Row for Check {
     const COLUMNS: &'static [&'static str] = &["problem"];
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
 /// Returns a check for each of `problems`, which reports a problem when its
@@ -241,8 +241,7 @@ fn a_summary_keeps_the_problem_count_of_the_rows_that_the_limit_cut() {
     assert_eq!(listing.problems(), 1);
 }
 
-/// A row whose type decides its problems from a count with
-/// `Row::is_problem`, and names no problem field.
+/// A row whose type decides its problems from a count with `Problem::by`.
 #[derive(Serialize, JsonSchema)]
 struct Run {
     errors: u32,
@@ -250,14 +249,11 @@ struct Run {
 
 impl Row for Run {
     const COLUMNS: &'static [&'static str] = &["errors"];
-
-    fn is_problem(&self) -> bool {
-        self.errors > 0
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("errors", |run| run.errors > 0));
 }
 
 #[test]
-fn from_all_counts_the_rows_that_is_problem_marks_among_the_rows_its_limit_cuts() {
+fn from_all_counts_the_rows_that_a_problem_by_a_function_marks_among_the_rows_its_limit_cuts() {
     let runs = [0, 3, 1].map(|errors| Run { errors }).into();
 
     let listing = Listing::from_all(runs, Some(1));

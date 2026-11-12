@@ -198,14 +198,16 @@ Why: ADR-0050.
 
 ## Rows that report a problem
 
-A row type names the field that marks a problem with
-[`Row::PROBLEM`](../../../../crates/crumbkit/src/row.rs), whose rustdoc
-says which values report a problem. crumbkit-aliases' `AliasRow` names its
-`problem` column, so `aliases list` exits with 1 while an entry of the
-aliases file does not work. A row type whose problem status is computed,
-such as a status enum, overrides `Row::is_problem` instead and leaves
-`PROBLEM` unset. crumbkit counts the rows that `is_problem` marks, and its
-default reads the field that `PROBLEM` names.
+A row type says which rows report a problem with
+[`Row::PROBLEM`](../../../../crates/crumbkit/src/row.rs), which holds a
+[`Problem`](../../../../crates/crumbkit/src/row/problem.rs).
+`Problem::field` names the field that marks a problem, and its rustdoc says
+which values report one. crumbkit-aliases' `AliasRow` names its `problem`
+column, so `aliases list` exits with 1 while an entry of the aliases file
+does not work. A row type whose problem status is computed, such as a
+status enum, uses `Problem::by` instead, with the function that decides and
+the column that shows the status. crumbkit counts the rows that `PROBLEM`
+marks.
 
 - A run whose rows report a problem and that has no failure exits with 1, in
   `finish` for every result with rows and in a stream for the items it
@@ -230,13 +232,13 @@ default reads the field that `PROBLEM` names.
 The [help pages](../../help/README.md) describe the `Problems:` line and what
 `help exit-codes` says about this exit.
 
-Why: ADR-0050.
+Why: ADR-0050, ADR-0212.
 
 ## A listing that lists only its problem rows
 
 [`Document::only_problems`](../../../../crates/crumbkit/src/document.rs) on a
-listing's document makes the default text list only the rows whose
-`Row::is_problem` is true, under the summary lines.
+listing's document makes the default text list only the rows that
+`Row::PROBLEM` marks, under the summary lines.
 
 - Without `--json`, `--long` or `--fields`, the text prints the summary
   lines, the header and the rows that report a problem with their child

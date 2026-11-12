@@ -18,7 +18,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use clap::Args;
-use crumbkit::{Document, Listing, Row};
+use crumbkit::{Document, Listing, Problem, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -92,9 +92,8 @@ impl Row for InstallRow {
 
     // A failed row makes install exit with 1. A skipped one does
     // not, because the person or program that owns that file chose it.
-    fn is_problem(&self) -> bool {
-        self.state == Installed::Failed
-    }
+    const PROBLEM: Option<Problem<Self>> =
+        Some(Problem::by("state", |row| row.state == Installed::Failed));
 }
 
 /// Writes each skill of `skills` to `<dir>/<name>/SKILL.md`, with the

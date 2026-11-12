@@ -5,10 +5,10 @@ use clap::Command;
 use tempfile::TempDir;
 
 use super::check_in;
+use crate::Listing;
 use crate::completion::rows::{CheckRow, Checked};
 use crate::completion::script::{installed, registration};
 use crate::completion::shell::{Env, Shell};
-use crate::{Listing, Row};
 
 fn shelf() -> Command {
     Command::new("shelf").subcommand(Command::new("books"))
@@ -70,7 +70,7 @@ fn state(listing: &Listing<CheckRow>) -> Checked {
 /// Reports whether `finish` exits with 1 for the listing: whether a row
 /// reports a problem.
 fn fails(listing: &Listing<CheckRow>) -> bool {
-    listing.rows().iter().any(Row::is_problem)
+    listing.rows().iter().any(crate::row::problems::reports)
 }
 
 #[test]

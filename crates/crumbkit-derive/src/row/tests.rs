@@ -44,8 +44,8 @@ fn the_expansion_of_the_sample_struct_matches_the_documented_expansion() {
             const COLUMNS: &'static [&'static str] = &["id", "name", "warning"];
             const LONG_COLUMNS: &'static [&'static str] = &["pageCount"];
             const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
-            const PROBLEM: ::std::option::Option<&'static str> =
-                ::std::option::Option::Some("warning");
+            const PROBLEM: ::std::option::Option<::crumbkit::Problem<Self>> =
+                ::std::option::Option::Some(::crumbkit::Problem::field("warning"));
         }
     };
     assert_eq!(expanded(input), expected.to_string());
@@ -64,7 +64,8 @@ fn a_struct_without_row_keys_gets_empty_lists_and_no_problem_field() {
             const COLUMNS: &'static [&'static str] = &[];
             const LONG_COLUMNS: &'static [&'static str] = &[];
             const UNCUT_COLUMNS: &'static [&'static str] = &[];
-            const PROBLEM: ::std::option::Option<&'static str> = ::std::option::Option::None;
+            const PROBLEM: ::std::option::Option<::crumbkit::Problem<Self>> =
+                ::std::option::Option::None;
         }
     };
     assert_eq!(output, expected.to_string());

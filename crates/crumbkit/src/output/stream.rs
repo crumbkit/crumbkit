@@ -283,7 +283,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             return ControlFlow::Break(());
         }
         self.items += 1;
-        self.problems += usize::from(item.is_problem());
+        self.problems += usize::from(crate::row::problems::reports(item));
         self.send()
     }
 
@@ -335,7 +335,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// failure chose the code.
     ///
     /// A stream without a failure whose printed items report a problem, as
-    /// [`Row::is_problem`] decides, exits with 1, and in
+    /// [`Row::PROBLEM`] decides, exits with 1, and in
     /// text, while the pipe is open, it prints a note such as `note: 2 of
     /// the rows report a problem, so the command exits with 1.` on the error
     /// writer (ADR-0050). With `--json`, while the pipe is open, it prints a

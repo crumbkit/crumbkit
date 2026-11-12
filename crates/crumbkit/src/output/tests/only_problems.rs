@@ -13,7 +13,7 @@ use clap::CommandFactory as _;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Children, Document, Listing, Row, Tool};
+use crate::{Children, Document, Listing, Problem, Row, Tool};
 
 /// A check of one package, with the errors and warnings that it found.
 #[derive(Serialize, JsonSchema)]
@@ -39,10 +39,7 @@ impl Row for Check {
     const COLUMNS: &'static [&'static str] = &["package", "passed"];
     const CHILDREN: Option<Children> = Some(Children::field("findings"));
     const WHOLE: bool = true;
-
-    fn is_problem(&self) -> bool {
-        !self.passed
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("passed", |check| !check.passed));
 
     fn child_lines(&self) -> Vec<String> {
         let errors = self.findings.iter().filter(|finding| finding.error);
@@ -245,10 +242,7 @@ impl Row for Link {
     const COLUMNS: &'static [&'static str] = &["pointer", "found"];
     const LONG_COLUMNS: &'static [&'static str] = &["target"];
     const LINE: Option<&'static str> = Some("<POINTER> -> <TARGET>");
-
-    fn is_problem(&self) -> bool {
-        !self.found
-    }
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("found", |link| !link.found));
 
     fn text_line(&self) -> Option<String> {
         Some(format!("{} -> {}", self.pointer, self.target))
@@ -379,7 +373,7 @@ struct Service {
 
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name", "fault"];
-    const PROBLEM: Option<&'static str> = Some("fault");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("fault"));
 }
 
 const SERVICES: Document<Listing<Service>> =

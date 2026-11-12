@@ -220,7 +220,7 @@ fn write_rows<T: Rows>(
     // run prints only one of the two. The rows are serialized once, so a
     // shown value writes its `Display` when the run prints text.
     // The default text of a listing serializes only the rows that it lists
-    // (ADR-0138, ADR-0157). `Row::is_problem` decides which before the
+    // (ADR-0138, ADR-0157). `Row::PROBLEM` decides which before the
     // text mode starts, so a problem field of a shown value is judged by
     // its JSON form.
     let rule = problems::DefaultText::of(&document, settings.view);

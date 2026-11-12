@@ -6,11 +6,13 @@ use serde::Serialize;
 mod children;
 mod fields;
 mod no_row;
+mod problem;
 pub(crate) mod problems;
 mod rows;
 
 pub use children::Children;
 pub use no_row::NoRow;
+pub use problem::Problem;
 pub(crate) use rows::Sealed;
 pub use rows::{Rows, Shape};
 
@@ -115,70 +117,17 @@ pub trait Row: Serialize + JsonSchema {
         None
     }
 
-    /// The field whose value marks the row as reporting a problem, or `None`
-    /// when no field does.
-    ///
-    /// With the default [`Row::is_problem`], a row reports a problem when
-    /// this field serializes to a value other than `null`, `false` or an
-    /// empty string, and a missing field reports none. The leaf's help
-    /// prints a `Problems:` line that names the field. crumbkit-test's
-    /// `check_help` fails when the field is not one of `COLUMNS`, or when
-    /// its type is not a string, a boolean or a value that can be null.
-    const PROBLEM: Option<&'static str> = None;
-
-    /// Reports whether the row reports a problem.
-    ///
-    /// A run whose rows report a problem, and that has no failure, exits
-    /// with 1, and its text ends with a note that counts those rows. The
-    /// exit reads every row that the result holds. A listing from
-    /// `Listing::from_all` also counts the rows that its limit cut. A
-    /// listing of one page that the tool fetched counts only that page, so
-    /// it puts the rows that report a problem first (OUTPUT-3).
-    ///
-    /// The default reads the field that [`Row::PROBLEM`] names, and reports
-    /// no problem when the type names none. A type whose problem follows
-    /// from other fields, such as a state enum, overrides it in place of a
-    /// second column that repeats the state as a flag, and leaves `PROBLEM`
-    /// as `None` (ADR-0096). Its help then prints no `Problems:` line, and
-    /// `check_help` checks no problem field, so the type shows the state in
-    /// one of `COLUMNS` itself.
-    ///
-    /// ```
-    /// use crumbkit::Row;
-    /// use schemars::JsonSchema;
-    /// use serde::Serialize;
-    ///
-    /// #[derive(Serialize, JsonSchema)]
-    /// #[serde(rename_all = "lowercase")]
-    /// enum State {
-    ///     Done,
-    ///     Failed,
-    /// }
-    ///
-    /// #[derive(Serialize, JsonSchema)]
-    /// struct Job {
-    ///     name: String,
-    ///     state: State,
-    /// }
-    ///
-    /// impl Row for Job {
-    ///     const COLUMNS: &'static [&'static str] = &["name", "state"];
-    ///
-    ///     fn is_problem(&self) -> bool {
-    ///         matches!(self.state, State::Failed)
-    ///     }
-    /// }
-    /// ```
-    fn is_problem(&self) -> bool {
-        problems::field_reports(self)
-    }
+    /// Which rows report a problem, and the column that shows it, or `None`
+    /// when no row does (ADR-0096, ADR-0212). [`Problem`] describes the
+    /// exit code, the note and the help that follow.
+    const PROBLEM: Option<Problem<Self>> = None;
 
     /// Reports whether the default text of a listing lists the row, which
     /// is true for every row by default (ADR-0157).
     ///
     /// The default text is the text table, or the rows' own text lines,
     /// without `--json`, `--long` or `--fields`. It lists a row that
-    /// reports a problem, as [`Row::is_problem`] decides, whatever this
+    /// reports a problem, as [`Row::PROBLEM`] decides, whatever this
     /// returns, so the note that counts those rows never counts a row that
     /// the text leaves out. It lists each other row for which this returns
     /// true, and none of them when the listing's document is marked with

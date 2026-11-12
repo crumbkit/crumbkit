@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::process::ExitCode;
 
 use super::{Cli, Finished, built_with};
-use crate::{Document, Error, Listing, Row, Rows, Run, Sink, Style, Tool, finish_to};
+use crate::{Document, Error, Listing, Problem, Row, Rows, Run, Sink, Style, Tool, finish_to};
 
 /// A service and its state, whose state cell is green when it runs, red
 /// when it failed and dim when it stopped.
@@ -251,7 +251,7 @@ struct Check {
 
 impl Row for Check {
     const COLUMNS: &'static [&'static str] = &["name", "error", "state"];
-    const PROBLEM: Option<&'static str> = Some("error");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("error"));
 
     fn cell_style(&self, column: &str) -> Option<Style> {
         match (column, self.state) {

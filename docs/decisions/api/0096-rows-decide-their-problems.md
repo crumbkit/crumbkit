@@ -1,7 +1,7 @@
 # ADR-0096. Rows decide their problems
 
 - Date: 2026-10-19
-- Status: accepted
+- Status: amended by ADR-0212
 - Supersedes: ADR-0050, which it amends
 
 ## Context

@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Document, Listing, Row, Tool};
+use crate::{Document, Listing, Problem, Row, Tool};
 
 /// A row with a state that only some books have, a long `series` column
 /// that the row leaves out when it has none, and a problem field.
@@ -30,7 +30,7 @@ struct Book {
 impl Row for Book {
     const COLUMNS: &'static [&'static str] = &["title", "state", "problem"];
     const LONG_COLUMNS: &'static [&'static str] = &["series"];
-    const PROBLEM: Option<&'static str> = Some("problem");
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
 const BOOKS: Document<Vec<Book>> = Document::new("shelf", "books", 1, "The test rows.");
