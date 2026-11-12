@@ -12,6 +12,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Code::to_buf` makes one and `CodeBuf::as_code` lends the code back. A
   failure that learns its code at run time stores a `CodeBuf`
   ([behaviour/failures]).
+- crumbkit: `Total` is a listing's total: `Exact` for a counted listing,
+  `AtLeast` for a capped one and `Unknown` for an uncounted one, which says
+  whether its source holds more rows ([behaviour/output/listings]).
 
 ### Changed
 
@@ -50,7 +53,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/run-observer]).
 - crumbkit: breaking: `Listing::total` returns `Total`: an exact count, a
   lower bound or no count. A caller that used the `Option<usize>` calls
-  `Total::exact` ([behaviour/output/listings]).
+  `Total::exact`. `Listing::capped(false)` no longer undoes an earlier
+  `capped(true)` ([behaviour/output/listings]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
   `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
   codes of any lifetime, so they also accept codes from `Code::runtime` that

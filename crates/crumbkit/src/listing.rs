@@ -346,7 +346,7 @@ impl<R: Row, S> Listing<R, S> {
     /// ```
     #[must_use]
     pub const fn capped(mut self, capped: bool) -> Self {
-        if let (true, Total::Exact(read)) = (capped, self.total) {
+        if capped && let Total::Exact(read) = self.total {
             self.total = Total::AtLeast(read);
         }
         self
@@ -482,8 +482,10 @@ pub enum Total {
     Exact(usize),
     /// The tool read this many rows from a source that holds more, so at
     /// least this many matched. [`Listing::capped`] gives it. The listing
-    /// always leaves rows out, and its text footer gives the count as a
-    /// lower bound.
+    /// always leaves rows out. While it shows fewer rows than the tool
+    /// read, its text footer gives the count as a lower bound. When it
+    /// shows every row that the tool read, the footer gives no count, as
+    /// in `Showing 100 records, and more match.`
     AtLeast(usize),
     /// The tool did not count the matching rows. [`Listing::uncounted`]
     /// gives it. `more` says whether the source holds rows after the

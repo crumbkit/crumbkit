@@ -50,7 +50,7 @@ fn a_tool_reads_the_rows_and_the_total_of_a_listing() {
     let listing = Listing::from_all(books(&[1, 2, 3]), Some(2));
 
     assert_eq!(listing.rows(), books(&[1, 2]));
-    assert_eq!(listing.total().exact(), Some(3));
+    assert_eq!(listing.total(), Total::Exact(3));
 }
 
 #[test]

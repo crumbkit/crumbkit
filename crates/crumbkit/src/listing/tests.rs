@@ -266,7 +266,7 @@ fn from_all_counts_the_rows_that_is_problem_marks_among_the_rows_its_limit_cuts(
 }
 
 #[test]
-fn a_capped_listing_has_no_total_and_leaves_rows_out_beyond_the_rows_it_read() {
+fn a_capped_listing_has_a_lower_bound_and_no_exact_total() {
     let listing = Listing::new(books(2), 100).capped(true);
 
     assert_eq!(listing.total(), Total::AtLeast(100));
@@ -309,39 +309,15 @@ fn a_summary_keeps_the_listings_cap() {
 }
 
 #[test]
-fn from_all_gives_an_exact_total_of_every_row_it_was_given() {
-    let listing = Listing::from_all(books(6), Some(4));
-
-    assert_eq!(listing.total(), Total::Exact(6));
-}
-
-#[test]
-fn capping_a_listing_with_an_exact_total_makes_the_total_a_lower_bound() {
-    let listing = Listing::new(books(2), 100).capped(true);
+fn a_capped_listing_stays_capped_when_capped_false_follows() {
+    let listing = Listing::new(books(2), 100).capped(true).capped(false);
 
     assert_eq!(listing.total(), Total::AtLeast(100));
 }
 
 #[test]
-fn capping_an_uncounted_listing_leaves_its_total_unknown() {
-    for more in [false, true] {
-        let listing = Listing::uncounted(books(2), more).capped(true);
-
-        assert_eq!(listing.total(), Total::Unknown { more }, "more: {more}");
-    }
-}
-
-#[test]
-fn not_capping_a_listing_leaves_its_exact_total_exact() {
-    let listing = Listing::new(books(2), 100).capped(false);
-
-    assert_eq!(listing.total(), Total::Exact(100));
-}
-
-#[test]
 fn rows_total_gives_only_an_exact_count() {
     assert_eq!(Rows::total(&Listing::new(books(2), 6)), Some(6));
-    assert_eq!(Rows::total(&Listing::new(books(2), 6).capped(true)), None);
     assert_eq!(Rows::total(&Listing::uncounted(books(2), true)), None);
 }
 

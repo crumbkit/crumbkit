@@ -460,7 +460,7 @@ fn list_prints_one_page_and_counts_every_document_in_its_total() {
     .unwrap();
 
     assert_eq!(listing.rows().len(), 2);
-    assert_eq!(listing.total().exact(), Some(5));
+    assert_eq!(listing.total(), crate::Total::Exact(5));
 }
 
 #[test]

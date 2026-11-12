@@ -8,7 +8,7 @@ use serde_json::json;
 
 use super::{LimitAbove, Page};
 use crate::row::Sealed as _;
-use crate::{Listing, Row};
+use crate::{Listing, Row, Total};
 
 /// A shelf, the row type of the listings that a page builds.
 #[derive(Debug, PartialEq, Eq, Serialize, JsonSchema)]
@@ -340,7 +340,7 @@ fn listing_keeps_the_rows_and_the_total_and_carries_the_bound() {
     let listing = page.listing(rows(2), 40);
 
     assert_eq!(listing.limit_bound(), Some(10));
-    assert_eq!(listing.total().exact(), Some(40));
+    assert_eq!(listing.total(), Total::Exact(40));
 }
 
 #[test]
@@ -380,7 +380,7 @@ fn uncounted_stops_reading_the_source_one_row_past_the_page() {
 
     let listing = page.uncounted(source);
 
-    assert_eq!(listing.total().exact(), None);
+    assert_eq!(listing.total(), Total::Unknown { more: true });
     assert_eq!(read, 3);
 }
 
