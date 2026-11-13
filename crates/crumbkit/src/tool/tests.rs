@@ -1,6 +1,7 @@
 //! Tests for the records that a tool declares.
 
 use crate::help::{Help, Leaf};
+use crate::pick::Menu;
 use crate::tool::{Exit, Failures, Output};
 use crate::{JsonLayout, Tool};
 
@@ -31,4 +32,22 @@ fn each_record_is_built_in_a_const_and_read_back_through_its_getters() {
         .output(Output::new().budget(64, "A small pipe."));
     assert_eq!(TOOL.get_output().get_budget(), Some((64, "A small pipe.")));
     assert_eq!(TOOL.get_failures().get_exits().len(), 1);
+}
+
+#[test]
+fn a_tool_with_a_picker_is_a_static_that_threads_share() {
+    fn shared<T: Send + Sync>(value: &T) -> &T {
+        value
+    }
+
+    static MENU: Menu = Menu::new();
+    static TOOL: Tool = Tool::new().picker(&MENU);
+    let tool = shared(&TOOL);
+    let picked = std::thread::scope(|scope| {
+        scope
+            .spawn(|| tool.get_picker().is_some())
+            .join()
+            .expect("the thread reads the picker")
+    });
+    assert!(picked);
 }

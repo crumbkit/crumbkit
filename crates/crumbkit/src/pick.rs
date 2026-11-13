@@ -31,7 +31,11 @@ mod tests;
 /// [`Menu`] is a picker that needs only the standard library. A tool can
 /// wrap any other prompt library in its own type that implements this
 /// trait.
-pub trait Picker {
+///
+/// A picker is shared by every thread that reads the tool record, so it
+/// requires `Sync` and keeps any state it changes behind a `Mutex` or an
+/// atomic.
+pub trait Picker: Sync {
     /// Asks the person to pick between `question.least()` and
     /// `question.most()` of `question.choices()`, reading the person's
     /// answer from `input` and writing the list and any prompt to `output`,

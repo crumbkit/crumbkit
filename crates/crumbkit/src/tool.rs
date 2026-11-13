@@ -21,6 +21,8 @@ mod tests;
 
 /// What a tool declares to crumbkit, once, as a `const`. It holds the
 /// [`Help`], [`Failures`] and [`Output`] records and the picker.
+/// A `Tool` is `Send` and `Sync`, so it can also be a `static` that a tool
+/// passes by reference to other threads.
 ///
 /// A tool sets only the records it needs, and each record it leaves out
 /// keeps crumbkit's behaviour. It passes the value to
