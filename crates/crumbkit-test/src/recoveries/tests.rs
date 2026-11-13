@@ -40,21 +40,21 @@ const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
 const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
 
 /// The tool's declared codes.
-const CODES: &[&[&Code<'static>]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
+const CODES: &[&[Code<'static>]] = &[&[NOT_FOUND, UNREADABLE, REMOVED]];
 
 /// The listed code that no command line provokes, for a test whose
 /// starts provoke `NOT_FOUND` and `UNREADABLE`.
-const UNPROVOKED: &[Unprovoked<'_>] = &[Unprovoked::new(&REMOVED, "Only a full disk provokes it.")];
+const UNPROVOKED: &[Unprovoked<'_>] = &[Unprovoked::new(REMOVED, "Only a full disk provokes it.")];
 
 /// The listed codes that no command line provokes, for a test whose starts
 /// provoke only `NOT_FOUND`.
 const OTHERS: &[Unprovoked<'_>] = &[
-    Unprovoked::new(&UNREADABLE, "Only a broken file provokes it."),
-    Unprovoked::new(&REMOVED, "Only a full disk provokes it."),
+    Unprovoked::new(UNREADABLE, "Only a broken file provokes it."),
+    Unprovoked::new(REMOVED, "Only a full disk provokes it."),
 ];
 
 /// The start that fails because book 7 does not exist.
-const SHOW_7: &[Failing<'_>] = &[Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+const SHOW_7: &[Failing<'_>] = &[Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
 /// The tool's command tree: `tool books show` and `tool books list`.
 fn tree() -> Command {
@@ -201,7 +201,7 @@ fn a_placeholder_takes_its_value_and_an_alternative_starts_its_own_branch() {
         ],
     );
     let starts = [Failing::new(
-        &UNREADABLE,
+        UNREADABLE,
         &["books", "show", "--from", "ids.txt"],
     )];
 
@@ -293,8 +293,8 @@ fn a_start_that_succeeds_or_fails_with_another_code_fails_the_check() {
         ],
     );
     let starts = [
-        Failing::new(&NOT_FOUND, &["books", "show", "7"]),
-        Failing::new(&NOT_FOUND, &["books", "show", "8"]),
+        Failing::new(NOT_FOUND, &["books", "show", "7"]),
+        Failing::new(NOT_FOUND, &["books", "show", "8"]),
     ];
 
     assert_eq!(
@@ -450,12 +450,12 @@ fn every_declared_code_is_provoked_or_listed_and_each_listed_code_is_declared_an
         &[("books show 7 --json", 1, show.as_str(), "")],
     );
     let unprovoked = [
-        Unprovoked::new(&NOT_FOUND, "A missing book needs a full disk."),
-        Unprovoked::new(&STRAY, "Nothing provokes it."),
+        Unprovoked::new(NOT_FOUND, "A missing book needs a full disk."),
+        Unprovoked::new(STRAY, "Nothing provokes it."),
     ];
     let starts = [
-        Failing::new(&NOT_FOUND, &["books", "show", "7"]),
-        Failing::new(&STRAY, &["books", "show", "9"]),
+        Failing::new(NOT_FOUND, &["books", "show", "7"]),
+        Failing::new(STRAY, &["books", "show", "9"]),
     ];
 
     let message = problems(
@@ -482,24 +482,25 @@ fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let answers = [("books show 7 --json", 1, show.as_str(), "")];
     let from_lists = Setup::new("recoveries-owned-codes-lists", &answers);
-    let from_codes = Setup::new("recoveries-owned-codes-codes", &answers);
+    let run_time = Setup::new("recoveries-owned-codes-run-time", &answers);
     let codes: Vec<Code<'_>> = vec![NOT_FOUND, UNREADABLE, REMOVED];
+    let lists = [codes.as_slice()];
     let owned = [
-        Unprovoked::from_code(codes[1], "Only a broken file provokes it."),
-        Unprovoked::from_code(codes[2], "Only a full disk provokes it."),
+        Unprovoked::new(codes[1], "Only a broken file provokes it."),
+        Unprovoked::new(codes[2], "Only a full disk provokes it."),
     ];
 
     let lists_problems = problems(&from_lists, &recoveries(&from_lists, SHOW_7, OTHERS));
     let codes_problems = problems(
-        &from_codes,
-        &Recoveries::from_codes(Examples::new(&from_codes.script, ""), &codes)
+        &run_time,
+        &Recoveries::new(Examples::new(&run_time.script, ""), &lists)
             .starts(SHOW_7)
             .unprovoked(&owned),
     );
 
     assert_eq!(lists_problems, None);
     assert_eq!(codes_problems, None);
-    let report = from_codes.report();
+    let report = run_time.report();
     assert!(
         report.contains("tool::books::removed_file: Only a full disk provokes it."),
         "{report}"
@@ -515,9 +516,9 @@ fn an_opt_out_skips_the_starts_below_its_path_and_a_stale_one_fails_the_check() 
         Allow::new(Rule::Recoveries, "books list", "Each run needs a server."),
     ];
     let unprovoked = [
-        Unprovoked::new(&NOT_FOUND, "Only a server provokes it."),
-        Unprovoked::new(&UNREADABLE, "Only a server provokes it."),
-        Unprovoked::new(&REMOVED, "Only a server provokes it."),
+        Unprovoked::new(NOT_FOUND, "Only a server provokes it."),
+        Unprovoked::new(UNREADABLE, "Only a server provokes it."),
+        Unprovoked::new(REMOVED, "Only a server provokes it."),
     ];
 
     let message = problems(

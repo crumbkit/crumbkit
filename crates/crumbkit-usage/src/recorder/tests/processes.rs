@@ -160,7 +160,7 @@ impl crumbkit::Failure for TimedOut {
 fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
     const TOOL: Tool = Tool::new().failures(
         Failures::new()
-            .exits(&[Exit::new(124, "The watch ran out of time.").failures(&[&TIMED_OUT])]),
+            .exits(&[Exit::new(124, "The watch ran out of time.").failures(&[TIMED_OUT])]),
     );
     const NUMBERS: Document<Stream<Numbered>> =
         Document::new("watching", "numbers", 1, "Each number as it arrives.");

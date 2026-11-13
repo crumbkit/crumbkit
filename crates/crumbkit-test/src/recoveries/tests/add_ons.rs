@@ -91,7 +91,7 @@ fn an_undeclared_start_in_the_crumbkit_component_on_neither_built_in_list_fails_
             ("books show 9 --json", 1, gone.as_str(), ""),
         ],
     );
-    let starts = [SHOW_7[0], Failing::new(&GONE, &["books", "show", "9"])];
+    let starts = [SHOW_7[0], Failing::new(GONE, &["books", "show", "9"])];
 
     let message = problems(&setup, &recoveries(&setup, &starts, OTHERS));
 
@@ -119,11 +119,8 @@ fn undeclared_starts_with_the_add_on_crates_codes_run_without_a_declaration() {
     );
     let starts = [
         SHOW_7[0],
-        Failing::new(&crumbkit_child::codes::NOT_FOUND, &["books", "show", "8"]),
-        Failing::new(
-            &crumbkit_aliases::codes::UNREADABLE,
-            &["books", "show", "9"],
-        ),
+        Failing::new(crumbkit_child::codes::NOT_FOUND, &["books", "show", "8"]),
+        Failing::new(crumbkit_aliases::codes::UNREADABLE, &["books", "show", "9"]),
     ];
 
     assert_eq!(problems(&setup, &recoveries(&setup, &starts, OTHERS)), None);
@@ -135,11 +132,9 @@ fn the_add_on_codes_are_the_codes_that_crumbkit_child_and_crumbkit_aliases_decla
         .iter()
         .chain(crumbkit_aliases::codes::ALL)
         .copied()
-        .copied()
         .collect();
-    let listed: Vec<_> = ADD_ON_CODES.iter().copied().copied().collect();
 
-    assert_eq!(listed, declared);
+    assert_eq!(ADD_ON_CODES, declared);
 }
 
 #[test]

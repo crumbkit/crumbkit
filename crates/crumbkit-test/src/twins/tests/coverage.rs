@@ -19,7 +19,7 @@ const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
 const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
 
 /// The tool's declared codes.
-const CODES: &[&[&Code<'static>]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
+const CODES: &[&[Code<'static>]] = &[&[NOT_FOUND, UNREADABLE, REMOVED]];
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books
 /// list --limit 0` fails with crumbkit's usage code, `books show 8` fails
@@ -39,14 +39,14 @@ esac
 
 /// The twin of `NOT_FOUND`: book 7 does not exist, and book 2 does.
 const SHOW_7: Twin<'_> = Twin::new(
-    Failing::new(&NOT_FOUND, &["books", "show", "7"]),
+    Failing::new(NOT_FOUND, &["books", "show", "7"]),
     &["books", "show", "2"],
 );
 
 /// The twin of crumbkit's usage code, which needs no entry in `CODES`.
 const LIMIT_0: Twin<'_> = Twin::new(
     Failing::new(
-        &crumbkit::codes::CLI_USAGE,
+        crumbkit::codes::CLI_USAGE,
         &["books", "list", "--limit", "0"],
     ),
     &["books", "list", "--limit", "1"],
@@ -77,7 +77,7 @@ fn checked_allowing(
 
 #[test]
 fn a_declared_code_without_a_twin_or_an_unprovoked_entry_fails_the_twin_check() {
-    let unprovoked = [Unprovoked::new(&REMOVED, "Only a full disk provokes it.")];
+    let unprovoked = [Unprovoked::new(REMOVED, "Only a full disk provokes it.")];
 
     assert_eq!(
         checked(&[SHOW_7, LIMIT_0], &unprovoked).as_deref(),
@@ -92,10 +92,10 @@ fn a_declared_code_without_a_twin_or_an_unprovoked_entry_fails_the_twin_check() 
 fn an_unprovoked_entry_for_a_code_with_a_twin_or_an_undeclared_code_fails_the_twin_check() {
     const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
     let unprovoked = [
-        Unprovoked::new(&NOT_FOUND, "A missing book needs a full disk."),
-        Unprovoked::new(&UNREADABLE, "Only a broken file provokes it."),
-        Unprovoked::new(&REMOVED, "Only a full disk provokes it."),
-        Unprovoked::new(&STRAY, "Nothing provokes it."),
+        Unprovoked::new(NOT_FOUND, "A missing book needs a full disk."),
+        Unprovoked::new(UNREADABLE, "Only a broken file provokes it."),
+        Unprovoked::new(REMOVED, "Only a full disk provokes it."),
+        Unprovoked::new(STRAY, "Nothing provokes it."),
     ];
 
     assert_eq!(
@@ -113,19 +113,19 @@ fn every_broken_pair_is_reported_and_the_check_does_not_stop_at_the_first() {
     const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
     let pairs = [
         Twin::new(
-            Failing::new(&NOT_FOUND, &["books", "show", "7"]),
+            Failing::new(NOT_FOUND, &["books", "show", "7"]),
             &["books", "show", "8"],
         ),
         Twin::new(
-            Failing::new(&UNREADABLE, &["books", "show", "2"]),
+            Failing::new(UNREADABLE, &["books", "show", "2"]),
             &["books", "show", "8"],
         ),
         Twin::new(
-            Failing::new(&STRAY, &["books", "show", "9"]),
+            Failing::new(STRAY, &["books", "show", "9"]),
             &["books", "show", "2"],
         ),
     ];
-    let unprovoked = [Unprovoked::new(&REMOVED, "Only a full disk provokes it.")];
+    let unprovoked = [Unprovoked::new(REMOVED, "Only a full disk provokes it.")];
 
     assert_eq!(
         checked(&pairs, &unprovoked).as_deref(),
@@ -145,7 +145,7 @@ fn checked_with(script: &str, pairs: &[Twin<'_>]) -> Option<String> {
     let dir = TempDir::new("twins-json").unwrap();
     dir.write_script("tool", script);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), &[&[&NOT_FOUND]]).pairs(pairs);
+    let twins = Twins::new(Examples::new(&path, ""), &[&[NOT_FOUND]]).pairs(pairs);
     panic_message(|| check_twins(&tree(), &Tool::new(), &twins))
 }
 
@@ -175,7 +175,7 @@ case "$*" in
 esac
 "#;
     let pair = Twin::new(
-        Failing::new(&NOT_FOUND, &["books", "show", "7", "--json"]),
+        Failing::new(NOT_FOUND, &["books", "show", "7", "--json"]),
         &["books", "show", "7"],
     );
 
@@ -186,13 +186,13 @@ esac
 const BROKEN_FILE: &str = "A broken file causes it, and no single word does.";
 
 /// The listed code that no command line provokes.
-const REMOVED_ENTRY: Unprovoked<'_> = Unprovoked::new(&REMOVED, "Only a full disk provokes it.");
+const REMOVED_ENTRY: Unprovoked<'_> = Unprovoked::new(REMOVED, "Only a full disk provokes it.");
 
 #[test]
 fn a_declared_code_without_a_twin_passes_when_an_untwinned_opt_out_names_a_line_that_fails_with_it()
 {
     const ALLOW: &[Allow] = &[Allow::untwinned(
-        Failing::new(&UNREADABLE, &["books", "show", "8"]),
+        Failing::new(UNREADABLE, &["books", "show", "8"]),
         BROKEN_FILE,
     )];
 
@@ -204,19 +204,19 @@ fn an_untwinned_opt_out_whose_code_a_twin_refuses_or_twins_unprovoked_lists_or_c
  {
     const ALLOW: &[Allow] = &[
         Allow::untwinned(
-            Failing::new(&NOT_FOUND, &["books", "show", "7"]),
+            Failing::new(NOT_FOUND, &["books", "show", "7"]),
             BROKEN_FILE,
         ),
-        Allow::untwinned(Failing::new(&REMOVED, &["books", "show", "8"]), BROKEN_FILE),
+        Allow::untwinned(Failing::new(REMOVED, &["books", "show", "8"]), BROKEN_FILE),
         Allow::untwinned(
             Failing::new(
-                &crumbkit::codes::CLI_USAGE,
+                crumbkit::codes::CLI_USAGE,
                 &["books", "list", "--limit", "0"],
             ),
             BROKEN_FILE,
         ),
         Allow::untwinned(
-            Failing::new(&UNREADABLE, &["books", "show", "8"]),
+            Failing::new(UNREADABLE, &["books", "show", "8"]),
             BROKEN_FILE,
         ),
     ];
@@ -236,11 +236,11 @@ fn an_untwinned_opt_out_whose_code_a_twin_refuses_or_twins_unprovoked_lists_or_c
 fn an_untwinned_opt_out_whose_line_succeeds_or_fails_with_another_code_fails_the_check() {
     const ALLOW: &[Allow] = &[
         Allow::untwinned(
-            Failing::new(&UNREADABLE, &["books", "show", "2"]),
+            Failing::new(UNREADABLE, &["books", "show", "2"]),
             BROKEN_FILE,
         ),
         Allow::untwinned(
-            Failing::new(&UNREADABLE, &["books", "show", "7"]),
+            Failing::new(UNREADABLE, &["books", "show", "7"]),
             BROKEN_FILE,
         ),
     ];
@@ -260,11 +260,12 @@ fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() 
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
     let codes: Vec<Code<'_>> = vec![NOT_FOUND, UNREADABLE, REMOVED];
-    let unprovoked = [Unprovoked::from_code(
+    let lists = [codes.as_slice()];
+    let unprovoked = [Unprovoked::new(
         codes[2],
         "Only a book file that disappears provokes it.",
     )];
-    let twins = Twins::from_codes(Examples::new(&path, ""), &codes)
+    let twins = Twins::new(Examples::new(&path, ""), &lists)
         .pairs(&[SHOW_7])
         .unprovoked(&unprovoked);
 

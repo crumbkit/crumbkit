@@ -1,7 +1,7 @@
 # ADR-0205. A code borrows its segments
 
 - Date: 2026-11-12
-- Status: accepted
+- Status: amended by ADR-0217
 - Supersedes: ADR-0001 and ADR-0088, which it amends
 
 ## Context

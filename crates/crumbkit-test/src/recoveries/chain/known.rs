@@ -9,16 +9,16 @@ use super::{Chain, Walk};
 
 /// The codes of crumbkit's add-on crates: crumbkit-child's `codes::ALL` and
 /// crumbkit-aliases's `codes::ALL`. A test compares this list with theirs.
-pub(crate) const ADD_ON_CODES: &[&Code<'static>] = &[
-    &Code::new("crumbkit", "child", "not_found"),
-    &Code::new("crumbkit", "child", "not_started"),
-    &Code::new("crumbkit", "aliases", "unreadable"),
+pub(crate) const ADD_ON_CODES: &[Code<'static>] = &[
+    Code::new("crumbkit", "child", "not_found"),
+    Code::new("crumbkit", "child", "not_started"),
+    Code::new("crumbkit", "aliases", "unreadable"),
 ];
 
 /// Returns the codes of crumbkit and of its add-on crates: the one source
 /// of the codes that the recovery check and the twin check treat as
 /// raised by a crumbkit crate.
-pub(crate) fn library_codes() -> impl Iterator<Item = &'static Code<'static>> {
+pub(crate) fn library_codes() -> impl Iterator<Item = Code<'static>> {
     crumbkit::codes::ALL.iter().chain(ADD_ON_CODES).copied()
 }
 
@@ -31,7 +31,7 @@ impl Walk<'_> {
     /// is unknown.
     pub(super) fn is_known(&self, code: &str) -> bool {
         self.known.iter().any(|known| known == code)
-            || library_codes().any(|owned| self.spelling.spell(*owned) == code)
+            || library_codes().any(|owned| self.spelling.spell(owned) == code)
     }
 
     /// Writes `code`, which `label` failed with and which no declared code

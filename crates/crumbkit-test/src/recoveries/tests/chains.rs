@@ -8,10 +8,7 @@ use crate::recoveries::{Failing, Recoveries};
 
 /// The start that fails on books 7 and 8, which a batch reports one
 /// failure each.
-const SHOW_7_8: &[Failing<'_>] = &[Failing::new(
-    &super::NOT_FOUND,
-    &["books", "show", "7", "8"],
-)];
+const SHOW_7_8: &[Failing<'_>] = &[Failing::new(super::NOT_FOUND, &["books", "show", "7", "8"])];
 
 /// Returns a batch document whose `failures` hold one entry for each code
 /// in `codes`, each with the recovery that runs `tool books list`.
@@ -74,7 +71,7 @@ fn a_start_passes_when_any_of_its_failures_carries_its_code() {
     );
     let starts = [
         SHOW_7_8[0],
-        Failing::new(&super::NOT_FOUND, &["books", "show", "9"]),
+        Failing::new(super::NOT_FOUND, &["books", "show", "9"]),
     ];
 
     let message = problems(&setup, &recoveries(&setup, &starts, &[]));

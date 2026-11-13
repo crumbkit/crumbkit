@@ -228,7 +228,7 @@ error: --fields selects the columns of a table, and this command hands the termi
 
 /// A tool record that gives a refused command line the exit code 64.
 const USAGE_64: Tool = Tool::new().failures(Failures::new().exits(&[
-    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
+    Exit::new(64, "The command line was refused.").failures(&[crumbkit::codes::CLI_USAGE]),
 ]));
 
 #[test]

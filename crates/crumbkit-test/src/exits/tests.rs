@@ -69,7 +69,7 @@ fn the_exit_codes_1_and_2_fail_the_check_because_crumbkit_gives_them_a_meaning()
 fn an_opt_out_from_the_shared_exit_rule_excuses_the_exit_code_1_or_2() {
     const LOCKED: Code<'static> = Code::new("shelf", "books", "locked");
     const TOOL: Tool = Tool::new().failures(
-        Failures::new().exits(&[Exit::new(1, "The catalogue was locked.").failures(&[&LOCKED])]),
+        Failures::new().exits(&[Exit::new(1, "The catalogue was locked.").failures(&[LOCKED])]),
     );
     const ALLOW: &[Allow] = &[Allow::new(
         Rule::SharedExit,
@@ -184,7 +184,7 @@ fn a_range_that_overlaps_a_single_code_or_another_range_fails_the_check() {
 fn a_range_that_lists_failure_codes_fails_the_check() {
     const LOCKED: Code<'static> = Code::new("shelf", "books", "locked");
     const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
-        Exit::range(64, 78, "The importer ended with its own code.").failures(&[&LOCKED]),
+        Exit::range(64, 78, "The importer ended with its own code.").failures(&[LOCKED]),
     ]));
 
     assert_eq!(
@@ -240,9 +240,9 @@ fn a_command_path_that_names_no_command_fails_the_check() {
 fn a_failure_code_that_two_exits_list_fails_the_check() {
     const LOCKED: Code<'static> = Code::new("shelf", "books", "locked");
     const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
-        Exit::new(3, "Locked.").failures(&[&LOCKED]),
-        Exit::new(4, "Busy.").failures(&[&LOCKED]),
-        Exit::new(5, "Taken.").failures(&[&LOCKED]),
+        Exit::new(3, "Locked.").failures(&[LOCKED]),
+        Exit::new(4, "Busy.").failures(&[LOCKED]),
+        Exit::new(5, "Taken.").failures(&[LOCKED]),
     ]));
 
     assert_eq!(
@@ -255,8 +255,7 @@ fn a_failure_code_that_two_exits_list_fails_the_check() {
 #[test]
 fn an_exit_that_lists_one_of_crumbkit_s_failure_codes_passes() {
     const TOOL: Tool = Tool::new().failures(
-        Failures::new()
-            .exits(&[Exit::new(64, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE])]),
+        Failures::new().exits(&[Exit::new(64, "Refused.").failures(&[crumbkit::codes::CLI_USAGE])]),
     );
 
     assert_eq!(checked(&TOOL, &[]), None);
@@ -267,8 +266,8 @@ fn exits_that_list_different_failure_codes_pass() {
     const LOCKED: Code<'static> = Code::new("shelf", "books", "locked");
     const SLOW: Code<'static> = Code::new("shelf", "books", "timed_out");
     const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
-        Exit::new(3, "Locked.").failures(&[&LOCKED]),
-        Exit::new(124, "Slow.").failures(&[&SLOW]),
+        Exit::new(3, "Locked.").failures(&[LOCKED]),
+        Exit::new(124, "Slow.").failures(&[SLOW]),
     ]));
 
     assert_eq!(checked(&TOOL, &[]), None);
@@ -277,8 +276,8 @@ fn exits_that_list_different_failure_codes_pass() {
 #[test]
 fn the_problems_spell_crumbkit_s_codes_with_the_tool_s_name() {
     const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
-        Exit::new(64, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
-        Exit::new(65, "Bad.").failures(&[&crumbkit::codes::CLI_USAGE]),
+        Exit::new(64, "Refused.").failures(&[crumbkit::codes::CLI_USAGE]),
+        Exit::new(65, "Bad.").failures(&[crumbkit::codes::CLI_USAGE]),
     ]));
 
     assert_eq!(

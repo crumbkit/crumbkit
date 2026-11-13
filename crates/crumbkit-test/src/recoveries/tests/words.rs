@@ -45,7 +45,7 @@ fn a_word_whose_second_placeholder_has_no_value_fails_the_check_naming_that_plac
         "recoveries-word-missing",
         &[("books show 7 --json", 1, show.as_str(), "")],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
     let recoveries = recoveries(&setup, &starts, OTHERS).values(&[("plugin", "mail")]);
 
     assert_eq!(

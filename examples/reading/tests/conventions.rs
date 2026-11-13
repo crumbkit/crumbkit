@@ -69,14 +69,12 @@ fn fixture_tool() -> (Command, Tool) {
 }
 
 /// `entries list` of a list that does not exist.
-const UNREAD: Failing<'_> = Failing::new(
-    &reading::NOT_FOUND,
-    &["entries", "list", "--list", "unread"],
-);
+const UNREAD: Failing<'_> =
+    Failing::new(reading::NOT_FOUND, &["entries", "list", "--list", "unread"]);
 
 /// A dry run of `entries set` at a position past the end of the list.
 const POSITION_7: Failing<'_> = Failing::new(
-    &reading::OUT_OF_RANGE,
+    reading::OUT_OF_RANGE,
     &[
         "entries",
         "set",
@@ -92,7 +90,7 @@ const POSITION_7: Failing<'_> = Failing::new(
 /// reading's declared code that no command line in a test provokes, which
 /// neither the recovery check nor the twin check needs a command line for.
 const UNPROVOKED: &[Unprovoked<'_>] = &[Unprovoked::new(
-    &reading::UNREADABLE,
+    reading::UNREADABLE,
     "Only a list file that exists and that reading cannot read provokes it, and a file's permissions differ between platforms.",
 )];
 
@@ -105,7 +103,7 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[reading::CODES])
         UNREAD,
         POSITION_7,
         Failing::new(
-            &crumbkit::codes::VERSION_CONFLICT,
+            crumbkit::codes::VERSION_CONFLICT,
             &[
                 "entries",
                 "set",

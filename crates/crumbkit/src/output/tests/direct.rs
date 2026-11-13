@@ -18,7 +18,7 @@ const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 /// A tool record that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
 const TOOL: Tool = Tool::new().failures(
     Failures::new()
-        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]),
+        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[TIMED_OUT])]),
 );
 
 /// A failure with the code it was given.

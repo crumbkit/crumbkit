@@ -160,7 +160,7 @@ fn a_directory_without_lists_adds_no_command() -> io::Result<()> {
         &reading::command(&reading::lists_in(empty.path())),
         &reading::TOOL,
         &examples,
-        &Failing::new(&codes::CLI_USAGE, &["to-read", "list"]),
+        &Failing::new(codes::CLI_USAGE, &["to-read", "list"]),
         &["commands", "list"],
     );
     OutputAssert::new(refused)
@@ -404,7 +404,7 @@ fn entries_set_refuses_an_empty_expect_and_admits_its_twin_with_a_title() {
         &reading::TOOL,
         &examples,
         &Failing::new(
-            &codes::CLI_USAGE,
+            codes::CLI_USAGE,
             &[
                 "entries",
                 "set",
@@ -445,7 +445,7 @@ fn entries_set_refuses_a_title_with_a_line_break_and_admits_its_twin_without_one
         &reading::TOOL,
         &examples,
         &Failing::new(
-            &codes::CLI_USAGE,
+            codes::CLI_USAGE,
             &[
                 "entries",
                 "set",

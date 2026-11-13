@@ -422,7 +422,7 @@ fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_i
     const LISTED: Tool = Tool::new()
         .help(Help::new().leaves(&[Leaf::new(&["books", "count"]).document(COUNT)]))
         .failures(Failures::new().exits(&[
-            Exit::new(64, "The command line was refused.").failures(&[&crate::codes::CLI_USAGE]),
+            Exit::new(64, "The command line was refused.").failures(&[crate::codes::CLI_USAGE]),
         ]));
     let mut out = Vec::new();
     let mut err = Vec::new();

@@ -251,7 +251,7 @@ impl RuntimeFailing {
         // The `Failing` holds its code by value, so only the owned
         // segments are leaked, once for each command line.
         let code: &'static CodeBuf = Box::leak(Box::new(self.code));
-        let mut failing = Failing::with_code(code.as_code(), leak_words(self.words))
+        let mut failing = Failing::new(code.as_code(), leak_words(self.words))
             .values(values.leak())
             .env(env.leak());
         if let Some(dir) = dir {

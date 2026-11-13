@@ -86,13 +86,21 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `long_child_lines` to `Children::long_lines`. `LeafDocument::children`
   returns `Option<Children<()>>` ([behaviour/output/shapes]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
-  `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
-  codes of any lifetime, so they also accept codes from `Code::runtime` that
-  borrow the test's own text ([behaviour/failures]).
-- crumbkit-test: `Recoveries::new`, `Recoveries::from_codes`, `Twins::new`
-  and `Twins::from_codes` take codes of any lifetime, so they also accept
-  codes from `Code::runtime` that borrow the test's own text
+  `RuntimeFailing::line` and `Unprovoked::new` take codes of any lifetime, so
+  they also accept codes from `Code::runtime` that borrow the test's own text
   ([behaviour/failures]).
+- crumbkit-test: `Recoveries::new` and `Twins::new` take codes of any
+  lifetime, so they also accept codes from `Code::runtime` that borrow the
+  test's own text ([behaviour/failures]).
+- crumbkit: breaking: `Exit::failures`, `Exit::get_failures`, a derived
+  `CODES` list and the `codes::ALL` lists of crumbkit, crumbkit-child and
+  crumbkit-aliases hold codes by value, as `&'static [Code<'static>]`. A
+  tool writes `.failures(&[LOCKED])` for `.failures(&[&LOCKED])`
+  ([behaviour/failures/exit-codes]).
+- crumbkit-test: breaking: `Failing::new` and `Unprovoked::new` take a
+  `Code<'a>` by value, and `Recoveries::new` and `Twins::new` take lists
+  of codes by value. A test writes `Failing::new(NOT_FOUND, ..)` for
+  `Failing::new(&NOT_FOUND, ..)` ([behaviour/failures]).
 
 ### Removed
 
@@ -117,6 +125,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   removed, and `Row::CHILDREN` holds the functions. A caller that asked a row
   for its lines writes `R::CHILDREN.map(|children| children.lines_for(row))`.
   `Children` has no `PartialEq` ([behaviour/output/shapes]).
+- crumbkit-test: breaking: `Unprovoked::from_code`,
+  `Recoveries::from_codes` and `Twins::from_codes` are removed. A test with
+  run-time codes writes `let lists = [codes.as_slice()];` and passes
+  `&lists` to `Recoveries::new` or `Twins::new` ([behaviour/failures]).
 
 ## [0.4.1](https://github.com/crumbkit/crumbkit/compare/v0.4.0...v0.4.1) - 2026-11-12### Added
 

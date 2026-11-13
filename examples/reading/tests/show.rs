@@ -133,7 +133,7 @@ fn lists_show_refuses_fields_without_json_and_admits_its_twin_with_json() {
         &reading::TOOL,
         &examples,
         &Failing::new(
-            &codes::CLI_USAGE,
+            codes::CLI_USAGE,
             &["lists", "show", "to-read", "--fields=name"],
         ),
         &["lists", "show", "to-read", "--fields=name", "--json"],

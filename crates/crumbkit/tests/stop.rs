@@ -10,7 +10,7 @@ use crumbkit::{Sink, Tool, ViewFlags};
 
 /// A tool record that lists exit 64 for a refused command line.
 const TOOL: Tool = Tool::new().failures(Failures::new().exits(&[
-    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
+    Exit::new(64, "The command line was refused.").failures(&[crumbkit::codes::CLI_USAGE]),
 ]));
 
 /// A tool with a version and a `list` command.

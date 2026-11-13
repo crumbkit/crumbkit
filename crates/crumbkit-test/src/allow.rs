@@ -226,7 +226,7 @@ impl Allow {
     /// const UNREADABLE: Code<'static> = Code::new("reading", "lists", "unreadable");
     ///
     /// const ALLOW: &[Allow] = &[Allow::untwinned(
-    ///     Failing::new(&UNREADABLE, &["entries", "list", "--list", "locked"]),
+    ///     Failing::new(UNREADABLE, &["entries", "list", "--list", "locked"]),
     ///     "The list file cannot be read, and no word of the command line names that.",
     /// )];
     /// ```

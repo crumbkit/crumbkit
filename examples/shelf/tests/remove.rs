@@ -77,7 +77,7 @@ fn books_remove_without_yes_or_a_terminal_fails_with_needs_yes_and_removes_nothi
             &shelf::Cli::command(),
             &shelf::TOOL,
             &shelf,
-            &Failing::new(&codes::CONFIRM_NEEDS_YES, refused),
+            &Failing::new(codes::CONFIRM_NEEDS_YES, refused),
             &admitted,
         );
     }

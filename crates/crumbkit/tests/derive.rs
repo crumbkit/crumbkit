@@ -233,15 +233,15 @@ fn a_forwarding_struct_returns_every_answer_of_the_named_field() {
 fn the_codes_list_holds_each_code_once_in_variant_order() {
     assert_eq!(
         BooksError::CODES,
-        &[&NOT_FOUND, &REMOVED_FILE, &NO_STATE_DIRECTORY]
+        &[NOT_FOUND, REMOVED_FILE, NO_STATE_DIRECTORY]
     );
-    assert_eq!(Timeout::CODES, &[&TIMED_OUT]);
+    assert_eq!(Timeout::CODES, &[TIMED_OUT]);
 }
 
 #[test]
 fn the_codes_list_leaves_out_forwarding_variants() {
-    assert_eq!(ReadingList::CODES, &[] as &[&Code<'static>]);
-    assert_eq!(NoSuchBook::CODES, &[&NOT_FOUND]);
+    assert_eq!(ReadingList::CODES, &[] as &[Code<'static>]);
+    assert_eq!(NoSuchBook::CODES, &[NOT_FOUND]);
 }
 
 #[cfg(feature = "miette")]

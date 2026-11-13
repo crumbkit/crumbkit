@@ -11,3 +11,4 @@ value owns them.
 ## Children
 
 - [ADR-0205. A code borrows its segments](0205-a-code-borrows-its-segments.md)
+- [ADR-0217. A code list holds its codes by value](0217-a-code-list-holds-its-codes-by-value.md)

@@ -28,7 +28,7 @@ const NOT_FOUND: Code<'static> = Code::new("tool", "lists", "not_found");
 const UNREADABLE: Code<'static> = Code::new("tool", "lists", "unreadable");
 
 /// The tool's declared codes.
-const CODES: &[&[&Code<'static>]] = &[&[&NOT_FOUND, &UNREADABLE]];
+const CODES: &[&[Code<'static>]] = &[&[NOT_FOUND, UNREADABLE]];
 
 /// The script's answers, with or without `--json` at the end:
 ///
@@ -126,11 +126,11 @@ fn a_runtime_failing_built_from_owned_strings_runs_as_a_borrowed_failing_does() 
     let work_text = work.path().display().to_string();
     let xdg_text = xdg.path().display().to_string();
     let unprovoked = [Unprovoked::new(
-        &UNREADABLE,
+        UNREADABLE,
         "Only a broken list provokes it.",
     )];
     let examples = Examples::new(&script, "");
-    let borrowed = [Failing::new(&NOT_FOUND, &["lists", "check"])
+    let borrowed = [Failing::new(NOT_FOUND, &["lists", "check"])
         .dir(&work_text)
         .stdin("everything")
         .xdg(&xdg_text)
@@ -194,7 +194,7 @@ fn a_runtime_failing_takes_its_code_by_value() {
 
     let failing = RuntimeFailing::new(code, ["lists", "check"]).into_failing();
 
-    assert_eq!(*failing.code(), NOT_FOUND);
+    assert_eq!(failing.code(), NOT_FOUND);
     assert_eq!(failing.words(), ["lists", "check"]);
 }
 
@@ -210,7 +210,7 @@ fn a_runtime_failing_keeps_a_runtime_code_after_the_text_it_was_made_from_is_dro
 
     let failing = runtime.into_failing();
 
-    assert_eq!(*failing.code(), NOT_FOUND);
+    assert_eq!(failing.code(), NOT_FOUND);
 }
 
 #[test]
@@ -227,7 +227,7 @@ fn a_line_keeps_the_directory_input_fixture_values_and_variables_and_replaces_th
         .line(UNREADABLE, ["lists", "show", "broken"])
         .into_failing();
 
-    assert_eq!(*failing.code(), UNREADABLE);
+    assert_eq!(failing.code(), UNREADABLE);
     assert_eq!(failing.words(), ["lists", "show", "broken"]);
     let Some(Dir::Fixed(dir)) = failing.work_dir(None) else {
         panic!("the line has no directory of its own");
@@ -237,7 +237,7 @@ fn a_line_keeps_the_directory_input_fixture_values_and_variables_and_replaces_th
     assert_eq!(failing.fixture(None), Some(Path::new("fixture")));
     assert_eq!(failing.own_values(), [("NAME", "present")]);
     assert_eq!(failing.own_env(), [("DEPTH", Some("1")), ("HOME", None)]);
-    assert_eq!(*place.into_failing().code(), NOT_FOUND);
+    assert_eq!(place.into_failing().code(), NOT_FOUND);
 }
 
 #[test]
@@ -326,7 +326,7 @@ fn a_place_made_with_at_gives_each_line_built_from_it_its_directory() {
         panic!("the line has no directory of its own");
     };
     assert_eq!(dir.path(), Path::new("work"));
-    assert_eq!(*failing.code(), NOT_FOUND);
+    assert_eq!(failing.code(), NOT_FOUND);
     assert_eq!(failing.words(), ["lists", "check"]);
     assert_eq!(failing.own_env(), [("DEPTH", Some("1"))]);
 }
@@ -367,7 +367,7 @@ fn a_variable_twin_takes_a_variable_name_that_the_test_builds_at_run_time() {
         .env(name.clone(), "1")
         .variable_twin(name)];
     let unprovoked = [Unprovoked::new(
-        &UNREADABLE,
+        UNREADABLE,
         "Only a broken list provokes it.",
     )];
     let twins = Twins::new(Examples::new(&script, ""), CODES)

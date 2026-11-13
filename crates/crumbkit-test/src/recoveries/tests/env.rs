@@ -28,7 +28,7 @@ esac
     );
     let script = dir.path().join("tool").display().to_string();
     let setup = Setup { dir, script };
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])
         .env(&[("DEPTH", Some("1")), ("HOME", None)])];
     let examples = Examples::new(&setup.script, "").env(&[("HOME", "/home")]);
     let recoveries = Recoveries::new(examples, CODES)

@@ -78,16 +78,16 @@ pub const SHELL_NO_DIRECTORY: Code<'static> = Code::new("crumbkit", "shell", "no
 pub(crate) const NO_ADVICE: &str = "the error gives no advice";
 
 /// Every code above, in the order this module declares them.
-pub const ALL: &[&Code<'static>] = &[
-    &CLI_USAGE,
-    &COMMANDS_NOT_FOUND,
-    &SCHEMAS_NOT_FOUND,
-    &CONFIRM_DECLINED,
-    &CONFIRM_NEEDS_YES,
-    &VERSION_CONFLICT,
-    &OUTPUT_OVER_BUDGET,
-    &REPORT_UNCHECKED,
-    &SHELL_UNSET,
-    &SHELL_UNKNOWN,
-    &SHELL_NO_DIRECTORY,
+pub const ALL: &[Code<'static>] = &[
+    CLI_USAGE,
+    COMMANDS_NOT_FOUND,
+    SCHEMAS_NOT_FOUND,
+    CONFIRM_DECLINED,
+    CONFIRM_NEEDS_YES,
+    VERSION_CONFLICT,
+    OUTPUT_OVER_BUDGET,
+    REPORT_UNCHECKED,
+    SHELL_UNSET,
+    SHELL_UNKNOWN,
+    SHELL_NO_DIRECTORY,
 ];

@@ -143,7 +143,7 @@ const USAGE_64: Tool = Tool::new().failures(
         64,
         "The command line was refused. The refusal names the help to read.",
     )
-    .failures(&[&CLI_USAGE])]),
+    .failures(&[CLI_USAGE])]),
 );
 
 #[test]
@@ -192,8 +192,8 @@ A shell reports 126 and above for its own reasons, such as 127 when it cannot fi
 }
 
 const USAGE_EXIT: Tool = Tool::new().failures(Failures::new().exits(&[
-    Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE]),
-    Exit::new(3, "The ledger was locked.").failures(&[&LOCKED]),
+    Exit::new(64, "The command line was refused.").failures(&[CLI_USAGE]),
+    Exit::new(3, "The ledger was locked.").failures(&[LOCKED]),
 ]));
 
 #[test]
@@ -213,7 +213,7 @@ fn a_runtime_code_with_the_segments_of_a_listed_code_exits_with_that_code_s_numb
 #[test]
 fn a_range_that_lists_a_failure_code_does_not_decide_the_exit_of_that_failure() {
     const RANGE: Tool = Tool::new().failures(Failures::new().exits(&[
-        Exit::range(64, 78, "The importer ended with its own code.").failures(&[&LOCKED]),
+        Exit::range(64, 78, "The importer ended with its own code.").failures(&[LOCKED]),
     ]));
 
     assert_eq!(RANGE.failure_exit(LOCKED), 1);

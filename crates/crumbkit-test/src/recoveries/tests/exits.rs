@@ -15,7 +15,7 @@ use crate::testing::panic_message;
 use crumbkit::tool::Failures;
 
 /// The exit code 4, which `NOT_FOUND` ends a run with.
-const EXITS: &[Exit] = &[Exit::new(4, "No such book.").failures(&[&NOT_FOUND])];
+const EXITS: &[Exit] = &[Exit::new(4, "No such book.").failures(&[NOT_FOUND])];
 
 /// A tool record that lists `NOT_FOUND` for the exit code 4.
 const TOOL: Tool = Tool::new().failures(Failures::new().exits(EXITS));

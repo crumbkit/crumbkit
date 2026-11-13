@@ -16,7 +16,7 @@ const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
 /// A tool record that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
 const TOOL: Tool = Tool::new().failures(
     Failures::new()
-        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]),
+        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[TIMED_OUT])]),
 );
 
 /// A failure with the code it was given.
@@ -84,7 +84,7 @@ const PLANETS_SHOW: Document<Batch<Planet, Failed>> =
 #[test]
 fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
     const REFUSALS: Tool = Tool::new().failures(Failures::new().exits(&[
-        Exit::new(64, "The command line was refused.").failures(&[&crate::codes::CLI_USAGE]),
+        Exit::new(64, "The command line was refused.").failures(&[crate::codes::CLI_USAGE]),
     ]));
     let mut out = Vec::new();
     let mut err = Vec::new();
@@ -148,7 +148,7 @@ fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_
 fn a_crumbkit_failure_in_a_batch_exits_with_the_code_that_the_tool_lists_for_it() {
     const LISTED: Tool = Tool::new().failures(
         Failures::new().exits(&[Exit::new(5, "The planet changed since it was read.")
-            .failures(&[&crate::codes::VERSION_CONFLICT])]),
+            .failures(&[crate::codes::VERSION_CONFLICT])]),
     );
     let view = Cli::try_parse_from(["tool", "list", "--json"])
         .unwrap()

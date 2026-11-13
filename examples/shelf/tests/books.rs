@@ -89,7 +89,7 @@ fn shelf_with_budget(bytes: &str, args: &[&str]) -> io::Result<OutputAssert> {
 /// directories and starts in `dir`, or in the package's directory without
 /// one.
 fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> OutputAssert {
-    let mut failing = Failing::new(&codes::CLI_USAGE, refused);
+    let mut failing = Failing::new(codes::CLI_USAGE, refused);
     if let Some(dir) = dir {
         failing = failing.dir(dir);
     }

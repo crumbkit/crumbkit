@@ -50,7 +50,7 @@ fn write(failure: &FailureType) -> TokenStream {
 
         impl #name {
             #[doc = #doc]
-            #visibility const CODES: &'static [&'static #krate::Code<'static>] = &[#(&#codes),*];
+            #visibility const CODES: &'static [#krate::Code<'static>] = &[#(#codes),*];
         }
     }
 }
