@@ -93,8 +93,9 @@ fn install_writes_the_skill_into_each_agent_dir_that_exists() {
     let rows = home.install(&SkillsInstall::default());
 
     assert_eq!(states(&rows), [Installed::Written, Installed::Written]);
-    assert_eq!(rows[0].dirs, [claude.display().to_string()]);
-    assert_eq!(rows[1].dirs, [codex.display().to_string()]);
+    let shown = |dir: &str| home.path(dir).join("skills").display().to_string();
+    assert_eq!(rows[0].dirs, [shown(".claude")]);
+    assert_eq!(rows[1].dirs, [shown(".codex")]);
     assert_eq!(installed(&claude), SKILL.installed());
     assert_eq!(installed(&codex), SKILL.installed());
     assert!(!home.path(".agents").exists());

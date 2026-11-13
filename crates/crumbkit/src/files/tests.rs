@@ -1,13 +1,23 @@
 use std::ffi::OsString;
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use super::{display, home_in, write_atomically};
 
+/// Returns an absolute home directory. On Windows an absolute path needs a
+/// drive, so `/home/ada` would not count.
+fn absolute_home() -> PathBuf {
+    let root = if cfg!(windows) { r"C:\" } else { "/" };
+    Path::new(root).join("home").join("ada")
+}
+
 #[test]
 fn an_absolute_home_is_the_home_directory() {
-    let home = home_in(|name| (name == "HOME").then(|| OsString::from("/home/ada")));
+    let home = absolute_home();
 
-    assert_eq!(home, Some("/home/ada".into()));
+    let found = home_in(|name| (name == "HOME").then(|| home.clone().into_os_string()));
+
+    assert_eq!(found, Some(home));
 }
 
 #[test]
@@ -27,19 +37,16 @@ fn userprofile_names_the_home_directory_on_windows_when_home_is_unset() {
 
 #[test]
 fn a_verbatim_drive_path_displays_without_its_prefix() {
-    assert_eq!(
-        display(std::path::Path::new(r"\\?\C:\Users\ada")),
-        r"C:\Users\ada"
-    );
+    assert_eq!(display(Path::new(r"\\?\C:\Users\ada")), r"C:\Users\ada");
 }
 
 #[test]
 fn a_verbatim_unc_path_and_a_unix_path_display_unchanged() {
     assert_eq!(
-        display(std::path::Path::new(r"\\?\UNC\server\share")),
+        display(Path::new(r"\\?\UNC\server\share")),
         r"\\?\UNC\server\share"
     );
-    assert_eq!(display(std::path::Path::new("/home/ada")), "/home/ada");
+    assert_eq!(display(Path::new("/home/ada")), "/home/ada");
 }
 
 #[test]
