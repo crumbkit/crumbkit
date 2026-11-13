@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 
 use super::{COMMANDS_LIST, CommandRow, CommandsList, list};
 use crate::help::{Example, Goal, Group, Help, Leaf};
+use crate::view::{Selection, View};
 use crate::{Document, Error, Listing, Row, Run, Sink, Tool, finish_to};
 
 mod arguments;
@@ -401,7 +402,7 @@ fn a_path_that_names_no_command_fails_and_its_recovery_lists_the_longest_visible
     let finished = finish(output(), &["books", "shw", "all"]);
 
     let expected = "\
-error: `shelf books shw` names no visible command
+error: a word of PATH names no visible command below `shelf books`
   help:  run `shelf commands list books`
   code:  shelf::commands::not_found
 ";
@@ -414,7 +415,7 @@ fn a_path_that_names_a_hidden_command_fails_as_one_that_names_no_command() {
     let finished = finish(output(), &["books", "purge", "all"]);
 
     let expected = "\
-error: `shelf books purge` names no visible command
+error: a word of PATH names no visible command below `shelf books`
   help:  run `shelf commands list books`
   code:  shelf::commands::not_found
 ";
@@ -422,10 +423,47 @@ error: `shelf books purge` names no visible command
 }
 
 #[test]
-fn a_path_whose_first_word_names_no_command_recovers_with_the_whole_tree() {
+fn a_path_whose_first_word_names_no_command_names_the_tool_and_recovers_with_the_whole_tree() {
     let finished = finish(output(), &["comets"]);
 
-    assert!(finished.err.contains("help:  run `shelf commands list`\n"));
+    let expected = "\
+error: a word of PATH names no visible command below `shelf`
+  help:  run `shelf commands list`
+  code:  shelf::commands::not_found
+";
+    assert_eq!(finished.err, expected);
+}
+
+#[test]
+fn the_failure_never_repeats_the_word_that_names_no_command() {
+    let mut json = output();
+    json.set_view(View::Json(Selection::Columns));
+
+    for output in [output(), json] {
+        let finished = finish(output, &["books", "zqx@example.com"]);
+        let printed = finished.out + &finished.err;
+
+        assert!(printed.contains("below `shelf books`"), "{printed}");
+        assert!(!printed.contains("zqx@example.com"), "{printed}");
+    }
+}
+
+#[test]
+fn the_failure_names_the_real_name_of_an_alias_before_the_unknown_word() {
+    let output = Run::of(tree().mut_subcommand("books", |books| books.alias("book")));
+
+    let finished = finish(output, &["book", "shw"]);
+
+    assert!(
+        finished
+            .err
+            .starts_with("error: a word of PATH names no visible command below `shelf books`\n")
+    );
+}
+
+#[test]
+fn path_returns_the_words_of_path_in_order() {
+    assert_eq!(args(&["books", "show"]).path(), ["books", "show"]);
 }
 
 #[test]
