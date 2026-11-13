@@ -163,6 +163,23 @@ pub(super) struct Cut {
     pub(super) code: String,
     /// The bytes that the result had to fit in.
     pub(super) budget: usize,
+    /// Whether the result is a listing whose command has `--limit`, so the
+    /// cut line names it. The JSON document leaves it out.
+    pub(super) pages: bool,
+}
+
+/// Reports whether the command that `words`, the words after the program
+/// name, name in `command` has a visible `--limit`, as a command that
+/// flattens [`Page`](crate::Page) has. Words that name no subcommand name
+/// the root.
+pub(super) fn pages<T: AsRef<OsStr>>(command: &clap::Command, words: &[T]) -> bool {
+    crate::command_path(command, words)
+        .iter()
+        .try_fold(command, |node, name| node.find_subcommand(name))
+        .is_some_and(|leaf| {
+            leaf.get_arguments()
+                .any(|arg| arg.get_long() == Some("limit") && !arg.is_hide_set())
+        })
 }
 
 impl Serialize for Cut {
@@ -179,8 +196,9 @@ impl Serialize for Cut {
 /// 1048576 bytes. Ask for less with --limit or --fields.` A listing without
 /// a `total` gives no count, as in `Showing 812 books, because ...`, and
 /// names one shown row with `singular`, as in `Showing 1 book, because
-/// ...`. A listing names `--limit`, and a list, which has no paging flags,
-/// names only `--fields`.
+/// ...`. The line names `--limit` only when `pages` says the result is a
+/// listing whose command has it, and names only `--fields` otherwise, as
+/// for a list, which has no paging flags.
 pub(super) fn write_cut_line(
     out: &mut impl Write,
     shown: usize,
@@ -188,10 +206,10 @@ pub(super) fn write_cut_line(
     description: Option<&str>,
     singular: Option<&str>,
     budget: usize,
-    listing: bool,
+    pages: bool,
 ) -> io::Result<()> {
     super::listing::write_shown(out, shown, total, description, singular)?;
-    let flags = if listing {
+    let flags = if pages {
         "--limit or --fields"
     } else {
         "--fields"

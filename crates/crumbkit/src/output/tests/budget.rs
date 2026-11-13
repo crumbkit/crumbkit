@@ -196,6 +196,51 @@ fn a_listing_that_fits_has_no_cut() {
     assert_eq!(parsed(&finished.out).get("cut"), None);
 }
 
+/// A tool whose `diff` lists without paging and whose `list` pages, with a
+/// global option that takes a value.
+#[derive(clap::Parser)]
+#[command(name = "tool")]
+struct Unpaged {
+    #[command(subcommand)]
+    command: UnpagedCommand,
+    #[arg(short = 'C', global = true)]
+    dir: Option<String>,
+    #[command(flatten)]
+    view: crate::ViewFlags,
+}
+
+#[derive(clap::Subcommand)]
+enum UnpagedCommand {
+    Diff,
+    List {
+        #[command(flatten)]
+        page: crate::Page,
+    },
+}
+
+#[test]
+fn a_cut_listing_names_limit_in_its_line_only_when_its_command_has_limit() {
+    let tool =
+        Tool::new().output(crate::tool::Output::new().budget(BUDGET, "the tests print little"));
+    // The value of `-C` names a subcommand, so a walk that read it as one
+    // would read `diff`'s arguments.
+    for (args, flags) in [
+        (&["tool", "diff"][..], "--fields"),
+        (&["tool", "-C", "diff", "list"][..], "--limit or --fields"),
+    ] {
+        let output = super::built_with(Unpaged::command(), &tool, args);
+        let finished = finish_output(output, STAR_LISTING, Listing::new(stars(20), 20));
+
+        assert!(
+            finished
+                .err
+                .ends_with(&format!("Ask for less with {flags}.\n")),
+            "{args:?}: {}",
+            finished.err
+        );
+    }
+}
+
 #[test]
 fn a_list_over_the_budget_is_cut_as_a_listing_is_and_its_line_names_only_fields() {
     let finished = finish_small(&[], STARS, stars(20));

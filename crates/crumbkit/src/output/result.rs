@@ -250,7 +250,15 @@ fn write_rows<T: Rows>(
     }
     match T::SHAPE {
         Shape::Listing | Shape::List if rows > 0 => {
-            prepared.cut(sink, spelling.spell(code), code, budget)
+            // Only a cut listing looks up its command, so a run that fits
+            // does no more work.
+            let pages = T::SHAPE == Shape::Listing && budget::pages(&*command, settings.words);
+            let cut = Cut {
+                code: spelling.spell(code),
+                budget,
+                pages,
+            };
+            prepared.cut(sink, &cut, code)
         }
         Shape::Batch => {
             let listed = failures.unwrap_or_default();
@@ -598,25 +606,21 @@ impl<'a, T: Rows> Prepared<'a, T> {
         Ok(())
     }
 
-    /// Writes the most first rows of a listing or a list that fit in
-    /// `budget`, marked as cut short with `code`, which `spelled` spells.
-    /// A document that always prints its first answer prints at least one
-    /// row.
+    /// Writes the most first rows of a listing or a list that fit in the
+    /// budget of `cut`, marked as cut short with `cut`, whose code is
+    /// `code`. A document that always prints its first answer prints at
+    /// least one row.
     fn cut(
         &mut self,
         sink: &mut dyn Deliver,
-        spelled: String,
+        cut: &Cut,
         code: Code<'static>,
-        budget: usize,
     ) -> io::Result<(Answer, usize)> {
         let rows = self.rows;
-        let cut = Cut {
-            code: spelled,
-            budget,
-        };
+        let budget = cut.budget;
         let low = usize::from(self.document.get_always_print_first());
         let mut fits = |shown| {
-            let bytes = budget::measure(|counter| self.write(counter, shown, Some(&cut), None))?;
+            let bytes = budget::measure(|counter| self.write(counter, shown, Some(cut), None))?;
             Ok(bytes <= budget)
         };
         let shown = budget::largest(low, rows - 1, &mut fits)?;
@@ -630,8 +634,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
             };
             return Ok((Answer::Refused(over), 0));
         }
-        let bytes = self.measured_write(sink, shown, Some(&cut), None)?;
-        self.send_notes(sink, &mut Vec::new(), shown, Some(&cut));
+        let bytes = self.measured_write(sink, shown, Some(cut), None)?;
+        self.send_notes(sink, &mut Vec::new(), shown, Some(cut));
         Ok((Answer::Cut(code), bytes))
     }
 
@@ -651,7 +655,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             self.value.description(),
             self.value.singular(),
             cut.budget,
-            listing,
+            cut.pages,
         )
     }
 

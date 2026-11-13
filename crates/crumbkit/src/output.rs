@@ -378,7 +378,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// above. A listing or a `Vec` that does not fit prints the most rows that fit
 /// and exits 0: in text, a line on the error writer such as `Showing 812 of
 /// 5000 books, because output stops at 1048576 bytes. Ask for less with --limit
-/// or --fields.` says so, and its JSON document holds `cut` with the code
+/// or --fields.` says so, naming `--limit` only when the command has it, and
+/// its JSON document holds `cut` with the code
 /// `<tool>::output::over_budget` and the budget. A batch prints the rows that
 /// fit, ends with one over-budget failure whose fields are `left_out` and
 /// `budget`, and exits with code 1. A batch's first row prints even when it
