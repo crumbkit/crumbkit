@@ -127,6 +127,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a listing cut short by the output budget names `--limit` in its
   line only when its command has `--limit`, and names only `--fields`
   otherwise ([behaviour/output/budget]).
+- crumbkit-test: the opt-out report's `root-verbs` declaration says that
+  root help lists a verb under the heading of the root goal that names it,
+  when one does, in place of always naming `Verbs`
+  ([behaviour/adoption/declarations]).
 
 ### Removed
 

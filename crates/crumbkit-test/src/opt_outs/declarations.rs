@@ -187,6 +187,10 @@ fn leaf_declarations(command: &Command, leaf: &Leaf) -> Vec<Declaration> {
 /// root verbs that `tool` declares and then for those that each
 /// [`Allow::root_verbs`] in `allow` declares, which apply to the command
 /// line of each verb below `command`.
+///
+/// The tool's declaration names the heading that root help lists the
+/// verbs under. That is the heading of the root goal that names a verb,
+/// and `Verbs` for a verb that no root goal names.
 fn root_verbs(command: &Command, tool: &Tool, allow: &[Allow]) -> Vec<Declaration> {
     let line = |verbs: &[&str]| {
         verbs
@@ -197,13 +201,31 @@ fn root_verbs(command: &Command, tool: &Tool, allow: &[Allow]) -> Vec<Declaratio
     };
     let mut list = Vec::new();
     if let Some((verbs, reason)) = tool.get_help().get_root_verbs() {
+        let goals = tool
+            .get_help()
+            .get_groups()
+            .iter()
+            .find(|group| group.path().is_empty())
+            .map_or(&[][..], |group| group.goals());
+        let named = verbs
+            .iter()
+            .filter(|verb| goals.iter().any(|goal| goal.commands().contains(verb)))
+            .count();
+        let heading = if named == 0 {
+            "the heading Verbs"
+        } else if named == verbs.len() {
+            "the heading of the root goal that names it"
+        } else {
+            "the heading of the root goal that names it, or under the heading Verbs when no \
+             goal names it"
+        };
         list.push(Declaration {
             kind: "root-verbs",
             applies_to: line(verbs),
-            declares:
+            declares: format!(
                 "Each command sits directly under the root as a verb, and root help lists it \
-                       under the heading Verbs."
-                    .to_owned(),
+                 under {heading}."
+            ),
             reason: Some(reason),
         });
     }
