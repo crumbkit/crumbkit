@@ -1,20 +1,19 @@
 //! The `skills print` command, which prints one of a tool's skills
 //! (ADR-0192, ADR-0201).
 //!
-//! The tool owns the command. A tool with one skill adds a `print`
-//! subcommand without arguments to its `skills` group, and its handler
-//! passes the result of [`print`] to [`finish`](crumbkit::finish) with the
-//! document [`SKILLS_PRINT`]:
+//! A tool mounts the command with [`SkillsCommand`](crate::SkillsCommand),
+//! whose `Print` variant has no arguments, and one call to
+//! [`run`](crate::run), which passes the result of [`print`] for the first
+//! skill to [`finish`](crumbkit::finish) with the document
+//! [`SKILLS_PRINT`]:
 //!
 //! ```ignore
-//! SkillsCommand::Print => {
-//!     let result = Ok::<_, crumbkit::Error>(crumbkit_skills::print(&SKILL));
-//!     crumbkit::finish(run, crumbkit_skills::SKILLS_PRINT, result)
-//! }
+//! Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], &command),
 //! ```
 //!
-//! A tool with several skills gives the subcommand an argument of its own
-//! that chooses the skill to print.
+//! A tool with several skills that print by name gives its own `print`
+//! subcommand an argument that chooses the skill, and calls [`print`]
+//! itself.
 
 use std::fmt;
 

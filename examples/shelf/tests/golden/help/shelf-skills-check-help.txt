@@ -1,4 +1,4 @@
-Check that each installed copy of shelf's skill matches this shelf
+Check that each installed copy of this tool's skills matches this build
 
 Usage: shelf skills check [OPTIONS]
 

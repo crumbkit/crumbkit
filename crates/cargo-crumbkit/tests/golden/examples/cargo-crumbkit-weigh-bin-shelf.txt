@@ -17,10 +17,10 @@ shelf self figures list   879         -       2285
 shelf self runs           440         -       1456
 shelf self runs list      864         -       2320
 shelf self runs export    851         54      2361
-shelf skills              471         -       1019
-shelf skills install      646         87      1752
-shelf skills check        604         60      1683
-shelf skills print        262         586     1867
+shelf skills              485         -       1033
+shelf skills install      651         87      1771
+shelf skills check        609         60      1702
+shelf skills print        266         586     1885
 shelf completion          506         -       1054
 shelf completion install  723         83      1860
 shelf completion check    689         43      1786

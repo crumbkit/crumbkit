@@ -1,4 +1,4 @@
-Print cargo crumbkit's skill
+Print this tool's skill
 
 Usage: cargo crumbkit skills print [OPTIONS]
 
@@ -14,6 +14,6 @@ Options:
 
 Examples:
   cargo crumbkit skills print
-          Print cargo crumbkit's skill
+          Print the skill
 
 Effects: read-only, closed-world.

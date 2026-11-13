@@ -44,7 +44,28 @@ assert!(printed.value().to_string().contains("shelf loans add"));
 An agent chooses a skill by its `description`, so a tool gives each job
 that an agent loads at a different moment a skill of its own.
 
-The tool adds a `skills` group with three commands:
+The tool mounts a `skills` group with one field, one match arm and three
+leaves, and [`run`] does the rest:
+
+```rust,ignore
+/// Give coding agents shelf's skill.
+Skills {
+    #[command(subcommand)]
+    command: crumbkit_skills::SkillsCommand,
+},
+// ...
+Resource::Skills { command } => crumbkit_skills::run(run, SKILLS, &command),
+// ...
+crumbkit_skills::install_leaf(&["skills", "install"]),
+crumbkit_skills::check_leaf(&["skills", "check"]),
+crumbkit_skills::print_leaf(&["skills", "print"]),
+```
+
+[`SkillsCommand`] has three commands, and `skills print` prints the first
+skill of the slice, so the tool lists its main skill first. [`run_to`]
+prints to a `Sink` in place of the standard streams, for a tool's tests.
+
+A tool that mounts the commands itself uses the functions of each:
 
 - `skills install` writes `<dir>/<skill>/SKILL.md` for each skill into each
   of `~/.claude/skills`, `~/.agents/skills` and `$CODEX_HOME/skills` that
@@ -55,16 +76,15 @@ The tool adds a `skills` group with three commands:
   [`CheckRow`] for each skill in each directory, for [`SKILLS_CHECK`]. The
   command exits with 1 when a copy is missing or differs.
 - `skills print` prints one skill. [`print`] returns a [`SkillText`] for
-  [`SKILLS_PRINT`]. A tool with several skills gives its `skills print`
-  command an argument of its own, such as the skill's name, and passes the
-  skill that it names.
+  [`SKILLS_PRINT`]. A tool whose skills print by name gives its own
+  `skills print` command an argument, such as the skill's name, and passes
+  the skill that it names.
 
 A skill that reads other files beside its `SKILL.md` names them with
 [`Skill::files`]. `install` writes them into the skill's folder before
 `SKILL.md`, `check` compares each one, and `print` names them.
 
-The tool passes each result to crumbkit's `finish` with its document.
-shelf's [`cli.rs`] and [`lib.rs`] show all three.
+shelf's [`cli.rs`] and [`lib.rs`] show the mount.
 
 ## Where to read more
 
@@ -73,7 +93,7 @@ shelf's [`cli.rs`] and [`lib.rs`] show all three.
   counts as current.
 - The [schemas] describe the `<tool>/skills-install/v1`,
   `<tool>/skills-check/v1` and `<tool>/skills-print/v1` documents.
-- [ADR-0192], [ADR-0199] and [ADR-0201] record why they work this way.
+- [ADR-0192], [ADR-0199], [ADR-0201] and [ADR-0216] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.

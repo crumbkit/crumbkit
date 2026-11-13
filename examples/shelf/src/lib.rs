@@ -19,7 +19,7 @@ pub use crate::books::{
 };
 use crate::cli::{
     AliasesCommand, BooksCommand, CommandsCommand, CompletionCommand, FiguresCommand, Resource,
-    RunsCommand, SKILL, SchemasCommand, SelfCommand, SkillsCommand,
+    RunsCommand, SKILL, SchemasCommand, SelfCommand,
 };
 pub use crate::cli::{Cli, TOOL};
 
@@ -151,7 +151,7 @@ where
                 command: RunsCommand::Export(args),
             } => crumbkit_usage::export(run, &args),
         },
-        Resource::Skills { command } => skills(run, command),
+        Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], &command),
         Resource::Completion { command } => completion(run, command),
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {
@@ -178,25 +178,6 @@ fn completion(run: crumbkit::Run, command: CompletionCommand) -> ExitCode {
         CompletionCommand::Print(args) => {
             let result = crumbkit::completion::print(Cli::command, &args);
             crumbkit::finish(run, crumbkit::completion::COMPLETION_PRINT, result)
-        }
-    }
-}
-
-/// Runs one of shelf's `skills` commands, which crumbkit-skills provides
-/// (ADR-0192), and returns the process's exit code.
-fn skills(run: crumbkit::Run, command: SkillsCommand) -> ExitCode {
-    match command {
-        SkillsCommand::Install(args) => {
-            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&[SKILL], &args));
-            crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
-        }
-        SkillsCommand::Check(args) => {
-            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&[SKILL], &args));
-            crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
-        }
-        SkillsCommand::Print => {
-            let result = Ok::<_, crumbkit::Error>(crumbkit_skills::print(&SKILL));
-            crumbkit::finish(run, crumbkit_skills::SKILLS_PRINT, result)
         }
     }
 }

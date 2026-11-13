@@ -7,8 +7,8 @@ cargo crumbkit tool-skill        Draft and check a tool's agent skill
 cargo crumbkit tool-skill check  Check that every command line in a tool's skill names its real commands and flags
 cargo crumbkit tool-skill draft  Write the generated sections of a tool's SKILL.md from its commands and exported usage
 cargo crumbkit skills            Install cargo crumbkit's own skill
-cargo crumbkit skills install    Install cargo crumbkit's skill into each agent skills directory that exists
-cargo crumbkit skills check      Check that each installed copy of cargo crumbkit's skill matches this cargo crumbkit
-cargo crumbkit skills print      Print cargo crumbkit's skill
+cargo crumbkit skills install    Install this tool's skills into each agent skills directory that exists
+cargo crumbkit skills check      Check that each installed copy of this tool's skills matches this build
+cargo crumbkit skills print      Print this tool's skill
 cargo crumbkit commands          Explore cargo crumbkit's commands
 cargo crumbkit commands list     List a branch of cargo crumbkit's commands with their arguments, examples and columns

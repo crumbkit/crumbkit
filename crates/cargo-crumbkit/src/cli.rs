@@ -6,9 +6,7 @@ use clap::{ArgGroup, Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf};
 use crumbkit::{NoInput, Tool, ViewFlags};
-use crumbkit_skills::{
-    SKILLS_CHECK, SKILLS_INSTALL, SKILLS_PRINT, Skill, SkillsCheck, SkillsInstall,
-};
+use crumbkit_skills::Skill;
 use crumbkit_test::{Allow, Rule};
 
 use crate::docs::DOCS;
@@ -113,30 +111,9 @@ pub const TOOL: Tool = Tool::new().help(
                 ])
                 .effects(Effects::additive().idempotent())
                 .document(TOOL_SKILL_DRAFT),
-            Leaf::new(&["crumbkit", "skills", "install"])
-                .examples(&[
-                    Example::new(
-                        &[],
-                        "Install cargo crumbkit's skill into each agent skills directory that exists",
-                    ),
-                    Example::new(
-                        &["--force"],
-                        "Install it, replacing a file or a link that install did not write",
-                    ),
-                ])
-                .effects(Effects::additive().idempotent())
-                .document(SKILLS_INSTALL),
-            Leaf::new(&["crumbkit", "skills", "check"])
-                .examples(&[Example::new(
-                    &[],
-                    "Report each agent skills directory whose copy is missing or differs",
-                )])
-                .effects(Effects::read_only())
-                .document(SKILLS_CHECK),
-            Leaf::new(&["crumbkit", "skills", "print"])
-                .examples(&[Example::new(&[], "Print cargo crumbkit's skill")])
-                .effects(Effects::read_only())
-                .document(SKILLS_PRINT),
+            crumbkit_skills::install_leaf(&["crumbkit", "skills", "install"]),
+            crumbkit_skills::check_leaf(&["crumbkit", "skills", "check"]),
+            crumbkit_skills::print_leaf(&["crumbkit", "skills", "print"]),
             Leaf::new(&["crumbkit", "commands", "list"])
                 .examples(&[Example::new(&[], "List every command")])
                 .document(COMMANDS_LIST),
@@ -197,7 +174,7 @@ pub(crate) enum CrumbkitCommand {
     Skills {
         /// What to do with cargo crumbkit's skill.
         #[command(subcommand)]
-        command: SkillsCommand,
+        command: crumbkit_skills::SkillsCommand,
     },
     /// Explore cargo crumbkit's commands.
     Commands {
@@ -212,18 +189,6 @@ pub(crate) enum CrumbkitCommand {
 pub(crate) enum CommandsCommand {
     /// List a branch of cargo crumbkit's commands with their arguments, examples and columns.
     List(CommandsList),
-}
-
-/// The commands for cargo crumbkit's own agent skill, which crumbkit-skills
-/// provides.
-#[derive(Debug, Subcommand)]
-pub(crate) enum SkillsCommand {
-    /// Install cargo crumbkit's skill into each agent skills directory that exists.
-    Install(SkillsInstall),
-    /// Check that each installed copy of cargo crumbkit's skill matches this cargo crumbkit.
-    Check(SkillsCheck),
-    /// Print cargo crumbkit's skill.
-    Print,
 }
 
 /// cargo crumbkit's own agent skill, which `cargo crumbkit skills install`

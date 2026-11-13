@@ -1,4 +1,4 @@
-Check that each installed copy of cargo crumbkit's skill matches this cargo crumbkit
+Check that each installed copy of this tool's skills matches this build
 
 Usage: cargo crumbkit skills check [OPTIONS]
 

@@ -15,9 +15,7 @@ use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::tool::RefusalContext;
 use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
-use crumbkit_skills::{
-    SKILLS_CHECK, SKILLS_INSTALL, SKILLS_PRINT, Skill, SkillsCheck, SkillsInstall,
-};
+use crumbkit_skills::Skill;
 use crumbkit_usage::{
     SELF_FIGURES_LIST, SELF_RUNS_EXPORT, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns,
     SelfRunsExport, SelfUsage,
@@ -192,30 +190,9 @@ pub const TOOL: Tool = Tool::new()
                     ])
                     .effects(Effects::read_only())
                     .stream(SELF_RUNS_EXPORT),
-                Leaf::new(&["skills", "install"])
-                    .examples(&[
-                        Example::new(
-                            &[],
-                            "Install shelf's skill into each agent skills directory that exists",
-                        ),
-                        Example::new(
-                            &["--force"],
-                            "Install it, replacing a file or a link that install did not write",
-                        ),
-                    ])
-                    .effects(Effects::additive().idempotent())
-                    .document(SKILLS_INSTALL),
-                Leaf::new(&["skills", "check"])
-                    .examples(&[Example::new(
-                        &[],
-                        "Report each agent skills directory whose copy is missing or differs",
-                    )])
-                    .effects(Effects::read_only())
-                    .document(SKILLS_CHECK),
-                Leaf::new(&["skills", "print"])
-                    .examples(&[Example::new(&[], "Print shelf's skill")])
-                    .effects(Effects::read_only())
-                    .document(SKILLS_PRINT),
+                crumbkit_skills::install_leaf(&["skills", "install"]),
+                crumbkit_skills::check_leaf(&["skills", "check"]),
+                crumbkit_skills::print_leaf(&["skills", "print"]),
                 Leaf::new(&["completion", "install"])
                     .examples(&[
                         Example::new(&["--shell", "fish"], "Install shelf's completion for fish"),
@@ -290,7 +267,7 @@ pub(crate) enum Resource {
     Skills {
         /// What to do with the skill.
         #[command(subcommand)]
-        command: SkillsCommand,
+        command: crumbkit_skills::SkillsCommand,
     },
     /// Set up shelf's completion in a shell.
     Completion {
@@ -374,17 +351,6 @@ pub(crate) enum RunsCommand {
     List(SelfRuns),
     /// Print the records of shelf's usage log after a run, oldest first.
     Export(SelfRunsExport),
-}
-
-/// The commands for shelf's agent skill.
-#[derive(Debug, Subcommand)]
-pub(crate) enum SkillsCommand {
-    /// Install shelf's skill into each agent skills directory that exists.
-    Install(SkillsInstall),
-    /// Check that each installed copy of shelf's skill matches this shelf.
-    Check(SkillsCheck),
-    /// Print shelf's skill.
-    Print,
 }
 
 /// The commands for shelf's shell completion.
