@@ -47,7 +47,7 @@ const CRUMBKIT: &str = "crumbkit";
 /// const USAGE: Code<'static> = Code::new("crumbkit", "cli", "usage");
 ///
 /// let tool = ToolName::new("my-tool");
-/// assert_eq!(Spelling::COLONS.spell(&tool.code(&USAGE)), "my_tool::cli::usage");
+/// assert_eq!(Spelling::COLONS.spell(tool.code(USAGE)), "my_tool::cli::usage");
 /// assert_eq!(tool.schema_id("crumbkit/failure/v1"), "my-tool/failure/v1");
 /// assert_eq!(tool.variable("OUTPUT_BUDGET"), "MY_TOOL_OUTPUT_BUDGET");
 /// ```
@@ -145,11 +145,11 @@ impl ToolName {
     /// Returns `code` with the tool's component in place of `crumbkit`,
     /// or `code` itself when the tool or another component owns it.
     #[must_use]
-    pub const fn code<'a>(self, code: &Code<'a>) -> Code<'a> {
+    pub const fn code(self, code: Code<'_>) -> Code<'_> {
         if is_crumbkit(code.component()) {
             code.with_component(self.code)
         } else {
-            *code
+            code
         }
     }
 

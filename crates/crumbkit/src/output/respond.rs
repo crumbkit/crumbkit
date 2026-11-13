@@ -151,7 +151,7 @@ fn print_failures<T: Rows>(
     #[cfg(feature = "tracing")]
     match (failures.first(), left_out) {
         (Some(first), _) => crate::trace::spans::failed(first.code()),
-        (None, Some(over)) => crate::trace::spans::failed(&spelling.spell(&over.code)),
+        (None, Some(over)) => crate::trace::spans::failed(&spelling.spell(over.code)),
         (None, None) => {}
     }
     // A document without the envelope has no `failures` field, so its
@@ -188,9 +188,9 @@ fn answered<'a>(
         Answer::Cut(over) => {
             // A listing cut short exits 0, and the observer and the span
             // still receive its code (ADR-0046).
-            crate::events::failed(spelling, over);
+            crate::events::failed(spelling, *over);
             #[cfg(feature = "tracing")]
-            crate::trace::spans::failed(&spelling.spell(over));
+            crate::trace::spans::failed(&spelling.spell(*over));
             (code, true, None)
         }
         Answer::Partial(over) => (1, false, Some(over)),

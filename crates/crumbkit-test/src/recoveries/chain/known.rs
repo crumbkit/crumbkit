@@ -31,7 +31,7 @@ impl Walk<'_> {
     /// is unknown.
     pub(super) fn is_known(&self, code: &str) -> bool {
         self.known.iter().any(|known| known == code)
-            || library_codes().any(|owned| self.spelling.spell(owned) == code)
+            || library_codes().any(|owned| self.spelling.spell(*owned) == code)
     }
 
     /// Writes `code`, which `label` failed with and which no declared code
@@ -63,7 +63,7 @@ impl Walk<'_> {
 /// `component`, such as `shelf::`.
 pub(in crate::recoveries) fn spelled_prefix(spelling: Spelling, component: &str) -> String {
     let code = Code::new(component, "area", "reason");
-    format!("{}::", spelling.tool().code(&code).component())
+    format!("{}::", spelling.tool().code(code).component())
 }
 
 #[cfg(test)]

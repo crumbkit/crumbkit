@@ -43,6 +43,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Code<'_>` by value. A caller drops the `&` before the code. An observer
   that keeps a tolerated code stores `code.to_buf()`
   ([behaviour/failures/exit-codes]).
+- crumbkit: breaking: `Observer::failed`, `Spelling::spell` and
+  `ToolName::code` take a `Code<'_>` by value. A caller writes
+  `spelling.spell(failure.code())` without the `&`, and an observer that
+  keeps the code stores `code.to_buf()` ([behaviour/failures]).
 - crumbkit: breaking: `Refused::code` is a `const fn` and returns
   `Code<'static>` by value, where it returned `&'static Code`. A caller drops
   the `*` or `&` it used on the result ([behaviour/failures]).

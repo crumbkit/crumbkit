@@ -289,8 +289,8 @@ fn help_records_the_commands_of_its_path_that_the_tool_defines_and_short_or_long
 fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
     let mut recorder = parsed();
 
-    recorder.failed(Spelling::COLONS, &Code::new("shelf", "books", "not_found"));
-    recorder.failed(Spelling::COLONS, &Code::new("shelf", "books", "gone"));
+    recorder.failed(Spelling::COLONS, Code::new("shelf", "books", "not_found"));
+    recorder.failed(Spelling::COLONS, Code::new("shelf", "books", "gone"));
 
     assert_eq!(
         recorder.run.code.unwrap().as_str(),

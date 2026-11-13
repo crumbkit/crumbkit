@@ -28,7 +28,7 @@ pub use runtime::{CodeBuf, RuntimeCodeError, Segment};
 ///
 /// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 ///
-/// assert_eq!(Spelling::COLONS.spell(&NOT_FOUND), "shelf::books::not_found");
+/// assert_eq!(Spelling::COLONS.spell(NOT_FOUND), "shelf::books::not_found");
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Code<'a> {
@@ -137,7 +137,7 @@ impl Spelling {
     /// const USAGE: Code<'static> = Code::new("crumbkit", "cli", "usage");
     ///
     /// let spelling = Spelling::COLONS.for_tool(ToolName::new("shelf"));
-    /// assert_eq!(spelling.spell(&USAGE), "shelf::cli::usage");
+    /// assert_eq!(spelling.spell(USAGE), "shelf::cli::usage");
     /// ```
     #[must_use]
     pub const fn for_tool(self, tool: ToolName) -> Self {
@@ -157,7 +157,7 @@ impl Spelling {
     /// `crumbkit::finish` prints a failure's code this way, and a test
     /// calls it to check how a tool's codes print.
     #[must_use]
-    pub fn spell(self, code: &Code<'_>) -> String {
+    pub fn spell(self, code: Code<'_>) -> String {
         let code = self.tool.code(code);
         format!(
             "{}{SEPARATOR}{}{SEPARATOR}{}",

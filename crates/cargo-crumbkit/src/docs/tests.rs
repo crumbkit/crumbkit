@@ -37,7 +37,7 @@ fn a_file_that_cannot_be_written_fails_with_write_failed() {
     let error = write(&file, "# Commands\n").unwrap_err();
 
     assert_eq!(
-        Spelling::COLONS.spell(&error.code()),
+        Spelling::COLONS.spell(error.code()),
         "crumbkit::docs::write_failed"
     );
     assert_eq!(

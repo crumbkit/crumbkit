@@ -136,7 +136,7 @@ impl Walk<'_> {
         {
             return;
         }
-        let code = self.spelling.spell(&start.code);
+        let code = self.spelling.spell(start.code);
         // A start names its code in Rust, so crumbkit's own codes are those
         // on the built-in lists.
         let owned = known::library_codes().any(|listed| *listed == start.code);

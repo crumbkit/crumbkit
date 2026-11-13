@@ -389,7 +389,7 @@ impl Recovery {
 /// let error = handler().unwrap_err();
 /// assert_eq!(error.to_string(), "timed out");
 /// assert_eq!(error.failure().recovery(), Recovery::Retry);
-/// assert_eq!(Spelling::COLONS.spell(&error.failure().code()),"shelf::network::timed_out");
+/// assert_eq!(Spelling::COLONS.spell(error.failure().code()),"shelf::network::timed_out");
 /// ```
 pub struct Error(Box<dyn Failure + Send + Sync>);
 

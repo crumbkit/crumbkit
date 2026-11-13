@@ -20,7 +20,7 @@ fn a_runtime_code_whose_component_names_a_hyphenated_plugin_spells_as_itself() {
     let code = Code::runtime("book-club", "gate", "unmet").unwrap();
 
     assert_eq!(
-        crate::Spelling::COLONS.spell(&code),
+        crate::Spelling::COLONS.spell(code),
         "book-club::gate::unmet"
     );
 }
@@ -53,7 +53,7 @@ fn three_hundred_distinct_runtime_codes_in_one_process_all_succeed() {
         let code = Code::runtime("plugin", "sync", &reason).unwrap();
 
         assert_eq!(
-            crate::Spelling::COLONS.spell(&code),
+            crate::Spelling::COLONS.spell(code),
             format!("plugin::sync::{reason}")
         );
     }
@@ -94,7 +94,7 @@ fn an_owned_code_outlives_the_text_it_was_made_from() {
     };
 
     assert_eq!(
-        crate::Spelling::COLONS.spell(&owned.as_code()),
+        crate::Spelling::COLONS.spell(owned.as_code()),
         "lending::loans::overdue"
     );
 }

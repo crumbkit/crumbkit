@@ -222,7 +222,7 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
             problems.push(format!(
                 "the refused line `{}` fails with {}, which is not a declared code or a code of crumbkit or of one of its add-on crates",
                 command_line(&name, pair.refused.words()),
-                spelling.spell(code)
+                spelling.spell(*code)
             ));
             continue;
         }
@@ -242,7 +242,7 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
     {
         let held = *failing.code();
         let code = &held;
-        let text = spelling.spell(code);
+        let text = spelling.spell(held);
         let line = named(
             &tool_name(&twins.examples),
             failing.words(),
@@ -279,12 +279,12 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
         if !is_library_code(code) && !listed(code) && !refused(code) && !untwinned.contains(code) {
             problems.push(format!(
                 "{}: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it",
-                spelling.spell(code)
+                spelling.spell(*code)
             ));
         }
     }
     for entry in twins.unprovoked {
-        let text = spelling.spell(entry.code());
+        let text = spelling.spell(*entry.code());
         if !declared.contains(&entry.code()) {
             problems.push(format!(
                 "{text}: Twins::unprovoked lists the code, and it is not a declared code"
@@ -313,7 +313,7 @@ fn unheld(tool: &Tool, spelling: Spelling, declared: &[&Code<'_>], problems: &mu
             if !declared.contains(&code) && !is_library_code(code) {
                 problems.push(format!(
                     "{}: the tool record's exit code {} lists the failure code, and no CODES list holds it",
-                    spelling.spell(code),
+                    spelling.spell(*code),
                     exit.code()
                 ));
             }

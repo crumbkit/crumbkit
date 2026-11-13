@@ -36,7 +36,7 @@ fn read() -> Call {
 /// Returns the code of a failed result in the colon spelling.
 fn code(result: &Result<(), Error>) -> String {
     let error = result.as_ref().unwrap_err();
-    Spelling::COLONS.spell(&error.failure().code())
+    Spelling::COLONS.spell(error.failure().code())
 }
 
 #[test]
