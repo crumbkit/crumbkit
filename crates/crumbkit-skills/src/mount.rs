@@ -63,14 +63,9 @@ pub enum SkillsCommand {
 
 /// Runs `command` for `skills`, prints its result and returns the process's
 /// exit code. `install` and `check` act on every skill of `skills`, and
-/// `print` prints the first, so a tool lists its main skill first. A tool
-/// whose other skills print by name keeps its own `print` command
-/// (ADR-0201).
-///
-/// # Panics
-///
-/// Panics when `skills` is empty and `command` is `print`. The tool's own
-/// `check_examples` test runs `skills print` and fails first.
+/// `print` prints the first, so a tool lists its main skill first. When
+/// `skills` is empty, `print` prints nothing and succeeds. A tool whose
+/// other skills print by name keeps its own `print` command (ADR-0201).
 #[must_use]
 pub fn run(run: crumbkit::Run, skills: &[Skill], command: &SkillsCommand) -> ExitCode {
     match command {
@@ -82,10 +77,12 @@ pub fn run(run: crumbkit::Run, skills: &[Skill], command: &SkillsCommand) -> Exi
             let result = Ok::<_, crumbkit::Error>(check(skills, args));
             crumbkit::finish(run, SKILLS_CHECK, result)
         }
-        SkillsCommand::Print(_) => {
-            let result = Ok::<_, crumbkit::Error>(print(&skills[0]));
-            crumbkit::finish(run, SKILLS_PRINT, result)
-        }
+        SkillsCommand::Print(_) => match skills {
+            [first, ..] => {
+                crumbkit::finish(run, SKILLS_PRINT, Ok::<_, crumbkit::Error>(print(first)))
+            }
+            [] => ExitCode::SUCCESS,
+        },
     }
 }
 
@@ -93,10 +90,6 @@ pub fn run(run: crumbkit::Run, skills: &[Skill], command: &SkillsCommand) -> Exi
 /// and returns the exit code as a number, as [`finish_to`](crumbkit::finish_to)
 /// does. A tool uses it to test its `skills` commands against a [`Sink`] in
 /// memory.
-///
-/// # Panics
-///
-/// Panics when `skills` is empty and `command` is `print`.
 #[must_use]
 pub fn run_to<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
@@ -113,10 +106,15 @@ pub fn run_to<O: Write, W: Write>(
             let result = Ok::<_, crumbkit::Error>(check(skills, args));
             crumbkit::finish_to(sink, run, SKILLS_CHECK, result)
         }
-        SkillsCommand::Print(_) => {
-            let result = Ok::<_, crumbkit::Error>(print(&skills[0]));
-            crumbkit::finish_to(sink, run, SKILLS_PRINT, result)
-        }
+        SkillsCommand::Print(_) => match skills {
+            [first, ..] => crumbkit::finish_to(
+                sink,
+                run,
+                SKILLS_PRINT,
+                Ok::<_, crumbkit::Error>(print(first)),
+            ),
+            [] => 0,
+        },
     }
 }
 

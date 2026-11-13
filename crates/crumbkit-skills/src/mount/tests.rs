@@ -85,54 +85,43 @@ fn finished<T: Rows>(words: &[&str], document: crumbkit::Document<T>, value: T) 
 }
 
 #[test]
-fn each_command_parses_with_its_arguments() {
-    let (_, install_command) = parse(&["install", "--dir", "/tmp/skills", "--force"]);
-    let SkillsCommand::Install(args) = install_command else {
-        panic!("not install");
-    };
-    assert_eq!(
-        format!("{args:?}"),
-        "SkillsInstall { dir: Some(\"/tmp/skills\"), force: true }"
-    );
-    let (_, check_command) = parse(&["check", "--dir", "/tmp/skills"]);
-    assert!(matches!(check_command, SkillsCommand::Check(_)));
-    let (_, print_command) = parse(&["print"]);
-    assert!(matches!(print_command, SkillsCommand::Print(_)));
-    assert!(Cli::try_parse_from(["shelf", "skills", "print", "shelf"]).is_err());
-}
-
-#[test]
 fn install_and_check_print_what_the_functions_return() {
     let home = tempfile::tempdir().unwrap();
     let dir = home.path().to_str().unwrap();
-    let words = ["install", "--dir", dir];
-    let (_, command) = parse(&words);
-    let SkillsCommand::Install(args) = command else {
-        panic!("not install");
-    };
-    let (code, written) = mounted(&words);
+    let (code, written) = mounted(&["install", "--dir", dir]);
     assert_eq!(code, 0);
     assert!(written.contains("\"state\":\"written\""));
     assert!(home.path().join("shelf/SKILL.md").exists());
     assert!(home.path().join("shelf-lending/SKILL.md").exists());
-    // A second install leaves every copy as it is, which `finish_to` prints
-    // the same for the function's result.
-    let expected = finished(&words, SKILLS_INSTALL, install(&[SKILL, LENDING], &args));
-    assert_eq!(mounted(&words), expected);
-
-    let words = ["check", "--dir", dir];
-    let (_, command) = parse(&words);
-    let SkillsCommand::Check(args) = command else {
-        panic!("not check");
-    };
-    let expected = finished(&words, SKILLS_CHECK, check(&[SKILL, LENDING], &args));
-    assert_eq!(mounted(&words), expected);
+    // A second install leaves every copy as it is, and check finds them, which
+    // `finish_to` prints the same for each function's result.
+    for words in [["install", "--dir", dir], ["check", "--dir", dir]] {
+        let expected = match parse(&words).1 {
+            SkillsCommand::Install(args) => {
+                finished(&words, SKILLS_INSTALL, install(&[SKILL, LENDING], &args))
+            }
+            SkillsCommand::Check(args) => {
+                finished(&words, SKILLS_CHECK, check(&[SKILL, LENDING], &args))
+            }
+            SkillsCommand::Print(_) => unreachable!(),
+        };
+        assert_eq!(mounted(&words), expected);
+    }
 }
 
 #[test]
-fn print_prints_the_first_skill() {
+fn print_prints_the_first_skill_and_takes_no_name() {
     let expected = finished(&["print"], SKILLS_PRINT, print(&SKILL));
     assert_eq!(mounted(&["print"]), expected);
+    assert!(Cli::try_parse_from(["shelf", "skills", "print", "shelf"]).is_err());
+}
+
+#[test]
+fn print_with_no_skills_prints_nothing_and_succeeds() {
+    let (run, command) = parse(&["print"]);
+    let mut out = Vec::new();
+    let code = run_to(&mut Sink::new(&mut out, Vec::new()), run, &[], &command);
+    assert_eq!((code, out), (0, Vec::new()));
 }
 
 #[test]
