@@ -185,9 +185,11 @@ segments equal those of a listed code.
 
 Every code list holds its codes by value, so `Recoveries::new` and
 `Twins::new` take one list of codes for each of the tool's error types. A test
-whose codes come from `Code::runtime`, such as a `Vec<Code<'_>>`, writes
-`let lists = [codes.as_slice()];` and passes `&lists`, because a temporary
-array passed in one expression would not live as long as the settings. It
+whose codes come from `Code::runtime`, such as a `Vec<Code<'_>>`, passes
+`&[codes.as_slice()]` when it builds and checks the settings in one
+statement. A test that binds the settings to a variable and uses them later
+writes `let lists = [codes.as_slice()];` first and passes `&lists`, because
+rustc drops the temporary array at the end of the statement (E0716). It
 lists a code that no test provokes with `Unprovoked::new`, as it lists a
 declared constant.
 

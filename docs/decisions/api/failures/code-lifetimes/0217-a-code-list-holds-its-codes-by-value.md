@@ -2,7 +2,7 @@
 
 - Date: 2026-11-13
 - Status: accepted
-- Supersedes: ADR-0205, which it amends
+- Supersedes: ADR-0089 and ADR-0205, which it amends
 - Missed: ADR-0205 kept `Exit::failures` and `CODES` lists as references so that the lists an author writes would not change, although 0.5.0 already makes every author rewrite each code constant and each `fn code`, and the reference lists made crumbkit-test keep a second constructor for codes held by value.
 
 ## Context
@@ -16,12 +16,14 @@ held by value, so crumbkit-test kept two constructors for each setting:
 `Unprovoked::new` took `&Code` and `Unprovoked::from_code` took `Code`, and
 `Recoveries::new` and `Twins::new` took lists of references while
 `Recoveries::from_codes` and `Twins::from_codes` took one list of values.
+ADR-0089 had restored those constructors so that a tool with run-time codes
+did not first collect references to them.
 
 ## Decision
 
 - Every crumbkit signature takes and returns a code by value, singly or in a
   list. This includes `Observer::failed`, `Spelling::spell` and
-  `ToolName::code`, which took a reference until the change before this one.
+  `ToolName::code`, which took a reference until 0.5.0.
 - A code list is `&'static [Code<'static>]`: `Exit::failures`,
   `Exit::get_failures`, a derived `CODES` and each `codes::ALL`. A tool writes
   `.failures(&[LOCKED])`, and `&[A, B]` of constants promotes to a static
@@ -40,8 +42,10 @@ held by value, so crumbkit-test kept two constructors for each setting:
 A tool drops the `&` before each code it lists on an exit and before the code
 it passes to `Failing::new` or `Unprovoked::new`. A derived `CODES` changes
 type with no source change, so only a comparison such as
-`assert_eq!(E::CODES, &[&A])` changes. A test with run-time codes writes one
-more line. Printed failures, help pages, schemas and the twin and recovery
+`assert_eq!(E::CODES, &[&A])` changes. A test with run-time codes that binds
+the settings to a variable writes one more line, `let lists`, which is the
+step that ADR-0089 avoided. The step no longer collects references, because
+the lists hold the codes themselves. Printed failures, help pages, schemas and the twin and recovery
 reports do not change.
 
 Considered: one flat list for `Recoveries::new`, which forces a tool with

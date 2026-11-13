@@ -482,7 +482,7 @@ fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let answers = [("books show 7 --json", 1, show.as_str(), "")];
     let from_lists = Setup::new("recoveries-owned-codes-lists", &answers);
-    let from_codes = Setup::new("recoveries-owned-codes-codes", &answers);
+    let run_time = Setup::new("recoveries-owned-codes-run-time", &answers);
     let codes: Vec<Code<'_>> = vec![NOT_FOUND, UNREADABLE, REMOVED];
     let lists = [codes.as_slice()];
     let owned = [
@@ -492,15 +492,15 @@ fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_
 
     let lists_problems = problems(&from_lists, &recoveries(&from_lists, SHOW_7, OTHERS));
     let codes_problems = problems(
-        &from_codes,
-        &Recoveries::new(Examples::new(&from_codes.script, ""), &lists)
+        &run_time,
+        &Recoveries::new(Examples::new(&run_time.script, ""), &lists)
             .starts(SHOW_7)
             .unprovoked(&owned),
     );
 
     assert_eq!(lists_problems, None);
     assert_eq!(codes_problems, None);
-    let report = from_codes.report();
+    let report = run_time.report();
     assert!(
         report.contains("tool::books::removed_file: Only a full disk provokes it."),
         "{report}"
