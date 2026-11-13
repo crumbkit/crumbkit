@@ -12,6 +12,13 @@ fn env(home: &Path) -> Env {
     }
 }
 
+/// Returns an absolute home directory. On Windows an absolute path needs a
+/// drive, so `/home/ada` would not count.
+fn absolute_home() -> PathBuf {
+    let root = if cfg!(windows) { r"C:\" } else { "/" };
+    Path::new(root).join("home").join("ada")
+}
+
 fn file(shell: Shell, env: &Env) -> PathBuf {
     target(shell, "shelf", env).unwrap().unwrap().file
 }
@@ -111,12 +118,14 @@ fn zsh_completions_fall_back_to_zfunc_with_a_note_that_gives_the_fpath_line() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(target.file, Path::new("/home/ada/.zfunc/_shelf"));
+    let zfunc = Path::new("/home/ada").join(".zfunc");
+    assert_eq!(target.file, zfunc.join("_shelf"));
     assert_eq!(
-        target.note.as_deref(),
-        Some(
-            "zsh loads completions only from a directory on fpath; add `fpath=(/home/ada/.zfunc $fpath)` before `compinit` in ~/.zshrc."
-        )
+        target.note,
+        Some(format!(
+            "zsh loads completions only from a directory on fpath; add `fpath=({} $fpath)` before `compinit` in ~/.zshrc.",
+            zfunc.display()
+        ))
     );
 }
 
@@ -179,7 +188,9 @@ fn bash_completions_go_under_bash_completion_user_dir_before_xdg_data_home() {
 
 #[test]
 fn the_first_absolute_entry_of_bash_completion_user_dir_counts() {
-    let user_dir = std::env::join_paths(["relative", "/first", "/second"]).unwrap();
+    let first = absolute_home().join("first");
+    let entries = [PathBuf::from("relative"), first.clone(), absolute_home()];
+    let user_dir = std::env::join_paths(entries).unwrap();
     let env = Env {
         bash_user_dir: super::first_absolute(Some(user_dir)),
         ..Env::default()
@@ -187,7 +198,7 @@ fn the_first_absolute_entry_of_bash_completion_user_dir_counts() {
 
     assert_eq!(
         file(Shell::Bash, &env),
-        Path::new("/first/completions/shelf")
+        first.join("completions").join("shelf")
     );
 }
 

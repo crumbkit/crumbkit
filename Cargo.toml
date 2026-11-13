@@ -47,10 +47,6 @@ crumbkit-usage = { version = "0.4.1", path = "crates/crumbkit-usage" }
 # shelf installs its agent skill with crumbkit-skills, which takes a version
 # beside the path for the same reason.
 crumbkit-skills = { version = "0.4.1", path = "crates/crumbkit-skills" }
-# crumbkit-usage tests that the log runs under crumbkit-process's `forward`
-# feature, so crumbkit-process takes a version beside the path for the same
-# reason.
-crumbkit-process = { version = "0.4.1", path = "crates/crumbkit-process" }
 # reading hands the terminal to an editor with crumbkit-child, which takes a
 # version beside the path for the same reason.
 crumbkit-child = { version = "0.4.1", path = "crates/crumbkit-child" }

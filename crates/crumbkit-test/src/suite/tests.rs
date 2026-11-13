@@ -1,5 +1,7 @@
 //! Tests for the convention suite and the macro that expands it.
 
+use std::path::Path;
+
 use clap::Command;
 use crumbkit::Tool;
 
@@ -83,7 +85,8 @@ fn the_golden_directory_holds_the_help_golden_files() {
     const GOLDENS: Suite<'_> = SUITE.goldens("target/no-such-goldens");
 
     let message = panic_message(|| GOLDENS.run(Check::HelpGoldens)).unwrap_or_default();
-    assert!(message.contains("no-such-goldens/help"), "{message}");
+    let help = Path::new("no-such-goldens").join("help");
+    assert!(message.contains(&help.display().to_string()), "{message}");
 }
 
 #[test]

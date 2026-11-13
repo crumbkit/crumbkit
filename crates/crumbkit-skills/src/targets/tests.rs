@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::{Place, Target, agent_dirs, merge, named_dir, place};
 
@@ -20,11 +20,19 @@ fn the_agent_dirs_are_claude_agents_and_codex_under_the_home() {
     );
 }
 
+/// Returns the root of the file system. On Windows an absolute path needs a
+/// drive, so a path under `/` would not count.
+fn root() -> &'static Path {
+    Path::new(if cfg!(windows) { r"C:\" } else { "/" })
+}
+
 #[test]
 fn an_absolute_codex_home_replaces_the_default_codex_directory() {
-    let dirs = dirs("/home/ada", Some("/opt/codex")).unwrap();
+    let codex = root().join("opt").join("codex");
 
-    assert_eq!(dirs.last().unwrap(), &PathBuf::from("/opt/codex/skills"));
+    let dirs = dirs("/home/ada", codex.to_str()).unwrap();
+
+    assert_eq!(dirs.last().unwrap(), &codex.join("skills"));
 }
 
 #[test]
@@ -188,7 +196,7 @@ fn place_follows_a_relative_link_from_the_link_s_own_folder() {
     let elsewhere = dir.path().join("elsewhere");
     fs::create_dir(&skills).unwrap();
     fs::create_dir(&elsewhere).unwrap();
-    crate::testing::link(std::path::Path::new("../elsewhere"), &skills.join("shelf"));
+    crate::testing::link(Path::new("../elsewhere"), &skills.join("shelf"));
 
     assert_eq!(
         place(&skills, "shelf"),
@@ -205,7 +213,7 @@ fn merge_joins_a_dir_and_a_relative_link_to_it() {
     let dir = tempfile::tempdir().unwrap();
     let agents = dir.path().join("agents");
     fs::create_dir(&agents).unwrap();
-    crate::testing::link(std::path::Path::new("agents"), &dir.path().join("claude"));
+    crate::testing::link(Path::new("agents"), &dir.path().join("claude"));
 
     let targets = merge(&[dir.path().join("claude"), agents]);
 
