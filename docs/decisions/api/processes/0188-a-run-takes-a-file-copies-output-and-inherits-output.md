@@ -1,7 +1,7 @@
 # ADR-0188. A run takes a file as input, copies output and inherits output
 
 - Date: 2026-11-09
-- Status: accepted
+- Status: amended by ADR-0215
 - Supersedes: ADR-0171 and ADR-0172, which it amends
 - Missed: ADR-0171 limited a child's input to null, bytes or inherited and its output to four policies, and ADR-0172's time bound did not consider a caller's function that runs on a reader thread.
 

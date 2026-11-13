@@ -3,8 +3,8 @@
 use std::time::{Duration, Instant};
 
 use super::super::{
-    Capture, ChildFinished, DRAIN_GRACE, LongLine, Outcome, OverLimit, RunError, RunOptions,
-    Status, StopReason, run,
+    Capture, ChildFinished, DRAIN_GRACE, LongLine, Outcome, RunError, RunOptions, Status,
+    StopReason, run,
 };
 use crate::testing::sh;
 use crate::{Cancel, Lines, line_queue};
@@ -16,14 +16,7 @@ const WAIT: Duration = Duration::from_secs(5);
 /// of `most` lines within `line` and `total` bytes, and the caller's side.
 fn lines(most: usize, line: usize, total: usize) -> (RunOptions, Lines) {
     let (queue, lines) = line_queue(most);
-    let capture = Capture::Lines {
-        queue,
-        line,
-        total,
-        over: OverLimit::Stop,
-        long: LongLine::Over,
-        end: b'\n',
-    };
+    let capture = Capture::lines(queue, total).line(line);
     (RunOptions::new().stdout(capture), lines)
 }
 
@@ -117,7 +110,7 @@ fn a_full_queue_after_a_stop_drops_lines_and_keeps_the_last_one_as_lost() {
 fn a_caller_that_dropped_its_lines_lets_the_child_run_to_its_end() {
     let (settings, lines) = lines(1, 1024, 1 << 20);
     drop(lines);
-    let settings = settings.stderr(Capture::Tail { limit: 64 });
+    let settings = settings.stderr(Capture::tail(64));
 
     let finished = run_sh("seq 1 5000; echo done >&2; exit 4", &settings);
 
@@ -201,14 +194,7 @@ fn the_lines_end_when_the_cancel_was_cancelled_before_the_start() {
 #[test]
 fn a_run_that_skips_a_long_line_delivers_the_later_lines_and_the_child_runs_to_its_end() {
     let (queue, lines) = line_queue(16);
-    let capture = Capture::Lines {
-        queue,
-        line: 4,
-        total: 1 << 20,
-        over: OverLimit::Stop,
-        long: LongLine::Skip,
-        end: b'\n',
-    };
+    let capture = Capture::lines(queue, 1 << 20).line(4).long(LongLine::Skip);
     let settings = RunOptions::new().stdout(capture);
 
     let finished = run_sh("echo one; echo far-too-long; echo two; exit 5", &settings);
@@ -222,14 +208,7 @@ fn a_run_that_skips_a_long_line_delivers_the_later_lines_and_the_child_runs_to_i
 #[test]
 fn a_run_can_split_its_lines_on_a_nul_byte() {
     let (queue, lines) = line_queue(16);
-    let capture = Capture::Lines {
-        queue,
-        line: 16,
-        total: 1 << 20,
-        over: OverLimit::Stop,
-        long: LongLine::Over,
-        end: 0,
-    };
+    let capture = Capture::lines(queue, 1 << 20).line(16).end(0);
     let settings = RunOptions::new().stdout(capture);
 
     let finished = run_sh(r"printf 'a b\000c\000'", &settings);

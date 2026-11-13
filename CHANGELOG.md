@@ -28,6 +28,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-process: breaking: `Capture` has private fields. A caller writes
+  `Capture::discard()`, `inherit()`, `tail(limit)`, `whole(limit)` or
+  `lines(queue, total)`, and sets the other limits on `WholeCapture` and
+  `LineCapture` with builder methods ([behaviour/processes]).
 - crumbkit: breaking: `Picker` requires `Sync`, so `Tool` is `Send` and
   `Sync` and can be a `static` that threads share. A picker with a `Cell`
   or `RefCell` keeps its state in a `Mutex` or an atomic

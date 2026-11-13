@@ -25,13 +25,13 @@ long the child may run, and reads how the child ended:
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use crumbkit_process::{Capture, Escalation, Outcome, OverLimit, RunError, RunOptions, Signal, Status};
+use crumbkit_process::{Capture, Escalation, Outcome, RunError, RunOptions, Signal, Status};
 
 fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
     tool.arg("--version");
     let settings = RunOptions::new()
-        .stdout(Capture::Whole { limit: 64 * 1024, over: OverLimit::Stop })
-        .stderr(Capture::Tail { limit: 4096 })
+        .stdout(Capture::whole(64 * 1024))
+        .stderr(Capture::tail(4096))
         .deadline(Instant::now() + Duration::from_secs(10))
         .escalation(Escalation::default().step(Signal::Terminate, Duration::from_secs(2)));
     let finished = crumbkit_process::run(tool, &settings)?;
@@ -42,7 +42,7 @@ fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
 }
 ```
 
-`Capture::Lines` delivers a stream line by line through a bounded queue
+`Capture::lines` delivers a stream line by line through a bounded queue
 from [`line_queue`] while the child runs, which the caller reads from
 another thread.
 

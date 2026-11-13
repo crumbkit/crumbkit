@@ -15,64 +15,47 @@ mod tests;
 const SLACK: usize = 8 * 1024;
 
 /// What a run keeps of one output stream of the child.
+///
+/// A constructor chooses the kind of capture. [`Capture::whole`] and
+/// [`Capture::lines`] return a builder for the settings of their kind, which
+/// [`RunOptions::stdout`](crate::RunOptions::stdout) and
+/// [`RunOptions::stderr`](crate::RunOptions::stderr) take as it is. The
+/// default is [`Capture::discard`].
 #[derive(Clone, Debug, Default)]
-#[non_exhaustive]
-pub enum Capture {
-    /// The stream goes to the null device, and the run keeps nothing.
+pub struct Capture(Kind);
+
+/// The kind of a capture and the settings of that kind.
+#[derive(Clone, Debug, Default)]
+enum Kind {
     #[default]
     Discard,
-    /// The stream goes to the tool's own stream, and the run keeps nothing.
-    ///
-    /// A child in a group of its own is in the background of the terminal.
-    /// It can write there unless the terminal has `tostop` set, and it is
-    /// stopped when it reads. A stopped child holds a run with no deadline. For a step that
-    /// the person answers, use [`Scope::Child`](crate::Scope::Child) with
-    /// [`Input::Inherit`](crate::Input::Inherit), so the child stays in the
-    /// tool's foreground group and the tool carries on when it ends. Ctrl-C
-    /// then reaches both.
     Inherit,
-    /// The run keeps the stream's first `limit` bytes. A stream longer than
-    /// `limit` bytes is over its limit, and `over` says what the run does
-    /// then.
-    Whole {
-        /// The most bytes that the run keeps.
-        limit: usize,
-        /// What the run does when the stream passes `limit` bytes.
-        over: OverLimit,
-    },
-    /// The run reads the whole stream and keeps its last `limit` bytes.
+    Whole(WholeCapture),
     Tail {
-        /// The most bytes that the run keeps.
         limit: usize,
     },
-    /// The run splits the stream into lines on each `end` byte and pushes
-    /// each line, without that byte, to `queue` while the child runs. A
-    /// last line with no end is pushed when the stream ends. The run
-    /// keeps no bytes in its [`Captured`].
-    ///
-    /// The first time the stream passes `total` bytes, the stream is over
-    /// its limit, and `over` says what the run does then. No line is pushed
-    /// after that. A line that passes `line` bytes does the same with
-    /// [`LongLine::Over`], and with [`LongLine::Skip`] the run drops that
-    /// line alone and goes on.
-    ///
-    /// Each queue serves one run, which ends it when it returns.
-    Lines {
-        /// The queue that the run pushes each line to, from
-        /// [`line_queue`](crate::line_queue).
-        queue: LineQueue,
-        /// The most bytes of one line, without its end.
-        line: usize,
-        /// The most bytes of the whole stream, line ends and skipped lines
-        /// included.
-        total: usize,
-        /// What the run does when the stream passes a limit.
-        over: OverLimit,
-        /// What a line longer than `line` bytes does.
-        long: LongLine,
-        /// The byte that ends a line, such as `b'\n'` or `0`.
-        end: u8,
-    },
+    Lines(LineCapture),
+}
+
+/// A capture that keeps the first bytes of a stream, from
+/// [`Capture::whole`].
+#[derive(Clone, Debug)]
+#[must_use]
+pub struct WholeCapture {
+    limit: usize,
+    over: OverLimit,
+}
+
+/// A capture that delivers a stream as lines, from [`Capture::lines`].
+#[derive(Clone, Debug)]
+#[must_use]
+pub struct LineCapture {
+    queue: LineQueue,
+    line: usize,
+    total: usize,
+    over: OverLimit,
+    long: LongLine,
+    end: u8,
 }
 
 /// What a line longer than the limit of one line does to a stream
@@ -104,19 +87,98 @@ pub enum OverLimit {
 }
 
 impl Capture {
+    /// Returns a capture that sends the stream to the null device and keeps
+    /// nothing.
+    #[must_use]
+    pub const fn discard() -> Self {
+        Self(Kind::Discard)
+    }
+
+    /// Returns a capture that sends the stream to the tool's own stream and
+    /// keeps nothing.
+    ///
+    /// A child in a group of its own is in the background of the terminal.
+    /// It can write there unless the terminal has `tostop` set, and it is
+    /// stopped when it reads. A stopped child holds a run with no deadline.
+    /// For a step that the person answers, use
+    /// [`Scope::Child`](crate::Scope::Child) with
+    /// [`Input::Inherit`](crate::Input::Inherit), so the child stays in the
+    /// tool's foreground group and the tool carries on when it ends. Ctrl-C
+    /// then reaches both.
+    #[must_use]
+    pub const fn inherit() -> Self {
+        Self(Kind::Inherit)
+    }
+
+    /// Returns a capture that reads the whole stream and keeps its last
+    /// `limit` bytes.
+    #[must_use]
+    pub const fn tail(limit: usize) -> Self {
+        Self(Kind::Tail { limit })
+    }
+
+    /// Returns a capture that keeps the stream's first `limit` bytes.
+    ///
+    /// A stream longer than `limit` bytes is over its limit, and the run
+    /// stops the child then unless [`WholeCapture::over`] says otherwise.
+    pub const fn whole(limit: usize) -> WholeCapture {
+        WholeCapture {
+            limit,
+            over: OverLimit::Stop,
+        }
+    }
+
+    /// Returns a capture that splits the stream into lines and pushes each
+    /// line, without its end, to `queue` while the child runs. A last line
+    /// with no end is pushed when the stream ends. The run keeps no bytes in
+    /// its [`Captured`].
+    ///
+    /// The first time the stream passes `total` bytes, line ends and
+    /// skipped lines included, the stream is over its limit. No line is
+    /// pushed after that, and the run stops the child unless
+    /// [`LineCapture::over`] says otherwise. Without
+    /// [`LineCapture::line`], one line has no limit of its own, and lines
+    /// end at `b'\n'` unless [`LineCapture::end`] names another byte.
+    ///
+    /// `queue` comes from [`line_queue`](crate::line_queue) and serves one
+    /// run, which ends it when it returns.
+    pub const fn lines(queue: LineQueue, total: usize) -> LineCapture {
+        LineCapture {
+            queue,
+            line: usize::MAX,
+            total,
+            over: OverLimit::Stop,
+            long: LongLine::Over,
+            end: b'\n',
+        }
+    }
+
     /// Returns the standard stream that the child gets for this capture.
     pub(super) fn stdio(&self) -> Stdio {
-        match self {
-            Self::Discard => Stdio::null(),
-            Self::Inherit => Stdio::inherit(),
-            Self::Whole { .. } | Self::Tail { .. } | Self::Lines { .. } => Stdio::piped(),
+        match self.0 {
+            Kind::Discard => Stdio::null(),
+            Kind::Inherit => Stdio::inherit(),
+            Kind::Whole(_) | Kind::Tail { .. } | Kind::Lines(_) => Stdio::piped(),
+        }
+    }
+
+    /// Returns true when the capture sends the stream to the tool's own.
+    pub(super) const fn inherits(&self) -> bool {
+        matches!(self.0, Kind::Inherit)
+    }
+
+    /// Returns the queue of a stream delivered as lines.
+    const fn queue(&self) -> Option<&LineQueue> {
+        match &self.0 {
+            Kind::Lines(lines) => Some(&lines.queue),
+            _ => None,
         }
     }
 
     /// Tells the queue of a stream delivered as lines that the run began
     /// to stop its child, so a full queue drops a line instead of waiting.
     pub(super) fn stopping(&self) {
-        if let Self::Lines { queue, .. } = self {
+        if let Some(queue) = self.queue() {
             queue.stopping();
         }
     }
@@ -125,7 +187,7 @@ impl Capture {
     /// been reaped, so a full queue drops a line once `deadline` has
     /// passed.
     pub(super) fn drain_until(&self, deadline: Instant) {
-        if let Self::Lines { queue, .. } = self {
+        if let Some(queue) = self.queue() {
             queue.drain_until(deadline);
         }
     }
@@ -133,9 +195,61 @@ impl Capture {
     /// Ends the queue of a stream delivered as lines, so the caller's
     /// waits end once the queue is empty.
     pub(super) fn end(&self) {
-        if let Self::Lines { queue, .. } = self {
+        if let Some(queue) = self.queue() {
             queue.end();
         }
+    }
+}
+
+impl WholeCapture {
+    /// Sets what the run does when the stream passes its limit. Without
+    /// it, the run stops the child.
+    pub const fn over(mut self, over: OverLimit) -> Self {
+        self.over = over;
+        self
+    }
+}
+
+impl From<WholeCapture> for Capture {
+    fn from(whole: WholeCapture) -> Self {
+        Self(Kind::Whole(whole))
+    }
+}
+
+impl LineCapture {
+    /// Sets the most bytes of one line, without its end. Without it, one
+    /// line has no limit of its own, and only the total limit applies.
+    pub const fn line(mut self, line: usize) -> Self {
+        self.line = line;
+        self
+    }
+
+    /// Sets what a line longer than the limit of one line does. Without it,
+    /// such a line takes the stream over its limit, as [`LongLine::Over`]
+    /// says.
+    pub const fn long(mut self, long: LongLine) -> Self {
+        self.long = long;
+        self
+    }
+
+    /// Sets what the run does when the stream passes a limit. Without it,
+    /// the run stops the child.
+    pub const fn over(mut self, over: OverLimit) -> Self {
+        self.over = over;
+        self
+    }
+
+    /// Sets the byte that ends a line, such as `0`. Without it, a line ends
+    /// at `b'\n'`.
+    pub const fn end(mut self, end: u8) -> Self {
+        self.end = end;
+        self
+    }
+}
+
+impl From<LineCapture> for Capture {
+    fn from(lines: LineCapture) -> Self {
+        Self(Kind::Lines(lines))
     }
 }
 
@@ -239,17 +353,17 @@ impl Keeper {
     /// child over its limit for the first time.
     pub(super) fn add(&mut self, bytes: &[u8]) -> bool {
         let kept = &mut self.kept;
-        match self.capture {
-            Capture::Discard | Capture::Inherit => false,
-            Capture::Lines {
+        match self.capture.0 {
+            Kind::Discard | Kind::Inherit => false,
+            Kind::Lines(LineCapture {
                 line,
                 total,
                 over,
                 long,
                 end,
                 ..
-            } => self.add_lines(bytes, line, total, long, end) && over == OverLimit::Stop,
-            Capture::Whole { limit, over } => {
+            }) => self.add_lines(bytes, line, total, long, end) && over == OverLimit::Stop,
+            Kind::Whole(WholeCapture { limit, over }) => {
                 let room = limit.saturating_sub(kept.bytes.len());
                 kept.bytes
                     .extend_from_slice(&bytes[..room.min(bytes.len())]);
@@ -259,7 +373,7 @@ impl Keeper {
                 kept.over_limit = true;
                 over == OverLimit::Stop
             }
-            Capture::Tail { limit } => {
+            Kind::Tail { limit } => {
                 kept.bytes.extend_from_slice(bytes);
                 if kept.bytes.len() > limit.saturating_add(SLACK) {
                     kept.bytes.drain(..kept.bytes.len() - limit);
@@ -325,7 +439,7 @@ impl Keeper {
     /// lines, unless the caller has dropped its side.
     fn push_line(&mut self) {
         let line = std::mem::take(&mut self.line);
-        if let Capture::Lines { queue, .. } = &self.capture
+        if let Some(queue) = self.capture.queue()
             && self.listening
         {
             self.listening = queue.push(line);
@@ -335,13 +449,10 @@ impl Keeper {
     /// Returns what was kept once the stream has ended. A stream delivered
     /// as lines pushes its last line when that line has no end byte.
     pub(super) fn finish(mut self) -> Captured {
-        if matches!(self.capture, Capture::Lines { .. })
-            && !self.kept.over_limit
-            && !self.line.is_empty()
-        {
+        if self.capture.queue().is_some() && !self.kept.over_limit && !self.line.is_empty() {
             self.push_line();
         }
-        if let Capture::Tail { limit } = self.capture
+        if let Kind::Tail { limit } = self.capture.0
             && self.kept.bytes.len() > limit
         {
             self.kept.bytes.drain(..self.kept.bytes.len() - limit);
