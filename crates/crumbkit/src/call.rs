@@ -67,7 +67,7 @@ struct Slot {
 #[non_exhaustive]
 pub enum CallTarget {
     /// A command that [`Call::new`] names, with the arguments that
-    /// [`Call::arg`] and [`Call::value`] add.
+    /// [`Call::arg`], [`Call::value`], [`Call::all`] and [`Call::flag`] add.
     Command {
         /// The names of the subcommands from the root to the command, in
         /// order.
@@ -108,6 +108,9 @@ pub enum CallArg {
         /// The name of the failure's field whose values the argument takes.
         field: &'static str,
     },
+    /// A flag that takes no value, set, such as `--password-auth`, which
+    /// [`Call::flag`] adds. It holds the flag's clap id.
+    Flag(&'static str),
 }
 
 impl Call {
@@ -221,6 +224,11 @@ impl Call {
     /// Adds the argument whose clap id is `id`, such as `ids` for a field
     /// named `ids`, after the arguments already added. It renders as clap's
     /// usage line shows it, such as `<ID>...`.
+    ///
+    /// A flag that takes no value renders as its name, such as `--all`, and
+    /// still counts as a placeholder. A `Recovery::Terminal` call that holds
+    /// a placeholder offers no step, because a terminal runs the call exactly
+    /// as it prints, so such a call adds the flag with [`Call::flag`].
     #[must_use]
     pub fn arg(mut self, id: &'static str) -> Self {
         if let CallTarget::Command { args, .. } = &mut self.target {
@@ -293,6 +301,35 @@ impl Call {
         self
     }
 
+    /// Adds the flag whose clap id is `id`, set, after the arguments already
+    /// added, such as `--password-auth`.
+    ///
+    /// The flag takes no value, and it renders as its long name, or as its
+    /// short name when it has no long name. Unlike a flag from [`Call::arg`],
+    /// it is a concrete word, so a `Recovery::Terminal` call can hold it.
+    /// Each call adds one occurrence. Rendering refuses an argument that
+    /// takes a value with [`CallError::TakesAValue`].
+    ///
+    /// ```
+    /// use crumbkit::{Call, CallArg, CallTarget};
+    ///
+    /// let call = Call::new(&["login"])
+    ///     .value("server", "https://example.org")
+    ///     .flag("password_auth");
+    ///
+    /// let CallTarget::Command { args, .. } = call.target() else {
+    ///     unreachable!("Call::new names a command");
+    /// };
+    /// assert_eq!(args[1], CallArg::Flag("password_auth"));
+    /// ```
+    #[must_use]
+    pub fn flag(mut self, id: &'static str) -> Self {
+        if let CallTarget::Command { args, .. } = &mut self.target {
+            args.push(CallArg::Flag(id));
+        }
+        self
+    }
+
     /// Returns the command line the call names, which crumbkit reads to
     /// render the call.
     #[must_use]
@@ -346,6 +383,14 @@ pub enum CallError {
         /// The final command of the call, such as `shelf books list`.
         command: String,
         /// The id of the flag.
+        id: String,
+    },
+    /// The call names the argument `id` of `command` as a set flag, and the
+    /// argument takes a value.
+    TakesAValue {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the argument.
         id: String,
     },
     /// The call gives the argument `id` of `command` every value of a field,
@@ -409,6 +454,10 @@ impl fmt::Display for CallError {
             Self::TakesNoValue { command, id } => {
                 write!(f, "'{command}' takes no value for its argument '{id}'")
             }
+            Self::TakesAValue { command, id } => write!(
+                f,
+                "'{command}' takes a value for its argument '{id}', so a call cannot name it as a set flag"
+            ),
             Self::TakesOneValue { command, id } => write!(
                 f,
                 "'{command}' takes one value for its argument '{id}', so a call cannot give it every value of a field"

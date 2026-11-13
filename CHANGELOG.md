@@ -33,6 +33,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   variable without answering a request, so a tool with its own completion
   handler gets a registration that sets its variable
   ([behaviour/parsing/completion]).
+- crumbkit: `Call::flag` names a flag that takes no value as set, such as
+  `--password-auth`, so a `Recovery::Terminal` call can include it.
+  Rendering a call refuses `flag` on an argument that takes a value with
+  `CallError::TakesAValue` ([behaviour/failures]).
 
 ### Changed
 

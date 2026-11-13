@@ -314,7 +314,7 @@ pub(crate) fn entries<const N: usize>(
 pub(crate) fn every_entry(name: &str) -> Call {
     Call::new(&["entries", "list"])
         .value("list", name)
-        .arg("all")
+        .flag("all")
 }
 
 /// Reports whether `line` of a list's file holds an entry: it is not blank

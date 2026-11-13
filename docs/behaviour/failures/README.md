@@ -48,7 +48,10 @@ failure can hand the step to a person and not run it itself. A call that the
 tool's command tree cannot render behaves as a `Recovery::Run` call that
 cannot render. The call must be concrete, because a terminal runs exactly the
 call that prints, so a call with a placeholder from `Call::arg` or `Call::all`
-behaves as a call that cannot render.
+behaves as a call that cannot render. `Call::value` gives an argument a
+concrete value, and `Call::flag` adds a flag that takes no value as set, such
+as `--password-auth`, so a terminal call can hold both. A flag added with
+`Call::arg` is a placeholder.
 
 `Recovery::None` with a reason is the exception for a failure that no step
 can repair. A tool declares each such failure with one of its declared codes

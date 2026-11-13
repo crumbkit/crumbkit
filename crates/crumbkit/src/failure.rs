@@ -307,7 +307,8 @@ pub enum Recovery {
     /// not resolve prints the same way. The call must be concrete, because
     /// a terminal runs exactly the call that prints, so a call with a
     /// placeholder from `Call::arg` or `Call::all` counts as a call that
-    /// does not resolve. `Call::value` gives an argument a concrete value.
+    /// does not resolve. `Call::value` gives an argument a concrete value,
+    /// and `Call::flag` names a flag that takes no value as set.
     Terminal(Call),
     /// Run the same command again later, because the failure may pass.
     Retry,

@@ -46,7 +46,7 @@ pub trait RenderCall: sealed::Sealed {
     /// subcommand on the path, then each argument in the form clap's usage
     /// line gives it, such as `<ID>...` for a positional that takes many
     /// values or `--author <AUTHOR>` for an option, or with its value, such
-    /// as `--author 'Le Guin'`.
+    /// as `--author 'Le Guin'`, or as a set flag, such as `--all`.
     ///
     /// `command` is the root of the tool's tree. `render` first calls
     /// `Command::build`, which clap requires before a command's arguments are
@@ -61,8 +61,9 @@ pub trait RenderCall: sealed::Sealed {
     ///
     /// Returns a [`CallError`] naming the first path segment or argument that
     /// is missing or hidden, or the first value that the argument would
-    /// refuse: a value for a flag, a value outside the argument's possible
-    /// values, or a positional value that clap would read as a flag. A hidden
+    /// refuse: a value for a flag, a set flag for an argument that takes a
+    /// value, a value outside the argument's possible values, or a positional
+    /// value that clap would read as a flag. A hidden
     /// command or argument counts as unresolved, because crumbkit never
     /// prints what the tool hid.
     fn render(&self, command: &mut Command) -> Result<String, CallError>;
@@ -201,9 +202,32 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
                 refuse_one_value(arg, &text[..command_end])?;
                 let _ = write!(text, " {arg}");
             }
+            CallArg::Flag(id) => {
+                let arg = find_arg(current, &text[..command_end], id)?;
+                // A positional always takes a value, so a flag that takes no
+                // value always has a long or a short name.
+                let (false, Some(name)) = (arg.get_action().takes_values(), switch(arg)) else {
+                    return Err(CallError::TakesAValue {
+                        command: text[..command_end].to_owned(),
+                        id: (*id).to_owned(),
+                    });
+                };
+                text.push(' ');
+                text.push_str(&name);
+            }
         }
     }
     Ok(text)
+}
+
+/// Returns the word that names `arg` on a command line: `--long`, or `-s`
+/// when it has no long name, or `None` for a positional.
+fn switch(arg: &Arg) -> Option<String> {
+    match (arg.get_long(), arg.get_short()) {
+        (Some(long), _) => Some(format!("--{long}")),
+        (None, Some(short)) => Some(format!("-{short}")),
+        (None, None) => None,
+    }
 }
 
 /// Returns an error when `args` holds an argument from `Call::all` beside
@@ -214,14 +238,14 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
 fn refuse_placeholder_beside_all(args: &[CallArg], text: &str) -> Result<(), CallError> {
     let mut all = args.iter().filter_map(|arg| match arg {
         CallArg::All { id, .. } => Some(*id),
-        CallArg::Placeholder(_) | CallArg::Value { .. } => None,
+        CallArg::Placeholder(_) | CallArg::Value { .. } | CallArg::Flag(_) => None,
     });
     if all.next().is_none() {
         return Ok(());
     }
     let placeholder = args.iter().find_map(|arg| match arg {
         CallArg::Placeholder(id) => Some(*id),
-        CallArg::All { .. } | CallArg::Value { .. } => None,
+        CallArg::All { .. } | CallArg::Value { .. } | CallArg::Flag(_) => None,
     });
     match placeholder.or_else(|| all.next()) {
         Some(id) => Err(CallError::PlaceholderBesideAll {
@@ -260,7 +284,7 @@ fn refuse_one_value(arg: &Arg, text: &str) -> Result<(), CallError> {
 /// program name on, as a shell passes the line that
 /// [`RenderCall::render`] prints, or `None` when `call` holds a placeholder
 /// from `Call::arg`, `Call::all` or `Call::typed_all`, which names no value
-/// to parse.
+/// to parse. A flag from `Call::flag` is one word, such as `--all`.
 /// `command` is the root of a tree that `call` already rendered against, so
 /// each lookup finds what the rendering found, and `None` also covers a
 /// lookup that would fail.
@@ -285,18 +309,20 @@ pub(crate) fn words(call: &Call, command: &Command) -> Option<Vec<String>> {
         words.push(current.get_name().to_owned());
     }
     for call_arg in args {
-        let CallArg::Value { id, value } = call_arg else {
-            return None;
+        let (id, value) = match call_arg {
+            CallArg::Value { id, value } => (*id, value),
+            CallArg::Flag(id) => {
+                let arg = current.get_arguments().find(|arg| arg.get_id() == id)?;
+                words.push(switch(arg)?);
+                continue;
+            }
+            CallArg::Placeholder(_) | CallArg::All { .. } => return None,
         };
         let arg = current.get_arguments().find(|arg| arg.get_id() == id)?;
         let hyphen = value.len() > 1 && value.starts_with('-');
-        let flag = match (arg.get_long(), arg.get_short()) {
-            (Some(long), _) => format!("--{long}"),
-            (None, Some(short)) => format!("-{short}"),
-            (None, None) => {
-                words.push(value.clone());
-                continue;
-            }
+        let Some(flag) = switch(arg) else {
+            words.push(value.clone());
+            continue;
         };
         if hyphen {
             words.push(format!("{flag}={value}"));
@@ -367,21 +393,17 @@ fn render_value(arg: &Arg, text: &str, value: &str) -> Result<String, CallError>
     }
     let quoted = quote(value);
     let hyphen = value.len() > 1 && value.starts_with('-');
-    let flag = match (arg.get_long(), arg.get_short()) {
-        (Some(long), _) => format!("--{long}"),
-        (None, Some(short)) => format!("-{short}"),
-        (None, None) => {
-            let allowed = arg.is_allow_hyphen_values_set()
-                || (arg.is_allow_negative_numbers_set() && value.parse::<f64>().is_ok());
-            if hyphen && !allowed {
-                return Err(CallError::HyphenValue {
-                    command: text.to_owned(),
-                    id: id.to_owned(),
-                    value: value.to_owned(),
-                });
-            }
-            return Ok(quoted);
+    let Some(flag) = switch(arg) else {
+        let allowed = arg.is_allow_hyphen_values_set()
+            || (arg.is_allow_negative_numbers_set() && value.parse::<f64>().is_ok());
+        if hyphen && !allowed {
+            return Err(CallError::HyphenValue {
+                command: text.to_owned(),
+                id: id.to_owned(),
+                value: value.to_owned(),
+            });
         }
+        return Ok(quoted);
     };
     let separator = if hyphen { '=' } else { ' ' };
     Ok(format!("{flag}{separator}{quoted}"))

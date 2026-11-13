@@ -139,7 +139,7 @@ fn all_field(call: &crate::Call) -> Option<&'static str> {
     };
     args.iter().find_map(|arg| match arg {
         CallArg::All { field, .. } => Some(*field),
-        CallArg::Placeholder(_) | CallArg::Value { .. } => None,
+        CallArg::Placeholder(_) | CallArg::Value { .. } | CallArg::Flag(_) => None,
     })
 }
 
