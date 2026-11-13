@@ -38,8 +38,9 @@ pub(super) struct Declaration {
 /// ADR-0163). A declaration that a later change adds joins this list beside
 /// the declarations of the same scope: a tool record setting before the
 /// leaves, and a leaf's declaration after its refusal-hint entry. The
-/// completion variable is not listed, because `complete_with` sets it for the
-/// process and the tool record does not hold it.
+/// completion variable is not listed, because `complete_with` or
+/// `declare_completion_variable` sets it for the process and the tool record
+/// does not hold it.
 pub(super) fn declarations(command: &Command, tool: &Tool, allow: &[Allow]) -> Vec<Declaration> {
     let every_run = format!("every run of {}", command.get_name());
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));

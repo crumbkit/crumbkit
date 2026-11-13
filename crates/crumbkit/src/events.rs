@@ -394,8 +394,8 @@ pub(crate) static TYPED: AtomicBool = AtomicBool::new(false);
 /// - `observe` returns [`Observing::Completing`] and installs nothing when
 ///   the run answers a shell's completion request, because a Tab press is
 ///   no run of the tool (ADR-0048). The completion variable is `COMPLETE`,
-///   or the name that the tool passed to `complete_with` before it called
-///   `observe`.
+///   or the name that the tool passed to `declare_completion_variable` or
+///   `complete_with` before it called `observe`.
 /// - It returns [`Observing::Full`] and installs nothing when four
 ///   observers are installed.
 /// - It returns [`Observing::InstalledLate`] when it installed the observer

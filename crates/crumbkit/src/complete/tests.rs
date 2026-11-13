@@ -33,6 +33,38 @@ fn a_run_that_carries_the_completion_variable_that_the_tool_declared_is_completi
         .flatten()));
 }
 
+// This test declares the same name as the one above, because `cargo test`
+// runs both in one process and they share the process's declaration.
+#[cfg(feature = "complete")]
+#[test]
+fn a_tool_that_declares_its_completion_variable_completes_under_that_name() {
+    crate::declare_completion_variable("SHELF_COMPLETE");
+    let shell = || Some(std::ffi::OsString::from("fish"));
+
+    assert_eq!(super::variable(), "SHELF_COMPLETE");
+    assert!(completing_in(|name| (name == "SHELF_COMPLETE")
+        .then(shell)
+        .flatten()));
+}
+
+#[cfg(feature = "complete")]
+#[test]
+fn the_first_declaration_of_the_completion_variable_wins_in_either_order() {
+    use std::sync::OnceLock;
+
+    use super::declare_in;
+
+    let first_own = OnceLock::new();
+    declare_in(&first_own, "SHELF_COMPLETE");
+    declare_in(&first_own, "COMPLETE");
+    let first_default = OnceLock::new();
+    declare_in(&first_default, "COMPLETE");
+    declare_in(&first_default, "SHELF_COMPLETE");
+
+    assert_eq!(first_own.get(), Some(&"SHELF_COMPLETE"));
+    assert_eq!(first_default.get(), Some(&"COMPLETE"));
+}
+
 #[cfg(feature = "complete")]
 mod answers {
     use std::ffi::OsStr;
@@ -75,8 +107,8 @@ mod answers {
         let args = ["shelf", "--"].iter().chain(words);
         let code = complete_to(
             &mut Sink::new(&mut out, &mut err),
-            |_| command,
             variable,
+            |_| command,
             OsStr::new(shell),
             args,
             None,
@@ -132,6 +164,17 @@ mod answers {
     }
 
     #[test]
+    fn a_registration_after_the_declaration_sets_the_declared_completion_variable() {
+        crate::declare_completion_variable("SHELF_COMPLETE");
+
+        let (code, out, err) = complete_with(tree(), super::super::variable(), "fish", &[]);
+
+        assert_eq!(code, ExitCode::SUCCESS);
+        assert!(out.contains("SHELF_COMPLETE=fish"), "{out}");
+        assert_eq!(err, "");
+    }
+
+    #[test]
     fn a_completion_for_an_unknown_shell_writes_nothing_and_returns_failure() {
         let (code, out, err) = complete(tree(), "tcsh", &["shelf", ""]);
 
@@ -160,8 +203,8 @@ mod answers {
 
         let code = complete_to(
             &mut Sink::new(Broken, &mut err),
-            |_| tree(),
             VAR,
+            |_| tree(),
             OsStr::new("fish"),
             args,
             None,
@@ -207,11 +250,11 @@ mod words {
         let mut received = None;
         let code = complete_to(
             &mut Sink::new(&mut out, Vec::new()),
+            VAR,
             |words| {
                 received = Some(words.to_vec());
                 for_directory(words)
             },
-            VAR,
             OsStr::new("fish"),
             args,
             None,

@@ -4,7 +4,8 @@
 //! from installing an observer.
 //! [`complete_with`] declares the tool's own name for the completion
 //! variable (ADR-0056), and [`complete_with_words`] builds the command from
-//! the words that the caller typed.
+//! the words that the caller typed. [`declare_completion_variable`]
+//! declares the name for a tool that answers requests itself.
 
 use std::ffi::{OsStr, OsString};
 #[cfg(feature = "complete")]
@@ -31,14 +32,16 @@ mod tests;
 /// with the shell as its value, as `clap_complete` names it.
 pub(crate) const VAR: &str = "COMPLETE";
 
-/// The completion variable that the tool declared with [`complete_with`],
-/// which the first call of [`complete_with`] in the process sets.
+/// The completion variable that the tool declared, which the first call in
+/// the process of [`declare_completion_variable`], [`complete_with`] or
+/// [`complete_with_words`] sets.
 #[cfg(feature = "complete")]
 static DECLARED: OnceLock<&'static str> = OnceLock::new();
 
 /// Returns the name of the completion variable of this process: the name
-/// that the tool declared with [`complete_with`], or [`VAR`] when it
-/// declared none. The registration that `completion install` writes sets it.
+/// that the tool declared with [`declare_completion_variable`] or
+/// [`complete_with`], or [`VAR`] when it declared none. The registration
+/// that `completion install` writes sets it.
 pub(crate) fn variable() -> &'static str {
     #[cfg(feature = "complete")]
     if let Some(declared) = DECLARED.get() {
@@ -59,8 +62,7 @@ pub(crate) fn completing() -> bool {
 
 /// Reports whether the run answers a shell's completion request, with `env`
 /// giving the value of an environment variable by its name. It reads the
-/// completion variable that the tool declared with `complete_with`, or
-/// `COMPLETE`.
+/// completion variable that the tool declared, or `COMPLETE`.
 fn completing_in(env: impl FnOnce(&str) -> Option<OsString>) -> bool {
     let value = env(variable());
     requested(value.as_deref())
@@ -71,6 +73,51 @@ fn completing_in(env: impl FnOnce(&str) -> Option<OsString>) -> bool {
 /// `clap_complete` reads them.
 pub(crate) fn requested(value: Option<&OsStr>) -> bool {
     value.is_some_and(|value| !value.is_empty() && value != "0")
+}
+
+/// Declares `variable` as the name of the tool's completion variable, and
+/// does nothing else. It reads no environment, builds no command and
+/// answers no request.
+///
+/// A tool that answers completion requests with its own handler calls it
+/// first in `main`, so that [`events::observe`](crate::events::observe)
+/// reads the variable and `completion install`, `completion check` and
+/// `completion print` write a registration that sets it in every run:
+///
+/// ```no_run
+/// use std::process::ExitCode;
+///
+/// /// Answers the request that `SHELF_COMPLETE` names with the tool's own
+/// /// completer, or returns `None` for an ordinary run.
+/// fn answer() -> Option<ExitCode> {
+///     None
+/// }
+///
+/// fn main() -> ExitCode {
+///     crumbkit::declare_completion_variable("SHELF_COMPLETE");
+///     if let Some(code) = answer() {
+///         return code;
+///     }
+///     // Start the usage log, parse and run the command.
+///     ExitCode::SUCCESS
+/// }
+/// ```
+///
+/// The first declaration in the process wins, whether it comes from this
+/// function, [`complete_with`] or [`complete_with_words`], and a later one
+/// with another name changes nothing. The name follows the rule that
+/// [`complete_with`] gives.
+#[cfg(feature = "complete")]
+pub fn declare_completion_variable(variable: &'static str) {
+    declare_in(&DECLARED, variable);
+}
+
+/// Sets `lock` to `variable` unless an earlier declaration set it, so a
+/// second declaration keeps the first and `events::observe` and the
+/// registration agree within one run.
+#[cfg(feature = "complete")]
+fn declare_in(lock: &OnceLock<&'static str>, variable: &'static str) {
+    let _ = lock.set(variable);
 }
 
 /// Answers a shell's completion request when the environment variable
@@ -224,9 +271,7 @@ pub fn complete_with_words(
     variable: &'static str,
     command: impl FnOnce(&[OsString]) -> Command,
 ) -> Option<ExitCode> {
-    // A second declaration keeps the first, so `events::observe` and the
-    // registration agree within one run.
-    let _ = DECLARED.set(variable);
+    declare_completion_variable(variable);
     #[expect(
         clippy::disallowed_methods,
         reason = "completion owns its environment reads, and the completion variable names the shell that asks"
@@ -243,8 +288,8 @@ pub fn complete_with_words(
     let mut sink = Sink::standard();
     Some(complete_to(
         &mut sink,
-        command,
         variable,
+        command,
         &shell,
         std::env::args_os(),
         current_dir.as_deref(),
@@ -257,7 +302,8 @@ pub fn complete_with_words(
 /// the exit code.
 /// `variable` is the name of the completion variable, `COMPLETE` or the
 /// name that the tool passes to [`complete_with`], which a registration
-/// script sets for each completion. `args` are
+/// script sets for each completion. It comes before `command`, as in
+/// [`complete_with`]. `args` are
 /// the process's arguments, the program name first, as in
 /// [`parse_from`](crate::parse_from), and `current_dir` is the directory
 /// that a relative program path starts from. Tests call it with a sink over
@@ -284,8 +330,8 @@ pub fn complete_with_words(
 #[cfg(feature = "complete")]
 pub fn complete_to<O, E, R, I, T>(
     sink: &mut Sink<O, E, R>,
-    command: impl FnOnce(&[OsString]) -> Command,
     variable: &str,
+    command: impl FnOnce(&[OsString]) -> Command,
     shell: &OsStr,
     args: I,
     current_dir: Option<&Path>,
@@ -297,7 +343,7 @@ where
 {
     let mut answer = Vec::new();
     let args = args.into_iter().map(Into::into).collect();
-    if answer_into(&mut answer, command, variable, shell, args, current_dir).is_err() {
+    if answer_into(&mut answer, variable, command, shell, args, current_dir).is_err() {
         return ExitCode::FAILURE;
     }
     match sink.deliver_result(&answer) {
@@ -322,8 +368,8 @@ where
 #[cfg(feature = "complete")]
 fn answer_into(
     answer: &mut Vec<u8>,
-    command: impl FnOnce(&[OsString]) -> Command,
     variable: &str,
+    command: impl FnOnce(&[OsString]) -> Command,
     shell: &OsStr,
     mut args: Vec<OsString>,
     current_dir: Option<&Path>,

@@ -97,7 +97,9 @@ pub use crate::bytes::Bytes;
 pub use crate::call::{Call, CallArg, CallError, CallTarget, RenderCall};
 pub use crate::code::{Code, CodeBuf, RuntimeCodeError, Segment, Spelling};
 #[cfg(feature = "complete")]
-pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
+pub use crate::complete::{
+    complete, complete_to, complete_with, complete_with_words, declare_completion_variable,
+};
 pub use crate::document::{Document, Envelope};
 pub use crate::elapsed::Elapsed;
 pub use crate::expect::Expect;

@@ -28,7 +28,9 @@ Why: ADR-0056.
   on standard output, such as a server that runs until it is interrupted.
   The leaf offers no view flag and help prints its `Output:` line
   ([result shapes](../output/shapes/README.md#a-command-that-prints-no-result)).
-- `crumbkit::complete_with` declares the name of the completion variable,
+- `crumbkit::complete_with`, or `crumbkit::declare_completion_variable` for
+  a tool with its own completion handler, declares the name of the
+  completion variable,
   which the registration script and the usage log then use
   ([completion](../parsing/completion.md)).
 - `Leaf::refusal_alternatives` and `Failures::refusal_alternatives` declare a
@@ -117,8 +119,8 @@ that counts the declarations no longer says that they need no reason.
 
 The section is left out when the tool declares nothing, and the JSON holds it
 as a `declarations` array beside `data`. The report does not list the
-completion variable, because `complete_with` sets it for the process and the
-tool record does not hold it.
+completion variable, because `complete_with` or `declare_completion_variable`
+sets it for the process and the tool record does not hold it.
 
 Why: ADR-0056, ADR-0036, ADR-0035, ADR-0064, ADR-0081, ADR-0086, ADR-0120,
 ADR-0123, ADR-0163, ADR-0165, ADR-0186.

@@ -106,7 +106,7 @@ impl JsonSchema for InstallRow {
                     "type": "string",
                 },
                 "reason": {
-                    "description": "Why install skipped or failed, or what it replaced under --force, such as `linked to /src/shelf/shelf.fish`, or null.",
+                    "description": "Why install skipped or failed, or what it replaced under --force, such as `linked to /path/to/target.fish`, or null.",
                     "type": ["string", "null"],
                 },
             },
@@ -201,7 +201,7 @@ impl JsonSchema for CheckRow {
                     "type": "string",
                 },
                 "reason": {
-                    "description": "Why the file differs, cannot be read or is linked, such as `linked to /src/shelf/shelf.fish`, or null.",
+                    "description": "Why the file differs, cannot be read or is linked, such as `linked to /path/to/target.fish`, or null.",
                     "type": ["string", "null"],
                 },
             },
