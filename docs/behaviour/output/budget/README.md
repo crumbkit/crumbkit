@@ -65,8 +65,9 @@ counts each row's [child lines](../shapes/README.md#rows-with-children).
 
 - In text, a line such as `Showing 812 of 5000 books, because output stops at
   1048576 bytes. Ask for less with --limit or --fields.` prints on standard
-  error in place of the footer. A list, which has no paging flags, names only
-  `--fields`.
+  error in place of the footer. A listing names `--limit` only when its
+  command has it, as one that flattens `Page` does. A list, and a listing
+  without `--limit`, names only `--fields`.
 - With `--json`, the document holds
   `"cut": {"code": "shelf::output::over_budget", "budget": 1048576}`.
 - A document with `Envelope::Without` has no place for `cut`, so the

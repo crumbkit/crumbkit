@@ -100,7 +100,8 @@ fn show_step() -> Step {
 const SHOW_STEP_LINES: &str = "Next: Show planets by name.\n  tool show <NAME>...\n";
 
 /// A tool with two subcommands, so the tests can put the flags after one and
-/// a listing can name the other as its next step.
+/// a listing can name the other as its next step. `list` pages, so the line
+/// of a listing that the budget cuts short names `--limit`.
 #[derive(Parser)]
 #[command(name = "tool")]
 struct Cli {
@@ -112,7 +113,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    List,
+    List {
+        #[command(flatten)]
+        page: crate::Page,
+    },
     Show {
         #[arg(required = true, value_name = "NAME")]
         names: Vec<String>,

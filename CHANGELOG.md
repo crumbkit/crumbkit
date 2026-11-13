@@ -124,6 +124,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `complete_to` takes the completion variable before the
   function that builds the command, as `complete_with` does. A caller swaps
   its second and third arguments ([behaviour/parsing/completion]).
+- crumbkit: a listing cut short by the output budget names `--limit` in its
+  line only when its command has `--limit`, and names only `--fields`
+  otherwise ([behaviour/output/budget]).
 
 ### Removed
 
