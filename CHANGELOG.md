@@ -33,6 +33,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   variable without answering a request, so a tool with its own completion
   handler gets a registration that sets its variable
   ([behaviour/parsing/completion]).
+- crumbkit: `CommandsList::path` returns the words of `PATH`
+  ([behaviour/help/commands-list]).
 - crumbkit: `Call::flag` names a flag that takes no value as set, such as
   `--password-auth`, so a `Recovery::Terminal` call can include it.
   Rendering a call refuses `flag` on an argument that takes a value with
@@ -131,6 +133,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   root help lists a verb under the heading of the root goal that names it,
   when one does, in place of always naming `Verbs`
   ([behaviour/adoption/declarations]).
+- crumbkit: `commands list` refuses a `PATH` word that names no visible
+  command with a message that names only the visible commands before it,
+  and never repeats the typed word ([behaviour/help/commands-list]).
 
 ### Removed
 

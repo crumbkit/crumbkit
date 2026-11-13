@@ -121,6 +121,15 @@ pub struct CommandsList {
     page: Page,
 }
 
+impl CommandsList {
+    /// Returns the words of `PATH` as the caller typed them, so a tool that
+    /// checks the path itself can read it.
+    #[must_use]
+    pub fn path(&self) -> &[String] {
+        &self.path
+    }
+}
+
 /// Serializes the arguments as an object with `path` beside the page's
 /// `limit` and `all`, such as `{"path":["books"],"limit":25,"all":false}`,
 /// as `#[serde(flatten)]` would.
@@ -197,7 +206,10 @@ impl JsonSchema for CommandsList {
 /// # Errors
 ///
 /// Returns a failure with the code `<tool>::commands::not_found` when a
-/// word of `args` names no visible command. Its recovery runs
+/// word of `args` names no visible command. Its message names the visible
+/// commands that the words before it reached, such as ``a word of PATH
+/// names no visible command below `shelf books` ``, and never repeats a
+/// word that the caller typed. Its recovery runs
 /// `commands list` with the longest start of the words that names a
 /// visible command, such as `shelf commands list books`, rendered against
 /// the tool's command, so it has no next step when the tool hides or lacks
@@ -213,13 +225,9 @@ pub fn list(run: &mut Run, tool: &Tool, args: &CommandsList) -> Result<Listing<C
                 path.push(subcommand.get_name());
             }
             _ => {
-                let line = std::iter::once(root.get_name())
-                    .chain(path.iter().copied())
-                    .chain(std::iter::once(word.as_str()))
-                    .collect::<Vec<_>>()
-                    .join(" ");
+                let tool = root.get_name().to_owned();
                 let prefix = path.iter().map(|&name| name.to_owned()).collect();
-                return Err(CommandsError::NotFound { line, prefix }.into());
+                return Err(CommandsError::NotFound { tool, prefix }.into());
             }
         }
     }
@@ -312,22 +320,28 @@ fn visit<'a>(
 enum CommandsError {
     /// A word of `PATH` names no visible command.
     NotFound {
-        /// The command line up to and including the word, such as
-        /// `shelf books shw`.
-        line: String,
+        /// The name of the root command, such as `shelf`.
+        tool: String,
         /// The real names of the visible commands that the words before it
         /// name.
         prefix: Vec<String>,
     },
 }
 
-/// Prints the message, such as ``` `shelf books shw` names no visible
-/// command ```. A hidden command prints as a missing one, so the message
-/// never names a command that the tool hid.
+/// Prints the message, such as ``a word of PATH names no visible command
+/// below `shelf books` ``. It names only the tool and the real names of the
+/// visible commands before the word, so it never repeats a word that the
+/// caller typed and never names a command that the tool hid.
 impl fmt::Display for CommandsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotFound { line, .. } => write!(f, "`{line}` names no visible command"),
+            Self::NotFound { tool, prefix } => {
+                write!(f, "a word of PATH names no visible command below `{tool}")?;
+                for name in prefix {
+                    write!(f, " {name}")?;
+                }
+                f.write_str("`")
+            }
         }
     }
 }

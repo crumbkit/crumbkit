@@ -27,8 +27,8 @@ run time. It builds that whole tree through `Run::command` before it reads
 it, so it also sees each command that a `Command::defer` closure adds.
 
 - A hidden command and everything below it are left out, as help leaves them
-  out. A hidden command fails as an unknown one does, so the failure never
-  reveals a command that the tool hid.
+  out. An unknown or hidden command fails, and its message names only the
+  visible commands before it.
 - The rows leave out the help and version flags, which are the same on every
   command and which `parse` changes, so the rows are the same whether or not
   the tree went through `parse`. A global argument is listed once.
