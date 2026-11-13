@@ -28,7 +28,7 @@ struct Service {
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name", "state"];
     const LONG_COLUMNS: &'static [&'static str] = &["region"];
-    const CHILDREN: Option<Children> = Some(Children::field("processes").spaced());
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("processes").spaced());
 }
 
 const SERVICES: Document<Vec<Service>> =
@@ -131,7 +131,7 @@ impl Row for Lined {
     const LINE: Option<Line<Self>> = Some(Line::new("service <NAME>", |service| {
         Some(format!("service {}", service.name))
     }));
-    const CHILDREN: Option<Children> = Some(Children::field("processes").spaced());
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("processes").spaced());
 }
 
 const LINED: Document<Vec<Lined>> = Document::new("ops", "spaced-lined", 1, "The test services.");
@@ -266,15 +266,12 @@ struct Detailed {
 impl Row for Detailed {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LONG_COLUMNS: &'static [&'static str] = &["region"];
-    const CHILDREN: Option<Children> = Some(Children::field("processes").spaced());
-
-    fn child_lines(&self) -> Vec<String> {
-        Vec::new()
-    }
-
-    fn long_child_lines(&self) -> Vec<String> {
-        self.processes.clone()
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("processes")
+            .spaced()
+            .lines(|_| Vec::new())
+            .long_lines(|detailed: &Self| detailed.processes.clone()),
+    );
 }
 
 const DETAILED: Document<Vec<Detailed>> =

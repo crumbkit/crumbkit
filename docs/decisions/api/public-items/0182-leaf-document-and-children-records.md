@@ -1,7 +1,7 @@
 # ADR-0182. A leaf's document and a row's child lines are records
 
 - Date: 2026-11-09
-- Status: accepted
+- Status: amended by ADR-0214
 - Supersedes: ADR-0120, ADR-0135, ADR-0137 and ADR-0151, which it amends
 
 ## Context

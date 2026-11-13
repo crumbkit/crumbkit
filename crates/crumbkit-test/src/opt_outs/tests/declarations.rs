@@ -206,7 +206,7 @@ struct RemovedShelf {
 
 impl crumbkit::Row for RemovedShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(Children::field("books"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("books"));
 }
 
 #[test]
@@ -240,7 +240,7 @@ struct FlushShelf {
 
 impl crumbkit::Row for FlushShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(Children::field("books").indent(0));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("books").indent(0));
 }
 
 /// A removed shelf whose books print under it, folded into one line when
@@ -255,7 +255,7 @@ struct FoldedShelf {
 
 impl crumbkit::Row for FoldedShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(
+    const CHILDREN: Option<Children<Self>> = Some(
         Children::field("books")
             .help("one line for each book, or one folded line for more than ten books."),
     );

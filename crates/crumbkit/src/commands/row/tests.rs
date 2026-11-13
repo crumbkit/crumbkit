@@ -254,7 +254,7 @@ struct Shelf {
 
 impl crate::Row for Shelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(Children::field("books"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("books"));
 }
 
 #[test]
@@ -286,7 +286,7 @@ struct FoldedShelf {
 
 impl crate::Row for FoldedShelf {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(
+    const CHILDREN: Option<Children<Self>> = Some(
         Children::field("books")
             .help("one line for each book, or one folded line for more than ten books."),
     );

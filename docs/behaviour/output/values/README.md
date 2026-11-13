@@ -96,7 +96,7 @@ whose schema is large, such as an object, returns a name to define the
 schema once under `$defs`.
 
 A row whose `Row::CHILDREN` field is a list of value types prints each
-value's text as a child line without overriding `Row::child_lines`. A
+value's text as a child line without `Children::lines`. A
 failure passes a value to `Field::shown`, and writes the same value with
 `{}` in its message, so the message and the `fields` object agree.
 

@@ -15,8 +15,8 @@ mod tests;
 /// in a form of its own in JSON.
 ///
 /// The text form is the `Display`. crumbkit prints it in the cells of a text
-/// table, in `--fields` text, in a stream's text line, in the default
-/// [`Row::child_lines`](crate::Row::child_lines) and in the message of a
+/// table, in `--fields` text, in a stream's text line, in child lines
+/// without [`Children::lines`](crate::Children::lines) and in the message of a
 /// failure whose [`Field::shown`](crate::Field::shown) holds the value. The
 /// JSON form is [`Shown::json`], which `--json` in every view, a stream's
 /// JSON lines, a failure's `fields` and a tool that serializes the value

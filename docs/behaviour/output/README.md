@@ -64,8 +64,8 @@ rows keeps every column in its header. A [stream](streams.md#text-and-json-lines
 prints every column, because its header prints before any row arrives.
 
 A row type may print its children, such as a service's components, as
-indented and escaped lines under each row, through `Row::CHILDREN` and
-`Row::child_lines`. Child lines do not change the column widths.
+indented and escaped lines under each row, through `Row::CHILDREN`. Child
+lines do not change the column widths.
 [Rows with children](shapes/README.md#rows-with-children) describes their
 indent, their `--long` form and their JSON.
 

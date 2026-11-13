@@ -37,14 +37,12 @@ enum Account {
 
 impl Row for Account {
     const COLUMNS: &'static [&'static str] = &["kind", "id", "owner"];
-    const CHILDREN: Option<Children> = Some(Children::field("applications"));
-
-    fn child_lines(&self) -> Vec<String> {
-        match self {
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("applications").lines(
+        |account: &Self| match account {
             Self::Full { applications, .. } => applications.clone(),
             Self::Short { .. } => Vec::new(),
-        }
-    }
+        },
+    ));
 }
 
 const ACCOUNTS: Document<Listing<Account>> =
