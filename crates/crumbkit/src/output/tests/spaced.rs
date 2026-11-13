@@ -9,7 +9,7 @@ use serde::Serialize;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Batch, Children, Document, Error, Listing, Row, Tool};
+use crate::{Batch, Children, Document, Error, Line, Listing, Row, Tool};
 
 /// A service and the processes it runs, each of which prints under the
 /// service, with a blank line between services.
@@ -128,12 +128,10 @@ struct Lined {
 
 impl Row for Lined {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const LINE: Option<&'static str> = Some("service <NAME>");
+    const LINE: Option<Line<Self>> = Some(Line::new("service <NAME>", |service| {
+        Some(format!("service {}", service.name))
+    }));
     const CHILDREN: Option<Children> = Some(Children::field("processes").spaced());
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("service {}", self.name))
-    }
 }
 
 const LINED: Document<Vec<Lined>> = Document::new("ops", "spaced-lined", 1, "The test services.");

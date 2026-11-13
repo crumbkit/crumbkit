@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 
 use super::CommandRow;
 use crate::Children;
+use crate::Line;
 use crate::Tool;
 use crate::help::{Effects, Help, Leaf};
 
@@ -163,7 +164,7 @@ struct Removed {
 
 impl crate::Row for Removed {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const LINE: Option<&'static str> = Some("removed <ID>");
+    const LINE: Option<Line<Self>> = Some(Line::new("removed <ID>", |_| None));
 }
 
 #[test]
@@ -226,7 +227,7 @@ struct Setting(u32, u32);
 impl crate::Row for Setting {
     const COLUMNS: &'static [&'static str] = &[];
     const WHOLE: bool = true;
-    const LINE: Option<&'static str> = Some("<KEY> = <VALUE>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<KEY> = <VALUE>", |_| None));
 }
 
 #[test]

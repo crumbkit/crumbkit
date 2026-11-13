@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::time::SystemTime;
 
-use crumbkit::{Age, Document, Listing, Page, Row};
+use crumbkit::{Age, Document, Line, Listing, Page, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -40,11 +40,9 @@ pub(crate) struct ListSummary {
 /// compact age such as `3h`.
 impl Row for ListSummary {
     const COLUMNS: &'static [&'static str] = &["name", "about", "updated"];
-    const LINE: Option<&'static str> = Some("<NAME>: <ABOUT>");
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("{}: {}", self.name, self.about))
-    }
+    const LINE: Option<Line<Self>> = Some(Line::new("<NAME>: <ABOUT>", |list| {
+        Some(format!("{}: {}", list.name, list.about))
+    }));
 }
 
 /// Returns the page of the lists in `dir` that `page` asks for, in name

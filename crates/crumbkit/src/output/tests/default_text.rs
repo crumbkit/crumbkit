@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Document, Listing, Problem, Row, Tool};
+use crate::{Document, Line, Listing, Problem, Row, Tool};
 
 /// An item of a cleanup run: a dry run removes nothing, and a real run
 /// removes each item unless removing it needs the caller's own step.
@@ -210,14 +210,12 @@ struct File {
 
 impl Row for File {
     const COLUMNS: &'static [&'static str] = &["path", "removed"];
-    const LINE: Option<&'static str> = Some("<PATH> (kept)");
+    const LINE: Option<Line<Self>> = Some(Line::new("<PATH> (kept)", |file| {
+        Some(format!("{} (kept)", file.path))
+    }));
 
     fn in_default_text(&self) -> bool {
         !self.removed
-    }
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("{} (kept)", self.path))
     }
 }
 

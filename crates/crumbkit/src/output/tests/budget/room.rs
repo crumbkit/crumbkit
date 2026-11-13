@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::tool::Output;
-use crate::{Batch, Document, Error, JsonLayout, Row, Tool};
+use crate::{Batch, Document, Error, JsonLayout, Line, Row, Tool};
 
 use super::{STAR_BATCH, Star, budgeted, finish_output, output_of, star};
 
@@ -132,12 +132,10 @@ struct Answer(String, Option<u32>);
 
 impl Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
-    const LINE: Option<&'static str> = Some("<NAME> <YEAR>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<NAME> <YEAR>", |answer| {
+        answer.1.map(|year| format!("{} {year}", answer.0))
+    }));
     const WHOLE: bool = true;
-
-    fn text_line(&self) -> Option<String> {
-        self.1.map(|year| format!("{} {year}", self.0))
-    }
 }
 
 #[test]

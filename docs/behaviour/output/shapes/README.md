@@ -164,12 +164,12 @@ Why: ADR-0065, ADR-0064, ADR-0072, ADR-0138, ADR-0149.
 
 ## Rows with their own text line
 
-A row type may print each row in its own form. `Row::LINE` names the form
-for help, such as `Some("<NAME>: <ABOUT>")`, and `Row::text_line` builds
-each row's line. Without `--json`, `--long` and `--fields`, the text then
-prints each row's line with control characters and format characters
-escaped and no header, and a row whose `text_line` returns `None` prints as
-one line of compact JSON.
+A row type may print each row in its own form. `Row::LINE` holds one
+`Line` with the form for help and the function that builds each row's
+line, such as `Some(Line::new("<NAME>: <ABOUT>", Self::line))`. Without
+`--json`, `--long` and `--fields`, the text then prints each row's line
+with control characters and format characters escaped and no header, and
+a row whose function returns `None` prints as one line of compact JSON.
 `--long` and `--fields` print the table, and JSON is unchanged. Streams,
 the [output budget](../budget/README.md) and the listing footer work as for a
 table, and help prints a `Text:` line ([help](../../help/README.md)). A row

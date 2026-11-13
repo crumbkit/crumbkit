@@ -23,6 +23,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Problem::field` names a field whose value marks a problem, and
   `Problem::by` takes a function that decides and names the column that
   shows the state ([behaviour/output/listings]).
+- crumbkit: `Line` holds the form of a row's own text line for help and the
+  function that builds each row's line ([behaviour/output/shapes]).
 
 ### Changed
 
@@ -69,6 +71,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: breaking: `check_help` fails a `Problem::by` whose column
   is not one of the row type's `COLUMNS`, as it fails such a
   `Problem::field` ([behaviour/output/listings]).
+- crumbkit: breaking: `Row::LINE` is an `Option<Line<Self>>`. A row type
+  changes `Some("<NAME>: <ABOUT>")` to
+  `Some(Line::new("<NAME>: <ABOUT>", Self::line))`, where `line` is the body
+  of its `text_line`. A row type that set `LINE` without `text_line` passes
+  `|_| None` ([behaviour/output/shapes]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
   `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
   codes of any lifetime, so they also accept codes from `Code::runtime` that
@@ -94,6 +101,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   caller that asked a row writes
   `R::PROBLEM.is_some_and(|problem| problem.reports(row))`
   ([behaviour/output/listings]).
+- crumbkit: breaking: `Row::text_line` is removed, and `Row::LINE` holds the
+  function. A caller that asked a row for its line writes
+  `R::LINE.and_then(|line| line.text(row))` ([behaviour/output/shapes]).
 
 ## [0.4.1](https://github.com/crumbkit/crumbkit/compare/v0.4.0...v0.4.1) - 2026-11-12### Added
 

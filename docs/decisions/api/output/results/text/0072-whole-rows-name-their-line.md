@@ -1,7 +1,7 @@
 # ADR-0072. Whole rows without columns name their line
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: amended by ADR-0213
 - Supersedes: ADR-0065 and ADR-0063, which it amends
 - Missed: ADR-0065 gave a whole row type without columns a text form of its own, with its own help line and `commands list` form, although ADR-0064 had added `Row::LINE` for rows that print their own line on the same day. ADR-0063 did not ask how the text of such a row would read.
 

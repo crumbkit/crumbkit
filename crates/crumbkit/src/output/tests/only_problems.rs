@@ -13,7 +13,7 @@ use clap::CommandFactory as _;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Children, Document, Listing, Problem, Row, Tool};
+use crate::{Children, Document, Line, Listing, Problem, Row, Tool};
 
 /// A check of one package, with the errors and warnings that it found.
 #[derive(Serialize, JsonSchema)]
@@ -241,12 +241,10 @@ struct Link {
 impl Row for Link {
     const COLUMNS: &'static [&'static str] = &["pointer", "found"];
     const LONG_COLUMNS: &'static [&'static str] = &["target"];
-    const LINE: Option<&'static str> = Some("<POINTER> -> <TARGET>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<POINTER> -> <TARGET>", |link| {
+        Some(format!("{} -> {}", link.pointer, link.target))
+    }));
     const PROBLEM: Option<Problem<Self>> = Some(Problem::by("found", |link| !link.found));
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("{} -> {}", self.pointer, self.target))
-    }
 }
 
 const LINKS: Document<Listing<Link>> =

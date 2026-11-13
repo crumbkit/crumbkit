@@ -1,7 +1,7 @@
 # ADR-0064. Rows with their own text line
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: amended by ADR-0213
 
 ## Context
 

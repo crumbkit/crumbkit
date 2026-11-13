@@ -2,7 +2,7 @@
 //! (ADR-0064).
 
 use crumbkit::help::Help;
-use crumbkit::{Batch, Bytes, Document, Error, Headed, Row, Tool};
+use crumbkit::{Batch, Bytes, Document, Error, Headed, Line, Row, Tool};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -17,7 +17,7 @@ struct LinedBook {
 
 impl Row for LinedBook {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const LINE: Option<&'static str> = Some("book <ID>");
+    const LINE: Option<Line<Self>> = Some(Line::new("book <ID>", |_| None));
 }
 
 /// A book whose text line form spans two lines.
@@ -29,7 +29,7 @@ struct TwoLineBook {
 
 impl Row for TwoLineBook {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const LINE: Option<&'static str> = Some("book\n<ID>");
+    const LINE: Option<Line<Self>> = Some(Line::new("book\n<ID>", |_| None));
 }
 
 /// A book whose text line form is blank.
@@ -41,7 +41,7 @@ struct BlankLineBook {
 
 impl Row for BlankLineBook {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const LINE: Option<&'static str> = Some(" ");
+    const LINE: Option<Line<Self>> = Some(Line::new(" ", |_| None));
 }
 
 /// A book's file, which a headed batch prints under a header, and which
@@ -57,7 +57,7 @@ struct LinedFile {
 
 impl Row for LinedFile {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const LINE: Option<&'static str> = Some("file <ID>");
+    const LINE: Option<Line<Self>> = Some(Line::new("file <ID>", |_| None));
 }
 
 impl Headed for LinedFile {

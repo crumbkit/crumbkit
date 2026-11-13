@@ -288,7 +288,8 @@ struct Answer(u32, String);
 
 impl crumbkit::Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
-    const LINE: Option<&'static str> = Some("<COUNT> <NAME>");
+    const LINE: Option<crumbkit::Line<Self>> =
+        Some(crumbkit::Line::new("<COUNT> <NAME>", |_| None));
     const WHOLE: bool = true;
 }
 
@@ -340,7 +341,7 @@ struct WholeBook {
 
 impl crumbkit::Row for WholeBook {
     const COLUMNS: &'static [&'static str] = &[];
-    const LINE: Option<&'static str> = Some("<TITLE>");
+    const LINE: Option<crumbkit::Line<Self>> = Some(crumbkit::Line::new("<TITLE>", |_| None));
     const WHOLE: bool = true;
 }
 

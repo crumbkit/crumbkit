@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::{Effects, Example, Help, Leaf, STREAM_LINE, children_line};
-use crate::{Batch, Bytes, Children, Document, Error, Headed, Row, Sink, Stream, Tool};
+use crate::{Batch, Bytes, Children, Document, Error, Headed, Line, Row, Sink, Stream, Tool};
 
 /// A tool with a global `--json` and one leaf, `tool services list`.
 fn tree() -> Command {
@@ -94,7 +94,7 @@ struct Lined {
 
 impl Row for Lined {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const LINE: Option<&'static str> = Some("<NAME>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<NAME>", |_| None));
     const CHILDREN: Option<Children> = Some(Children::field("components"));
 }
 

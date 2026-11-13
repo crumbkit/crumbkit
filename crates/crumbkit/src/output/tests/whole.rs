@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 
 use super::finish_with;
 use crate::twins::assert_one_word_apart;
-use crate::{Document, Listing, Row};
+use crate::{Document, Line, Listing, Row};
 
 /// A moon whose optional field is left out of its JSON when it holds
 /// nothing, as a tool whose readers expect whole rows serializes it.
@@ -138,7 +138,7 @@ struct Answer(&'static str, u32);
 
 impl Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
-    const LINE: Option<&'static str> = Some("<NAME> <YEAR>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<NAME> <YEAR>", |_| None));
     const WHOLE: bool = true;
 }
 

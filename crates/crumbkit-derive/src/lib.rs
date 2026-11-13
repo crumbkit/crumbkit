@@ -195,10 +195,10 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 ///
 /// The derive writes the four constants and leaves every other item of
 /// `Row` to its default. A row that sets `LINE`, `CHILDREN` or `WHOLE`,
-/// sets `PROBLEM` with `Problem::by`, or overrides `cell_style`,
-/// `in_default_text` or `text_line`, writes `impl Row` by hand. So does an enum, and a row whose `Serialize`
-/// impl is written by hand, because the derive reads the names from serde's
-/// attributes.
+/// sets `PROBLEM` with `Problem::by`, or overrides `cell_style` or
+/// `in_default_text`, writes `impl Row` by hand. So does an enum, and a row
+/// whose `Serialize` impl is written by hand, because the derive reads the
+/// names from serde's attributes.
 ///
 /// The impl copies the type's generic parameters and its where-clause, so
 /// the type's own bounds make it `Serialize` and `JsonSchema`.

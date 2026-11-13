@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Streamed, parse};
-use crate::{Children, Document, Error, Row, Sink, Stream, stream_to};
+use crate::{Children, Document, Error, Line, Row, Sink, Stream, stream_to};
 
 /// A nest and the eggs in it, each of which prints under the nest.
 #[derive(Serialize, JsonSchema)]
@@ -128,12 +128,10 @@ struct Flock {
 
 impl Row for Flock {
     const COLUMNS: &'static [&'static str] = &["leader"];
-    const LINE: Option<&'static str> = Some("a flock led by a <LEADER>");
+    const LINE: Option<Line<Self>> = Some(Line::new("a flock led by a <LEADER>", |flock| {
+        Some(format!("a flock led by a {}", flock.leader))
+    }));
     const CHILDREN: Option<Children> = Some(Children::field("others"));
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("a flock led by a {}", self.leader))
-    }
 
     fn child_lines(&self) -> Vec<String> {
         self.others.iter().map(|&other| other.to_owned()).collect()
@@ -194,12 +192,10 @@ struct LinedRing(Ring<0>);
 
 impl Row for LinedRing {
     const COLUMNS: &'static [&'static str] = &["bird"];
-    const LINE: Option<&'static str> = Some("a ringed <BIRD>");
+    const LINE: Option<Line<Self>> = Some(Line::new("a ringed <BIRD>", |ring| {
+        Some(format!("a ringed {}", ring.0.bird))
+    }));
     const CHILDREN: Option<Children> = Some(Children::field("code").indent(0));
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("a ringed {}", self.0.bird))
-    }
 
     fn child_lines(&self) -> Vec<String> {
         self.0.child_lines()
