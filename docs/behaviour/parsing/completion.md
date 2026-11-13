@@ -3,8 +3,8 @@
 This page covers how a tool answers a shell's completion request through
 crumbkit's `complete` cargo feature. The rustdoc of
 [`complete`](../../../crates/crumbkit/src/complete.rs) gives the registration
-line for each shell and describes `complete_with`, `complete_with_words` and
-`complete_to`.
+line for each shell and describes `complete_with`, `complete_with_words`,
+`declare_completion_variable` and `complete_to`.
 
 ## Answering a request
 
@@ -24,7 +24,10 @@ ordinary run builds its command once and no run clones the tree. A tool that
 hides commands at run time does so inside that function, so completion
 offers what parsing accepts. A tool whose completers depend on an earlier
 word on the line, such as path completers under the directory that a global
-`-C <DIR>` chooses, calls `complete_with_words`.
+`-C <DIR>` chooses, calls `complete_with_words`. A tool that answers
+requests with its own completion handler calls
+`crumbkit::declare_completion_variable` first, which declares the name and
+answers nothing, so the registration sets that name in every run.
 
 `complete` never exits the process. The answer goes through crumbkit's
 `Sink` whole or not at all. A completion never prints a failure into the
@@ -32,7 +35,7 @@ shell, because the shell shows standard error over the person's prompt. An
 unknown shell, a command line that clap_complete cannot complete and a failed
 write give exit code 1 and write nothing.
 
-Why: ADR-0048, ADR-0003, ADR-0056.
+Why: ADR-0048, ADR-0003, ADR-0056, ADR-0218.
 
 ## The completion variable
 

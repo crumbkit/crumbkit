@@ -154,7 +154,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `Help::file_formats`, `FileFormat` | Config format described in prose | A TOML config with no served schema | `file_formats` | 0.2.0, 0.1 as `Guide::documents` | `agent-commands` |
 | `crumbkit_aliases::expand`, `file`, `list`, `names`, `AliasesList` | Own alias file | Code reads a user's alias map before parsing | `aliases\.toml` `crumbkit_aliases::` | 0.1 | `aliases-completion` |
 | Hidden clap aliases, under `check_names` | `visible_alias` | Help shows two names | `visible_alias` | 0.1 | `aliases-completion` |
-| `complete` feature, `complete`, `complete_with`, `complete_with_words` | `clap_complete::generate` | A static completion subcommand | `clap_complete` | 0.1 | `aliases-completion` |
+| `complete` feature, `complete`, `complete_with`, `complete_with_words`, `declare_completion_variable` | `clap_complete::generate` | A static completion subcommand | `clap_complete` | 0.1 | `aliases-completion` |
 | `cargo crumbkit docs`, `check_command_reference`, `crumbkit_markdown::render` | A hand-kept command reference | A CLI document edited by hand, `clap_markdown` | `clap_markdown` `check_command_reference` | 0.1 | `command-reference` |
 | `cargo crumbkit weigh`, `--usage` | Guessing what help costs | Read: no recorded weight for a tool with big help | Read CI config | 0.1 | `convention-suite` |
 

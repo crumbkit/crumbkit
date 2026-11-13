@@ -29,6 +29,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `skills` commands, and `install_leaf`, `check_leaf` and `print_leaf`
   return their leaves for the path the tool gives, so a tool no longer
   copies the dispatch ([crumbkit-skills]).
+- crumbkit: `declare_completion_variable` declares the tool's completion
+  variable without answering a request, so a tool with its own completion
+  handler gets a registration that sets its variable
+  ([behaviour/parsing/completion]).
 
 ### Changed
 
@@ -113,6 +117,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Code<'a>` by value, and `Recoveries::new` and `Twins::new` take lists
   of codes by value. A test writes `Failing::new(NOT_FOUND, ..)` for
   `Failing::new(&NOT_FOUND, ..)` ([behaviour/failures]).
+- crumbkit: breaking: `complete_to` takes the completion variable before the
+  function that builds the command, as `complete_with` does. A caller swaps
+  its second and third arguments ([behaviour/parsing/completion]).
 
 ### Removed
 
