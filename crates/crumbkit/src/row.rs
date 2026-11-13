@@ -5,12 +5,14 @@ use serde::Serialize;
 
 mod children;
 mod fields;
+mod line;
 mod no_row;
 mod problem;
 pub(crate) mod problems;
 mod rows;
 
 pub use children::Children;
+pub use line::Line;
 pub use no_row::NoRow;
 pub use problem::Problem;
 pub(crate) use rows::Sealed;
@@ -179,31 +181,10 @@ pub trait Row: Serialize + JsonSchema {
         true
     }
 
-    /// The form of the row's own text line as help shows it, such as
-    /// `<POINTER> -> <TARGET>`, or `None` when the row prints as a table
-    /// row (ADR-0064).
-    ///
-    /// When it is set, the default text prints each row's
-    /// [`Row::text_line`] in place of the table, without a header. `--long`
-    /// and `--fields` still print the table, because they name columns, and
-    /// `--json` is unchanged. The leaf's help prints the form on a `Text:`
-    /// line. crumbkit-test's `check_help` fails a form that is not one
-    /// non-empty line, and a headed leaf whose row type sets it, because a
-    /// headed batch's text prints each row's bytes.
-    const LINE: Option<&'static str> = None;
-
-    /// Returns the row's own text line, without a line feed, or `None` when
-    /// the row has none. crumbkit reads it only when [`Row::LINE`] is set.
-    ///
-    /// crumbkit escapes each control character of the line, such as a line
-    /// feed as `\n`, and each Unicode format character, such as a
-    /// bidirectional override as `\u{202e}`. It ends the line with a line
-    /// feed, so each row stays one line and shows its text in the order it
-    /// was written. A row that returns `None` prints as one line of compact
-    /// JSON with every field.
-    fn text_line(&self) -> Option<String> {
-        None
-    }
+    /// The row's own text line, its form for help and the function that
+    /// builds it, or `None` when the row prints as a table row (ADR-0064,
+    /// ADR-0213). [`Line`] describes the text and the help that follow.
+    const LINE: Option<Line<Self>> = None;
 
     /// The row's child lines, or `None` when the row has none (ADR-0120,
     /// ADR-0182).
@@ -351,9 +332,9 @@ pub trait Row: Serialize + JsonSchema {
     /// A row type that sets it may name no columns, as for a row that
     /// serializes as an array, only when it also declares [`Row::LINE`]
     /// (ADR-0072). Its text then prints each row's own line with no header,
-    /// or one line of compact JSON for a row whose [`Row::text_line`]
-    /// returns `None`, and crumbkit refuses `--fields`, and `--long`
-    /// without `--json`.
+    /// or one line of compact JSON for a row whose [`Line::text`] returns
+    /// `None`, and crumbkit refuses `--fields`, and `--long` without
+    /// `--json`.
     /// `crumbkit::finish` and `crumbkit::stream` fail to compile for such a
     /// row type without a `LINE`, and crumbkit-test's `check_help` fails a
     /// batch of it. `check_help` also fails a row type without columns

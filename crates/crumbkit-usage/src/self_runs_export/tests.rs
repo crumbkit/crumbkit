@@ -183,11 +183,12 @@ fn an_export_stops_reading_when_the_stream_stops() {
 fn a_line_prints_its_run_command_and_exit_as_text() {
     let lines = export(&log(), Some("000000000000000f"));
 
+    let text = |run: &RunLine| RunLine::LINE.and_then(|line| line.text(run)).unwrap();
     assert_eq!(
-        lines[0].text_line().unwrap(),
+        text(&lines[0]),
         "000000000000000a  books list  0  after a gap"
     );
-    assert_eq!(lines[2].text_line().unwrap(), "000000000000000c  shelf  0");
+    assert_eq!(text(&lines[2]), "000000000000000c  shelf  0");
 }
 
 #[test]

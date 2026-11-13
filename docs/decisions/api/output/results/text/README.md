@@ -15,3 +15,4 @@ These records decided how a row's text line and a table cell print.
 - [ADR-0119. Empty columns are left out of the text table](0119-empty-columns-are-left-out.md)
 - [ADR-0150. A table cell carries a style at a terminal](0150-a-cell-carries-a-style-at-a-terminal.md)
 - [ADR-0154. An error cell is bold red](0154-an-error-cell-is-bold-red.md)
+- [ADR-0213. A row declares its text line as one value](0213-a-row-declares-its-text-line-as-one-value.md)

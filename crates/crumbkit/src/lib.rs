@@ -118,7 +118,7 @@ pub use crate::pick::no_input::NoInput;
 #[doc(hidden)]
 pub use crate::output::failure::RecoveryStep;
 pub use crate::prose::Prose;
-pub use crate::row::{Children, Headed, NoRow, Problem, Row, Rows, Shape};
+pub use crate::row::{Children, Headed, Line, NoRow, Problem, Row, Rows, Shape};
 pub use crate::shown::Shown;
 pub use crate::sink::Sink;
 pub use crate::step::{Program, Step};

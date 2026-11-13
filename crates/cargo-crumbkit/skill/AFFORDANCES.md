@@ -104,7 +104,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `Row::UNCUT_COLUMNS` | Widening a table so an id survives | Read: rows with a copyable id | Read `Row` impls | 0.1 | `row-shape` |
 | `Row::cell_style`, `Style` | Colour crates and escape codes | ANSI codes in a cell | `\\x1b` `\\u\{1b\}` `owo_colors` `colored::` | 0.1 | `row-shape` |
 | `Row::CHILDREN`, `Children`, `child_lines`, `long_child_lines` | Indented lines built by hand | A cell holds `\n` or leading spaces | `format!\(" +` | 0.1, `Children` 0.2.0 | `row-shape` |
-| `Row::LINE`, `text_line` | A custom line in `println!` | One format per row, no table | `println!` | 0.1 | `row-shape` |
+| `Row::LINE`, `Line` | A custom line in `println!` | One format per row, no table | `println!` | 0.1, `Line` 0.5 | `row-shape` |
 | `Row::WHOLE` | A second serialiser for JSON | A tool writes full JSON by hand | `Row::WHOLE` `const WHOLE` | 0.1 | `row-shape` |
 | `Batch`, `Batch::note` | A loop that stops at the first failed id | `show` takes one id, or uses `?` in a per-id loop | `ids?:\s*Vec<` | 0.1 | `batch-lookup` |
 | `fetch_each` | A hand-written thread pool of lookups | `thread::scope` around per-id calls | `thread::scope` | 0.1 | `batch-lookup` |

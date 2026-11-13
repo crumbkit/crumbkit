@@ -31,7 +31,7 @@ const YEAR_10000: u64 = 253_402_300_800;
 /// unit is the week, which is always seven days, because the length of a
 /// month or a year depends on a calendar. `Age`'s `Display` writes the
 /// compact age, so a row type that sets [`Row::LINE`](crate::Row::LINE)
-/// can put it in its own `text_line`. [`Age::compact`] writes the same
+/// can put it in its own line. [`Age::compact`] writes the same
 /// compact age for a duration that the tool measured.
 ///
 /// In JSON the field is the time in UTC with milliseconds, such as

@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::{Effects, Example, Help, Leaf, STREAM_LINE};
-use crate::{Document, Row, Sink, Stream, Tool};
+use crate::{Document, Line, Row, Sink, Stream, Tool};
 
 /// A tool with a global `--json` and one leaf, `tool links check`.
 fn tree() -> Command {
@@ -51,7 +51,7 @@ struct Link {
 impl Row for Link {
     const COLUMNS: &'static [&'static str] = &["pointer", "target"];
     const LONG_COLUMNS: &'static [&'static str] = &["status"];
-    const LINE: Option<&'static str> = Some("<POINTER> -> <TARGET>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<POINTER> -> <TARGET>", |_| None));
 }
 
 /// A link that prints its own text line and has no long column.
@@ -63,7 +63,7 @@ struct Short {
 
 impl Row for Short {
     const COLUMNS: &'static [&'static str] = &["pointer"];
-    const LINE: Option<&'static str> = Some("<POINTER>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<POINTER>", |_| None));
 }
 
 /// Returns the tool record whose one leaf, `links check`, declares `leaf`'s
@@ -147,7 +147,7 @@ struct Setting(String, String);
 impl Row for Setting {
     const COLUMNS: &'static [&'static str] = &[];
     const WHOLE: bool = true;
-    const LINE: Option<&'static str> = Some("<KEY> = <VALUE>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<KEY> = <VALUE>", |_| None));
 }
 
 #[test]

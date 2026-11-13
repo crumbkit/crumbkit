@@ -112,14 +112,21 @@ pub struct RunLine {
 
 impl crumbkit::Row for RunLine {
     const COLUMNS: &'static [&'static str] = &["gap", "record"];
-    const LINE: Option<&'static str> = Some("<RUN>  <COMMAND>  <EXIT>  [after a gap]");
+    const LINE: Option<crumbkit::Line<Self>> = Some(crumbkit::Line::new(
+        "<RUN>  <COMMAND>  <EXIT>  [after a gap]",
+        |run| Some(run.line()),
+    ));
+}
 
-    fn text_line(&self) -> Option<String> {
+impl RunLine {
+    /// Returns the record's text line, which names the run, the command and
+    /// the exit code, and says when records may be missing before it.
+    fn line(&self) -> String {
         let exit = self
             .exit
             .map_or_else(|| "-".to_owned(), |exit| exit.to_string());
         let gap = if self.gap { "  after a gap" } else { "" };
-        Some(format!("{}  {}  {exit}{gap}", self.run, self.command))
+        format!("{}  {}  {exit}{gap}", self.run, self.command)
     }
 }
 

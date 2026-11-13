@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::help::{Help, Leaf};
 use crumbkit::schemas::SCHEMAS_LIST;
 use crumbkit::tool::{Exit, RefusalContext};
-use crumbkit::{Call, Children, Code, Document, Prose, Tool};
+use crumbkit::{Call, Children, Code, Document, Line, Prose, Tool};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
 
@@ -172,7 +172,7 @@ struct Removed {
 
 impl crumbkit::Row for Removed {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const LINE: Option<&'static str> = Some("removed <ID>");
+    const LINE: Option<Line<Self>> = Some(Line::new("removed <ID>", |_| None));
 }
 
 #[test]
@@ -303,7 +303,7 @@ struct WholeLined {
 impl crumbkit::Row for WholeLined {
     const COLUMNS: &'static [&'static str] = &["id"];
     const WHOLE: bool = true;
-    const LINE: Option<&'static str> = Some("book <ID>");
+    const LINE: Option<Line<Self>> = Some(Line::new("book <ID>", |_| None));
 }
 
 #[test]

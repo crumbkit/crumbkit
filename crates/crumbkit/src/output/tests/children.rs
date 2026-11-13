@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use super::{Cli, built_with, finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Batch, Children, Document, Error, Listing, Row, Tool};
+use crate::{Batch, Children, Document, Error, Line, Listing, Row, Tool};
 
 /// A service and its components, each of which prints under the service.
 #[derive(Serialize, JsonSchema)]
@@ -199,12 +199,10 @@ struct Lined {
 
 impl Row for Lined {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const LINE: Option<&'static str> = Some("service <NAME>");
+    const LINE: Option<Line<Self>> = Some(Line::new("service <NAME>", |service| {
+        Some(format!("service {}", service.name))
+    }));
     const CHILDREN: Option<Children> = Some(Children::field("components"));
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("service {}", self.name))
-    }
 
     fn child_lines(&self) -> Vec<String> {
         self.components.clone()
@@ -370,12 +368,10 @@ struct FlushLined(Record);
 
 impl Row for FlushLined {
     const COLUMNS: &'static [&'static str] = Record::COLUMNS;
-    const LINE: Option<&'static str> = Some("record <NAME>");
+    const LINE: Option<Line<Self>> = Some(Line::new("record <NAME>", |record| {
+        Some(format!("record {}", record.0.name))
+    }));
     const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("record {}", self.0.name))
-    }
 
     fn child_lines(&self) -> Vec<String> {
         self.0.child_lines()

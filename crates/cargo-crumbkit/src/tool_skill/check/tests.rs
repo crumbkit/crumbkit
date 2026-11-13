@@ -206,7 +206,7 @@ fn a_failing_row_prints_its_file_line_span_and_reason_on_one_line() {
     let reports = |row: &Checked| Checked::PROBLEM.is_some_and(|problem| problem.reports(row));
     assert!(reports(&failing));
     assert_eq!(
-        failing.text_line().unwrap(),
+        Checked::LINE.unwrap().text(&failing).unwrap(),
         "skill/SKILL.md:8: shelf books lsit: `lsit` is not a command of `shelf books`"
     );
     assert!(!reports(&row(3, "shelf books list", None)));

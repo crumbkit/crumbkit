@@ -6,7 +6,7 @@ use schemars::{JsonSchema, Schema};
 use super::Column;
 use crate::help::ViewFlag;
 use crate::help::view::{self, Kind, Printed};
-use crate::{Children, Document, Problem, Row, Rows, Shape, Stream, row};
+use crate::{Children, Document, Line, Problem, Row, Rows, Shape, Stream, row};
 
 /// The document that a leaf's command prints and the columns of its row
 /// type, as [`Leaf::document`](super::Leaf::document) or
@@ -29,7 +29,7 @@ pub struct LeafDocument {
     problem: Option<&'static str>,
     /// The column of the row type's [`Row::PROBLEM`].
     problem_column: Option<&'static str>,
-    /// The row type's [`Row::LINE`].
+    /// The form of the row type's [`Row::LINE`].
     line: Option<&'static str>,
     /// The row type's [`Row::CHILDREN`].
     children: Option<Children>,
@@ -57,7 +57,7 @@ impl LeafDocument {
             uncut: <T::Row as Row>::UNCUT_COLUMNS,
             problem: problem_field(<T::Row as Row>::PROBLEM),
             problem_column: problem_column(<T::Row as Row>::PROBLEM),
-            line: <T::Row as Row>::LINE,
+            line: line_form(<T::Row as Row>::LINE),
             children: <T::Row as Row>::CHILDREN,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
@@ -76,7 +76,7 @@ impl LeafDocument {
             uncut: R::UNCUT_COLUMNS,
             problem: problem_field(R::PROBLEM),
             problem_column: problem_column(R::PROBLEM),
-            line: R::LINE,
+            line: line_form(R::LINE),
             children: R::CHILDREN,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
@@ -171,7 +171,7 @@ impl LeafDocument {
         self.problem_column
     }
 
-    /// Returns the form of the text line that each row prints, the row
+    /// Returns the form of the text line that each row prints, from the row
     /// type's [`Row::LINE`], or `None` when its rows print a table.
     #[must_use]
     pub const fn line(&self) -> Option<&'static str> {
@@ -301,6 +301,14 @@ const fn problem_field<R: ?Sized>(problem: Option<Problem<R>>) -> Option<&'stati
 const fn problem_column<R: ?Sized>(problem: Option<Problem<R>>) -> Option<&'static str> {
     match problem {
         Some(problem) => Some(problem.get_column()),
+        None => None,
+    }
+}
+
+/// Returns the form of `line`.
+const fn line_form<R: ?Sized>(line: Option<Line<R>>) -> Option<&'static str> {
+    match line {
+        Some(line) => Some(line.get_form()),
         None => None,
     }
 }

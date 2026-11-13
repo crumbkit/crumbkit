@@ -6,7 +6,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crumbkit::{Document, Listing, Problem, Row};
+use crumbkit::{Document, Line, Listing, Problem, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -64,14 +64,18 @@ pub(crate) struct Checked {
 impl Row for Checked {
     const COLUMNS: &'static [&'static str] = &["file", "line", "span", "reason"];
     const PROBLEM: Option<Problem<Self>> = Some(Problem::field("reason"));
-    const LINE: Option<&'static str> = Some("<FILE>:<LINE>: <SPAN>: <REASON>");
+    const LINE: Option<Line<Self>> =
+        Some(Line::new("<FILE>:<LINE>: <SPAN>: <REASON>", |checked| {
+            Some(checked.text_line())
+        }));
+}
 
-    fn text_line(&self) -> Option<String> {
+impl Checked {
+    /// Returns the row's text line, which names the file, the line, the
+    /// command line and the reason, or `ok` when it matches.
+    fn text_line(&self) -> String {
         let reason = self.reason.as_deref().unwrap_or("ok");
-        Some(format!(
-            "{}:{}: {}: {reason}",
-            self.file, self.line, self.span
-        ))
+        format!("{}:{}: {}: {reason}", self.file, self.line, self.span)
     }
 }
 

@@ -23,7 +23,7 @@ pub(super) fn chosen<R: Row>(view: &View) -> bool {
 /// them inside strings. The child lines are empty unless the row's type
 /// sets `Row::CHILDREN` (ADR-0120).
 pub(super) fn line<R: Row>(row: &R) -> io::Result<(String, String)> {
-    let mut line = if let Some(text) = row.text_line() {
+    let mut line = if let Some(text) = R::LINE.and_then(|line| line.text(row)) {
         escape_controls(&text).into_owned()
     } else {
         let mut json = Vec::new();

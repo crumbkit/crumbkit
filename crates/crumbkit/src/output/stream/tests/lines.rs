@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Streamed, parse};
-use crate::{Document, Error, Row, Sink, Stream, stream_to};
+use crate::{Document, Error, Line, Row, Sink, Stream, stream_to};
 
 /// A sighting whose text is one sentence.
 #[derive(Serialize, JsonSchema)]
@@ -21,11 +21,9 @@ struct Seen {
 impl Row for Seen {
     const COLUMNS: &'static [&'static str] = &["bird"];
     const LONG_COLUMNS: &'static [&'static str] = &["place"];
-    const LINE: Option<&'static str> = Some("a <BIRD> at the <PLACE>");
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("a {} at the {}", self.bird, self.place))
-    }
+    const LINE: Option<Line<Self>> = Some(Line::new("a <BIRD> at the <PLACE>", |seen| {
+        Some(format!("a {} at the {}", seen.bird, seen.place))
+    }));
 }
 
 const SEEN: Document<Stream<Seen>> =
@@ -86,11 +84,9 @@ struct Count(&'static str, u32);
 impl Row for Count {
     const COLUMNS: &'static [&'static str] = &[];
     const WHOLE: bool = true;
-    const LINE: Option<&'static str> = Some("<COUNT> <BIRD>");
-
-    fn text_line(&self) -> Option<String> {
-        Some(format!("{} {}", self.1, self.0))
-    }
+    const LINE: Option<Line<Self>> = Some(Line::new("<COUNT> <BIRD>", |count| {
+        Some(format!("{} {}", count.1, count.0))
+    }));
 }
 
 const COUNTS: Document<Stream<Count>> =
@@ -129,11 +125,7 @@ struct Unplaced {
 
 impl Row for Unplaced {
     const COLUMNS: &'static [&'static str] = &["bird"];
-    const LINE: Option<&'static str> = Some("a <BIRD> at the <PLACE>");
-
-    fn text_line(&self) -> Option<String> {
-        None
-    }
+    const LINE: Option<Line<Self>> = Some(Line::new("a <BIRD> at the <PLACE>", |_| None));
 }
 
 #[test]

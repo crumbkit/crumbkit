@@ -13,7 +13,7 @@ use crate::Envelope;
 use crate::help::{Help, Leaf};
 use crate::tool::{Exit, Failures};
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Stream, Tool};
+use crate::{Batch, Bytes, Document, Error, Headed, Line, Prose, Row, Sink, Stream, Tool};
 
 /// A row with a compact and a long column.
 #[derive(Serialize, JsonSchema)]
@@ -94,7 +94,7 @@ struct Answer(u32, u32);
 
 impl Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
-    const LINE: Option<&'static str> = Some("<LEFT> <RIGHT>");
+    const LINE: Option<Line<Self>> = Some(Line::new("<LEFT> <RIGHT>", |_| None));
     const WHOLE: bool = true;
 }
 

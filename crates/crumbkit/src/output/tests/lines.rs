@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use super::{finish_output, finish_with};
 use crate::tool::Output;
-use crate::{Document, Listing, Row, Tool};
+use crate::{Document, Line, Listing, Row, Tool};
 
 /// A link from a pointer to its target. A link without a target has no
 /// text line of its own.
@@ -26,12 +26,10 @@ struct Link {
 impl Row for Link {
     const COLUMNS: &'static [&'static str] = &["pointer", "target"];
     const LONG_COLUMNS: &'static [&'static str] = &["status"];
-    const LINE: Option<&'static str> = Some("<POINTER> -> <TARGET>");
-
-    fn text_line(&self) -> Option<String> {
-        let target = self.target.as_ref()?;
-        Some(format!("{} -> {target}", self.pointer))
-    }
+    const LINE: Option<Line<Self>> = Some(Line::new("<POINTER> -> <TARGET>", |link| {
+        let target = link.target.as_ref()?;
+        Some(format!("{} -> {target}", link.pointer))
+    }));
 }
 
 const LINKS: Document<Vec<Link>> = Document::new("links", "links", 1, "The test links.");
@@ -155,12 +153,10 @@ struct Setting(String, Option<String>);
 impl Row for Setting {
     const COLUMNS: &'static [&'static str] = &[];
     const WHOLE: bool = true;
-    const LINE: Option<&'static str> = Some("<KEY> = <VALUE>");
-
-    fn text_line(&self) -> Option<String> {
-        let value = self.1.as_ref()?;
-        Some(format!("{} = {value}", self.0))
-    }
+    const LINE: Option<Line<Self>> = Some(Line::new("<KEY> = <VALUE>", |setting| {
+        let value = setting.1.as_ref()?;
+        Some(format!("{} = {value}", setting.0))
+    }));
 }
 
 const SETTINGS: Document<Vec<Setting>> =

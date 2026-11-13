@@ -109,8 +109,8 @@ pub trait Shown: fmt::Display {
 /// form of every shown value: a `serialize_with` function, a hand-written
 /// `Serialize`, a `Display`, or a [`Problem::by`](crate::Problem::by)
 /// function that serializes the row. crumbkit decides
-/// [`Row::PROBLEM`](crate::Row::PROBLEM) before
-/// it sets the mode, so the default judges the JSON form.
+/// [`Row::PROBLEM`](crate::Row::PROBLEM) before it sets the mode, so
+/// [`Problem::field`](crate::Problem::field) judges the JSON form.
 ///
 /// # Errors
 ///
