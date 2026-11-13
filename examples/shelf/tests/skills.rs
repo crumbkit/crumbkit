@@ -68,9 +68,9 @@ fn check_exits_with_1_and_names_a_missing_copy() {
 
     let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
     assert!(stdout.contains("missing"), "{stdout}");
-    // The table quotes each directory as `{:?}` does, which doubles a
-    // Windows separator, so the test searches for the path written the same way.
-    let dir = format!("{:?}", Path::new(".agents").join("skills"));
+    // The table writes a list cell as compact JSON, which doubles a Windows
+    // separator, so the test searches for the path written as a JSON string.
+    let dir = serde_json::to_string(&Path::new(".agents").join("skills")).unwrap();
     assert!(stdout.contains(dir.trim_matches('"')), "{stdout}");
 }
 

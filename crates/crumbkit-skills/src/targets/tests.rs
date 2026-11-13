@@ -20,16 +20,15 @@ fn the_agent_dirs_are_claude_agents_and_codex_under_the_home() {
     );
 }
 
-/// Returns an absolute home directory. On Windows an absolute path needs a
-/// drive, so `/home/ada` would not count.
-fn absolute_home() -> PathBuf {
-    let root = if cfg!(windows) { r"C:\" } else { "/" };
-    Path::new(root).join("home").join("ada")
+/// Returns the root of the file system. On Windows an absolute path needs a
+/// drive, so a path under `/` would not count.
+fn root() -> &'static Path {
+    Path::new(if cfg!(windows) { r"C:\" } else { "/" })
 }
 
 #[test]
 fn an_absolute_codex_home_replaces_the_default_codex_directory() {
-    let codex = absolute_home().join("codex");
+    let codex = root().join("opt").join("codex");
 
     let dirs = dirs("/home/ada", codex.to_str()).unwrap();
 
