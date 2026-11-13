@@ -47,7 +47,19 @@ enum Command {
     List,
     Show {
         /// The ids to show.
+        #[arg(required = true)]
         ids: Vec<String>,
+        /// Show every detail.
+        #[arg(long)]
+        detail: bool,
+    },
+    Login {
+        /// The server to log in to.
+        #[arg(long)]
+        server: Option<String>,
+        /// Log in with a password.
+        #[arg(long)]
+        password_auth: bool,
     },
 }
 
@@ -342,6 +354,26 @@ fn a_run_whose_call_does_not_resolve_prints_as_no_next_step() {
         ),
         "{}",
         json.out
+    );
+}
+
+#[test]
+fn a_run_call_that_takes_every_value_of_a_field_beside_a_set_flag_prints_the_values_in_place() {
+    let failure = Missing {
+        fields: vec![("left_out", FieldValue::List(vec!["4".into(), "5".into()]))],
+        ..missing(Recovery::Run(
+            Call::new(&["show"]).flag("detail").all("ids", "left_out"),
+        ))
+    };
+
+    let finished = fail_with(&[], failure);
+
+    assert!(
+        finished
+            .err
+            .contains("\n  help:  run `tool show --detail 4 5`\n"),
+        "{}",
+        finished.err
     );
 }
 

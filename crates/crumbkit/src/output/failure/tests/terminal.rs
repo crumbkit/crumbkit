@@ -175,6 +175,48 @@ fn a_terminal_alternative_with_a_placeholder_is_left_out() {
 }
 
 #[test]
+fn a_terminal_call_with_a_value_and_a_set_flag_prints_as_a_terminal_step() {
+    let login = || {
+        Call::new(&["login"])
+            .value("server", "https://example.org")
+            .flag("password_auth")
+    };
+
+    let text = fail_with(&[], missing(Recovery::Terminal(login())));
+    let json = fail_with(&["--json"], missing(Recovery::Terminal(login())));
+
+    assert!(
+        text.err.contains(
+            "\n  help:  run `tool login --server https://example.org --password-auth` in a terminal\n"
+        ),
+        "{}",
+        text.err
+    );
+    assert!(
+        json.out.contains(
+            r#""recovery":{"kind":"terminal","call":"tool login --server https://example.org --password-auth"}"#
+        ),
+        "{}",
+        json.out
+    );
+}
+
+#[test]
+fn a_terminal_call_that_adds_a_flag_with_arg_still_holds_a_placeholder() {
+    let call = Call::new(&["login"]).arg("password_auth");
+
+    let finished = fail_with(&[], missing(Recovery::Terminal(call)));
+
+    assert!(
+        finished
+            .err
+            .contains("\n  help:  no next step: the suggested command is not available\n"),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
 fn a_terminal_call_with_only_concrete_values_prints_as_a_terminal_step() {
     let call = Call::new(&["show"]).value("ids", "7");
 

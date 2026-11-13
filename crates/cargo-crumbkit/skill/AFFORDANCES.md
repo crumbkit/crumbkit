@@ -59,7 +59,7 @@ and its help content: leaves, examples, goal headings and topics.
 | `Code::new` | Error-code strings | A string constant such as `"not_found"` is matched | `code:\s*&'static str` | 0.1 | `declared-code` |
 | `Code::runtime`, `Spelling::COLONS.split` | Reusing a plugin's error text | Code passes a plugin's code through as text | `split\("::"\)` | 0.1 | `declared-code` |
 | `Recovery::Run(Call::new(..))` | A sentence naming a command | A hint names a command of this tool | `Recovery::[Hh]int` `\bhint\s*[=(]` `"[^"]*\b<bin> [a-z-]+` | 0.1 | `typed-recovery` |
-| `Call::arg`, `Call::value`, `Call::all` | Formatting values into a command sentence | `format!` builds a recovery's command | `format!\("[^"]*\b<bin> ` | 0.1 | `typed-recovery` |
+| `Call::arg`, `Call::value`, `Call::all`, `Call::flag` | Formatting values into a command sentence | `format!` builds a recovery's command | `format!\("[^"]*\b<bin> ` | 0.1, `flag` 0.5.0 | `typed-recovery` |
 | `Call::typed` | Re-joining the caller's argv | A recovery repeats `std::env::args` | `env::args` | 0.1 | `typed-recovery` |
 | `Call::help` | A sentence saying to read help | A hint says "see --help" | `see .*--help` `run .* -h` | 0.1 | `typed-recovery` |
 | `Recovery::Retry` | A sentence saying to try again | A hint says to try or run the command again | `(try\|run .*) again` | 0.1 | `typed-recovery` |

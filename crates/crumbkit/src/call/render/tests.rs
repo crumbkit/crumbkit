@@ -37,6 +37,10 @@ enum Books {
         number: Option<u32>,
         #[arg(long, num_args = 1..)]
         tags: Vec<String>,
+        #[arg(long)]
+        all: bool,
+        #[arg(short = 'r')]
+        reverse: bool,
     },
     Show {
         #[arg(required = true, num_args = 1..=100, value_name = "ID")]
@@ -382,6 +386,46 @@ fn a_placeholder_beside_an_all_argument_is_refused_because_only_the_field_fills_
             id: "author".to_owned(),
         })
     );
+}
+
+#[test]
+fn a_set_flag_renders_and_gives_its_words_by_its_long_name_or_its_short_name() {
+    let mut command = Tool::command();
+    let call = Call::new(&["books", "list"]).flag("all").flag("reverse");
+    let text = super::render(&call, &mut command).unwrap();
+
+    let words = super::words(&call, &command);
+
+    assert_eq!(text, "shelf books list --all -r");
+    assert_eq!(words.unwrap(), ["shelf", "books", "list", "--all", "-r"]);
+}
+
+#[test]
+fn a_set_flag_on_an_argument_that_takes_a_value_is_refused() {
+    let option = render(&Call::new(&["books", "list"]).flag("author")).unwrap_err();
+    let positional = render(&Call::new(&["books", "show"]).flag("ids")).unwrap_err();
+
+    assert_eq!(
+        option,
+        CallError::TakesAValue {
+            command: "shelf books list".to_owned(),
+            id: "author".to_owned(),
+        }
+    );
+    assert_eq!(
+        option.to_string(),
+        "'shelf books list' takes a value for its argument 'author', so a call cannot name it as a set flag"
+    );
+    assert!(matches!(positional, CallError::TakesAValue { id, .. } if id == "ids"));
+}
+
+#[test]
+fn a_set_flag_that_is_missing_or_hidden_is_refused_as_an_argument_is() {
+    let missing = render(&Call::new(&["books", "list"]).flag("yes"));
+    let hidden = render(&Call::new(&["books", "show"]).flag("trace"));
+
+    assert!(matches!(missing, Err(CallError::MissingArgument { .. })));
+    assert!(matches!(hidden, Err(CallError::HiddenArgument { .. })));
 }
 
 #[test]
