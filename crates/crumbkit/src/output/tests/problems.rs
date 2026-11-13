@@ -130,10 +130,10 @@ fn a_single_row_and_a_list_whose_rows_report_a_problem_exit_with_1() {
 
 #[test]
 fn a_batch_failure_decides_the_exit_before_a_row_that_reports_a_problem() {
-    const MAPPED: Tool = Tool::new()
-        .failures(Failures::new().exits(&[
-            crate::tool::Exit::new(3, "A check is unreadable.").failures(&[&UNREADABLE]),
-        ]));
+    const MAPPED: Tool = Tool::new().failures(
+        Failures::new()
+            .exits(&[crate::tool::Exit::new(3, "A check is unreadable.").failures(&[UNREADABLE])]),
+    );
     let output = output_of(&MAPPED, &[]);
     let batch = answered(vec![broken("one")], vec![Unreadable]);
 

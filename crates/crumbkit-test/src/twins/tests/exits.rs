@@ -22,7 +22,7 @@ const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
 const DOWNLOAD_FAILED: Code<'static> = Code::new("tool", "books", "download_failed");
 
 /// The exit code 124, which `TIMED_OUT` ends a run with.
-const EXITS: &[Exit] = &[Exit::new(124, "The download ran out of time.").failures(&[&TIMED_OUT])];
+const EXITS: &[Exit] = &[Exit::new(124, "The download ran out of time.").failures(&[TIMED_OUT])];
 
 /// A tool record that lists `TIMED_OUT` for the exit code 124.
 const TOOL: Tool = Tool::new().failures(Failures::new().exits(EXITS));
@@ -65,14 +65,14 @@ esac
 /// `code` and admitting the same line with `3` in place of its last word,
 /// or `books show 2` for `books show`, and returns its panic message, or
 /// `None` when it passes.
-fn checked(code: &'static Code<'static>, refused: &'static [&'static str]) -> Option<String> {
+fn checked(code: Code<'static>, refused: &'static [&'static str]) -> Option<String> {
     checked_with(&TOOL, code, refused)
 }
 
 /// Runs `check_twin` as [`checked`] does, with `tool`.
 fn checked_with(
     tool: &Tool,
-    code: &'static Code<'static>,
+    code: Code<'static>,
     refused: &'static [&'static str],
 ) -> Option<String> {
     let mut admitted: Vec<&str> = refused.to_vec();
@@ -96,26 +96,26 @@ fn checked_with(
 
 #[test]
 fn a_refused_line_that_exits_with_the_code_that_lists_its_failure_passes() {
-    assert_eq!(checked(&TIMED_OUT, &["books", "get", "1"]), None);
+    assert_eq!(checked(TIMED_OUT, &["books", "get", "1"]), None);
 }
 
 #[test]
 fn a_refused_line_whose_failure_an_exit_lists_and_that_exits_with_another_code_fails_the_check() {
     assert_eq!(
-        checked(&TIMED_OUT, &["books", "get", "2"]).unwrap(),
+        checked(TIMED_OUT, &["books", "get", "2"]).unwrap(),
         "the refused line `tool books get 2` fails with tool::books::timed_out, which the tool record's exit code 124 lists, and it ends with exit status: 1"
     );
 }
 
 #[test]
 fn a_refused_line_whose_failure_no_exit_lists_passes_when_it_exits_with_code_1() {
-    assert_eq!(checked(&NOT_FOUND, &["books", "show", "8"]), None);
+    assert_eq!(checked(NOT_FOUND, &["books", "show", "8"]), None);
 }
 
 #[test]
 fn a_refused_line_whose_failure_no_exit_lists_fails_the_check_when_it_exits_with_another_code() {
     assert_eq!(
-        checked(&NOT_FOUND, &["books", "show", "9"]).unwrap(),
+        checked(NOT_FOUND, &["books", "show", "9"]).unwrap(),
         "the refused line `tool books show 9` fails with tool::books::not_found, which no exit code of the tool record lists, and it ends with exit status: 5, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
     );
 }
@@ -124,7 +124,7 @@ fn a_refused_line_whose_failure_no_exit_lists_fails_the_check_when_it_exits_with
 fn a_usage_refusal_that_exits_with_code_2_passes() {
     assert_eq!(
         checked(
-            &crumbkit::codes::CLI_USAGE,
+            crumbkit::codes::CLI_USAGE,
             &["books", "get", "--limit", "y"]
         ),
         None
@@ -137,7 +137,7 @@ fn a_usage_refusal_that_exits_with_another_code_than_2_fails_the_check_on_a_comm
     assert_eq!(
         checked_with(
             &PASSING,
-            &crumbkit::codes::CLI_USAGE,
+            crumbkit::codes::CLI_USAGE,
             &["books", "get", "--limit", "x"]
         )
         .unwrap(),
@@ -148,7 +148,7 @@ fn a_usage_refusal_that_exits_with_another_code_than_2_fails_the_check_on_a_comm
 #[test]
 fn a_failure_of_a_command_that_passes_on_a_program_s_exit_code_may_end_with_that_code() {
     assert_eq!(
-        checked_with(&PASSING, &DOWNLOAD_FAILED, &["books", "get", "4"]),
+        checked_with(&PASSING, DOWNLOAD_FAILED, &["books", "get", "4"]),
         None
     );
 }
@@ -156,7 +156,7 @@ fn a_failure_of_a_command_that_passes_on_a_program_s_exit_code_may_end_with_that
 #[test]
 fn a_failed_child_fails_the_check_when_its_command_does_not_declare_that_it_passes_on_exit_codes() {
     assert_eq!(
-        checked(&DOWNLOAD_FAILED, &["books", "get", "4"]).unwrap(),
+        checked(DOWNLOAD_FAILED, &["books", "get", "4"]).unwrap(),
         "the refused line `tool books get 4` fails with tool::books::download_failed, which no exit code of the tool record lists, and it ends with exit status: 7, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
     );
 }
@@ -165,7 +165,7 @@ fn a_failed_child_fails_the_check_when_its_command_does_not_declare_that_it_pass
 fn a_command_that_passes_on_exit_codes_fails_the_check_when_an_unlisted_failure_exits_with_a_listing_code()
  {
     assert_eq!(
-        checked_with(&PASSING, &NOT_FOUND, &["books", "get", "5"]).unwrap(),
+        checked_with(&PASSING, NOT_FOUND, &["books", "get", "5"]).unwrap(),
         "the refused line `tool books get 5` fails with tool::books::not_found, which no exit code of the tool record lists, and it exits with 124, which the tool record declares for the failure codes that it lists"
     );
 }
@@ -173,7 +173,7 @@ fn a_command_that_passes_on_exit_codes_fails_the_check_when_an_unlisted_failure_
 #[test]
 fn a_refused_line_whose_failure_no_exit_lists_fails_the_check_when_it_exits_with_a_listing_code() {
     assert_eq!(
-        checked(&NOT_FOUND, &["books", "show", "7"]).unwrap(),
+        checked(NOT_FOUND, &["books", "show", "7"]).unwrap(),
         "the refused line `tool books show 7` fails with tool::books::not_found, which no exit code of the tool record lists, and it exits with 124, which the tool record declares for the failure codes that it lists"
     );
 }
@@ -182,12 +182,12 @@ fn a_refused_line_whose_failure_no_exit_lists_fails_the_check_when_it_exits_with
 fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins() {
     const GONE: Code<'static> = Code::new("tool", "books", "gone");
     const LISTING: Tool = Tool::new().failures(Failures::new().exits(&[
-        Exit::new(124, "Slow.").failures(&[&TIMED_OUT]),
-        Exit::new(3, "Gone.").failures(&[&GONE]),
+        Exit::new(124, "Slow.").failures(&[TIMED_OUT]),
+        Exit::new(3, "Gone.").failures(&[GONE]),
     ]));
-    const CODES: &[&[&Code<'static>]] = &[&[&TIMED_OUT]];
+    const CODES: &[&[Code<'static>]] = &[&[TIMED_OUT]];
     const PAIRS: &[Twin<'_>] = &[Twin::new(
-        Failing::new(&TIMED_OUT, &["books", "get", "1"]),
+        Failing::new(TIMED_OUT, &["books", "get", "1"]),
         &["books", "get", "3"],
     )];
     let dir = TempDir::new("twins-exits-codes").unwrap();

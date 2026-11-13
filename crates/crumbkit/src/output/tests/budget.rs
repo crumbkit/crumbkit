@@ -40,7 +40,7 @@ const TOO_MUCH: Code<'static> = Code::new("sky", "stars", "too_much");
 /// over-budget code under 9.
 const LISTED: Tool = Tool::new()
     .failures(Failures::new().exits(&[
-        Exit::new(9, "The answer was too long.").failures(&[&crate::codes::OUTPUT_OVER_BUDGET]),
+        Exit::new(9, "The answer was too long.").failures(&[crate::codes::OUTPUT_OVER_BUDGET]),
     ]))
     .output(crate::tool::Output::new().budget(BUDGET, "the tests print little"));
 

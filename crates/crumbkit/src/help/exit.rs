@@ -63,10 +63,10 @@ const CRUMBKIT: [(u8, &str); 3] = [
 ///
 /// const TOOL: Tool = Tool::new().failures(
 ///     Failures::new()
-///         .exits(&[Exit::new(124, "The download ran out of time.").failures(&[&TIMED_OUT])]),
+///         .exits(&[Exit::new(124, "The download ran out of time.").failures(&[TIMED_OUT])]),
 /// );
 ///
-/// assert_eq!(TOOL.get_failures().get_exits()[0].get_failures(), [&TIMED_OUT]);
+/// assert_eq!(TOOL.get_failures().get_exits()[0].get_failures(), [TIMED_OUT]);
 /// ```
 ///
 /// A command that passes on the exit code of another program declares the
@@ -111,7 +111,7 @@ pub struct Exit {
     /// commands below it. An empty list covers every command.
     commands: &'static [&'static [&'static str]],
     /// The failure codes that end a run with the code.
-    failures: &'static [&'static Code<'static>],
+    failures: &'static [Code<'static>],
 }
 
 impl Exit {
@@ -162,7 +162,7 @@ impl Exit {
     /// `check_exit_codes` fails on a range that lists any. A code may be one of
     /// crumbkit's, such as `crumbkit::codes::CLI_USAGE`.
     #[must_use]
-    pub const fn failures(mut self, codes: &'static [&'static Code<'static>]) -> Self {
+    pub const fn failures(mut self, codes: &'static [Code<'static>]) -> Self {
         self.failures = codes;
         self
     }
@@ -170,7 +170,7 @@ impl Exit {
     /// Returns the failure codes that [`Exit::failures`] set, or an empty
     /// list when no failure ends a run with the code.
     #[must_use]
-    pub const fn get_failures(&self) -> &'static [&'static Code<'static>] {
+    pub const fn get_failures(&self) -> &'static [Code<'static>] {
         self.failures
     }
 
@@ -356,6 +356,6 @@ pub(crate) fn listed_exit(exits: &[Exit], code: Code<'_>) -> Option<u8> {
     exits
         .iter()
         .filter(|exit| exit.is_single())
-        .find(|exit| exit.get_failures().iter().any(|listed| **listed == code))
+        .find(|exit| exit.get_failures().contains(&code))
         .map(Exit::code)
 }

@@ -93,7 +93,7 @@ mod tests;
 ///     &command,
 ///     &TOOL,
 ///     &EXAMPLES,
-///     &Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "list", "--limit", "0"]),
+///     &Failing::new(crumbkit::codes::CLI_USAGE, &["books", "list", "--limit", "0"]),
 ///     &["books", "list", "--limit", "1"],
 /// );
 /// assert!(output.stdout.is_empty());
@@ -278,7 +278,7 @@ pub(super) fn refuse(
     let spelling = Spelling::COLONS.for_tool(name);
     let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
     let path = crumbkit::command_path(command, refused.words());
-    let code = spelling.spell(*refused.code());
+    let code = spelling.spell(refused.code());
     let output = run(
         examples,
         refused,

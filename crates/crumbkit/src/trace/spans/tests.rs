@@ -27,7 +27,7 @@ const TIMED_OUT: Code<'static> = Code::new("solar", "charts", "timed_out");
 /// A tool record that maps `TIMED_OUT` to 124 (ADR-0037).
 const TOOL: Tool = Tool::new().failures(
     Failures::new()
-        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]),
+        .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[TIMED_OUT])]),
 );
 
 /// A word that no span may hold, because the caller typed it.

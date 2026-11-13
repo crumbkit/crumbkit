@@ -17,4 +17,4 @@ pub const NOT_FOUND: Code<'static> = Code::new("crumbkit", "child", "not_found")
 pub const NOT_STARTED: Code<'static> = Code::new("crumbkit", "child", "not_started");
 
 /// Both codes above, in the order this module declares them.
-pub const ALL: &[&Code<'static>] = &[&NOT_FOUND, &NOT_STARTED];
+pub const ALL: &[Code<'static>] = &[NOT_FOUND, NOT_STARTED];

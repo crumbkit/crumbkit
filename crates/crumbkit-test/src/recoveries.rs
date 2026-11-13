@@ -11,7 +11,7 @@ use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
 use crate::allow::{Allowances, Rule};
-use crate::codes::Declared;
+use crate::codes;
 use crate::examples::Examples;
 use crate::failures;
 use crate::goldens::compare;
@@ -44,7 +44,7 @@ mod tests;
 ///
 /// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 ///
-/// const SHOW_7: Failing<'_> = Failing::new(&NOT_FOUND, &["books", "show", "7"]);
+/// const SHOW_7: Failing<'_> = Failing::new(NOT_FOUND, &["books", "show", "7"]);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Failing<'a> {
@@ -72,13 +72,7 @@ impl<'a> Failing<'a> {
     /// [`Examples::current_dir`], or in the test's directory, and read an
     /// empty standard input.
     #[must_use]
-    pub const fn new(code: &'a Code<'a>, words: &'a [&'a str]) -> Self {
-        Self::with_code(*code, words)
-    }
-
-    /// Returns the command line of `words` that fails with `code`, held by
-    /// value, as [`Failing::new`] does.
-    pub(crate) const fn with_code(code: Code<'a>, words: &'a [&'a str]) -> Self {
+    pub const fn new(code: Code<'a>, words: &'a [&'a str]) -> Self {
         Self {
             code,
             words,
@@ -196,8 +190,8 @@ impl<'a> Failing<'a> {
     }
 
     /// Returns the code that the command line fails with.
-    pub(crate) const fn code(&self) -> &Code<'a> {
-        &self.code
+    pub(crate) const fn code(&self) -> Code<'a> {
+        self.code
     }
 
     /// Returns the words after the tool's name.
@@ -238,17 +232,17 @@ impl<'a> Failing<'a> {
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// const RECOVERIES: Recoveries<'_> =
-///     Recoveries::new(EXAMPLES, &[&[&NOT_FOUND, &GONE]])
-///         .starts(&[Failing::new(&NOT_FOUND, &["books", "show", "7"])])
-///         .unprovoked(&[Unprovoked::new(&GONE, "Only a book file that disappears provokes it.")])
+///     Recoveries::new(EXAMPLES, &[&[NOT_FOUND, GONE]])
+///         .starts(&[Failing::new(NOT_FOUND, &["books", "show", "7"])])
+///         .unprovoked(&[Unprovoked::new(GONE, "Only a book file that disappears provokes it.")])
 ///         .values(&[("ID", "2")]);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Recoveries<'a> {
     /// The binary, its environment and the tool's opt-outs.
     examples: Examples<'a>,
-    /// The tool's declared codes.
-    codes: Declared<'a>,
+    /// The `CODES` list of each of the tool's error types.
+    codes: &'a [&'a [Code<'a>]],
     /// The command lines that start the chains.
     starts: &'a [Failing<'a>],
     /// The declared codes that no command line provokes.
@@ -265,27 +259,18 @@ impl<'a> Recoveries<'a> {
     /// environment and opt-outs and check the codes of `codes`, the `CODES`
     /// list of each of the tool's error types, with no start, no unprovoked
     /// code, no value and at most 3 steps in a chain. [`check_recoveries`]
-    /// spells the codes as the tool record does.
+    /// spells the codes as the tool record does. A test whose codes come
+    /// from `Code::runtime` writes `let lists = [codes.as_slice()];` and
+    /// passes `&lists`.
     #[must_use]
-    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code<'a>]]) -> Self {
+    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [Code<'a>]]) -> Self {
         Self {
             examples,
-            codes: Declared::Lists(codes),
+            codes,
             starts: &[],
             unprovoked: &[],
             values: &[],
             steps: 3,
-        }
-    }
-
-    /// Returns the settings that [`Recoveries::new`] returns, for `codes`,
-    /// one list of the tool's declared codes held by value, such as codes
-    /// that the tool builds at run time with `Code::runtime`.
-    #[must_use]
-    pub const fn from_codes(examples: Examples<'a>, codes: &'a [Code<'a>]) -> Self {
-        Self {
-            codes: Declared::Codes(codes),
-            ..Self::new(examples, &[])
         }
     }
 
@@ -450,12 +435,12 @@ pub fn check_recoveries(command: &Command, tool: &Tool, recoveries: &Recoveries<
 
 /// Returns the spelled codes whose recoveries the check follows by name:
 /// the `declared` codes and crumbkit's codes as a run prints them.
-fn known_codes(declared: &[(String, &Code<'_>)], spelling: Spelling) -> Vec<String> {
+fn known_codes(declared: &[(String, Code<'_>)], spelling: Spelling) -> Vec<String> {
     let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
     known.extend(
         crumbkit::codes::ALL
             .iter()
-            .map(|&code| spelling.spell(*code)),
+            .map(|&code| spelling.spell(code)),
     );
     known
 }
@@ -466,10 +451,10 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
     let reader = failures::reader(&recoveries.examples);
     // crumbkit's own codes print with the tool's name (ADR-0079).
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
-    let mut declared: Vec<(String, &Code<'_>)> = Vec::new();
-    for code in recoveries.codes.to_vec() {
+    let mut declared: Vec<(String, Code<'_>)> = Vec::new();
+    for code in codes::declared(recoveries.codes) {
         if !declared.iter().any(|&(_, seen)| seen == code) {
-            declared.push((spelling.spell(*code), code));
+            declared.push((spelling.spell(code), code));
         }
     }
     let known = known_codes(&declared, spelling);
@@ -531,7 +516,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
         let listed = recoveries
             .unprovoked
             .iter()
-            .any(|entry| spelling.spell(*entry.code()) == *text);
+            .any(|entry| spelling.spell(entry.code()) == *text);
         if !listed && !provoked.contains(text) {
             problems.push(format!(
                 "{text}: no start provokes the declared code, and Recoveries::unprovoked does not list it"
@@ -540,7 +525,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
     }
     report.push_str("codes that no start provokes:\n");
     for entry in recoveries.unprovoked {
-        let text = spelling.spell(*entry.code());
+        let text = spelling.spell(entry.code());
         if !declared.iter().any(|&(_, code)| code == entry.code()) {
             problems.push(format!(
                 "{text}: Recoveries::unprovoked lists the code, and it is not a declared code"

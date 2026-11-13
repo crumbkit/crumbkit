@@ -8,7 +8,7 @@ use super::ALL;
 fn all_lists_the_two_child_codes_in_the_crumbkit_component_in_order() {
     let spelled: Vec<String> = ALL
         .iter()
-        .map(|&code| Spelling::COLONS.spell(*code))
+        .map(|&code| Spelling::COLONS.spell(code))
         .collect();
     assert_eq!(
         spelled,

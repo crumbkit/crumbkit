@@ -110,8 +110,8 @@ fn the_expansion_of_the_sample_enum_matches_the_documented_expansion() {
 
         impl BooksError {
             #[doc = "Every code that a `BooksError` returns, in the order of its variants. `#[derive(Failure)]` writes this list, and it leaves out the codes of a failure that a variant forwards to."]
-            pub(crate) const CODES: &'static [&'static ::crumbkit::Code<'static>] =
-                &[&NOT_FOUND, &REMOVED_FILE, &NO_STATE_DIRECTORY];
+            pub(crate) const CODES: &'static [::crumbkit::Code<'static>] =
+                &[NOT_FOUND, REMOVED_FILE, NO_STATE_DIRECTORY];
         }
     };
     assert_eq!(expanded(input), expected.to_string());
@@ -140,7 +140,7 @@ fn a_type_without_alternatives_fields_urls_or_diagnostics_gets_only_code_and_rec
 
         impl Timeout {
             #[doc = "Every code that a `Timeout` returns, in the order of its variants. `#[derive(Failure)]` writes this list, and it leaves out the codes of a failure that a variant forwards to."]
-            const CODES: &'static [&'static ::crumbkit::Code<'static>] = &[&TIMED_OUT];
+            const CODES: &'static [::crumbkit::Code<'static>] = &[TIMED_OUT];
         }
     };
     assert_eq!(expanded(input), expected.to_string());
@@ -185,7 +185,7 @@ fn the_codes_list_names_a_code_that_two_variants_share_once() {
         }
     });
     assert!(
-        output.contains("= & [& UNREADABLE , & OUT_OF_RANGE] ;"),
+        output.contains("= & [UNREADABLE , OUT_OF_RANGE] ;"),
         "{output}"
     );
 }
@@ -204,9 +204,7 @@ fn a_forward_to_a_named_field_binds_only_that_field() {
         "{output}"
     );
     assert!(
-        output.contains(
-            "const CODES : & 'static [& 'static :: crumbkit :: Code < 'static >] = & [] ;"
-        ),
+        output.contains("const CODES : & 'static [:: crumbkit :: Code < 'static >] = & [] ;"),
         "{output}"
     );
 }

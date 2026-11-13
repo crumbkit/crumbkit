@@ -47,8 +47,8 @@ fn a_start_s_own_values_fill_the_placeholders_of_its_chain_and_no_other_chain() 
         ],
     );
     let starts = [
-        Failing::new(&NOT_FOUND, &["books", "show", "7"]).values(&[("path", "own")]),
-        Failing::new(&NOT_FOUND, &["books", "show", "8"]),
+        Failing::new(NOT_FOUND, &["books", "show", "7"]).values(&[("path", "own")]),
+        Failing::new(NOT_FOUND, &["books", "show", "8"]),
     ];
 
     check_with(
@@ -83,7 +83,7 @@ fn a_field_of_the_failure_that_offers_a_step_fills_the_placeholder_with_the_same
             ("books list /tasks/a --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     check_with(
         &setup,
@@ -113,7 +113,7 @@ fn a_field_fills_a_placeholder_whose_name_differs_only_in_capitals_or_a_dash_for
             ("books list 7 true --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     check_with(
         &setup,
@@ -145,7 +145,7 @@ fn a_start_s_own_value_wins_over_a_field_and_a_field_wins_over_a_shared_value() 
             ("books list own field shared --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"]).values(&[("path", "own")])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"]).values(&[("path", "own")])];
     let shared = [("path", "shared"), ("id", "shared"), ("other", "shared")];
 
     check_with(
@@ -175,7 +175,7 @@ fn a_placeholder_that_a_field_of_the_failure_fills_fails_the_check_naming_the_fi
             ("books list /tasks/a --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     let message = problems(&setup, &recoveries(&setup, &starts, OTHERS));
 
@@ -199,7 +199,7 @@ fn an_opt_out_from_field_value_for_the_failing_command_excuses_the_fill_and_the_
             ("books list /tasks/a --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     let message = problems(&setup, &allowing(&setup, &starts, FIELD_VALUE));
 
@@ -227,7 +227,7 @@ fn an_opt_out_from_field_value_that_excuses_no_fill_is_stale() {
             ("books list --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     let message = problems(&setup, &allowing(&setup, &starts, FIELD_VALUE));
 
@@ -250,7 +250,7 @@ fn a_start_s_own_value_that_wins_over_a_field_is_no_finding() {
             ("books list own --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"]).values(&[("path", "own")])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"]).values(&[("path", "own")])];
 
     let message = problems(&setup, &recoveries(&setup, &starts, OTHERS));
 

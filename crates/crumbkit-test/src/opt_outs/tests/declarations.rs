@@ -42,7 +42,7 @@ const DECLARING: Tool = Tool::new()
     )
     .failures(
         Failures::new()
-            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])])
+            .exits(&[Exit::new(64, "The command line was refused.").failures(&[CLI_USAGE])])
             .refusal_alternatives(version_call)
             .refusal_hint(id_hint),
     );
@@ -118,7 +118,7 @@ fn a_leaf_that_prints_no_result_adds_nothing_to_the_report() {
 fn an_exit_that_lists_the_tool_s_own_code_is_no_declaration() {
     const MINE: Code<'static> = Code::new("shelf", "books", "not_found");
     const TOOL: Tool = Tool::new()
-        .failures(Failures::new().exits(&[Exit::new(3, "No such book.").failures(&[&MINE])]));
+        .failures(Failures::new().exits(&[Exit::new(3, "No such book.").failures(&[MINE])]));
     let dir = TempDir::new("opt-outs-own-exit").unwrap();
 
     run_with_tool(&TOOL, &dir, Action::Overwrite);

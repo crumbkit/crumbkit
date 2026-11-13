@@ -271,7 +271,7 @@ fn an_exit_that_lists_the_over_budget_failure_makes_its_number_the_failed_one() 
         )
         .failures(
             Failures::new().exits(&[Exit::new(9, "The output was too long.")
-                .failures(&[&crumbkit::codes::OUTPUT_OVER_BUDGET])]),
+                .failures(&[crumbkit::codes::OUTPUT_OVER_BUDGET])]),
         );
     let sh = Command::new("sh").subcommand(Command::new("-c"));
     let goldens = TempDir::new("output-budget-listed-exit").unwrap();

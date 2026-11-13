@@ -43,29 +43,29 @@ const EXAMPLES: Examples<'_> =
     Examples::new(env!("CARGO_BIN_EXE_shelf"), "tests/golden/examples").allow(ALLOW);
 
 /// `books show` of a book that does not exist.
-const SHOW_7: Failing<'_> = Failing::new(&shelf::NOT_FOUND, &["books", "show", "7"]);
+const SHOW_7: Failing<'_> = Failing::new(shelf::NOT_FOUND, &["books", "show", "7"]);
 
 /// `books show --from` of an ids file that does not exist.
 const MISSING_FILE: Failing<'_> = Failing::new(
-    &shelf::UNREADABLE_IDS_FILE,
+    shelf::UNREADABLE_IDS_FILE,
     &["books", "show", "--from", "tests/fixtures/ids/missing.txt"],
 );
 
 /// `books show --from` of an ids file with a line that is not an id.
 const BAD_LINE: Failing<'_> = Failing::new(
-    &shelf::BAD_IDS_FILE,
+    shelf::BAD_IDS_FILE,
     &["books", "show", "--from", "tests/fixtures/ids/bad-line.txt"],
 );
 
 /// `books show --from` of an ids file with 101 ids.
 const TOO_MANY: Failing<'_> = Failing::new(
-    &shelf::TOO_MANY_IDS,
+    shelf::TOO_MANY_IDS,
     &["books", "show", "--from", "tests/fixtures/ids/101-ids.txt"],
 );
 
 /// `books show --from` of an empty ids file.
 const EMPTY_FILE: Failing<'_> = Failing::new(
-    &shelf::EMPTY_IDS_FILE,
+    shelf::EMPTY_IDS_FILE,
     &["books", "show", "--from", "tests/fixtures/ids/empty.txt"],
 );
 
@@ -85,16 +85,16 @@ const STARTS: &[Failing<'_>] = &[
     TOO_MANY,
     EMPTY_FILE,
     Failing::new(
-        &crumbkit::codes::CONFIRM_NEEDS_YES,
+        crumbkit::codes::CONFIRM_NEEDS_YES,
         &["books", "remove", "2"],
     ),
     Failing::new(
-        &crumbkit::codes::CLI_USAGE,
+        crumbkit::codes::CLI_USAGE,
         &["books", "list", "--limit", "101"],
     ),
-    Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "show"]),
+    Failing::new(crumbkit::codes::CLI_USAGE, &["books", "show"]),
     Failing::new(
-        &crumbkit::codes::OUTPUT_OVER_BUDGET,
+        crumbkit::codes::OUTPUT_OVER_BUDGET,
         &["books", "show", "1", "2", "3", "4", "5", "6"],
     )
     .env(&[("SHELF_OUTPUT_BUDGET", Some("400"))]),
@@ -104,11 +104,11 @@ const STARTS: &[Failing<'_>] = &[
 /// neither the recovery check nor the twin check needs a command line for.
 const UNPROVOKED: &[Unprovoked<'_>] = &[
     Unprovoked::new(
-        &shelf::REMOVED_FILE,
+        shelf::REMOVED_FILE,
         "Only a file of removed books that shelf cannot read or write provokes it, such as one on a full disk.",
     ),
     Unprovoked::new(
-        &shelf::NO_STATE_DIRECTORY,
+        shelf::NO_STATE_DIRECTORY,
         "The check always sets XDG_STATE_HOME, and only a run without it and without HOME provokes the code.",
     ),
 ];

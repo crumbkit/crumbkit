@@ -45,8 +45,8 @@ fn the_runs_of_one_recovery_chain_share_one_copy_of_the_fresh_dir_fixture_and_th
     let setup = tool("recoveries-fresh");
     let (fixture, path) = marked("recoveries-fresh-fixture");
     let starts = [
-        Failing::new(&NOT_FOUND, &["books", "show", "7"]),
-        Failing::new(&NOT_FOUND, &["books", "show", "7"]),
+        Failing::new(NOT_FOUND, &["books", "show", "7"]),
+        Failing::new(NOT_FOUND, &["books", "show", "7"]),
     ];
     let examples = Examples::new(&setup.script, "").fresh_dir(&path);
     let recoveries = Recoveries::new(examples, CODES)
@@ -72,7 +72,7 @@ fn a_failing_s_own_dir_wins_over_the_fresh_dir_of_examples() {
     let setup = tool("recoveries-fresh-own");
     let (fixture, fixture_path) = marked("recoveries-fresh-own-fixture");
     let (work, work_path) = marked("recoveries-fresh-own-work");
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"]).dir(&work_path)];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"]).dir(&work_path)];
     let examples = Examples::new(&setup.script, "").fresh_dir(&fixture_path);
     let recoveries = Recoveries::new(examples, CODES)
         .starts(&starts)

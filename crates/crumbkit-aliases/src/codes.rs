@@ -10,4 +10,4 @@ use crumbkit::Code;
 pub const UNREADABLE: Code<'static> = Code::new("crumbkit", "aliases", "unreadable");
 
 /// Every code above, in the order this module declares them.
-pub const ALL: &[&Code<'static>] = &[&UNREADABLE];
+pub const ALL: &[Code<'static>] = &[UNREADABLE];

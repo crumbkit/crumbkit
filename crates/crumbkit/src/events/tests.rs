@@ -252,8 +252,8 @@ const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
 /// (ADR-0037), with the smallest output budget.
 const TOOL: Tool = Tool::new()
     .failures(Failures::new().exits(&[
-        Exit::new(124, "The catalogue ran out of time.").failures(&[&TIMED_OUT]),
-        Exit::new(64, "The command line was refused.").failures(&[&crate::codes::CLI_USAGE]),
+        Exit::new(124, "The catalogue ran out of time.").failures(&[TIMED_OUT]),
+        Exit::new(64, "The command line was refused.").failures(&[crate::codes::CLI_USAGE]),
     ]))
     .output(crate::tool::Output::new().budget(1024, "the tests print little"));
 

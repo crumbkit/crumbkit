@@ -5,7 +5,7 @@ use crate::Spelling;
 fn every_crumbkit_code_is_in_all_once_and_spells_with_its_own_component_area_and_reason() {
     let spelled: Vec<String> = ALL
         .iter()
-        .map(|code| Spelling::COLONS.spell(**code))
+        .map(|&code| Spelling::COLONS.spell(code))
         .collect();
     let expected = vec![
         "crumbkit::cli::usage",

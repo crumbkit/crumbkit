@@ -36,7 +36,7 @@ esac
 /// The variable twin of `NO_SHELF`: the line without `BOOKS` fails, and the
 /// line with the `BOOKS` of `Examples::env` succeeds.
 const NO_SHELF_TWIN: Twin<'_> = Twin::variable(
-    Failing::new(&NO_SHELF, &["books", "list"]).env(&[("BOOKS", None)]),
+    Failing::new(NO_SHELF, &["books", "list"]).env(&[("BOOKS", None)]),
     "BOOKS",
 );
 
@@ -47,7 +47,7 @@ fn checked(pairs: &[Twin<'_>]) -> Option<String> {
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
     let examples = Examples::new(&path, "").env(&[("BOOKS", "/b")]);
-    let twins = Twins::new(examples, &[&[&TOO_DEEP, &NO_SHELF]]).pairs(pairs);
+    let twins = Twins::new(examples, &[&[TOO_DEEP, NO_SHELF]]).pairs(pairs);
     panic_message(|| check_twins(&tree(), &Tool::new(), &twins))
 }
 
@@ -55,7 +55,7 @@ fn checked(pairs: &[Twin<'_>]) -> Option<String> {
 fn a_variable_twin_passes_when_the_refused_line_fails_with_its_variable_and_the_line_without_it_succeeds()
  {
     let too_deep = Twin::variable(
-        Failing::new(&TOO_DEEP, &["books", "list"]).env(&[("DEPTH", Some("1"))]),
+        Failing::new(TOO_DEEP, &["books", "list"]).env(&[("DEPTH", Some("1"))]),
         "DEPTH",
     );
 
@@ -65,7 +65,7 @@ fn a_variable_twin_passes_when_the_refused_line_fails_with_its_variable_and_the_
 #[test]
 fn a_variable_twin_whose_line_without_the_variable_still_fails_fails_the_check() {
     let stuck = Twin::variable(
-        Failing::new(&TOO_DEEP, &["books", "stuck"]).env(&[("DEPTH", Some("1"))]),
+        Failing::new(TOO_DEEP, &["books", "stuck"]).env(&[("DEPTH", Some("1"))]),
         "DEPTH",
     );
 
@@ -82,7 +82,7 @@ fn a_variable_twin_whose_line_without_the_variable_still_fails_fails_the_check()
 #[test]
 fn a_variable_twin_that_names_a_variable_the_refused_line_does_not_set_fails_the_check() {
     let width = Twin::variable(
-        Failing::new(&TOO_DEEP, &["books", "list"]).env(&[("DEPTH", Some("1"))]),
+        Failing::new(TOO_DEEP, &["books", "list"]).env(&[("DEPTH", Some("1"))]),
         "WIDTH",
     );
 
@@ -112,7 +112,7 @@ esac
     dir.write_script("tool", PRECEDENCE);
     let path = dir.path().join("tool").display().to_string();
     let examples = Examples::new(&path, "").env(&[("BOOKS", "a")]);
-    let refused = Failing::new(&NOT_FOUND, &["books", "show", "7"])
+    let refused = Failing::new(NOT_FOUND, &["books", "show", "7"])
         .env(&[("BOOKS", Some("b")), ("XDG_CONFIG_HOME", Some("/nowhere"))]);
 
     let output = check_twin(

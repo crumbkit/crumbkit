@@ -26,7 +26,7 @@ fn a_step_with_every_value_of_a_list_field_runs_once_with_each_value_as_its_own_
             ("books show Le Guin 8 --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
     let shared = [("ID", "shared")];
 
     check_with(
@@ -51,7 +51,7 @@ fn a_step_with_every_value_of_a_field_that_holds_no_value_fails_the_check() {
         "recoveries-all-empty",
         &[("books show 7 --json", 1, show.as_str(), "")],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     let message = problems(&setup, &recoveries(&setup, &starts, OTHERS));
 
@@ -77,7 +77,7 @@ fn a_step_with_every_value_that_fails_again_with_the_same_code_and_fewer_values_
             ("books show 9 --json", 0, "{}\n", ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     let message = problems(&setup, &recoveries(&setup, &starts, OTHERS));
 
@@ -101,7 +101,7 @@ fn a_step_with_every_value_that_fails_again_with_as_many_values_left_learns_noth
             ("books show 8 9 --json", 1, show.as_str(), ""),
         ],
     );
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
 
     let message = problems(&setup, &recoveries(&setup, &starts, OTHERS));
 

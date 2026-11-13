@@ -244,7 +244,7 @@ fn printing_a_refusal_prints_what_parse_to_prints() {
 fn printing_a_refusal_returns_a_stop_with_its_number_and_its_output() {
     const TOOL: Tool = Tool::new().failures(
         Failures::new()
-            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])]),
+            .exits(&[Exit::new(64, "The command line was refused.").failures(&[CLI_USAGE])]),
     );
     let refused = refused_by(tree(), &TOOL, &["tool", "comets", "--json"]);
     assert_one_word_apart(
@@ -500,7 +500,7 @@ fn the_stop_after_as_json_reports_the_form_that_printed() {
 fn as_json_changes_neither_the_exit_code_nor_the_observer_events() {
     const TOOL: Tool = Tool::new().failures(
         Failures::new()
-            .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])]),
+            .exits(&[Exit::new(64, "The command line was refused.").failures(&[CLI_USAGE])]),
     );
     let args = ["tool", "comets", "--json"];
     let run = |form: Option<bool>| {

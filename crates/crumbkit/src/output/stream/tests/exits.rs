@@ -17,7 +17,7 @@ const UNREADABLE: Code<'static> = Code::new("birds", "sightings", "unreadable");
 
 /// A tool record that maps `TIMED_OUT` to 124 and leaves `UNREADABLE` unmapped.
 const TOOL: Tool = Tool::new().failures(
-    Failures::new().exits(&[Exit::new(124, "The watch ran out of time.").failures(&[&TIMED_OUT])]),
+    Failures::new().exits(&[Exit::new(124, "The watch ran out of time.").failures(&[TIMED_OUT])]),
 );
 
 /// A failure with the code it was given.

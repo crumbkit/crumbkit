@@ -387,8 +387,7 @@ pub(crate) enum EntriesError {
 impl EntriesError {
     /// Every code that an `EntriesError` returns, which reading's tests pass
     /// to crumbkit-test's codes and recovery checks.
-    pub(crate) const CODES: &'static [&'static Code<'static>] =
-        &[&NOT_FOUND, &UNREADABLE, &OUT_OF_RANGE];
+    pub(crate) const CODES: &'static [Code<'static>] = &[NOT_FOUND, UNREADABLE, OUT_OF_RANGE];
 }
 
 /// Prints `reading has no list named unread`, `cannot read the list

@@ -29,29 +29,17 @@ impl<'a> Unprovoked<'a> {
     /// use crumbkit_test::Unprovoked;
     ///
     /// const GONE: Code<'static> = Code::new("shelf", "books", "removed_file");
-    /// const BAD: Unprovoked<'_> = Unprovoked::new(&GONE, "");
+    /// const BAD: Unprovoked<'_> = Unprovoked::new(GONE, "");
     /// ```
     #[must_use]
-    pub const fn new(code: &'a Code<'a>, reason: &'a str) -> Self {
-        Self::from_code(*code, reason)
-    }
-
-    /// Returns the entry that lists `code`, held by value, as unprovoked
-    /// for `reason`, as [`Unprovoked::new`] does, for a code that the tool
-    /// builds at run time with `Code::runtime`.
-    ///
-    /// # Panics
-    ///
-    /// Panics unless `reason` is non-empty and holds no line break.
-    #[must_use]
-    pub const fn from_code(code: Code<'a>, reason: &'a str) -> Self {
+    pub const fn new(code: Code<'a>, reason: &'a str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
         Self { code, reason }
     }
 
     /// Returns the declared code.
-    pub(crate) const fn code(&self) -> &Code<'a> {
-        &self.code
+    pub(crate) const fn code(&self) -> Code<'a> {
+        self.code
     }
 
     /// Returns why no test can provoke the code.

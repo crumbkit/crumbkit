@@ -142,8 +142,8 @@ mod tests;
 /// impl BooksError {
 ///     /// Every code that a `BooksError` returns, in the order of its
 ///     /// variants. ...
-///     pub(crate) const CODES: &'static [&'static ::crumbkit::Code<'static>] =
-///         &[&NOT_FOUND, &REMOVED_FILE, &NO_STATE_DIRECTORY];
+///     pub(crate) const CODES: &'static [::crumbkit::Code<'static>] =
+///         &[NOT_FOUND, REMOVED_FILE, NO_STATE_DIRECTORY];
 /// }
 /// ```
 ///

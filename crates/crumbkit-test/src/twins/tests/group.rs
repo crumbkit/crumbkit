@@ -43,7 +43,7 @@ fn a_refused_line_that_prints_a_group_s_help_page_passes_with_the_code_of_its_js
         &tree(),
         &Tool::new(),
         &examples,
-        &Failing::new(&USAGE, &["books"]),
+        &Failing::new(USAGE, &["books"]),
         &["books", "list"],
     );
 
@@ -62,7 +62,7 @@ fn a_refused_line_that_prints_a_group_s_help_page_fails_when_its_json_run_prints
             &tree(),
             &Tool::new(),
             &examples,
-            &Failing::new(&OTHER, &["books"]),
+            &Failing::new(OTHER, &["books"]),
             &["books", "list"],
         );
     });

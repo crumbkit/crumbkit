@@ -139,7 +139,7 @@ fn entries_export_refuses_fields_and_admits_its_twin_without_them() {
         &reading::TOOL,
         &examples(),
         &Failing::new(
-            &codes::CLI_USAGE,
+            codes::CLI_USAGE,
             &["entries", "export", "--list", "to-read", "--fields=text"],
         ),
         &["entries", "export", "--list", "to-read"],
@@ -158,7 +158,7 @@ fn entries_export_refuses_long_and_admits_its_twin_without_it() {
         &reading::TOOL,
         &examples(),
         &Failing::new(
-            &codes::CLI_USAGE,
+            codes::CLI_USAGE,
             &["entries", "export", "--list", "to-read", "--long"],
         ),
         &["entries", "export", "--list", "to-read"],

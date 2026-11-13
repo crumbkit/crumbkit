@@ -183,15 +183,15 @@ chains](../checks/recovery-chains.md) describes. A run-time code cannot be
 listed by an [exit](exit-codes.md), so its failure exits with 1 unless its
 segments equal those of a listed code.
 
-A tool whose tests hold its declared codes by value, such as a
-`Vec<Code<'_>>` built from `Code::runtime`, passes them to
-`Recoveries::from_codes` and `Twins::from_codes`, and lists a code that no
-test provokes with `Unprovoked::from_code`. These constructors take the codes
-by value directly. `Recoveries::new` and `Twins::new` take a slice of lists of
-references, so with them the tool first collects a `Vec<&Code<'_>>` from its
-codes and wraps it in an outer slice.
+Every code list holds its codes by value, so `Recoveries::new` and
+`Twins::new` take one list of codes for each of the tool's error types. A test
+whose codes come from `Code::runtime`, such as a `Vec<Code<'_>>`, writes
+`let lists = [codes.as_slice()];` and passes `&lists`, because a temporary
+array passed in one expression would not live as long as the settings. It
+lists a code that no test provokes with `Unprovoked::new`, as it lists a
+declared constant.
 
-Why: ADR-0001, ADR-0037, ADR-0085, ADR-0088, ADR-0089, ADR-0205.
+Why: ADR-0001, ADR-0037, ADR-0085, ADR-0088, ADR-0089, ADR-0205, ADR-0217.
 
 ## Refused command lines
 

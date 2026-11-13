@@ -221,7 +221,7 @@ fn listed(
     tool: &Tool,
     spelling: Spelling,
     index: usize,
-    failure: &'static Code<'static>,
+    failure: Code<'static>,
     problems: &mut Vec<String>,
 ) {
     let exits = tool.get_failures().get_exits();
@@ -235,7 +235,7 @@ fn listed(
     if earlier.next().is_none() {
         problems.push(format!(
             "the exit code {code} lists the failure code {}, which the exit code {} lists already, so a run that fails with it cannot exit with both",
-            spelling.spell(*failure),
+            spelling.spell(failure),
             first.code()
         ));
     }
@@ -268,7 +268,7 @@ pub(crate) fn exit_problem(
     status: ExitStatus,
 ) -> Option<String> {
     let path: Vec<&str> = path.iter().map(String::as_str).collect();
-    let is = |code: &Code<'_>| spelling.spell(*code) == printed;
+    let is = |code: Code<'_>| spelling.spell(code) == printed;
     let exits = tool.get_failures().get_exits();
     // The failures of a range never decide a run's exit, so they count as
     // unlisted.
@@ -279,14 +279,14 @@ pub(crate) fn exit_problem(
         .find(|&code| is(code));
     let code = status.code();
     if let Some(listed) = listed {
-        let expected = tool.failure_exit(*listed);
+        let expected = tool.failure_exit(listed);
         return (code != Some(i32::from(expected))).then(|| {
             format!(
                 "fails with {printed}, which the tool record's exit code {expected} lists, and it ends with {status}"
             )
         });
     }
-    if is(&crumbkit::codes::CLI_USAGE) {
+    if is(crumbkit::codes::CLI_USAGE) {
         let expected = tool.failure_exit(crumbkit::codes::CLI_USAGE);
         return (code != Some(i32::from(expected))).then(|| {
             format!(

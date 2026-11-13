@@ -44,7 +44,7 @@ fn fixture(label: &str, name: &str) -> (TempDir, String) {
 fn a_start_s_xdg_fixture_is_in_its_chain_s_directories_before_it_runs() {
     let setup = tool("recoveries-xdg");
     let (_b, b) = fixture("recoveries-xdg-b", "b");
-    let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"]).xdg(&b)];
+    let starts = [Failing::new(NOT_FOUND, &["books", "show", "7"]).xdg(&b)];
     let recoveries = Recoveries::new(Examples::new(&setup.script, ""), CODES)
         .starts(&starts)
         .unprovoked(OTHERS);
@@ -69,8 +69,8 @@ fn a_failing_s_own_xdg_fixture_wins_over_the_examples_fixture() {
     let (_a, a) = fixture("recoveries-xdg-wins-a", "a");
     let (_b, b) = fixture("recoveries-xdg-wins-b", "b");
     let examples = Examples::new(&setup.script, "").xdg(&a);
-    let own = [Failing::new(&NOT_FOUND, &["books", "show", "7"]).xdg(&b)];
-    let shared = [Failing::new(&NOT_FOUND, &["books", "show", "7"])];
+    let own = [Failing::new(NOT_FOUND, &["books", "show", "7"]).xdg(&b)];
+    let shared = [Failing::new(NOT_FOUND, &["books", "show", "7"])];
     let recoveries = |starts| {
         Recoveries::new(examples, CODES)
             .starts(starts)

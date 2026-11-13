@@ -56,7 +56,7 @@ assert_eq!(
     failure.recovery(),
     Recovery::Hint("restore removed.txt from a backup".to_owned())
 );
-assert_eq!(BooksError::CODES, &[&NOT_FOUND, &REMOVED_FILE]);
+assert_eq!(BooksError::CODES, &[NOT_FOUND, REMOVED_FILE]);
 ```
 
 The type still implements `Display` and `std::error::Error` itself, by hand

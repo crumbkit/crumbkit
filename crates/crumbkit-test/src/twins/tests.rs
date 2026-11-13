@@ -74,14 +74,14 @@ fn a_twin_passes_when_the_refused_line_fails_with_its_code_and_the_admitted_line
         &tree(),
         &TOOL,
         &examples,
-        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+        &Failing::new(USAGE, &["books", "list", "--limit", "0"]),
         &["books", "list", "--limit", "1"],
     );
     let json = check_twin(
         &tree(),
         &TOOL,
         &examples,
-        &Failing::new(&USAGE, &["books", "list", "--limit", "0", "--json"]),
+        &Failing::new(USAGE, &["books", "list", "--limit", "0", "--json"]),
         &["books", "list", "--limit", "1", "--json"],
     );
 
@@ -100,7 +100,7 @@ fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
             &tree(),
             &TOOL,
             &examples,
-            &Failing::new(&USAGE, &["books", "list", "--limit", "2"]),
+            &Failing::new(USAGE, &["books", "list", "--limit", "2"]),
             &["books", "list", "--limit", "1"],
         );
     });
@@ -109,7 +109,7 @@ fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
             &tree(),
             &TOOL,
             &examples,
-            &Failing::new(&OTHER, &["books", "list", "--limit", "0"]),
+            &Failing::new(OTHER, &["books", "list", "--limit", "0"]),
             &["books", "list", "--limit", "1"],
         );
     });
@@ -133,7 +133,7 @@ fn an_admitted_line_that_fails_fails_the_check() {
             &tree(),
             &TOOL,
             &Examples::new(&path, ""),
-            &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+            &Failing::new(USAGE, &["books", "list", "--limit", "0"]),
             &["books", "list", "--limit", "3"],
         );
     });
@@ -153,7 +153,7 @@ fn twins_that_differ_by_more_than_one_word_fail_the_check() {
             &tree(),
             &TOOL,
             &Examples::new(&path, ""),
-            &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+            &Failing::new(USAGE, &["books", "list", "--limit", "0"]),
             &["books", "list"],
         );
     });
@@ -187,7 +187,7 @@ fn a_failure_reader_in_examples_reads_the_code_of_a_refused_twin() {
         &tree(),
         &TOOL,
         &Examples::new(&path, "").failure_reader(&LineReader),
-        &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
+        &Failing::new(USAGE, &["books", "list", "--limit", "-1"]),
         &["books", "list", "--limit", "1"],
     );
 
@@ -206,7 +206,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_the_fa
             &tree(),
             &TOOL,
             &Examples::new(&path, ""),
-            &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
+            &Failing::new(USAGE, &["books", "list", "--limit", "-1"]),
             &["books", "list", "--limit", "1"],
         );
     });
@@ -233,7 +233,7 @@ fn a_failing_line_without_a_dir_runs_in_the_current_dir_of_examples() {
         &tree(),
         &TOOL,
         &Examples::new(&picky, "").current_dir(&work_path),
-        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+        &Failing::new(USAGE, &["books", "list", "--limit", "0"]),
         &["books", "list", "--limit", "1"],
     );
 }
@@ -255,7 +255,7 @@ fn both_lines_of_a_twin_run_in_a_copy_of_the_refused_line_s_xdg_fixture() {
         &tree(),
         &TOOL,
         &Examples::new(&plugged, ""),
-        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]).xdg(&fixture_path),
+        &Failing::new(USAGE, &["books", "list", "--limit", "0"]).xdg(&fixture_path),
         &["books", "list", "--limit", "1"],
     );
 }
@@ -276,7 +276,7 @@ fn both_lines_of_a_twin_start_in_their_own_copy_of_the_fresh_dir_fixture() {
         &tree(),
         &TOOL,
         &Examples::new(&once, "").fresh_dir(&fixture_path),
-        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+        &Failing::new(USAGE, &["books", "list", "--limit", "0"]),
         &["books", "list", "--limit", "1"],
     );
 
@@ -294,7 +294,7 @@ fn an_admitted_line_that_only_adds_help_or_version_fails_the_check() {
                 &tree(),
                 &TOOL,
                 &examples,
-                &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+                &Failing::new(USAGE, &["books", "list", "--limit", "0"]),
                 &["books", "list", "--limit", "0", word],
             );
         });
@@ -311,7 +311,7 @@ fn an_admitted_line_that_only_adds_help_or_version_fails_the_check() {
             &tree(),
             &TOOL,
             &examples,
-            &Failing::new(&USAGE, &["books", "list"]),
+            &Failing::new(USAGE, &["books", "list"]),
             &["help", "books", "list"],
         );
     });
@@ -329,7 +329,7 @@ fn a_twin_whose_admitted_line_runs_another_command_fails_the_check_whatever_leav
                 &tree(),
                 &TOOL,
                 &examples,
-                &Failing::new(&USAGE, refused),
+                &Failing::new(USAGE, refused),
                 admitted,
             );
         })
@@ -363,7 +363,7 @@ fn a_twin_whose_refused_line_runs_no_command_fails_when_its_admitted_line_runs_n
                 &tree(),
                 &TOOL,
                 &examples,
-                &Failing::new(&USAGE, refused),
+                &Failing::new(USAGE, refused),
                 admitted,
             );
         })
@@ -392,7 +392,7 @@ fn a_twin_with_a_global_option_before_the_path_runs_the_command_after_the_option
                 &tree(),
                 &TOOL,
                 &examples,
-                &Failing::new(&USAGE, refused),
+                &Failing::new(USAGE, refused),
                 admitted,
             );
         })
