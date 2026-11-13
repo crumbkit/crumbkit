@@ -1,16 +1,13 @@
 //! The `skills install` command, which writes each of a tool's skills into
 //! each agent skills directory (ADR-0192, ADR-0201).
 //!
-//! The tool owns the command. It adds a `skills` group with an `install`
-//! subcommand that takes [`SkillsInstall`], and its handler passes the
-//! result of [`install`] to [`finish`](crumbkit::finish) with the document
-//! [`SKILLS_INSTALL`]:
+//! A tool mounts the command with [`SkillsCommand`](crate::SkillsCommand),
+//! whose `Install` variant takes [`SkillsInstall`], and one call to
+//! [`run`](crate::run), which passes the result of [`install`] to
+//! [`finish`](crumbkit::finish) with the document [`SKILLS_INSTALL`]:
 //!
 //! ```ignore
-//! SkillsCommand::Install(args) => {
-//!     let result = Ok::<_, crumbkit::Error>(crumbkit_skills::install(&[SKILL], &args));
-//!     crumbkit::finish(run, crumbkit_skills::SKILLS_INSTALL, result)
-//! }
+//! Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], &command),
 //! ```
 
 use std::fs;

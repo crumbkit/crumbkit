@@ -473,13 +473,13 @@ Give coding agents shelf's skill
 
 ### Commands
 
-- [`shelf skills install`](#shelf-skills-install): Install shelf's skill into each agent skills directory that exists
-- [`shelf skills check`](#shelf-skills-check): Check that each installed copy of shelf's skill matches this shelf
-- [`shelf skills print`](#shelf-skills-print): Print shelf's skill
+- [`shelf skills install`](#shelf-skills-install): Install this tool's skills into each agent skills directory that exists
+- [`shelf skills check`](#shelf-skills-check): Check that each installed copy of this tool's skills matches this build
+- [`shelf skills print`](#shelf-skills-print): Print this tool's skill
 
 ## `shelf skills install`
 
-Install shelf's skill into each agent skills directory that exists
+Install this tool's skills into each agent skills directory that exists
 
 ### Arguments
 
@@ -488,13 +488,13 @@ Install shelf's skill into each agent skills directory that exists
 
 ### Examples
 
-Install shelf's skill into each agent skills directory that exists.
+Install the skills into each agent skills directory that exists.
 
 ```sh
 shelf skills install
 ```
 
-Install it, replacing a file or a link that install did not write.
+Install them, replacing a file or a link that install did not write.
 
 ```sh
 shelf skills install --force
@@ -515,7 +515,7 @@ Effects: additive, idempotent, closed-world.
 
 ## `shelf skills check`
 
-Check that each installed copy of shelf's skill matches this shelf
+Check that each installed copy of this tool's skills matches this build
 
 ### Arguments
 
@@ -544,11 +544,11 @@ Effects: read-only, closed-world.
 
 ## `shelf skills print`
 
-Print shelf's skill
+Print this tool's skill
 
 ### Examples
 
-Print shelf's skill.
+Print the skill.
 
 ```sh
 shelf skills print

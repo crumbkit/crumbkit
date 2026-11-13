@@ -25,6 +25,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   shows the state ([behaviour/output/listings]).
 - crumbkit: `Line` holds the form of a row's own text line for help and the
   function that builds each row's line ([behaviour/output/shapes]).
+- crumbkit-skills: `SkillsCommand`, `run` and `run_to` mount a tool's
+  `skills` commands, and `install_leaf`, `check_leaf` and `print_leaf`
+  return their leaves for the path the tool gives, so a tool no longer
+  copies the dispatch ([crumbkit-skills]).
 
 ### Changed
 

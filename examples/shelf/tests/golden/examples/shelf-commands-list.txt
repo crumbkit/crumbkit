@@ -18,9 +18,9 @@ shelf self runs           Work with each run in shelf's usage log
 shelf self runs list      List each run in shelf's usage log, grouped by session
 shelf self runs export    Print the records of shelf's usage log after a run, oldest first
 shelf skills              Give coding agents shelf's skill
-shelf skills install      Install shelf's skill into each agent skills directory that exists
-shelf skills check        Check that each installed copy of shelf's skill matches this shelf
-shelf skills print        Print shelf's skill
+shelf skills install      Install this tool's skills into each agent skills directory that exists
+shelf skills check        Check that each installed copy of this tool's skills matches this build
+shelf skills print        Print this tool's skill
 shelf completion          Set up shelf's completion in a shell
 shelf completion install  Install shelf's completion where the shell loads it
 shelf completion check    Check that shelf's installed completion file matches this shelf

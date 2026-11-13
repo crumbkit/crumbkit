@@ -2,16 +2,13 @@
 //! of a tool's skills with the skill that the binary embeds (ADR-0192,
 //! ADR-0201).
 //!
-//! The tool owns the command. It adds a `check` subcommand that takes
-//! [`SkillsCheck`] to its `skills` group, and its handler passes the result
-//! of [`check`] to [`finish`](crumbkit::finish) with the document
-//! [`SKILLS_CHECK`]:
+//! A tool mounts the command with [`SkillsCommand`](crate::SkillsCommand),
+//! whose `Check` variant takes [`SkillsCheck`], and one call to
+//! [`run`](crate::run), which passes the result of [`check`] to
+//! [`finish`](crumbkit::finish) with the document [`SKILLS_CHECK`]:
 //!
 //! ```ignore
-//! SkillsCommand::Check(args) => {
-//!     let result = Ok::<_, crumbkit::Error>(crumbkit_skills::check(&[SKILL], &args));
-//!     crumbkit::finish(run, crumbkit_skills::SKILLS_CHECK, result)
-//! }
+//! Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], &command),
 //! ```
 
 use std::fs;
