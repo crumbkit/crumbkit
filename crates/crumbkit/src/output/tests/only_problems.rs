@@ -37,24 +37,24 @@ struct Finding {
 
 impl Row for Check {
     const COLUMNS: &'static [&'static str] = &["package", "passed"];
-    const CHILDREN: Option<Children> = Some(Children::field("findings"));
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("findings")
+            .lines(|check: &Self| {
+                let errors = check.findings.iter().filter(|finding| finding.error);
+                errors
+                    .map(|finding| format!("error: {}", finding.text))
+                    .collect()
+            })
+            .long_lines(|check| {
+                let line = |finding: &Finding| {
+                    let level = if finding.error { "error" } else { "warning" };
+                    format!("{level}: {}", finding.text)
+                };
+                check.findings.iter().map(line).collect()
+            }),
+    );
     const WHOLE: bool = true;
     const PROBLEM: Option<Problem<Self>> = Some(Problem::by("passed", |check| !check.passed));
-
-    fn child_lines(&self) -> Vec<String> {
-        let errors = self.findings.iter().filter(|finding| finding.error);
-        errors
-            .map(|finding| format!("error: {}", finding.text))
-            .collect()
-    }
-
-    fn long_child_lines(&self) -> Vec<String> {
-        let line = |finding: &Finding| {
-            let level = if finding.error { "error" } else { "warning" };
-            format!("{level}: {}", finding.text)
-        };
-        self.findings.iter().map(line).collect()
-    }
 }
 
 /// The summary line above the table.

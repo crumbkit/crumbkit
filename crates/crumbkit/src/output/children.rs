@@ -22,8 +22,8 @@ pub(super) fn spaced<R: Row>(view: &View) -> bool {
 }
 
 /// Returns the child lines of `row` as the text prints them under the row:
-/// [`Row::long_child_lines`] when `long` is set, which `--long` sets, and
-/// [`Row::child_lines`] otherwise, each line after [`Children::indent`]
+/// [`Children::long_lines_for`] when `long` is set, which `--long` sets, and
+/// [`Children::lines_for`] otherwise, each line after [`Children::indent`]
 /// spaces, with each control character and each Unicode format character
 /// escaped as a table cell escapes them, and followed by a line feed. It
 /// returns an empty string, which does not allocate, when the row type sets
@@ -33,9 +33,9 @@ pub(super) fn block<R: Row>(row: &R, long: bool) -> String {
         return String::new();
     };
     let lines = if long {
-        row.long_child_lines()
+        children.long_lines_for(row)
     } else {
-        row.child_lines()
+        children.lines_for(row)
     };
     let mut block = String::new();
     for line in lines {

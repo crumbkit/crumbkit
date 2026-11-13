@@ -186,8 +186,8 @@ impl Leaf {
     /// Returns the leaf with `document`, or without a document when it is
     /// `None`. A runtime leaf's document reaches its leaf in the joined tool
     /// record this way.
-    pub(crate) const fn with_document(mut self, document: Option<LeafDocument>) -> Self {
-        self.document = document;
+    pub(crate) const fn with_document(mut self, document: Option<&LeafDocument>) -> Self {
+        self.document = document.copied();
         self
     }
 

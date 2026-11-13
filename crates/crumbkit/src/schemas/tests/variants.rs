@@ -33,7 +33,7 @@ enum Tenant {
 
 impl Row for Tenant {
     const COLUMNS: &'static [&'static str] = &["kind", "name", "plan"];
-    const CHILDREN: Option<Children> = Some(Children::field("applications"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("applications"));
 }
 
 const TENANTS: Document<Listing<Tenant>> =

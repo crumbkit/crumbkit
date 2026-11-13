@@ -76,6 +76,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Some(Line::new("<NAME>: <ABOUT>", Self::line))`, where `line` is the body
   of its `text_line`. A row type that set `LINE` without `text_line` passes
   `|_| None` ([behaviour/output/shapes]).
+- crumbkit: breaking: `Row::CHILDREN` is an `Option<Children<Self>>`. A row
+  type passes the body of its `child_lines` to `Children::lines`, as in
+  `.lines(Self::parts)` or `.lines(|row: &Self| ..)`, and that of
+  `long_child_lines` to `Children::long_lines`. `LeafDocument::children`
+  returns `Option<Children<()>>` ([behaviour/output/shapes]).
 - crumbkit-test: `Failing::new`, `RuntimeFailing::new`,
   `RuntimeFailing::line`, `Unprovoked::new` and `Unprovoked::from_code` take
   codes of any lifetime, so they also accept codes from `Code::runtime` that
@@ -104,6 +109,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `Row::text_line` is removed, and `Row::LINE` holds the
   function. A caller that asked a row for its line writes
   `R::LINE.and_then(|line| line.text(row))` ([behaviour/output/shapes]).
+- crumbkit: breaking: `Row::child_lines` and `Row::long_child_lines` are
+  removed, and `Row::CHILDREN` holds the functions. A caller that asked a row
+  for its lines writes `R::CHILDREN.map(|children| children.lines_for(row))`.
+  `Children` has no `PartialEq` ([behaviour/output/shapes]).
 
 ## [0.4.1](https://github.com/crumbkit/crumbkit/compare/v0.4.0...v0.4.1) - 2026-11-12### Added
 

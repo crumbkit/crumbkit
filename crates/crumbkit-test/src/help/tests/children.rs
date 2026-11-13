@@ -22,7 +22,7 @@ struct Book {
 impl Row for Book {
     const COLUMNS: &'static [&'static str] = &["id"];
     const LONG_COLUMNS: &'static [&'static str] = &["title"];
-    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("chapters"));
 }
 
 /// A book whose children field is not one of its fields.
@@ -36,7 +36,7 @@ struct MisspeltBook {
 
 impl Row for MisspeltBook {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(Children::field("chapter"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("chapter"));
 }
 
 /// A book whose children field has no doc comment.
@@ -49,7 +49,7 @@ struct UndocumentedBook {
 
 impl Row for UndocumentedBook {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("chapters"));
 }
 
 /// A book whose children field is also one of its columns.
@@ -63,7 +63,7 @@ struct ColumnBook {
 
 impl Row for ColumnBook {
     const COLUMNS: &'static [&'static str] = &["id", "chapters"];
-    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("chapters"));
 }
 
 /// A book whose children field is also one of its long columns.
@@ -78,7 +78,7 @@ struct LongColumnBook {
 impl Row for LongColumnBook {
     const COLUMNS: &'static [&'static str] = &["id"];
     const LONG_COLUMNS: &'static [&'static str] = &["chapters"];
-    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("chapters"));
 }
 
 /// A book's file, which a headed batch prints under a header, and which
@@ -96,7 +96,7 @@ struct ChapteredFile {
 
 impl Row for ChapteredFile {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(Children::field("chapters"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("chapters"));
 }
 
 impl Headed for ChapteredFile {
@@ -126,7 +126,8 @@ const TEXTS: [&str; 5] = [
 
 impl<const HELP: u8> Row for DescribedBook<HELP> {
     const COLUMNS: &'static [&'static str] = &["id"];
-    const CHILDREN: Option<Children> = Some(Children::field("chapters").help(TEXTS[HELP as usize]));
+    const CHILDREN: Option<Children<Self>> =
+        Some(Children::field("chapters").help(TEXTS[HELP as usize]));
 }
 
 /// Returns the problem that `check_help` reports for a tool record whose

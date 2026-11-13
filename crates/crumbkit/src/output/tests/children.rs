@@ -35,17 +35,17 @@ struct Component {
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name", "state"];
     const LONG_COLUMNS: &'static [&'static str] = &["region"];
-    const CHILDREN: Option<Children> = Some(Children::field("components"));
-
-    fn child_lines(&self) -> Vec<String> {
-        self.components
-            .iter()
-            .map(|component| {
-                let mark = if component.up { '+' } else { '-' };
-                format!("{mark} {}", component.name)
-            })
-            .collect()
-    }
+    const CHILDREN: Option<Children<Self>> =
+        Some(Children::field("components").lines(|service: &Self| {
+            service
+                .components
+                .iter()
+                .map(|component| {
+                    let mark = if component.up { '+' } else { '-' };
+                    format!("{mark} {}", component.name)
+                })
+                .collect()
+        }));
 }
 
 const SERVICES: Document<Vec<Service>> = Document::new("ops", "services", 1, "The test services.");
@@ -202,11 +202,8 @@ impl Row for Lined {
     const LINE: Option<Line<Self>> = Some(Line::new("service <NAME>", |service| {
         Some(format!("service {}", service.name))
     }));
-    const CHILDREN: Option<Children> = Some(Children::field("components"));
-
-    fn child_lines(&self) -> Vec<String> {
-        self.components.clone()
-    }
+    const CHILDREN: Option<Children<Self>> =
+        Some(Children::field("components").lines(|lined: &Self| lined.components.clone()));
 }
 
 const LINED: Document<Vec<Lined>> = Document::new("ops", "lined", 1, "The test services.");
@@ -317,10 +314,7 @@ fn room_counts_the_children_field_in_compact_json() {
 
 #[test]
 fn a_row_type_without_children_has_no_child_lines_by_default() {
-    let row = super::mercury();
-
-    assert_eq!(row.child_lines(), Vec::<String>::new());
-    assert_eq!(<super::Planet as Row>::CHILDREN, None);
+    assert!(<super::Planet as Row>::CHILDREN.is_none());
 }
 
 /// A record whose reference, an identifier that a reader copies whole,
@@ -338,11 +332,11 @@ struct Record {
 impl Row for Record {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LONG_COLUMNS: &'static [&'static str] = &["kind"];
-    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
-
-    fn child_lines(&self) -> Vec<String> {
-        vec![self.reference.to_owned()]
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("reference")
+            .indent(0)
+            .lines(|record: &Self| vec![record.reference.to_owned()]),
+    );
 }
 
 /// A record whose reference prints indented by four spaces.
@@ -353,11 +347,11 @@ struct Deep(Record);
 impl Row for Deep {
     const COLUMNS: &'static [&'static str] = Record::COLUMNS;
     const LONG_COLUMNS: &'static [&'static str] = Record::LONG_COLUMNS;
-    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(4));
-
-    fn child_lines(&self) -> Vec<String> {
-        self.0.child_lines()
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("reference")
+            .indent(4)
+            .lines(|deep: &Self| vec![deep.0.reference.to_owned()]),
+    );
 }
 
 /// A record whose text prints as its own line, with its reference at
@@ -371,11 +365,11 @@ impl Row for FlushLined {
     const LINE: Option<Line<Self>> = Some(Line::new("record <NAME>", |record| {
         Some(format!("record {}", record.0.name))
     }));
-    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
-
-    fn child_lines(&self) -> Vec<String> {
-        self.0.child_lines()
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("reference")
+            .indent(0)
+            .lines(|lined: &Self| vec![lined.0.reference.to_owned()]),
+    );
 }
 
 const RECORDS: Document<Vec<Record>> = Document::new("ops", "records", 1, "The test records.");
@@ -443,7 +437,7 @@ fn a_row_type_with_a_child_indent_of_four_prints_four_spaces_before_each_child_l
 
 #[test]
 fn a_row_type_that_sets_no_child_indent_indents_its_child_lines_by_two_spaces() {
-    assert_eq!(Children::field("components").get_indent(), 2);
+    assert_eq!(Children::<()>::field("components").get_indent(), 2);
 }
 
 #[test]
@@ -489,7 +483,7 @@ struct Job {
 
 impl Row for Job {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("steps"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("steps"));
 }
 
 #[test]

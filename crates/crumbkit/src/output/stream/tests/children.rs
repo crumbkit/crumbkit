@@ -24,19 +24,17 @@ struct Nest {
 impl Row for Nest {
     const COLUMNS: &'static [&'static str] = &["bird"];
     const LONG_COLUMNS: &'static [&'static str] = &["place"];
-    const CHILDREN: Option<Children> = Some(Children::field("eggs"));
-
-    fn child_lines(&self) -> Vec<String> {
-        self.eggs.iter().map(|egg| format!("egg {egg}")).collect()
-    }
-
-    fn long_child_lines(&self) -> Vec<String> {
-        let place = self.place;
-        self.eggs
-            .iter()
-            .map(|egg| format!("egg {egg} in the {place}"))
-            .collect()
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("eggs")
+            .lines(|nest: &Self| nest.eggs.iter().map(|egg| format!("egg {egg}")).collect())
+            .long_lines(|nest| {
+                let place = nest.place;
+                nest.eggs
+                    .iter()
+                    .map(|egg| format!("egg {egg} in the {place}"))
+                    .collect()
+            }),
+    );
 }
 
 const NESTS: Document<Stream<Nest>> =
@@ -131,11 +129,10 @@ impl Row for Flock {
     const LINE: Option<Line<Self>> = Some(Line::new("a flock led by a <LEADER>", |flock| {
         Some(format!("a flock led by a {}", flock.leader))
     }));
-    const CHILDREN: Option<Children> = Some(Children::field("others"));
-
-    fn child_lines(&self) -> Vec<String> {
-        self.others.iter().map(|&other| other.to_owned()).collect()
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("others")
+            .lines(|flock: &Self| flock.others.iter().map(|&other| other.to_owned()).collect()),
+    );
 }
 
 #[test]
@@ -177,11 +174,11 @@ struct Ring<const INDENT: u8> {
 
 impl<const INDENT: u8> Row for Ring<INDENT> {
     const COLUMNS: &'static [&'static str] = &["bird"];
-    const CHILDREN: Option<Children> = Some(Children::field("code").indent(INDENT));
-
-    fn child_lines(&self) -> Vec<String> {
-        vec![self.code.to_owned()]
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("code")
+            .indent(INDENT)
+            .lines(|ring: &Self| vec![ring.code.to_owned()]),
+    );
 }
 
 /// A ring whose text prints as its own line, with its code at column 1
@@ -195,11 +192,11 @@ impl Row for LinedRing {
     const LINE: Option<Line<Self>> = Some(Line::new("a ringed <BIRD>", |ring| {
         Some(format!("a ringed {}", ring.0.bird))
     }));
-    const CHILDREN: Option<Children> = Some(Children::field("code").indent(0));
-
-    fn child_lines(&self) -> Vec<String> {
-        self.0.child_lines()
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("code")
+            .indent(0)
+            .lines(|ring: &Self| vec![ring.0.code.to_owned()]),
+    );
 }
 
 /// Streams each of `rows` as `document` with no flags, ends without a
@@ -265,11 +262,11 @@ struct SpacedRing(Ring<2>);
 
 impl Row for SpacedRing {
     const COLUMNS: &'static [&'static str] = &["bird"];
-    const CHILDREN: Option<Children> = Some(Children::field("code").spaced());
-
-    fn child_lines(&self) -> Vec<String> {
-        self.0.child_lines()
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("code")
+            .spaced()
+            .lines(|ring: &Self| vec![ring.0.code.to_owned()]),
+    );
 }
 
 #[test]

@@ -238,11 +238,11 @@ struct Catalogued {
 
 impl Row for Catalogued {
     const COLUMNS: &'static [&'static str] = &["title", "shelf"];
-    const CHILDREN: Option<Children> = Some(Children::field("reference").indent(0));
-
-    fn child_lines(&self) -> Vec<String> {
-        vec![self.reference.clone()]
-    }
+    const CHILDREN: Option<Children<Self>> = Some(
+        Children::field("reference")
+            .indent(0)
+            .lines(|catalogued: &Self| vec![catalogued.reference.clone()]),
+    );
 }
 
 #[test]

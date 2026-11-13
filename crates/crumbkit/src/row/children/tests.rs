@@ -7,6 +7,14 @@ use serde::Serialize;
 
 use crate::{Children, Elapsed, Row, Shown};
 
+/// Returns the compact child lines of `row`, as its type's
+/// [`Row::CHILDREN`] builds them, and no lines without it.
+fn lines<R: Row>(row: &R) -> Vec<String> {
+    R::CHILDREN
+        .map(|children| children.lines_for(row))
+        .unwrap_or_default()
+}
+
 /// One step of a job, which prints as `fetch: 3s`.
 struct Step {
     /// The step's name.
@@ -36,7 +44,7 @@ struct Job {
 
 impl Row for Job {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("steps"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("steps"));
 }
 
 fn job() -> Job {
@@ -57,12 +65,7 @@ fn job() -> Job {
 
 #[test]
 fn a_children_field_of_shown_values_gives_one_line_for_each_value() {
-    assert_eq!(job().child_lines(), ["fetch: 3s", "build: 4m 10s"]);
-}
-
-#[test]
-fn the_default_long_child_lines_are_the_child_lines() {
-    assert_eq!(job().long_child_lines(), ["fetch: 3s", "build: 4m 10s"]);
+    assert_eq!(lines(&job()), ["fetch: 3s", "build: 4m 10s"]);
 }
 
 #[test]
@@ -86,7 +89,7 @@ struct Tagged {
 
 impl Row for Tagged {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("tags"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("tags"));
 }
 
 #[test]
@@ -97,7 +100,7 @@ fn a_children_field_of_strings_gives_one_line_for_each_string() {
         notes: vec!["unread"],
     };
 
-    assert_eq!(row.child_lines(), ["red", "old"]);
+    assert_eq!(lines(&row), ["red", "old"]);
 }
 
 /// A part of a row whose children serialize as objects.
@@ -118,7 +121,7 @@ struct Machine {
 
 impl Row for Machine {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("parts"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("parts"));
 }
 
 #[test]
@@ -128,7 +131,7 @@ fn a_children_field_of_objects_gives_no_lines() {
         parts: vec![Part { name: "belt" }],
     };
 
-    assert_eq!(row.child_lines(), Vec::<String>::new());
+    assert_eq!(lines(&row), Vec::<String>::new());
 }
 
 /// A row whose children field holds strings and numbers.
@@ -142,7 +145,7 @@ struct Mixed {
 
 impl Row for Mixed {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("items"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("items"));
 }
 
 #[test]
@@ -152,7 +155,7 @@ fn a_children_field_with_an_item_that_is_not_a_string_gives_no_lines() {
         items: vec![serde_json::json!("one"), serde_json::json!(2)],
     };
 
-    assert_eq!(row.child_lines(), Vec::<String>::new());
+    assert_eq!(lines(&row), Vec::<String>::new());
 }
 
 /// A row without children.
@@ -170,7 +173,7 @@ impl Row for Plain {
 fn a_row_without_a_children_field_gives_no_lines() {
     let row = Plain { tags: vec!["red"] };
 
-    assert_eq!(row.child_lines(), Vec::<String>::new());
+    assert_eq!(lines(&row), Vec::<String>::new());
 }
 
 /// A row whose children field names a field it does not have.
@@ -182,48 +185,66 @@ struct Misnamed {
 
 impl Row for Misnamed {
     const COLUMNS: &'static [&'static str] = &["tags"];
-    const CHILDREN: Option<Children> = Some(Children::field("labels"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("labels"));
 }
 
 #[test]
 fn a_children_field_that_the_row_lacks_gives_no_lines() {
     let row = Misnamed { tags: vec!["red"] };
 
-    assert_eq!(row.child_lines(), Vec::<String>::new());
+    assert_eq!(lines(&row), Vec::<String>::new());
 }
 
-/// A row that writes its own child lines.
+/// A row whose child lines count its tags.
 #[derive(Serialize, JsonSchema)]
 struct Counted {
     /// The row's tags.
     tags: Vec<&'static str>,
 }
 
-impl Row for Counted {
-    const COLUMNS: &'static [&'static str] = &["tags"];
-    const CHILDREN: Option<Children> = Some(Children::field("tags"));
-
-    fn child_lines(&self) -> Vec<String> {
+impl Counted {
+    fn count(&self) -> Vec<String> {
         vec![format!("{} tags", self.tags.len())]
+    }
+
+    fn all(&self) -> Vec<String> {
+        vec![self.tags.join(" and ")]
     }
 }
 
 #[test]
-fn a_row_that_overrides_its_child_lines_keeps_its_own() {
+fn each_view_prints_the_lines_its_function_builds_and_otherwise_the_compact_lines() {
     let row = Counted {
         tags: vec!["red", "old"],
     };
+    let both =
+        |children: Children<Counted>| [children.lines_for(&row), children.long_lines_for(&row)];
+    let field = Children::field("tags");
 
-    assert_eq!(row.child_lines(), ["2 tags"]);
+    assert_eq!(both(field), [vec!["red", "old"], vec!["red", "old"]]);
+    assert_eq!(
+        both(field.lines(Counted::count)),
+        [vec!["2 tags"], vec!["2 tags"]]
+    );
+    assert_eq!(
+        both(field.long_lines(Counted::all)),
+        [vec!["red", "old"], vec!["red and old"]]
+    );
+    assert_eq!(
+        both(field.lines(Counted::count).long_lines(Counted::all)),
+        [vec!["2 tags"], vec!["red and old"]]
+    );
 }
 
 #[test]
 fn children_keep_the_defaults_until_a_builder_changes_them() {
-    const PLAIN: Children = Children::field("notes");
-    const SET: Children = Children::field("notes")
+    const PLAIN: Children<()> = Children::field("notes");
+    const SET: Children<()> = Children::field("notes")
         .indent(0)
         .spaced()
-        .help("one line for each note.");
+        .help("one line for each note.")
+        .lines(|()| Vec::new())
+        .untyped();
 
     assert_eq!(
         (PLAIN.get_indent(), PLAIN.is_spaced(), PLAIN.get_help()),
@@ -239,15 +260,15 @@ fn children_keep_the_defaults_until_a_builder_changes_them() {
 #[test]
 fn children_describe_their_lines_with_crumbkits_sentence_or_the_tools_help() {
     assert_eq!(
-        Children::field("notes").text(),
+        Children::<()>::field("notes").text(),
         "one indented line under each row for each of its notes."
     );
     assert_eq!(
-        Children::field("notes").indent(0).text(),
+        Children::<()>::field("notes").indent(0).text(),
         "one line under each row for each of its notes."
     );
     assert_eq!(
-        Children::field("notes")
+        Children::<()>::field("notes")
             .help("one line for each note.")
             .text(),
         "one line for each note."

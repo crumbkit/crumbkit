@@ -183,11 +183,12 @@ Why: ADR-0064, ADR-0114.
 ## Rows with children
 
 A row type may print the items of one field as indented lines under each
-row. `Row::CHILDREN` holds a `Children`, and `Children::field` names the
-field, such as `Some(Children::field("components"))`, and
-`Row::child_lines` builds one line for each item, such as `+ database`.
-Its default prints each item's text when the field holds strings or
-[value types](../values/README.md), and prints nothing otherwise.
+row. `Row::CHILDREN` holds a `Children<Self>`, and `Children::field` names
+the field, such as `Some(Children::field("components"))`. Without
+`Children::lines` the lines are each item's text when the field holds
+strings or [value types](../values/README.md), and there are none otherwise.
+`Children::lines` takes a function that builds the lines, such as
+`.lines(Self::components)`, which prints `+ database`.
 Without `--json` and `--fields`, the text prints each child line under the
 row's table line, or under its own text line, with control characters and
 format characters escaped. `Children::indent` sets the number of spaces
@@ -197,9 +198,9 @@ reader tells them apart only by their content, which the doc comment of the
 children field should describe. A fitted table
 ([the table's width](../terminal.md#the-tables-width)) never cuts a child
 line. A row without child lines prints nothing more. `--long` prints the
-lines of `Row::long_child_lines` in their place, which are the child lines
-unless the type overrides it, and a stream prints them after each item's
-line. The
+lines of the function that `Children::long_lines` takes in their place,
+and the child lines when the type sets none. A stream prints them after
+each item's line. The
 [output budget](../budget/README.md) counts them with their indent.
 
 A row type whose `Children` sets `Children::spaced` prints a blank line after a row that
@@ -221,7 +222,7 @@ that is not a documented field of the row type, a field that is also one of
 the columns, a [headed](#headed-bytes) leaf whose row type sets `CHILDREN`,
 and a `Children::help` that is not one line ending with a full stop.
 
-Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138, ADR-0151, ADR-0182.
+Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138, ADR-0151, ADR-0182, ADR-0214.
 
 ## Documents without the envelope
 

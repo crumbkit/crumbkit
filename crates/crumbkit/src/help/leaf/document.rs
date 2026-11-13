@@ -31,8 +31,8 @@ pub struct LeafDocument {
     problem_column: Option<&'static str>,
     /// The form of the row type's [`Row::LINE`].
     line: Option<&'static str>,
-    /// The row type's [`Row::CHILDREN`].
-    children: Option<Children>,
+    /// The row type's [`Row::CHILDREN`], without its functions.
+    children: Option<Children<()>>,
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
     schema: fn() -> Schema,
@@ -58,7 +58,7 @@ impl LeafDocument {
             problem: problem_field(<T::Row as Row>::PROBLEM),
             problem_column: problem_column(<T::Row as Row>::PROBLEM),
             line: line_form(<T::Row as Row>::LINE),
-            children: <T::Row as Row>::CHILDREN,
+            children: untyped_children(<T::Row as Row>::CHILDREN),
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
             kind: Kind::Document(T::SHAPE),
@@ -77,7 +77,7 @@ impl LeafDocument {
             problem: problem_field(R::PROBLEM),
             problem_column: problem_column(R::PROBLEM),
             line: line_form(R::LINE),
-            children: R::CHILDREN,
+            children: untyped_children(R::CHILDREN),
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
             kind: Kind::Stream,
@@ -257,10 +257,11 @@ impl LeafDocument {
             .collect()
     }
 
-    /// Returns the row type's child lines, its [`Row::CHILDREN`], or `None`
-    /// when the row type has none.
+    /// Returns the settings of the row type's child lines, its
+    /// [`Row::CHILDREN`] as [`Children::untyped`] gives them, or `None` when
+    /// the row type has none.
     #[must_use]
-    pub const fn children(&self) -> Option<Children> {
+    pub const fn children(&self) -> Option<Children<()>> {
         self.children
     }
 
@@ -309,6 +310,14 @@ const fn problem_column<R: ?Sized>(problem: Option<Problem<R>>) -> Option<&'stat
 const fn line_form<R: ?Sized>(line: Option<Line<R>>) -> Option<&'static str> {
     match line {
         Some(line) => Some(line.get_form()),
+        None => None,
+    }
+}
+
+/// Returns `children` without its functions.
+const fn untyped_children<R: ?Sized>(children: Option<Children<R>>) -> Option<Children<()>> {
+    match children {
+        Some(children) => Some(children.untyped()),
         None => None,
     }
 }

@@ -81,7 +81,7 @@ struct Loan {
 
 impl Row for Loan {
     const COLUMNS: &'static [&'static str] = &["title", "pages", "kept"];
-    const CHILDREN: Option<Children> = Some(Children::field("reminders"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("reminders"));
 }
 
 const LOANS: Document<Vec<Loan>> = Document::new("loans", "loans", 1, "The loans.");

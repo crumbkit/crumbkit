@@ -485,7 +485,7 @@ struct Service {
 
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("components"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("components"));
 }
 
 #[test]

@@ -49,7 +49,7 @@ struct Service {
 
 impl Row for Service {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("components"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("components"));
 }
 
 /// A workspace whose applications print under it, folded into one line
@@ -64,7 +64,7 @@ struct Workspace {
 
 impl Row for Workspace {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("applications").help(
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("applications").help(
         "one line for each application, or one folded line when every application is stopped.",
     ));
 }
@@ -80,7 +80,7 @@ struct Flush {
 
 impl Row for Flush {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("components").indent(0));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("components").indent(0));
 }
 
 /// A service that prints its own text line, with its components under it.
@@ -95,7 +95,7 @@ struct Lined {
 impl Row for Lined {
     const COLUMNS: &'static [&'static str] = &["name"];
     const LINE: Option<Line<Self>> = Some(Line::new("<NAME>", |_| None));
-    const CHILDREN: Option<Children> = Some(Children::field("components"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("components"));
 }
 
 /// A service's log file, which a headed batch prints under a header.
@@ -111,7 +111,7 @@ struct Log {
 
 impl Row for Log {
     const COLUMNS: &'static [&'static str] = &["name"];
-    const CHILDREN: Option<Children> = Some(Children::field("components"));
+    const CHILDREN: Option<Children<Self>> = Some(Children::field("components"));
 }
 
 impl Headed for Log {
