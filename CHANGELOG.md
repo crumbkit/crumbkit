@@ -28,6 +28,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: `Picker` requires `Sync`, so `Tool` is `Send` and
+  `Sync` and can be a `static` that threads share. A picker with a `Cell`
+  or `RefCell` keeps its state in a `Mutex` or an atomic
+  ([behaviour/effects/pickers]).
 - crumbkit: breaking: `Code` is `Code<'a>` and borrows its segments. A
   declared constant is written `Code<'static>`, as in
   `const NOT_FOUND: Code<'static> = Code::new(..)` ([behaviour/failures]).

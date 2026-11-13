@@ -18,6 +18,8 @@ A tool registers one picker with `Tool::picker`, a `const fn` like the
 tool record's other builders, so the picker costs nothing until clap refuses a
 command line. The picker is a `&'static dyn Picker`, which keeps `Tool` a
 constant and lets a tool use any picker without crumbkit depending on it.
+`Picker` requires `Sync`, so `Tool` is `Send` and `Sync` and can be a
+`static` that threads share.
 crumbkit checks every position and the count that a picker returns, so a
 picker cannot add a value that the list does not hold.
 
