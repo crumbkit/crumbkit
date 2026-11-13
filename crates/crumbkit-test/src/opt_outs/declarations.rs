@@ -54,7 +54,7 @@ pub(super) fn declarations(command: &Command, tool: &Tool, allow: &[Allow]) -> V
                 applies_to: every_run.clone(),
                 declares: format!(
                     "A failure with {} exits with {}, where the default is {}.",
-                    spelling.spell(listed),
+                    spelling.spell(*listed),
                     exit.code(),
                     Tool::new().failure_exit(*listed)
                 ),

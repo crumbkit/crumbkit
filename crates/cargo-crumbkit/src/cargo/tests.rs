@@ -37,7 +37,7 @@ fn a_cargo_that_cannot_start_fails_with_cargo_unavailable() {
     let error = build(OsStr::new("/nonexistent/cargo"), "shelf").unwrap_err();
 
     assert_eq!(
-        Spelling::COLONS.spell(&error.code()),
+        Spelling::COLONS.spell(error.code()),
         "crumbkit::tool::cargo_unavailable"
     );
 }

@@ -81,7 +81,7 @@ impl Observer for Recording {
             "typed {}: {} in {}",
             command.get_name(),
             joined(args),
-            spelling.spell(&SAMPLE)
+            spelling.spell(SAMPLE)
         ));
     }
 
@@ -124,7 +124,7 @@ impl Observer for Recording {
         see(format!("exited {exit}"));
     }
 
-    fn failed(&self, spelling: Spelling, code: &Code<'_>) {
+    fn failed(&self, spelling: Spelling, code: Code<'_>) {
         see(format!("failed {}", spelling.spell(code)));
     }
 
@@ -147,7 +147,7 @@ impl Observer for Recording {
     }
 
     fn tolerated(&self, code: Code<'_>) {
-        see(format!("tolerated {}", Spelling::COLONS.spell(&code)));
+        see(format!("tolerated {}", Spelling::COLONS.spell(code)));
     }
 
     fn handed_over(&self) {

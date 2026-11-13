@@ -352,7 +352,7 @@ impl Recorder {
     /// Records the code of a failure or refusal that crumbkit printed, in
     /// `spelling`. The first code of a run stays, so a batch records its
     /// first failure.
-    pub(super) fn failed(&mut self, spelling: Spelling, code: &Code<'_>) {
+    pub(super) fn failed(&mut self, spelling: Spelling, code: Code<'_>) {
         if self.run.code.is_none() {
             self.run.code = Some(Name::code(spelling, code));
         }
@@ -380,7 +380,7 @@ impl Recorder {
             run.tolerated = self
                 .tolerated
                 .iter()
-                .map(|code| Name::code(spelling, &code.as_code()))
+                .map(|code| Name::code(spelling, code.as_code()))
                 .collect();
         }
         Some(Record {

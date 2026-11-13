@@ -245,7 +245,7 @@ impl<'a> PreparedFailure<'a> {
         let code = failure.code();
         // Every code that crumbkit prints is spelled here, so crumbkit
         // reports the run's code to the observer here (ADR-0057).
-        crate::events::failed(spelling, &code);
+        crate::events::failed(spelling, code);
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
@@ -267,7 +267,7 @@ impl<'a> PreparedFailure<'a> {
         };
         #[cfg(feature = "miette")]
         let diagnostic = failure.diagnostic();
-        let code = spelling.spell(&code);
+        let code = spelling.spell(code);
         if cfg!(debug_assertions) {
             for reason in &unrendered {
                 warn(

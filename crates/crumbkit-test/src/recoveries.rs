@@ -455,7 +455,7 @@ fn known_codes(declared: &[(String, &Code<'_>)], spelling: Spelling) -> Vec<Stri
     known.extend(
         crumbkit::codes::ALL
             .iter()
-            .map(|&code| spelling.spell(code)),
+            .map(|&code| spelling.spell(*code)),
     );
     known
 }
@@ -469,7 +469,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
     let mut declared: Vec<(String, &Code<'_>)> = Vec::new();
     for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
-            declared.push((spelling.spell(code), code));
+            declared.push((spelling.spell(*code), code));
         }
     }
     let known = known_codes(&declared, spelling);
@@ -502,7 +502,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
         declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,
         components,
-        usage: spelling.spell(&crumbkit::codes::CLI_USAGE),
+        usage: spelling.spell(crumbkit::codes::CLI_USAGE),
         allowances,
         problems: Vec::new(),
         report: String::new(),
@@ -531,7 +531,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
         let listed = recoveries
             .unprovoked
             .iter()
-            .any(|entry| spelling.spell(entry.code()) == *text);
+            .any(|entry| spelling.spell(*entry.code()) == *text);
         if !listed && !provoked.contains(text) {
             problems.push(format!(
                 "{text}: no start provokes the declared code, and Recoveries::unprovoked does not list it"
@@ -540,7 +540,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
     }
     report.push_str("codes that no start provokes:\n");
     for entry in recoveries.unprovoked {
-        let text = spelling.spell(entry.code());
+        let text = spelling.spell(*entry.code());
         if !declared.iter().any(|&(_, code)| code == entry.code()) {
             problems.push(format!(
                 "{text}: Recoveries::unprovoked lists the code, and it is not a declared code"

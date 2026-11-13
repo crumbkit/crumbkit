@@ -16,8 +16,8 @@ use super::{
 };
 use crate::tool::{Exit, Failures};
 use crate::{
-    Code, Document, Error, Failure, Listing, Recovery, Row, Run, Sink, Stream, Tool, finish_to,
-    parse_to, stream_to,
+    Code, CodeBuf, Document, Error, Failure, Listing, Recovery, Row, Run, Sink, Spelling, Stream,
+    Tool, ToolName, finish_to, parse_to, stream_to,
 };
 
 /// An observer that names itself when it hears `aliased` and gives fixed
@@ -554,6 +554,29 @@ fn a_stream_reports_its_exit_its_bytes_and_whether_the_budget_stopped_it() {
             ),
         ]
     );
+}
+
+/// An observer that keeps the spelling and the code of the last failure.
+#[derive(Default)]
+struct Keeping(std::sync::Mutex<Option<(Spelling, CodeBuf)>>);
+
+impl Observer for Keeping {
+    fn failed(&self, spelling: Spelling, code: Code<'_>) {
+        *self.0.lock().unwrap() = Some((spelling, code.to_buf()));
+    }
+}
+
+#[test]
+fn an_observer_keeps_a_failed_code_whose_text_is_gone_by_storing_its_buf() {
+    let keeping = Keeping::default();
+    let reason = String::from("overdue");
+    let code = Code::runtime("lending", "loans", &reason).unwrap();
+
+    keeping.failed(Spelling::COLONS.for_tool(ToolName::new("shelf")), code);
+    drop(reason);
+
+    let (spelling, code) = keeping.0.lock().unwrap().take().unwrap();
+    assert_eq!(spelling.spell(code.as_code()), "lending::loans::overdue");
 }
 
 static LOCKED: Code<'static> = Code::new("shelf", "catalogue", "locked");

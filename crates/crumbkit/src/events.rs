@@ -117,7 +117,11 @@ pub trait Observer: Sync {
     /// crumbkit printed a failure or a refusal whose code, in the tool's
     /// `spelling`, is `code`. A batch reports each failure it prints, and a
     /// listing that the output budget cut short reports the budget's code.
-    fn failed(&self, spelling: Spelling, code: &Code<'_>) {
+    ///
+    /// `code` may borrow text that is gone once the call returns, such as
+    /// a code read at run time. An observer that keeps the code stores
+    /// [`Code::to_buf`].
+    fn failed(&self, spelling: Spelling, code: Code<'_>) {
         let _ = (spelling, code);
     }
 
@@ -566,7 +570,7 @@ pub(crate) fn exited(exit: u8) {
 }
 
 /// Reports [`Observer::failed`].
-pub(crate) fn failed(spelling: Spelling, code: &Code<'_>) {
+pub(crate) fn failed(spelling: Spelling, code: Code<'_>) {
     for observer in observers() {
         observer.failed(spelling, code);
     }

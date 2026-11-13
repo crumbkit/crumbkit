@@ -38,7 +38,7 @@ impl<'a> Code<'a> {
     ///     .and_then(|(component, area, reason)| Code::runtime(component, area, reason).ok())
     ///     .unwrap_or(PLUGIN_FAILED);
     ///
-    /// assert_eq!(Spelling::COLONS.spell(&code), "lending::loans::overdue");
+    /// assert_eq!(Spelling::COLONS.spell(code), "lending::loans::overdue");
     /// ```
     ///
     /// # Errors
@@ -85,7 +85,7 @@ impl<'a> Code<'a> {
     ///     Code::runtime(component, area, reason).unwrap().to_buf()
     /// };
     ///
-    /// assert_eq!(Spelling::COLONS.spell(&owned.as_code()), "lending::loans::overdue");
+    /// assert_eq!(Spelling::COLONS.spell(owned.as_code()), "lending::loans::overdue");
     /// ```
     #[must_use]
     pub fn to_buf(self) -> CodeBuf {

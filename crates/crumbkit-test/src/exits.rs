@@ -235,7 +235,7 @@ fn listed(
     if earlier.next().is_none() {
         problems.push(format!(
             "the exit code {code} lists the failure code {}, which the exit code {} lists already, so a run that fails with it cannot exit with both",
-            spelling.spell(failure),
+            spelling.spell(*failure),
             first.code()
         ));
     }
@@ -268,7 +268,7 @@ pub(crate) fn exit_problem(
     status: ExitStatus,
 ) -> Option<String> {
     let path: Vec<&str> = path.iter().map(String::as_str).collect();
-    let is = |code: &Code<'_>| spelling.spell(code) == printed;
+    let is = |code: &Code<'_>| spelling.spell(*code) == printed;
     let exits = tool.get_failures().get_exits();
     // The failures of a range never decide a run's exit, so they count as
     // unlisted.

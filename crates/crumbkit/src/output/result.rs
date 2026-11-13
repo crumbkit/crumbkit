@@ -250,7 +250,7 @@ fn write_rows<T: Rows>(
     }
     match T::SHAPE {
         Shape::Listing | Shape::List if rows > 0 => {
-            prepared.cut(sink, spelling.spell(&code), code, budget)
+            prepared.cut(sink, spelling.spell(code), code, budget)
         }
         Shape::Batch => {
             let listed = failures.unwrap_or_default();

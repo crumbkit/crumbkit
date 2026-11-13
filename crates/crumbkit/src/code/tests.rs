@@ -6,8 +6,21 @@ use proptest::prelude::*;
 
 use super::{Code, Spelling};
 use crate::segment::is_code_segment;
+use crate::{Error, ToolName};
 
 const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+
+#[test]
+fn spell_takes_the_code_a_failure_returns_and_writes_the_tool_s_name_in_crumbkit_s_codes() {
+    let spelling = Spelling::COLONS.for_tool(ToolName::new("shelf"));
+    let error = Error::unclassified("the disk is full");
+
+    assert_eq!(
+        spelling.spell(error.failure().code()),
+        "shelf::report::unchecked"
+    );
+    assert_eq!(spelling.spell(NOT_FOUND), "shelf::books::not_found");
+}
 
 #[test]
 fn a_code_keeps_its_component_area_and_reason() {
@@ -21,7 +34,7 @@ fn a_segment_may_hold_lowercase_letters_digits_and_underscores() {
     let code = Code::new("shelf_2", "books_v2", "not_found_3");
 
     assert_eq!(
-        Spelling::COLONS.spell(&code),
+        Spelling::COLONS.spell(code),
         "shelf_2::books_v2::not_found_3"
     );
 }
@@ -49,7 +62,7 @@ fn a_segment_may_hold_hyphens_between_words() {
     let code = Code::new("book-club", "reading-list", "not-found");
 
     assert_eq!(
-        Spelling::COLONS.spell(&code),
+        Spelling::COLONS.spell(code),
         "book-club::reading-list::not-found"
     );
 }
@@ -92,10 +105,7 @@ fn a_reason_with_a_letter_outside_ascii_is_rejected() {
 
 #[test]
 fn colons_spells_the_segments_joined_by_two_colons() {
-    assert_eq!(
-        Spelling::COLONS.spell(&NOT_FOUND),
-        "shelf::books::not_found"
-    );
+    assert_eq!(Spelling::COLONS.spell(NOT_FOUND), "shelf::books::not_found");
 }
 
 /// Generates a segment that `Code::new` accepts.
@@ -151,7 +161,7 @@ proptest! {
         let [component, area, reason] = segments.map(leak);
         let code = Code::new(component, area, reason);
 
-        let text = Spelling::COLONS.spell(&code);
+        let text = Spelling::COLONS.spell(code);
 
         prop_assert!(
             text.chars().all(|character| matches!(character, '!'..='~')),
@@ -166,7 +176,7 @@ proptest! {
 
 #[test]
 fn the_colon_spelling_splits_a_spelled_code_into_its_segments() {
-    let text = Spelling::COLONS.spell(&NOT_FOUND);
+    let text = Spelling::COLONS.spell(NOT_FOUND);
 
     assert_eq!(
         Spelling::COLONS.split(&text),
@@ -183,7 +193,7 @@ fn split_returns_none_for_text_that_is_not_three_parts() {
 
 #[test]
 fn a_spelling_for_a_tool_splits_as_the_spelling_it_names() {
-    let spelling = Spelling::COLONS.for_tool(crate::ToolName::new("shelf"));
+    let spelling = Spelling::COLONS.for_tool(ToolName::new("shelf"));
 
     assert_eq!(
         spelling.split("lending::loans::overdue"),
@@ -193,7 +203,7 @@ fn a_spelling_for_a_tool_splits_as_the_spelling_it_names() {
 
 #[test]
 fn the_colon_spelling_splits_the_text_it_writes() {
-    let text = Spelling::COLONS.spell(&NOT_FOUND);
+    let text = Spelling::COLONS.spell(NOT_FOUND);
 
     assert_eq!(text, "shelf::books::not_found");
     assert_eq!(
