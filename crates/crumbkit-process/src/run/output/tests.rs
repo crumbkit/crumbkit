@@ -1,4 +1,4 @@
-use super::{Capture, Keeper, LongLine, OverLimit, SLACK};
+use super::{Capture, Keeper, Kind, LongLine, OverLimit, SLACK};
 use crate::{Lines, line_queue};
 
 /// Returns what `capture` kept of `chunks`, and whether any chunk asked to
@@ -16,19 +16,21 @@ fn keep(capture: &Capture, chunks: &[&[u8]]) -> (Vec<u8>, bool, bool) {
 }
 
 #[test]
+fn the_default_capture_discards_the_stream() {
+    assert!(matches!(Capture::default().0, Kind::Discard));
+}
+
+#[test]
 fn a_discarded_stream_keeps_nothing_and_is_never_over_its_limit() {
     assert_eq!(
-        keep(&Capture::Discard, &[b"anything"]),
+        keep(&Capture::discard(), &[b"anything"]),
         (Vec::new(), false, false)
     );
 }
 
 #[test]
 fn a_whole_stream_up_to_its_limit_is_kept_whole() {
-    let whole = Capture::Whole {
-        limit: 4,
-        over: OverLimit::Stop,
-    };
+    let whole = Capture::whole(4).into();
 
     assert_eq!(
         keep(&whole, &[b"ab", b"cd"]),
@@ -38,10 +40,7 @@ fn a_whole_stream_up_to_its_limit_is_kept_whole() {
 
 #[test]
 fn a_whole_stream_past_its_limit_keeps_its_first_bytes_and_asks_once_to_stop() {
-    let whole = Capture::Whole {
-        limit: 4,
-        over: OverLimit::Stop,
-    };
+    let whole = Capture::whole(4).into();
 
     assert_eq!(
         keep(&whole, &[b"abc", b"de", b"fgh"]),
@@ -51,10 +50,7 @@ fn a_whole_stream_past_its_limit_keeps_its_first_bytes_and_asks_once_to_stop() {
 
 #[test]
 fn a_whole_stream_past_its_limit_into_a_sink_never_asks_to_stop() {
-    let whole = Capture::Whole {
-        limit: 4,
-        over: OverLimit::Sink,
-    };
+    let whole = Capture::whole(4).over(OverLimit::Sink).into();
 
     assert_eq!(
         keep(&whole, &[b"abcdef", b"gh"]),
@@ -65,7 +61,7 @@ fn a_whole_stream_past_its_limit_into_a_sink_never_asks_to_stop() {
 #[test]
 fn a_tail_keeps_the_last_bytes_up_to_its_limit() {
     let long = vec![b'x'; 3 * SLACK];
-    let tail = Capture::Tail { limit: 7 };
+    let tail = Capture::tail(7);
 
     assert_eq!(
         keep(&tail, &[&long, b"the end"]),
@@ -78,15 +74,7 @@ fn a_tail_keeps_the_last_bytes_up_to_its_limit() {
 /// the child past them, and the caller's side of its queue.
 fn lines(line: usize, total: usize) -> (Capture, Lines) {
     let (queue, lines) = line_queue(64);
-    let capture = Capture::Lines {
-        queue,
-        line,
-        total,
-        over: OverLimit::Stop,
-        long: LongLine::Over,
-        end: b'\n',
-    };
-    (capture, lines)
+    (Capture::lines(queue, total).line(line).into(), lines)
 }
 
 /// Returns every line that `lines` holds once its run has ended.
@@ -137,16 +125,27 @@ fn a_stream_longer_than_its_total_limit_is_over_it_without_a_long_line() {
 }
 
 #[test]
+fn a_stream_of_lines_with_only_a_total_limit_splits_on_newlines_and_stops_past_the_total() {
+    let (queue, lines) = line_queue(64);
+    let capture = Capture::lines(queue, 8).into();
+    let mut keeper = Keeper::new(&capture);
+
+    assert!(!keeper.add(b"a\0cdefg\n"));
+    assert!(keeper.add(b"h"));
+    let kept = keeper.finish();
+
+    assert!(kept.over_limit());
+    assert!(!kept.long_line());
+    assert_eq!(received(&capture, &lines), [b"a\0cdefg"]);
+}
+
+#[test]
 fn a_stream_of_lines_into_a_sink_never_asks_to_stop() {
     let (queue, lines) = line_queue(64);
-    let capture = Capture::Lines {
-        queue,
-        line: 2,
-        total: 1024,
-        over: OverLimit::Sink,
-        long: LongLine::Over,
-        end: b'\n',
-    };
+    let capture = Capture::lines(queue, 1024)
+        .line(2)
+        .over(OverLimit::Sink)
+        .into();
 
     let (_, over, stopped) = keep(&capture, &[b"ab\nabc\nd\n"]);
 
@@ -160,15 +159,8 @@ fn a_stream_of_lines_into_a_sink_never_asks_to_stop() {
 /// other side.
 fn skipping(line: usize, total: usize, end: u8, long: LongLine) -> (Capture, Lines) {
     let (queue, lines) = line_queue(16);
-    let capture = Capture::Lines {
-        queue,
-        line,
-        total,
-        over: OverLimit::Stop,
-        long,
-        end,
-    };
-    (capture, lines)
+    let capture = Capture::lines(queue, total).line(line).long(long).end(end);
+    (capture.into(), lines)
 }
 
 /// Returns what `lines` holds, once its keeper has finished.

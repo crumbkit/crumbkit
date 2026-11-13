@@ -23,7 +23,7 @@ mod spawn;
 mod tests;
 
 pub use self::finished::{ChildFinished, RunError};
-pub use self::output::{Capture, Captured, LongLine, OverLimit};
+pub use self::output::{Capture, Captured, LineCapture, LongLine, OverLimit, WholeCapture};
 use self::output::{Keeper, OutputCopy};
 use self::pipes::{Ends, Kept};
 use self::spawn::AroundSpawn;
@@ -126,15 +126,15 @@ impl RunOptions {
 
     /// Sets what the run keeps of the child's standard output.
     #[must_use]
-    pub fn stdout(mut self, capture: Capture) -> Self {
-        self.stdout = capture;
+    pub fn stdout(mut self, capture: impl Into<Capture>) -> Self {
+        self.stdout = capture.into();
         self
     }
 
     /// Sets what the run keeps of the child's standard error.
     #[must_use]
-    pub fn stderr(mut self, capture: Capture) -> Self {
-        self.stderr = capture;
+    pub fn stderr(mut self, capture: impl Into<Capture>) -> Self {
+        self.stderr = capture.into();
         self
     }
 
@@ -236,7 +236,7 @@ impl RunOptions {
     /// whatever the capture keeps.
     ///
     /// A chunk can end in the middle of a line or of a UTF-8 character. The
-    /// run does not read a stream with [`Capture::Inherit`], so its function
+    /// run does not read a stream with [`Capture::inherit`], so its function
     /// receives nothing.
     /// Each stream's function runs on that stream's reader thread, so the
     /// two streams can interleave. A function that blocks holds the reader:
@@ -371,7 +371,7 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
 /// copy needs a pipe even when the capture keeps nothing. An inherited
 /// stream stays the tool's own, so a copy of it receives nothing.
 fn output_stdio(capture: &Capture, copy: Option<&OutputCopy>) -> Stdio {
-    if copy.is_some() && !matches!(capture, Capture::Inherit) {
+    if copy.is_some() && !capture.inherits() {
         Stdio::piped()
     } else {
         capture.stdio()

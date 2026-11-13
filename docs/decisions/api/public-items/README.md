@@ -14,6 +14,7 @@
 - [ADR-0183. Small corrections to the public API before 0.2.0](0183-small-public-api-corrections.md)
 - [ADR-0184. A run's handle, a run's settings and a printed length of time get their own names](0184-run-runoptions-and-elapsed.md)
 - [ADR-0186. Three seams without a user removed](0186-three-seams-without-a-user-removed.md)
+- [ADR-0215. A process capture is built with constructors](0215-a-process-capture-is-built-with-constructors.md)
 
 ## Context
 

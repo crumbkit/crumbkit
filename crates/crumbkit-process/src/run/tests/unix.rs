@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use super::super::{
     Cancel, Capture, ChildFinished, DRAIN_GRACE, Escalation, Input, Outcome, OverLimit, RunError,
-    RunOptions, StopReason, control, run,
+    RunOptions, StopReason, WholeCapture, control, run,
 };
 use crate::Status;
 use crate::notice::Notice;
@@ -18,10 +18,7 @@ mod reap;
 mod survivors;
 
 /// Keeps up to 1 MiB of each stream whole and stops the child past it.
-const WHOLE: Capture = Capture::Whole {
-    limit: 1 << 20,
-    over: OverLimit::Stop,
-};
+const WHOLE: WholeCapture = Capture::whole(1 << 20);
 
 /// The settings that keep both streams whole.
 fn kept() -> RunOptions {
@@ -92,7 +89,7 @@ fn stdin_bytes_reach_the_child_and_end_with_the_end_of_its_input() {
 
 /// Returns the inode of the child's standard output under `capture`, which
 /// the child prints on standard error.
-fn inode_of_stdout(capture: Capture) -> u64 {
+fn inode_of_stdout(capture: impl Into<Capture>) -> u64 {
     inode_under(&RunOptions::new().stdout(capture).stderr(WHOLE))
 }
 
@@ -112,7 +109,7 @@ fn own_inode() -> u64 {
 
 #[test]
 fn an_inherited_stream_is_the_tools_own_and_the_run_keeps_nothing_of_it() {
-    assert_eq!(inode_of_stdout(Capture::Inherit), own_inode());
+    assert_eq!(inode_of_stdout(Capture::inherit()), own_inode());
 }
 
 #[test]
@@ -299,10 +296,7 @@ fn a_grace_too_long_for_the_clock_waits_for_the_child_without_a_panic() {
 
 #[test]
 fn standard_output_past_its_limit_stops_the_child() {
-    let limit = Capture::Whole {
-        limit: 1024,
-        over: OverLimit::Stop,
-    };
+    let limit = Capture::whole(1024);
     let started = Instant::now();
 
     let finished = run_sh("head -c 4096 /dev/zero; sleep 30", &kept().stdout(limit));
@@ -316,10 +310,7 @@ fn standard_output_past_its_limit_stops_the_child() {
 
 #[test]
 fn standard_output_past_its_limit_into_a_sink_is_read_to_its_end() {
-    let limit = Capture::Whole {
-        limit: 1024,
-        over: OverLimit::Sink,
-    };
+    let limit = Capture::whole(1024).over(OverLimit::Sink);
 
     let finished = run_sh(
         "head -c 300000 /dev/zero; echo done >&2",
@@ -336,7 +327,7 @@ fn standard_output_past_its_limit_into_a_sink_is_read_to_its_end() {
 fn standard_error_keeps_its_last_bytes() {
     let finished = run_sh(
         "head -c 100000 /dev/zero >&2; printf 'the end' >&2",
-        &kept().stderr(Capture::Tail { limit: 7 }),
+        &kept().stderr(Capture::tail(7)),
     );
 
     assert_eq!(finished.stderr().bytes(), b"the end");

@@ -23,9 +23,7 @@ fn collecting() -> (Seen, impl Fn(&[u8]) + Send + Sync + 'static) {
 #[test]
 fn a_copy_sees_the_whole_stream_while_the_capture_keeps_its_limit() {
     let (seen, copy) = collecting();
-    let options = RunOptions::new()
-        .stdout(Capture::Tail { limit: 3 })
-        .stdout_copy(copy);
+    let options = RunOptions::new().stdout(Capture::tail(3)).stdout_copy(copy);
 
     let finished = run_sh("printf abcdef", &options);
 
@@ -85,7 +83,7 @@ fn a_copy_that_panics_lets_the_child_run_to_its_end_and_fails_the_run() {
 #[test]
 fn a_copy_of_an_inherited_stream_leaves_the_stream_the_tools_own() {
     let options = RunOptions::new()
-        .stdout(Capture::Inherit)
+        .stdout(Capture::inherit())
         .stderr(super::WHOLE)
         .stdout_copy(|_| panic!("the run gave a chunk of an inherited stream"));
 

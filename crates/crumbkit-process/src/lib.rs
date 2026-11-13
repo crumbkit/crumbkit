@@ -35,6 +35,6 @@ pub use zeroize::Zeroizing;
 
 pub use self::outcome::{Outcome, Status, StopReason};
 pub use self::run::{
-    Capture, Captured, ChildFinished, DRAIN_GRACE, Input, LongLine, OverLimit, REAP_GRACE,
-    RunError, RunOptions, Spawn, Spawned, run,
+    Capture, Captured, ChildFinished, DRAIN_GRACE, Input, LineCapture, LongLine, OverLimit,
+    REAP_GRACE, RunError, RunOptions, Spawn, Spawned, WholeCapture, run,
 };

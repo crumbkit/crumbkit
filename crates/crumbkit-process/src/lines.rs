@@ -20,7 +20,7 @@ mod tests;
 
 /// Returns a queue that holds at most `most` lines, or one line when
 /// `most` is 0: the side that a run fills, which
-/// [`Capture::Lines`](crate::Capture::Lines) takes, and the caller's side.
+/// [`Capture::lines`](crate::Capture::lines) takes, and the caller's side.
 ///
 /// Each queue serves one run. The run ends the queue when it returns, on
 /// every path, including a start failure and a cancel before the start, so
@@ -61,7 +61,7 @@ struct State {
 }
 
 /// The side of a line queue that a run fills. A run takes it in
-/// [`Capture::Lines`](crate::Capture::Lines).
+/// [`Capture::lines`](crate::Capture::lines).
 #[derive(Clone)]
 pub struct LineQueue(Arc<Shared>);
 

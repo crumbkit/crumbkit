@@ -202,8 +202,8 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | --- | --- | --- | --- | --- | --- |
 | `crumbkit_child::hand_over` | Inheriting the terminal by hand | `.status()` with inherited streams as the whole response | `\.status\(\)` `\.exec\(\)` `Stdio::inherit` | 0.1 | `hand-over` |
 | `crumbkit_process::run`, `RunOptions`, `ChildFinished` | `.output()` with no limit or deadline | Child output read whole | `\.output\(\)` `wait_with_output` | 0.2.0 | `process-run` |
-| `Capture::Whole`, `Tail`, `Discard`, `OverLimit` | Reading into an unbounded buffer | `read_to_end` on a child pipe | `read_to_end` | 0.2.0 | `process-run` |
-| `Capture::Lines`, `line_queue`, `Lines` | A reader thread and a channel | `BufReader::new(child.stdout` | `BufReader::new\(.*stdout` | 0.2.0 | `process-run` |
+| `Capture::whole`, `tail`, `discard`, `OverLimit` | Reading into an unbounded buffer | `read_to_end` on a child pipe | `read_to_end` | 0.2.0 | `process-run` |
+| `Capture::lines`, `line_queue`, `Lines` | A reader thread and a channel | `BufReader::new(child.stdout` | `BufReader::new\(.*stdout` | 0.2.0 | `process-run` |
 | `RunOptions::deadline`, `Cancel`, `Outcome`, `StopReason` | `try_wait` polling and a timer | A loop around `try_wait` | `try_wait` | 0.2.0 | `process-run` |
 | `Escalation`, `Signal` | `kill` then sleep then `kill -9` | A hand-written stop sequence | `\.kill\(\)` `SIGKILL` | 0.2.0 | `process-run` |
 | `Scope`, process group or job object | `setsid` or `process_group` by hand | `process_group(0)`, `pre_exec` | `process_group\(` `pre_exec` | 0.2.0 | `process-run` |
@@ -211,11 +211,11 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `forward` feature, `forward::install`, `forward::clean_up`, `forward::handed_over` | Own handler that signals children | `signal_hook` or `ctrlc` around children | `ctrlc` `signal_hook` `SIGINT` | 0.2.0 | `signals` |
 | `RunOptions::around_spawn`, `Spawn`, `Spawned` | A lock held around `spawn` by hand | A lock guards a spawn | `\.spawn\(\)` | 0.3.0 | `process-run` |
 | `RunOptions::stdout_copy`, `stderr_copy` | A tee thread | Output shown and captured by hand | `\.spawn\(\)` | 0.3.0 | `process-run` |
-| `Capture::Inherit` | Leaving the crate for one interactive step | `Stdio::inherit` in a child that returns | `Stdio::inherit` | 0.3.0 | `process-run` |
+| `Capture::inherit` | Leaving the crate for one interactive step | `Stdio::inherit` in a child that returns | `Stdio::inherit` | 0.3.0 | `process-run` |
 | `RunOptions::report_survivors`, `ChildFinished::survivors` | Scanning for left-over processes | `pgrep`, `ps` after a run | `pgrep` `"ps"` | 0.3.0 | `process-run` |
 | `Input::File` | A pipe fed by hand | `Stdio::from` a file | `Stdio::from\(` | 0.3.0 | `process-run` |
 | `Input::Bytes`, cleared on drop by `Zeroizing` | A secret left in a `Vec` | A secret written to a child's stdin | `write_all\(` `Zeroizing` | `Input::Bytes` 0.2.0, cleared on drop 0.3.0 | `process-run` |
-| `LongLine`, `Capture::Lines` `end` | Splitting on NUL by hand | `split\(b'\0'` on child output | `split\(.*\\0` | 0.3.0 | `process-run` |
+| `LongLine`, `LineCapture::end` | Splitting on NUL by hand | `split\(b'\0'` on child output | `split\(.*\\0` | 0.3.0 | `process-run` |
 
 ## Known gaps
 

@@ -71,25 +71,30 @@ failure, when the child closes its input.
 does not stay in the tool's memory. It clears that buffer alone, and the
 `Debug` output of the settings prints only its length.
 
-Each output stream has a `Capture`:
+Each output stream has a `Capture`, which one constructor for each kind
+returns. The default is `Capture::discard()`.
 
-- `Discard` sends the stream to the null device.
-- `Inherit` sends the stream to the tool's own. With `Scope::Child` and
-  `Input::Inherit`, a child that the person answers stays in the tool's
-  foreground group, and the tool carries on when it ends.
-- `Whole` keeps the stream's first `limit` bytes. A longer stream is over
-  its limit, and `OverLimit` decides what happens then: `Stop` stops the
-  child, and `Sink` reads the rest of the stream and drops it, so the child
-  runs to its end.
-- `Tail` reads the whole stream and keeps its last `limit` bytes.
-- `Lines` splits the stream on each `end` byte, such as a newline or a NUL,
-  and pushes each line, without that byte, to a queue from `line_queue` while
-  the child runs. A last line with no end is pushed when the stream ends. The
-  first time the stream passes `total` bytes, it is over its limit, and
-  `OverLimit` decides what happens as for `Whole`. No line is pushed after
-  that. A line that passes `line` bytes does the same with `LongLine::Over`.
-  With `LongLine::Skip` the run drops that line up to its end and delivers
-  the next one, and `Captured::long_line` says that it dropped one.
+- `Capture::discard()` sends the stream to the null device.
+- `Capture::inherit()` sends the stream to the tool's own. With
+  `Scope::Child` and `Input::Inherit`, a child that the person answers stays
+  in the tool's foreground group, and the tool carries on when it ends.
+- `Capture::whole(limit)` keeps the stream's first `limit` bytes. A longer
+  stream is over its limit, and `.over(..)` takes an `OverLimit` that decides
+  what happens then: `Stop`, the default, stops the child, and `Sink` reads
+  the rest of the stream and drops it, so the child runs to its end.
+- `Capture::tail(limit)` reads the whole stream and keeps its last `limit`
+  bytes.
+- `Capture::lines(queue, total)` splits the stream into lines and pushes
+  each line, without its end, to a queue from `line_queue` while the child
+  runs. A last line with no end is pushed when the stream ends. The first
+  time the stream passes `total` bytes, it is over its limit, `.over(..)`
+  decides what happens as for `whole`, and no line is pushed after that.
+  `.end(..)` sets the byte that ends a line, such as a NUL, and the default
+  is a newline. `.line(..)` sets the most bytes of one line, and without it
+  only `total` applies. A line that passes it does the same as the stream
+  with `LongLine::Over`, the default of `.long(..)`. With `LongLine::Skip` the
+  run drops that line up to its end and delivers the next one, and
+  `Captured::long_line` says that it dropped one.
 
 `RunOptions::stdout_copy` and `stderr_copy` give a function each chunk of the
 stream as the run reads it, whatever the capture keeps, so a tool can show the

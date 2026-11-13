@@ -1,14 +1,11 @@
 use std::time::{Duration, Instant};
 
-use super::super::{Cancel, Capture, Outcome, OverLimit, RunOptions, StopReason, run};
+use super::super::{Cancel, Capture, Outcome, RunOptions, StopReason, WholeCapture, run};
 use crate::testing::{cmd, gone, pid_file, pid_in, remove, started_grandchild};
 use crate::{Scope, Status};
 
 /// Keeps up to 1 MiB of standard output whole.
-const WHOLE: Capture = Capture::Whole {
-    limit: 1 << 20,
-    over: OverLimit::Stop,
-};
+const WHOLE: WholeCapture = Capture::whole(1 << 20);
 
 /// Returns the standard output of a run as text.
 fn text(bytes: &[u8]) -> String {
