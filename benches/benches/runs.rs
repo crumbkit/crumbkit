@@ -69,12 +69,11 @@ struct Limits {
 // (several skills) also raised `commands list`, which walks every command.
 //
 // The cost of those merges is work that every run does but does not need:
-// the profile /suites/crumbkit-bench-attribution/runs/20261114T0130Z-a898
-// shows that clap builds the argument trees of the built-in groups and drops
-// them again, which is about 120,000 of the 149,222 extra instructions of
-// `shelf -h`. The planned fix is
-// /tasks/a-built-in-group-builds-its-arguments-only-when-its-word-is.md, and
-// the limits come down with the counts when it lands.
+// a profile of `shelf -h` shows that clap builds the argument trees of the
+// built-in groups and drops them again, which is about 120,000 of the 149,222
+// extra instructions of `shelf -h`. Issue #313 tracks the failing bench job.
+// A later change should make a built-in group build its arguments only when
+// its word is used, and the limits come down with the counts when it lands.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {

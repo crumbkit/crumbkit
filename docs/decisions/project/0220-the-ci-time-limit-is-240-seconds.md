@@ -9,9 +9,10 @@
 ADR-0011 put a limit on the median wall time of pull-request runs of
 `ci.yml` in the nightly job, and CI-3 set it at 180 seconds. On 2026-11-13
 the median of the last 20 successful pull-request runs was 202 seconds, so
-the nightly job failed its `cargo xtask ci-time` step. The runs take longer
-because the workspace grew and each job builds more code. Nothing in the
-workflow broke.
+the nightly job failed its `cargo xtask ci-time` step. A later run of
+`scheduled.yml` (run 43579940227, at 1e6fb9db) measured `ci-time` at 202
+seconds. The cause of the slowdown was not investigated, and no workflow
+step broke.
 
 ## Decision
 
