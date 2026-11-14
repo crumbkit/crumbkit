@@ -256,6 +256,7 @@ dependencies = [
 name = "crumbkit-durable"
 version = "0.5.0"
 dependencies = [
+ "rustix",
  "tempfile",
 ]
 

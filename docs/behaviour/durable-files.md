@@ -2,18 +2,22 @@
 
 This page covers the crumbkit-durable crate, which replaces a file so that
 a reader, a crash or a power loss never leaves it holding part of the old
-bytes and part of the new. The rustdoc of
-[`write_atomically`](../../crates/crumbkit-durable/src/write.rs) describes
-the item.
+bytes and part of the new, and locks a lock file so that two holders never
+both hold it. The rustdoc of
+[`write_atomically`](../../crates/crumbkit-durable/src/write.rs) and
+[`PathLock`](../../crates/crumbkit-durable/src/lock.rs) describes the
+items.
 
 ## The crumbkit-durable crate
 
-The published crumbkit-durable crate depends only on the standard library
-and on no other crumbkit crate, so a tool that does not use crumbkit can
-replace its files through it. It holds the file writes that every tool
-needs to get right in the same way, and prints nothing.
+The published crumbkit-durable crate depends on no other crumbkit crate,
+so a tool that does not use crumbkit can replace and lock its files through
+it. On Unix it depends on rustix's `fs` feature, for the `O_NOFOLLOW` and
+`O_NONBLOCK` flags that std does not name, so rustix is a new dependency
+on Unix for a tool outside the crumbkit workspace. It holds the file writes and locks that every tool needs to get
+right in the same way, and prints nothing.
 
-Why: ADR-0221.
+Why: ADR-0221, ADR-0222.
 
 ## Replacing a file
 
@@ -83,6 +87,84 @@ that a crash left behind.
 
 Why: ADR-0221.
 
+## Locking a lock file
+
+`PathLock::acquire_unless(path, deadline, give_up)` takes an exclusive lock
+on `path`, a lock file that the caller names for the lock alone, and
+`PathLock::acquire(path, deadline)` is the same call with a `give_up` that
+returns false. The lock is released when the `PathLock` drops or the
+process ends. crumbkit never renames, truncates or removes a lock file, so
+the file stays, empty and unlocked, after the release.
+
+1. It opens `path` for writing, creating it with `0600` on Unix when it is
+   absent. The open passes `O_NOFOLLOW`, so a symbolic link at `path` is
+   refused, and `O_NONBLOCK`, so a FIFO at `path` that no program reads
+   is refused at once instead of blocking the open past the deadline.
+2. It calls `try_lock`, which is `flock` on Unix and `LockFileEx` on
+   Windows. While another holder has the lock, it calls `give_up`, returns
+   `Busy` when that returns true or the deadline has passed, and otherwise
+   sleeps 5 ms, or what is left before the deadline, and tries the same
+   file again. A deadline that has passed tries once.
+3. On Unix, once it holds the lock, it compares the device and inode of the
+   open file, from `fstat`, with those of the file at `path`, from `lstat`.
+   When they differ or `path` is gone, another program replaced or removed
+   the file while the call waited, so it releases the lock and starts again
+   at step 1. That is not contention, so the deadline does not stop it, and
+   after the third reopen a fourth change returns `Busy`.
+
+While no other program replaces or removes the lock file, two holders
+therefore never both return from `acquire_unless` holding different files
+that were at `path`. Another program can still remove or
+replace the lock file while a holder has it, and a second acquirer then
+locks the new file. `still_current` compares the identities again and is
+false once that happened, so a holder about to change what the lock guards
+calls it first.
+
+The lock belongs to the open file, so it is not re-entrant: a second
+acquire of one path in one process waits for the first. A child that
+`fork` makes without `exec` keeps the lock until it exits, and std's
+`O_CLOEXEC` closes the file in every program that `exec` starts.
+
+An uncontended acquire makes four system calls, the open, `flock`, `fstat`
+and `lstat`, and a wait repeats only `flock`.
+
+Why: ADR-0222.
+
+## Lock failures
+
+A failure returns a `LockError`. `Busy` names the path and how long the
+call waited, and converts to an `io::Error` of kind `TimedOut`. `Io` names
+the path, the `LockStep` that failed and the operating system's error, and
+converts to an `io::Error` of that error's kind.
+
+| Error | What fails | State left |
+| --- | --- | --- |
+| `Io` at `Open` | the directory is missing, permission is refused, a symbolic link is at the path (`ELOOP`, or `EMLINK` on FreeBSD), or a FIFO that no program reads is at the path (`ENXIO`) | nothing held |
+| `Io` at `Lock` | an error other than the lock being held | nothing held |
+| `Busy` | another holder kept the lock past the deadline, `give_up` returned true, or the file changed a fourth time | nothing held |
+| `Io` at `Identify` | `fstat` fails, or `lstat` fails other than with not found | the lock released |
+
+Why: ADR-0222.
+
+## The lock's lifecycle
+
+| Transition | Event | A crash here leaves | Recovery |
+| --- | --- | --- | --- |
+| absent to present | the open with `O_CREAT \| O_NOFOLLOW` and `0600` | an empty lock file, nothing held | none needed, because nothing removes it |
+| present to waiting | `try_lock` finds the lock held | nothing held | none |
+| waiting to busy | the deadline passes or `give_up` returns true | nothing held | the caller tries later |
+| waiting to locked | `try_lock` succeeds | a lock that the operating system releases on exit | none |
+| locked to reopened | the identities differ or the path is gone | the lock on the old file released | the call opens the path again, at most 3 times |
+| locked to held | the identities match | a lock that the operating system releases on exit | none |
+| held to stale | another program removes or replaces the file, on Unix | a second acquirer may hold the new file | the holder calls `still_current` before its next destructive step |
+| held to released | the `PathLock` drops or the process ends | the lock file, unlocked | none |
+
+`acquire_unless` returns only after the locked file was the file at the
+path, checked after the lock was taken, so a caller's first read under the
+lock comes after the check.
+
+Why: ADR-0222.
+
 ## Platforms
 
 - Linux is tested on every pull request, and macOS on each push to `main`.
@@ -90,7 +172,12 @@ Why: ADR-0221.
   cannot open a directory there without `FILE_FLAG_BACKUP_SEMANTICS`, and
   NTFS journals the rename. `mode` is ignored, and the file inherits its
   directory's access list.
+- On Windows a lock file opens without `FILE_SHARE_DELETE`, so no process
+  can remove it or rename another file over it while it is open. The
+  identity check does not run, `still_current` returns true, and a
+  symbolic link at the path is followed. The lock is mandatory there, so a
+  read or write of the lock file fails while another handle holds it.
 - Other Unix systems build and are untested. Network file systems are out
   of scope.
 
-Why: ADR-0221, ADR-0003.
+Why: ADR-0221, ADR-0222, ADR-0003.

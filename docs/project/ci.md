@@ -64,9 +64,8 @@ test and lint crumbkit-process with it.
 
 A separate run for crumbkit-usage or crumbkit-child would repeat what the
 workspace runs check. crumbkit-child's own tests run with no usage log, so
-they cover the child's SIGINT handler without the log's signal thread. Each
-build is one more step in an existing job, because a new job repeats the
-setup time. Clippy runs once per build, because a single `--all-features`
+they cover the child's SIGINT handler without the log's signal thread.
+Clippy runs once per build, because a single `--all-features`
 run misses a warning that only one build shows.
 
 Why: ADR-0011.

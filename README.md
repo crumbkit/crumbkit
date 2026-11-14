@@ -32,7 +32,8 @@ dependencies that a tool needs.
 - [crumbkit-process](crates/crumbkit-process/README.md) runs another
   program and reads its output within limits and a deadline.
 - [crumbkit-durable](crates/crumbkit-durable/README.md) replaces a file
-  atomically, so a crash never leaves part of it written.
+  atomically, so a crash never leaves part of it written, and locks a lock
+  file.
 - [crumbkit-markdown](crates/crumbkit-markdown/README.md) writes a Markdown
   reference of every command.
 - [cargo-crumbkit](crates/cargo-crumbkit/README.md) is the
