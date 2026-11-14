@@ -38,12 +38,17 @@ pub(crate) fn sync_directory(directory: &Path) -> io::Result<()> {
 }
 
 /// Opens the lock file `path` for writing, creating it with `0600` when it
-/// is absent, and fails with `ELOOP` when `path` is a symbolic link.
+/// is absent. It fails when `path` is a symbolic link, with `ELOOP` on
+/// Linux and macOS and `EMLINK` on FreeBSD, and with `ENXIO` when `path` is
+/// a FIFO that no program reads.
 ///
-/// The open never truncates the file. `O_NOFOLLOW` comes from rustix,
-/// because std names no open flag. std opens with `O_CLOEXEC` and retries
-/// on `EINTR`.
+/// The open never truncates the file. `O_NOFOLLOW` refuses the link, and
+/// `O_NONBLOCK` keeps the open of a FIFO from waiting for a reader past the
+/// deadline; it changes nothing for a regular file. Both flags come from
+/// rustix, because std names no open flag. std opens with `O_CLOEXEC` and
+/// retries on `EINTR`.
 pub(crate) fn open_lock(path: &Path) -> io::Result<File> {
+    let flags = rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK;
     #[expect(
         clippy::disallowed_methods,
         reason = "crumbkit-durable owns the creation of a lock file"
@@ -53,7 +58,7 @@ pub(crate) fn open_lock(path: &Path) -> io::Result<File> {
         .create(true)
         .truncate(false)
         .mode(0o600)
-        .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
+        .custom_flags(flags.bits().cast_signed())
         .open(path)
 }
 

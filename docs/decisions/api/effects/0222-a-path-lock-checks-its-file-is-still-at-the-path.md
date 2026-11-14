@@ -34,8 +34,9 @@ locks the new file at the path, and both act as if they held the lock.
   removes or replaces it while it is open, and the identity check does not
   run.
 - The crate depends on rustix's `fs` feature on Unix, for the `O_NOFOLLOW`
-  flag. tempfile already brings it into the lock file, so it adds no crate
-  to a build. The crate still depends on no other crumbkit crate.
+  and `O_NONBLOCK` flags. rustix is a new dependency on Unix for a tool
+  outside the crumbkit workspace; inside it, tempfile already brings rustix
+  with that feature. The crate still depends on no other crumbkit crate.
 
 ## Consequences
 

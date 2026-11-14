@@ -116,7 +116,8 @@ fn an_acquire_with_a_passed_deadline_tries_once() {
     {
         let old = super::open(&path).unwrap();
         replace(dir.path(), &path);
-        let lock = super::lock_opened(&path, old, Instant::now(), &|| false).unwrap();
+        let now = Instant::now();
+        let lock = super::lock_opened(&path, old, now, now, &|| false).unwrap();
         assert!(lock.still_current().unwrap());
     }
 }
@@ -135,15 +136,17 @@ fn give_up_ends_the_wait_with_busy_before_the_deadline() {
     assert!(waited < Duration::from_secs(1), "waited {waited:?}");
 }
 
+/// Holds the lock file in a temporary directory, starts a second acquire
+/// that waits on it, lets `change` replace or remove the file, and checks
+/// that the second acquire then holds the file at the path.
 #[cfg(unix)]
-#[test]
-fn a_holder_waiting_when_the_lock_file_is_replaced_locks_the_file_now_at_the_path() {
+fn a_waiting_holder_locks_the_file_at_the_path_after(change: fn(&Path, &Path)) {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.lock");
     let first = PathLock::acquire(&path, later()).unwrap();
 
     let second = wait_in_thread(&path);
-    replace(dir.path(), &path);
+    change(dir.path(), &path);
     drop(first);
 
     let second = second.join().unwrap().unwrap();
@@ -154,19 +157,14 @@ fn a_holder_waiting_when_the_lock_file_is_replaced_locks_the_file_now_at_the_pat
 
 #[cfg(unix)]
 #[test]
+fn a_holder_waiting_when_the_lock_file_is_replaced_locks_the_file_now_at_the_path() {
+    a_waiting_holder_locks_the_file_at_the_path_after(replace);
+}
+
+#[cfg(unix)]
+#[test]
 fn a_holder_waiting_when_the_lock_file_is_removed_locks_a_new_file_at_the_path() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("state.lock");
-    let first = PathLock::acquire(&path, later()).unwrap();
-
-    let second = wait_in_thread(&path);
-    remove(&path);
-    drop(first);
-
-    let second = second.join().unwrap().unwrap();
-    assert!(second.still_current().unwrap());
-    let third = PathLock::acquire(&path, Instant::now()).unwrap_err();
-    assert!(matches!(third, LockError::Busy { .. }), "{third:?}");
+    a_waiting_holder_locks_the_file_at_the_path_after(|_, path| remove(path));
 }
 
 #[cfg(unix)]
@@ -208,6 +206,30 @@ fn a_symbolic_link_at_the_lock_path_is_refused() {
         "{error:?}"
     );
     assert!(!target.exists(), "the open followed the link");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_fifo_that_no_program_reads_is_refused_without_waiting() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.lock");
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test makes a FIFO with mkfifo, because rustix has no mkfifo on macOS"
+    )]
+    let made = std::process::Command::new("mkfifo").arg(&path).status();
+    assert!(made.unwrap().success());
+
+    let error = PathLock::acquire(&path, later()).unwrap_err();
+
+    let LockError::Io { step, source, .. } = &error else {
+        panic!("expected Io, got {error:?}");
+    };
+    assert_eq!(*step, super::LockStep::Open);
+    assert_eq!(
+        source.raw_os_error(),
+        Some(rustix::io::Errno::NXIO.raw_os_error())
+    );
 }
 
 #[cfg(windows)]

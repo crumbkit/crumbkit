@@ -26,11 +26,12 @@ const REOPENS: u32 = 3;
 ///
 /// The lock file is a file the caller names for the lock alone. crumbkit
 /// never renames, truncates or removes it, and leaves it in place after the
-/// lock is released. Two holders never both return from
-/// [`PathLock::acquire_unless`] holding different files that were each at
-/// the path. Another program can still remove or replace the file while a
-/// holder has it on Unix, after which a second acquire locks the new file;
-/// the holder learns of this from [`PathLock::still_current`].
+/// lock is released. While no other program replaces or removes the file,
+/// two holders never both return from [`PathLock::acquire_unless`] holding
+/// different files that were each at the path. Another program can still
+/// remove or replace the file while a holder has it on Unix, after which a
+/// second acquire locks the new file; the holder learns of this from
+/// [`PathLock::still_current`].
 ///
 /// The lock is a `flock` on Unix and `LockFileEx` on Windows, and belongs
 /// to the open file, so a second acquire of one path in one process waits
@@ -166,7 +167,8 @@ impl PathLock {
     /// Returns [`LockError::Busy`] when the deadline passes or `give_up`
     /// returns true while another holder has the lock, and after the third
     /// reopen finds the file changed again. Returns [`LockError::Io`] when
-    /// the open fails, which includes a symbolic link at `path` on Unix,
+    /// the open fails, which includes a symbolic link at `path` on Unix and
+    /// a FIFO there that no program reads,
     /// when the lock fails other than by being held, or when reading the
     /// identity of either file fails other than by the path being gone.
     pub fn acquire_unless(
@@ -174,8 +176,9 @@ impl PathLock {
         deadline: Instant,
         give_up: &dyn Fn() -> bool,
     ) -> Result<Self, LockError> {
+        let started = Instant::now();
         let file = open(path)?;
-        lock_opened(path, file, deadline, give_up)
+        lock_opened(path, file, started, deadline, give_up)
     }
 
     /// Returns whether the locked file is still the file at its path, which
@@ -203,16 +206,17 @@ fn open(path: &Path) -> Result<File, LockError> {
     })
 }
 
-/// Locks `file`, which was opened at `path`, waits as
+/// Locks `file`, which was opened at `path` after `started`, waits as
 /// [`PathLock::acquire_unless`] says, and opens `path` again while the
-/// locked file is no longer the file there.
+/// locked file is no longer the file there. `Busy` counts its wait from
+/// `started`, so the wait includes the open.
 fn lock_opened(
     path: &Path,
     mut file: File,
+    started: Instant,
     deadline: Instant,
     give_up: &dyn Fn() -> bool,
 ) -> Result<PathLock, LockError> {
-    let started = Instant::now();
     let fail = |step, source| LockError::Io {
         path: path.to_path_buf(),
         step,
