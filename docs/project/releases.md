@@ -1,13 +1,13 @@
 # Releases
 
-The ten published crates, crumbkit-derive, crumbkit, crumbkit-child,
-crumbkit-process, crumbkit-test, crumbkit-aliases, crumbkit-usage,
-crumbkit-skills, crumbkit-markdown and cargo-crumbkit, share one version and
-one root `CHANGELOG.md`. Each release has one tag, `v` and the version, for
-all ten. They release together, because crumbkit re-exports
-crumbkit-derive's macro and seven others depend on crumbkit. crumbkit-process depends on no other
-crumbkit crate and shares the version so that one changelog and one tag
-cover every crate. `release-plz.toml` gives the changelog and the tag to crumbkit
+The eleven published crates, crumbkit-derive, crumbkit, crumbkit-child,
+crumbkit-process, crumbkit-durable, crumbkit-test, crumbkit-aliases,
+crumbkit-usage, crumbkit-skills, crumbkit-markdown and cargo-crumbkit, share
+one version and one root `CHANGELOG.md`. Each release has one tag, `v` and
+the version. They release together, because crumbkit
+re-exports crumbkit-derive's macro and seven others depend on crumbkit.
+crumbkit-process and crumbkit-durable depend on no other crumbkit crate and
+share the version so one changelog and one tag cover every crate. `release-plz.toml` gives the changelog and the tag to crumbkit
 alone.
 
 Why: ADR-0012, ADR-0097.

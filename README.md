@@ -10,7 +10,7 @@ your own `main`, and you adopt only the parts you want.
 
 ## Crates
 
-The ten crates share version 0.4 on crates.io, and their API
+The eleven crates share version 0.5, and their API
 reference is on [docs.rs](https://docs.rs/crumbkit). The crumbkit crate README's
 [Adding it](crates/crumbkit/README.md#adding-it) section shows the
 dependencies that a tool needs.
@@ -31,6 +31,8 @@ dependencies that a tool needs.
   another program.
 - [crumbkit-process](crates/crumbkit-process/README.md) runs another
   program and reads its output within limits and a deadline.
+- [crumbkit-durable](crates/crumbkit-durable/README.md) replaces a file
+  atomically, so a crash never leaves part of it written.
 - [crumbkit-markdown](crates/crumbkit-markdown/README.md) writes a Markdown
   reference of every command.
 - [cargo-crumbkit](crates/cargo-crumbkit/README.md) is the

@@ -1,0 +1,23 @@
+[package]
+name = "crumbkit-durable"
+description = "Replace a file atomically, so a reader or a crash sees the old bytes or the new bytes and never part of either"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["atomic", "file", "write", "rename", "fsync"]
+categories = ["filesystem"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+# The crate depends only on the standard library, so any tool, including one
+# that does not use crumbkit, can replace its files through it (ADR-0221).
+
+[dev-dependencies]
+# Each test writes into a temporary directory of its own, which tempfile
+# removes when the test ends.
+tempfile = { workspace = true }
+
+[lints]
+workspace = true
