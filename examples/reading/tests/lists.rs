@@ -241,6 +241,10 @@ fn edit_opens_the_list_in_the_editor_that_visual_names_and_returns_its_exit_code
 fn copy_of_lists() -> io::Result<tempfile::TempDir> {
     let copy = tempfile::tempdir()?;
     for name in ["finished.txt", "to-read.txt"] {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the test copies a fixture into its own temporary directory"
+        )]
         std::fs::copy(Path::new(LISTS).join(name), copy.path().join(name))?;
     }
     Ok(copy)

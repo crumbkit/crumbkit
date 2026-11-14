@@ -1,13 +1,12 @@
 //! The usage log's file: its directory, its lock file, its size limit and
 //! its trim.
 
-use std::fs::{DirBuilder, File, OpenOptions, TryLockError};
+use std::fs::{DirBuilder, File, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
 use std::path::{Path, PathBuf};
-use std::thread;
 use std::time::{Duration, Instant};
 
-use crumbkit_durable::{Mode, write_atomically};
+use crumbkit_durable::{Mode, PathLock, write_atomically};
 
 use super::platform;
 
@@ -27,6 +26,10 @@ pub(super) struct Limits {
 /// The name of the log file in the tool's directory under the XDG state
 /// directory.
 pub(super) const LOG: &str = "usage.jsonl";
+
+/// The name of the lock file beside the log. A run holds its lock while it
+/// writes the key or appends to the log.
+pub(super) const LOCK: &str = "usage.lock";
 
 /// Returns the usage log of the tool named `tool`: `usage.jsonl` in the
 /// tool's directory under the state directory, or `None` when there is no
@@ -57,9 +60,10 @@ pub(super) fn create_dir(dir: &Path) -> io::Result<()> {
 /// Appends `line` to the file `usage.jsonl` in `dir`, which it creates so
 /// that only the user can read it, with mode 0600 on Unix.
 ///
-/// It holds the lock on the file `usage.lock` in `dir`, which it creates in
-/// the same way, while it trims and appends, so runs at the same time never
-/// interleave their lines. The lock has a file of its own because
+/// It holds crumbkit-durable's `PathLock` on the file `usage.lock` in `dir`,
+/// which it creates in the same way, while it trims and appends, so runs at
+/// the same time never interleave their lines. The lock has a file of its own
+/// because
 /// a trim renames a new log over `usage.jsonl`, and a lock on the old log
 /// would no longer guard the new one. When the log is larger than
 /// `limits.size`, it first keeps only the newest whole lines that fit in
@@ -71,14 +75,7 @@ pub(super) fn create_dir(dir: &Path) -> io::Result<()> {
 /// Returns the I/O error that stopped the line, or `TimedOut` when another
 /// run held the lock for longer than `limits.wait`.
 pub(super) fn append(dir: &Path, line: &[u8], limits: &Limits) -> io::Result<()> {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the usage log owns its lock file, which only this function creates"
-    )]
-    let lock_file =
-        platform::private_file(OpenOptions::new().write(true).create(true).truncate(false))
-            .open(dir.join("usage.lock"))?;
-    lock(&lock_file, limits.wait)?;
+    let lock = PathLock::acquire(&dir.join(LOCK), Instant::now() + limits.wait)?;
     let mut file = open_log(dir)?;
     let mut len = file.metadata()?.len();
     if len > limits.size {
@@ -90,8 +87,8 @@ pub(super) fn append(dir: &Path, line: &[u8], limits: &Limits) -> io::Result<()>
         file.write_all(b"\n")?;
     }
     file.write_all(line)?;
-    // Closing the lock file releases the lock, after the line is written.
-    drop(lock_file);
+    // Dropping the lock releases it, after the line is written.
+    drop(lock);
     Ok(())
 }
 
@@ -104,21 +101,6 @@ fn open_log(dir: &Path) -> io::Result<File> {
     )]
     platform::private_file(OpenOptions::new().read(true).append(true).create(true))
         .open(dir.join(LOG))
-}
-
-/// Takes the lock on `file`, and retries every 5 ms for at most `wait`.
-fn lock(file: &File, wait: Duration) -> io::Result<()> {
-    let started = Instant::now();
-    loop {
-        match file.try_lock() {
-            Ok(()) => return Ok(()),
-            Err(TryLockError::WouldBlock) if started.elapsed() < wait => {
-                thread::sleep(Duration::from_millis(5));
-            }
-            Err(TryLockError::WouldBlock) => return Err(io::ErrorKind::TimedOut.into()),
-            Err(TryLockError::Error(error)) => return Err(error),
-        }
-    }
 }
 
 /// Replaces the log `file` in `dir` with a new log that holds only its

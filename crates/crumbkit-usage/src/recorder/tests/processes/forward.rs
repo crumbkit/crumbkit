@@ -192,6 +192,10 @@ fn sighup_writes_the_line_and_ends_the_tool_by_sighup() {
 /// the log held when this clean-up ran.
 fn copy_the_log() {
     let state = state_home();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test copies the log into its own temporary state directory"
+    )]
     let _ = fs::copy(state.join("ordered/usage.jsonl"), state.join("copy.jsonl"));
 }
 

@@ -1,6 +1,8 @@
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
+use std::sync::Barrier;
+use std::thread;
 
 use super::{create, key};
 use crate::file::create_dir;
@@ -36,7 +38,7 @@ fn the_first_run_creates_a_16_byte_key_and_later_runs_reuse_it() {
 
     assert_eq!(first, second);
     assert_eq!(fs::read(dir.path().join("usage.key")).unwrap(), first);
-    assert_eq!(files(&dir), ["usage.key"]);
+    assert_eq!(files(&dir), ["usage.key", "usage.lock"]);
 }
 
 // Windows files have access control lists in place of Unix modes.
@@ -61,7 +63,7 @@ fn a_run_that_loses_the_race_to_create_the_key_reads_the_winner_s_key() {
     write_key(&dir, b"0123456789abcdef");
 
     assert_eq!(create(dir.path()), Some(*b"0123456789abcdef"));
-    assert_eq!(files(&dir), ["usage.key"]);
+    assert_eq!(files(&dir), ["usage.key", "usage.lock"]);
 }
 
 #[test]
@@ -73,7 +75,30 @@ fn an_empty_key_file_is_replaced_with_a_new_key_that_later_runs_reuse() {
 
     assert_eq!(key(dir.path()), Some(replaced));
     assert_eq!(fs::read(dir.path().join("usage.key")).unwrap(), replaced);
-    assert_eq!(files(&dir), ["usage.key"]);
+    assert_eq!(files(&dir), ["usage.key", "usage.lock"]);
+}
+
+#[test]
+fn two_runs_that_find_a_damaged_key_at_once_end_with_the_same_key() {
+    let dir = TempDir::new("key-damaged-race");
+    for _ in 0..200 {
+        write_key(&dir, b"damaged");
+        let start = Barrier::new(2);
+
+        let (first, second) = thread::scope(|scope| {
+            let run = || {
+                start.wait();
+                key(dir.path())
+            };
+            let first = scope.spawn(run);
+            let second = scope.spawn(run);
+            (first.join().unwrap(), second.join().unwrap())
+        });
+
+        let kept = fs::read(dir.path().join("usage.key")).unwrap();
+        assert_eq!(first.map(Vec::from), Some(kept.clone()));
+        assert_eq!(second.map(Vec::from), Some(kept));
+    }
 }
 
 #[test]

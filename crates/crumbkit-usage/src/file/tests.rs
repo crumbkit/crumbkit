@@ -1,8 +1,10 @@
-use std::fs::{self, File};
+use std::fs;
 use std::io;
 #[cfg(unix)]
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+use crumbkit_durable::PathLock;
 
 use super::{Limits, append, create_dir};
 use crate::testing::TempDir;
@@ -136,8 +138,7 @@ fn a_lock_held_past_the_wait_drops_the_line() {
     let dir = TempDir::new("lock");
     create_dir(dir.path()).unwrap();
     append(dir.path(), b"before\n", &SMALL).unwrap();
-    let holder = File::open(dir.path().join("usage.lock")).unwrap();
-    holder.lock().unwrap();
+    let _holder = PathLock::acquire(&dir.path().join("usage.lock"), Instant::now()).unwrap();
 
     let error = append(dir.path(), b"dropped\n", &SMALL).unwrap_err();
 
