@@ -173,7 +173,8 @@ Why: ADR-0222.
 - On Windows a lock file opens without `FILE_SHARE_DELETE`, so no process
   can remove it or rename another file over it while it is open. The
   identity check does not run, `still_current` returns true, and a
-  symbolic link at the path is followed.
+  symbolic link at the path is followed. The lock is mandatory there, so a
+  read or write of the lock file fails while another handle holds it.
 - Other Unix systems build and are untested. Network file systems are out
   of scope.
 

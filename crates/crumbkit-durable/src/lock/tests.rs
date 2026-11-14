@@ -237,6 +237,9 @@ fn dropping_the_lock_releases_it() {
 
     drop(PathLock::acquire(&path, later()).unwrap());
 
-    let _again = PathLock::acquire(&path, Instant::now()).unwrap();
+    drop(PathLock::acquire(&path, Instant::now()).unwrap());
+
+    // Windows refuses a read of a locked file, so the read comes after the
+    // release.
     assert_eq!(fs::read(&path).unwrap(), b"");
 }
