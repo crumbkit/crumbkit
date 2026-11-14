@@ -18,3 +18,4 @@ and the guards of a write that replaces data or writes many items.
 - [ADR-0047. Write guards](0047-write-guards.md)
 - [ADR-0221. The durable crate](0221-the-durable-crate.md)
 - [ADR-0222. A path lock checks that its file is still at the path](0222-a-path-lock-checks-its-file-is-still-at-the-path.md)
+- [ADR-0223. The usage key is written under the usage lock](0223-the-usage-key-is-written-under-the-usage-lock.md)

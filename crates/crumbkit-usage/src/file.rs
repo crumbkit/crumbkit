@@ -63,9 +63,8 @@ pub(super) fn create_dir(dir: &Path) -> io::Result<()> {
 /// It holds crumbkit-durable's `PathLock` on the file `usage.lock` in `dir`,
 /// which it creates in the same way, while it trims and appends, so runs at
 /// the same time never interleave their lines. The lock has a file of its own
-/// because
-/// a trim renames a new log over `usage.jsonl`, and a lock on the old log
-/// would no longer guard the new one. When the log is larger than
+/// because a trim renames a new log over `usage.jsonl`, and a lock on the old
+/// log would no longer guard the new one. When the log is larger than
 /// `limits.size`, it first keeps only the newest whole lines that fit in
 /// `limits.keep` bytes. When the log's last line has no newline, because a
 /// run ended while it wrote, the new line starts on a line of its own.

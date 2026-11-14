@@ -3,6 +3,9 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
 use std::sync::Barrier;
 use std::thread;
+use std::time::Instant;
+
+use crumbkit_durable::PathLock;
 
 use super::{create, key};
 use crate::file::create_dir;
@@ -99,6 +102,16 @@ fn two_runs_that_find_a_damaged_key_at_once_end_with_the_same_key() {
         assert_eq!(first.map(Vec::from), Some(kept.clone()));
         assert_eq!(second.map(Vec::from), Some(kept));
     }
+}
+
+#[test]
+fn a_lock_held_past_the_wait_leaves_a_damaged_key_and_gives_no_key() {
+    let dir = TempDir::new("key-lock-busy");
+    write_key(&dir, b"damaged");
+    let _holder = PathLock::acquire(&dir.path().join("usage.lock"), Instant::now()).unwrap();
+
+    assert_eq!(key(dir.path()), None);
+    assert_eq!(fs::read(dir.path().join("usage.key")).unwrap(), b"damaged");
 }
 
 #[test]

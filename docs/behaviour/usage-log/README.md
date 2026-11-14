@@ -214,7 +214,7 @@ Windows, kept in `usage.key` beside the log with mode 0600 on Unix.
 - A run that cannot take the lock within 100 ms or write the key writes no
   line. It drops the lock before its append.
 
-Why: ADR-0029.
+Why: ADR-0029, ADR-0223.
 
 ## The log file
 
@@ -236,8 +236,8 @@ Why: ADR-0029.
 
 - A run appends its line while it holds the lock on `usage.lock`, which it
   takes through [durable files](../durable-files.md). It waits for at most
-  100 ms, and when the lock is still held it drops its line. The lock has a file of its own,
-  which is never renamed.
+  100 ms, and when the lock is still held it drops its line. The lock has a
+  file of its own, which is never renamed.
 - A line longer than 1 KiB is dropped.
 - When the log is over its size limit, the run keeps its newest whole lines
   that fit in half of the limit and then appends its own, while it holds the
