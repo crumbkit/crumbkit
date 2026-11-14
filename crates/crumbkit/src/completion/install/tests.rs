@@ -248,17 +248,39 @@ fn install_fails_on_a_directory_at_the_file_s_path_even_with_force() {
     assert!(file.is_dir());
 }
 
+#[cfg(unix)]
 #[test]
-fn install_fails_and_overwrites_nothing_when_its_temporary_name_is_taken() {
+fn a_write_that_fails_gives_the_operating_system_s_error_as_the_reason() {
+    use std::os::unix::fs::PermissionsExt;
+
     let home = Home::new();
     let file = home.fish_file();
-    let taken = file.with_file_name(format!(".shelf.fish.{}.tmp", std::process::id()));
+    let dir = file.parent().unwrap();
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o555)).unwrap();
+
+    let listing = home.install(Shell::Fish, false);
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let row = only(&listing);
+    assert_eq!(row.state, Installed::Failed);
+    // The row shows the path, so the reason is the operating system's error.
+    assert_eq!(
+        row.reason.as_deref(),
+        Some("Permission denied (os error 13)")
+    );
+}
+
+#[test]
+fn install_skips_a_taken_temporary_name_and_leaves_the_file_there() {
+    let home = Home::new();
+    let file = home.fish_file();
+    let taken = file.with_file_name(format!(".shelf.fish.{}.0.tmp", std::process::id()));
     write(&taken, "someone else's\n");
 
     let listing = home.install(Shell::Fish, false);
 
-    assert_eq!(only(&listing).state, Installed::Failed);
-    assert!(!file.exists());
+    assert_eq!(only(&listing).state, Installed::Written);
+    assert_eq!(fs::read_to_string(&file).unwrap(), text(Shell::Fish));
     assert_eq!(fs::read_to_string(&taken).unwrap(), "someone else's\n");
 }
 

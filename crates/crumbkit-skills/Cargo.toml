@@ -15,6 +15,9 @@ include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICE
 # `install` and `check` return crumbkit's `Listing` of rows, and `print`
 # returns crumbkit's `Prose`.
 crumbkit = { workspace = true }
+# `install` writes each skill file through crumbkit-durable's
+# `write_atomically`.
+crumbkit-durable = { workspace = true }
 # `SkillsInstall` and `SkillsCheck` derive `clap::Args`.
 clap = { workspace = true, features = ["derive"] }
 # The rows and the skill text derive `Serialize`, as a tool's own results

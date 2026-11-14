@@ -66,12 +66,7 @@ fn a_copy_of_the_second_skill_that_another_tool_wrote_is_skipped_and_the_first_i
 fn a_skill_that_fails_comes_first_and_the_other_skill_is_still_written() {
     let home = Home::new();
     let agents = home.mkdir(".agents/skills");
-    fs::create_dir(agents.join("shelf-lending")).unwrap();
-    let taken = agents.join(format!(
-        "shelf-lending/.SKILL.md.{}.tmp",
-        std::process::id()
-    ));
-    write(&taken, "someone else's file");
+    home.mkdir(".agents/skills/shelf-lending/SKILL.md");
 
     let rows = home.install_all(&[SKILL, LENDING], &SkillsInstall::default());
 

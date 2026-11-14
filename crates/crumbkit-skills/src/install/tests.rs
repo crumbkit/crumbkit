@@ -249,18 +249,18 @@ fn no_agent_dir_installs_nothing() {
 }
 
 #[test]
-fn install_fails_when_its_temporary_file_name_is_taken() {
+fn install_skips_a_taken_temporary_name_and_leaves_the_file_there() {
     let home = Home::new();
     let agents = home.mkdir(".agents/skills");
     fs::create_dir(agents.join("shelf")).unwrap();
-    let taken = agents.join(format!("shelf/.SKILL.md.{}.tmp", std::process::id()));
+    let taken = agents.join(format!("shelf/.SKILL.md.{}.0.tmp", std::process::id()));
     write(&taken, "someone else's file");
 
     let rows = home.install(&SkillsInstall::default());
 
-    assert_eq!(states(&rows), [Installed::Failed]);
+    assert_eq!(states(&rows), [Installed::Written]);
     assert_eq!(fs::read_to_string(&taken).unwrap(), "someone else's file");
-    assert!(!agents.join("shelf/SKILL.md").exists());
+    assert_eq!(installed(&agents), SKILL.installed());
 }
 
 #[test]
@@ -536,6 +536,10 @@ fn a_file_that_cannot_be_written_fails_the_row_and_leaves_the_skill_file_unwritt
 
     assert_eq!(states(&rows), [Installed::Failed]);
     assert!(rows[0].path.ends_with("report.json"), "{:?}", rows[0]);
+    // The row shows the path, so the reason is the operating system's error.
+    let reason = rows[0].reason.as_deref().unwrap();
+    assert!(reason.contains("(os error "), "{reason}");
+    assert!(!reason.contains("report.json"), "{reason}");
     assert!(!agents.join("shelf/SKILL.md").exists());
 }
 
@@ -543,15 +547,11 @@ fn a_file_that_cannot_be_written_fails_the_row_and_leaves_the_skill_file_unwritt
 fn a_plain_install_finishes_the_copy_that_an_interrupted_install_left() {
     let home = Home::new();
     let agents = home.mkdir(".agents/skills");
-    fs::create_dir(agents.join("shelf")).unwrap();
-    let taken = agents.join(format!("shelf/.report.json.{}.tmp", std::process::id()));
-    write(&taken, "someone else's file");
-    let failed = home.install_skill(&WITH_FILES, &SkillsInstall::default());
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the test removes the file that made the first install fail"
-    )]
-    fs::remove_file(&taken).unwrap();
+    // A directory at report.json fails the write after REFERENCE.md is
+    // written. A plain install would skip the folder, so the first is forced.
+    let blocker = home.mkdir(".agents/skills/shelf/report.json");
+    let failed = home.install_skill(&WITH_FILES, &forced());
+    fs::remove_dir(blocker).unwrap();
 
     let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
 

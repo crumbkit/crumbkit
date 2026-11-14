@@ -1,14 +1,12 @@
-//! The home directory and the file writes that a command shares when it
+//! The home directory and the path display that a command shares when it
 //! installs a file of the tool's into a person's own directories, such as
 //! crumbkit's `completion install` and crumbkit-skills' `skills install`
 //! (ADR-0195).
 //!
-//! The module owns the reads of `HOME` and `USERPROFILE` and the writes that
-//! replace a file through a temporary file and a rename (RUST-4).
+//! The module owns the reads of `HOME` and `USERPROFILE`. The writes that
+//! replace a file go through crumbkit-durable (RUST-4).
 
 use std::ffi::OsString;
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
 #[cfg(test)]
@@ -65,48 +63,4 @@ pub fn display(path: &Path) -> String {
         Some(rest) if rest.as_bytes().get(1) == Some(&b':') => rest.to_owned(),
         _ => text,
     }
-}
-
-/// Writes `text` to a new temporary file beside `file` and renames it over
-/// `file`, so a reader sees the old text or the new text and never part of
-/// it. The rename replaces a symbolic link at `file` itself, never the file
-/// that the link leads to.
-///
-/// The temporary file is `.<name>.<pid>.tmp` in `file`'s folder, where
-/// `<name>` is `file`'s name and `<pid>` the process's id. It must be new,
-/// so the write never follows a link or fills a file that someone else left
-/// at that name, and it fails with that file's error instead. The temporary
-/// file is removed when a later step fails.
-///
-/// # Errors
-///
-/// Returns the I/O error of the step that failed: creating the temporary
-/// file, writing it, flushing it to disk or renaming it.
-pub fn write_atomically(file: &Path, text: &str) -> io::Result<()> {
-    let name = file.file_name().unwrap_or_default().to_string_lossy();
-    let temporary = file.with_file_name(format!(".{name}.{}.tmp", std::process::id()));
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the files module owns the writes that replace a file through a new temporary file"
-    )]
-    let mut handle = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)?;
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the files module owns the rename of its temporary file over the file it replaces"
-    )]
-    let result = handle
-        .write_all(text.as_bytes())
-        .and_then(|()| handle.sync_all())
-        .and_then(|()| fs::rename(&temporary, file));
-    if result.is_err() {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the files module removes its own temporary file after a failed write"
-        )]
-        let _ = fs::remove_file(&temporary);
-    }
-    result
 }

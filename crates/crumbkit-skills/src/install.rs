@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 use crumbkit::{Document, Listing, Problem, Row};
+use crumbkit_durable::{Mode, write_atomically};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -356,14 +357,14 @@ fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: b
         if fs::read_to_string(&path).is_ok_and(|current| current == *body) {
             continue;
         }
-        if let Err(error) = crumbkit::files::write_atomically(&path, body) {
-            return row(Installed::Failed, Some(error.to_string()), &path);
+        if let Err(error) = write_atomically(&path, body.as_bytes(), Mode::Umask) {
+            return row(Installed::Failed, Some(error.source.to_string()), &path);
         }
         written = true;
     }
     if old.as_deref() != Some(text) {
-        if let Err(error) = crumbkit::files::write_atomically(file, text) {
-            return row(Installed::Failed, Some(error.to_string()), file);
+        if let Err(error) = write_atomically(file, text.as_bytes(), Mode::Umask) {
+            return row(Installed::Failed, Some(error.source.to_string()), file);
         }
         written = true;
     }
