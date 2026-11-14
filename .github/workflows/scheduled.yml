@@ -85,7 +85,7 @@ jobs:
       - if: ${{ always() }}
         run: |
           git fetch --depth=1 origin db7f1f076e1483c2916847e8af36ad0ec79c30ee
-          git checkout db7f1f076e1483c2916847e8af36ad0ec79c30ee -- crates examples Cargo.toml Cargo.lock
+          git checkout db7f1f076e1483c2916847e8af36ad0ec79c30ee -- crates examples benches Cargo.toml Cargo.lock
           cargo bench -p crumbkit-benches || true
           mkdir -p out/old
           for b in root_help refusal; do
