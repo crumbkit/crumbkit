@@ -45,3 +45,5 @@ its reasons.
   tool.
 - [Processes](processes.md): running another program whose output a tool
   reads, with crumbkit-process.
+- [Durable files](durable-files.md): replacing a file atomically, with
+  crumbkit-durable.

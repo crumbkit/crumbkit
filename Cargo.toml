@@ -9,6 +9,7 @@ members = [
     "crates/crumbkit-child",
     "crates/crumbkit-process",
     "crates/crumbkit-markdown",
+    "crates/crumbkit-durable",
     "crates/crumbkit-test",
     "crates/cargo-crumbkit",
     "examples/shelf",

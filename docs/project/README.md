@@ -31,6 +31,7 @@ crumbkit is a virtual workspace.
 | `crates/crumbkit-usage` | The published crate of the usage log and the `self usage` and `self figures list` commands that read it. |
 | `crates/crumbkit-skills` | The published crate that installs a tool's agent skill. |
 | `crates/crumbkit-markdown` | The published crate that writes a tool's command reference. |
+| `crates/crumbkit-durable` | The published crate that replaces a file atomically. |
 | `examples/shelf` | An unpublished example package with a `shelf` binary. |
 | `examples/reading` | An unpublished example package with a `reading` binary that adds a command for each reading list at run time. |
 | `examples/tutorial` | An unpublished package with one `pantry` binary for each step of the [tutorial](../tutorial.md). |

@@ -5,6 +5,13 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+- crumbkit-durable: a new crate whose `write_atomically` replaces a file
+  through a new temporary file, a sync, a rename and a directory sync, so a
+  reader or a crash sees the old bytes or the new bytes
+  ([behaviour/durable-files]).
+
 ## [0.5.0](https://github.com/crumbkit/crumbkit/compare/v0.4.1...v0.5.0) - 2026-11-14
 ### Added
 
@@ -1901,6 +1908,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Suite`]: crates/crumbkit-test/src/suite.rs
 [behaviour/checks/end-to-end]: docs/behaviour/checks/end-to-end.md
 [behaviour/checks/recovery-chains]: docs/behaviour/checks/recovery-chains.md
+[behaviour/durable-files]: docs/behaviour/durable-files.md
 [behaviour/effects]: docs/behaviour/effects/README.md
 [behaviour/effects/pickers]: docs/behaviour/effects/pickers.md
 [behaviour/effects/write-guards]: docs/behaviour/effects/write-guards.md
