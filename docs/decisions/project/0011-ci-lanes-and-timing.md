@@ -1,7 +1,7 @@
 # ADR-0011. CI lanes
 
 - Date: 2026-10-07
-- Status: accepted
+- Status: amended by ADR-0220
 
 ## Context
 

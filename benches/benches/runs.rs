@@ -56,60 +56,72 @@ struct Limits {
 }
 
 // Each limit's comment gives the count that it comes from. The counts come
-// from runs of `scheduled.yml` on `ubuntu-24.04`. Run 38191991177 gave the
-// instruction counts of `commands list` and of the refusal. Run 38163868931
-// gave the instruction counts of `shelf -h` and `books list -h`. Run
-// 38215644933 gave every block count, with DHAT recording 500 stack frames.
-// Run 40855949287 gave the instruction counts of `books list` with and
-// without the usage log, after the listing's next steps, summary text and
-// default rows had added to them.
+// from runs 43579224041 and 43579231228 of `scheduled.yml` on `ubuntu-24.04`,
+// run by hand at 33fbb1c9. The two runs gave equal counts, except that the
+// instructions of the logged `books list` were 1002913 and 1002796, and the
+// larger count is used. DHAT records 500 stack frames.
+//
+// Every limit is above the limit of 0.4.0. Five merges that add built-in
+// commands or arguments raised the counts that every run shares: #328
+// (`self runs`), #331 (`self runs export`), #333 (`skills` install, check and
+// print), #337 (a flag on three `self` commands) and #338 (`completion`
+// install, check and print). #318 (each argument's value hint) and #343
+// (several skills) also raised `commands list`, which walks every command.
+//
+// The cost of those merges is work that every run does but does not need:
+// the profile /suites/crumbkit-bench-attribution/runs/20261114T0130Z-a898
+// shows that clap builds the argument trees of the built-in groups and drops
+// them again, which is about 120,000 of the 149,222 extra instructions of
+// `shelf -h`. The planned fix is
+// /tasks/a-built-in-group-builds-its-arguments-only-when-its-word-is.md, and
+// the limits come down with the counts when it lands.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
-    // The count was 716207 instructions.
-    instructions: 787_828,
-    // The count was 1142 blocks.
-    allocations: 1257,
+    // The count was 841373 instructions.
+    instructions: 925_511,
+    // The count was 1325 blocks.
+    allocations: 1458,
 };
 
 /// The limits of `shelf -h`.
 const ROOT_HELP: Limits = Limits {
-    // The count was 350802 instructions.
-    instructions: 385_883,
-    // The count was 413 blocks.
-    allocations: 455,
+    // The count was 485000 instructions.
+    instructions: 533_500,
+    // The count was 573 blocks.
+    allocations: 631,
 };
 
 /// The limits of `shelf books list -h`.
 const LEAF_HELP: Limits = Limits {
-    // The count was 447139 instructions.
-    instructions: 491_853,
-    // The count was 628 blocks.
-    allocations: 691,
+    // The count was 604542 instructions.
+    instructions: 664_997,
+    // The count was 781 blocks.
+    allocations: 860,
 };
 
 /// The limits of `shelf commands list --all --json --full`.
 const COMMANDS_LIST: Limits = Limits {
-    // The count was 2581595 instructions.
-    instructions: 2_839_755,
-    // The count was 3377 blocks.
-    allocations: 3715,
+    // The count was 4410958 instructions.
+    instructions: 4_852_054,
+    // The count was 5886 blocks.
+    allocations: 6475,
 };
 
 /// The limits of `shelf books lst`, which clap refuses.
 const REFUSAL: Limits = Limits {
-    // The count was 417385 instructions.
-    instructions: 459_124,
-    // The count was 539 blocks.
-    allocations: 593,
+    // The count was 557602 instructions.
+    instructions: 613_363,
+    // The count was 709 blocks.
+    allocations: 780,
 };
 
 /// The limits of `shelf books list` with the usage log started.
 const BOOKS_LIST_LOGGED: Limits = Limits {
-    // The count was 864045 instructions.
-    instructions: 950_450,
-    // The count was 1203 blocks.
-    allocations: 1324,
+    // The count was 1002913 instructions.
+    instructions: 1_103_205,
+    // The count was 1390 blocks.
+    allocations: 1529,
 };
 
 /// The stack depth that valgrind records for each allocation, which is
