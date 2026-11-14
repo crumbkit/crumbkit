@@ -1,7 +1,7 @@
 # ADR-0221. The durable crate
 
 - Date: 2026-11-14
-- Status: accepted
+- Status: amended by ADR-0222
 
 ## Context
 

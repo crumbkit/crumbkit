@@ -11,6 +11,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   through a new temporary file, a sync, a rename and a directory sync, so a
   reader or a crash sees the old bytes or the new bytes
   ([behaviour/durable-files]).
+- crumbkit-durable: `PathLock::acquire` locks a lock file and checks that
+  the locked file is still at the path, so a holder that waited while
+  another program replaced the file locks the new one
+  ([behaviour/durable-files]).
 
 ## [0.5.0](https://github.com/crumbkit/crumbkit/compare/v0.4.1...v0.5.0) - 2026-11-14
 ### Added

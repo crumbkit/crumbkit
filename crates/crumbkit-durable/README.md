@@ -1,9 +1,11 @@
 # crumbkit-durable
 
-crumbkit-durable replaces a file atomically. A reader sees the old bytes or
-the new bytes, and after a crash or a power loss the file holds one or the
-other, never part of either. The crate depends only on the standard
-library, so a tool that does not use crumbkit can use it too.
+crumbkit-durable replaces a file atomically, and locks a lock file. A
+reader of a replaced file sees the old bytes or the new bytes, and after a
+crash or a power loss the file holds one or the other, never part of
+either. A lock is held by one holder at a time, on the file that is at the
+path. The crate depends on no other crumbkit crate, so a tool that does not
+use crumbkit can use it too.
 
 ## Adding it
 
@@ -14,23 +16,27 @@ crumbkit-durable = "0.5"
 
 ## Example
 
-[`write_atomically`] takes the target, the bytes and a [`Mode`]:
+[`write_atomically`] takes the target, the bytes and a [`Mode`], and
+[`PathLock::acquire`] takes the lock file and a deadline:
 
 ```rust
-use crumbkit_durable::{Mode, write_atomically};
+use std::time::{Duration, Instant};
+use crumbkit_durable::{Mode, PathLock, write_atomically};
 
 let dir = std::env::temp_dir().join(format!("crumbkit-durable-{}", std::process::id()));
 std::fs::create_dir_all(&dir).unwrap();
 let config = dir.join("config.toml");
 
+let lock = PathLock::acquire(&dir.join("config.lock"), Instant::now() + Duration::from_secs(5)).unwrap();
 write_atomically(&config, b"theme = \"dark\"\n", Mode::Umask).unwrap();
+drop(lock);
 assert_eq!(std::fs::read(&config).unwrap(), b"theme = \"dark\"\n");
 std::fs::remove_dir_all(&dir).unwrap();
 ```
 
-`Mode::Private` gives the file `0600` on Unix, for a file such as a key, and
-`Mode::Umask` gives it `0666` less the process's umask, as `File::create`
-does.
+`Mode::Private` gives the file `0600` on Unix, for a file such as a key,
+and `Mode::Umask` gives it `0666` less the process's umask, as
+`File::create` does.
 
 ## What it promises
 
@@ -52,17 +58,27 @@ the new bytes, and after a power loss it may hold the old ones. A directory
 sync that fails with `EINVAL`, `ENOTSUP` or `ENOSYS` counts as done, because
 some SMB and FUSE mounts cannot sync a directory.
 
+[`PathLock::acquire`] creates the lock file with `0600` when it is absent,
+refuses a symbolic link on Unix, and waits until the deadline while another
+holder has the lock. Once it holds the lock, it checks on Unix that the
+file it locked is still the file at the path, and opens the path again when
+another program replaced or removed it. Two holders therefore never both
+return holding different files. The crate never removes a lock file, and
+[`PathLock::still_current`] tells a holder that another program did. A
+failure returns a [`LockError`], which is `Busy` when the wait ends.
+
 ## Platforms
 
 Linux is tested on every pull request, macOS on each push to `main`, and
 Windows each night.
 On Windows the `Mode` is ignored, so the file inherits its directory's
 access list, and the directory is not synced, because NTFS journals the
-rename. Other Unix systems build but are untested, and network file systems
-are out of scope.
+rename. A lock file there cannot be removed or replaced while it is open,
+so the identity check does not run. Other Unix systems build but are
+untested, and network file systems are out of scope.
 
-The [durable files docs] describe the temporary file's lifecycle, and
-[ADR-0221] records why the crate exists.
+The [durable files docs] describe the lifecycles of the temporary file and
+the lock, and [ADR-0221] and [ADR-0222] record why.
 
 ## License
 
@@ -72,5 +88,9 @@ option.
 [`write_atomically`]: src/write.rs
 [`Mode`]: src/write.rs
 [`WriteError`]: src/write.rs
+[`PathLock::acquire`]: src/lock.rs
+[`PathLock::still_current`]: src/lock.rs
+[`LockError`]: src/lock.rs
 [ADR-0221]: ../../docs/decisions/api/effects/0221-the-durable-crate.md
+[ADR-0222]: ../../docs/decisions/api/effects/0222-a-path-lock-checks-its-file-is-still-at-the-path.md
 [durable files docs]: ../../docs/behaviour/durable-files.md

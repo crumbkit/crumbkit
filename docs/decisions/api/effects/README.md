@@ -17,3 +17,4 @@ and the guards of a write that replaces data or writes many items.
 - [ADR-0043. Pickers and interactive input](0043-pickers-and-interactive-input.md)
 - [ADR-0047. Write guards](0047-write-guards.md)
 - [ADR-0221. The durable crate](0221-the-durable-crate.md)
+- [ADR-0222. A path lock checks that its file is still at the path](0222-a-path-lock-checks-its-file-is-still-at-the-path.md)
