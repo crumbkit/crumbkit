@@ -15,9 +15,9 @@ include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 # that does not use crumbkit, can replace and lock its files through it
 # (ADR-0221).
 
-# rustix names `O_NOFOLLOW`, which the open of a lock file passes to std on
-# Unix, because std names no open flag. tempfile already brings rustix with
-# its `fs` feature into the lock file.
+# rustix names `O_NOFOLLOW` and `O_NONBLOCK`, which the open of a lock file
+# passes to std on Unix, because std names no open flag. For a tool outside
+# the crumbkit workspace, rustix is a new dependency on Unix.
 [target.'cfg(unix)'.dependencies]
 rustix = { workspace = true, features = ["fs"] }
 

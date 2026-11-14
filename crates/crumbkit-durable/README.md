@@ -62,8 +62,9 @@ some SMB and FUSE mounts cannot sync a directory.
 refuses a symbolic link on Unix, and waits until the deadline while another
 holder has the lock. Once it holds the lock, it checks on Unix that the
 file it locked is still the file at the path, and opens the path again when
-another program replaced or removed it. Two holders therefore never both
-return holding different files. The crate never removes a lock file, and
+another program replaced or removed it. While no other program replaces or
+removes the file, two holders therefore never both return holding
+different files. The crate never removes a lock file, and
 [`PathLock::still_current`] tells a holder that another program did. A
 failure returns a [`LockError`], which is `Busy` when the wait ends.
 

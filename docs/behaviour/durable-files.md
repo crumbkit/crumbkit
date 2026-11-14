@@ -12,9 +12,9 @@ items.
 
 The published crumbkit-durable crate depends on no other crumbkit crate,
 so a tool that does not use crumbkit can replace and lock its files through
-it. On Unix it depends on rustix's `fs` feature, for the `O_NOFOLLOW` flag
-that std does not name, and tempfile already brings rustix into the lock
-file. It holds the file writes and locks that every tool needs to get
+it. On Unix it depends on rustix's `fs` feature, for the `O_NOFOLLOW` and
+`O_NONBLOCK` flags that std does not name, so rustix is a new dependency
+on Unix for a tool outside the crumbkit workspace. It holds the file writes and locks that every tool needs to get
 right in the same way, and prints nothing.
 
 Why: ADR-0221, ADR-0222.
@@ -98,7 +98,8 @@ the file stays, empty and unlocked, after the release.
 
 1. It opens `path` for writing, creating it with `0600` on Unix when it is
    absent. The open passes `O_NOFOLLOW`, so a symbolic link at `path` is
-   refused.
+   refused, and `O_NONBLOCK`, so a FIFO at `path` that no program reads
+   is refused at once instead of blocking the open past the deadline.
 2. It calls `try_lock`, which is `flock` on Unix and `LockFileEx` on
    Windows. While another holder has the lock, it calls `give_up`, returns
    `Busy` when that returns true or the deadline has passed, and otherwise
@@ -111,8 +112,9 @@ the file stays, empty and unlocked, after the release.
    at step 1. That is not contention, so the deadline does not stop it, and
    after the third reopen a fourth change returns `Busy`.
 
-Two holders therefore never both return from `acquire_unless` holding
-different files that were at `path`. Another program can still remove or
+While no other program replaces or removes the lock file, two holders
+therefore never both return from `acquire_unless` holding different files
+that were at `path`. Another program can still remove or
 replace the lock file while a holder has it, and a second acquirer then
 locks the new file. `still_current` compares the identities again and is
 false once that happened, so a holder about to change what the lock guards
@@ -137,7 +139,7 @@ converts to an `io::Error` of that error's kind.
 
 | Error | What fails | State left |
 | --- | --- | --- |
-| `Io` at `Open` | the directory is missing, permission is refused, or a symbolic link is at the path (`ELOOP`) | nothing held |
+| `Io` at `Open` | the directory is missing, permission is refused, a symbolic link is at the path (`ELOOP`, or `EMLINK` on FreeBSD), or a FIFO that no program reads is at the path (`ENXIO`) | nothing held |
 | `Io` at `Lock` | an error other than the lock being held | nothing held |
 | `Busy` | another holder kept the lock past the deadline, `give_up` returned true, or the file changed a fourth time | nothing held |
 | `Io` at `Identify` | `fstat` fails, or `lstat` fails other than with not found | the lock released |
