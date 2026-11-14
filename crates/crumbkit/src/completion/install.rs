@@ -6,13 +6,14 @@ use std::io;
 use std::path::Path;
 
 use clap::Command;
+use crumbkit_durable::{Mode, write_atomically};
 
 use super::CompletionInstall;
 use super::place::{Place, place};
 use super::rows::{InstallRow, Installed};
 use super::script::{bin, installed, registration};
 use super::shell::{Env, Shell, chosen, target};
-use crate::files::{display, write_atomically};
+use crate::files::display;
 use crate::{Error, Listing};
 
 #[cfg(test)]
@@ -53,7 +54,11 @@ fn write(shell: Shell, bin: &str, file: &Path, text: &str, force: bool) -> Insta
         path: display(path),
         reason,
     };
-    let written = |path: &Path, reason: Option<String>| match write_atomically(path, text) {
+    let written = |path: &Path, reason: Option<String>| match write_atomically(
+        path,
+        text.as_bytes(),
+        Mode::Umask,
+    ) {
         Ok(()) => row(Installed::Written, path, reason),
         Err(error) => row(Installed::Failed, path, Some(error.to_string())),
     };

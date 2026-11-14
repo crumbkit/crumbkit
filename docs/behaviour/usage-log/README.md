@@ -246,10 +246,10 @@ Why: ADR-0029.
   lock, so at least half the limit of new lines goes in before the next
   trim. [`file.rs`](../../../crates/crumbkit-usage/src/file.rs) states the
   sizes: a 10 MB limit and 5 MB kept.
-- The trim writes the kept lines to a temporary file in the same directory,
-  syncs it, closes its handle on the old log and renames the new file over
-  `usage.jsonl`, so a run that ends during a trim leaves either the old log
-  or the new one.
+- The trim closes its handle on the old log and writes the kept lines
+  through [durable files](../durable-files.md), which sync a temporary file
+  in the same directory and rename it over `usage.jsonl`, so a run that
+  ends during a trim leaves either the old log or the new one.
 - A last line without a newline is a write that ended early. A trim drops
   it, and the next append starts on a new line, so the torn line never joins
   the next record.

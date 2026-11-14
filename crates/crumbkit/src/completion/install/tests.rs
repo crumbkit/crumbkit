@@ -249,16 +249,16 @@ fn install_fails_on_a_directory_at_the_file_s_path_even_with_force() {
 }
 
 #[test]
-fn install_fails_and_overwrites_nothing_when_its_temporary_name_is_taken() {
+fn install_skips_a_taken_temporary_name_and_leaves_the_file_there() {
     let home = Home::new();
     let file = home.fish_file();
-    let taken = file.with_file_name(format!(".shelf.fish.{}.tmp", std::process::id()));
+    let taken = file.with_file_name(format!(".shelf.fish.{}.0.tmp", std::process::id()));
     write(&taken, "someone else's\n");
 
     let listing = home.install(Shell::Fish, false);
 
-    assert_eq!(only(&listing).state, Installed::Failed);
-    assert!(!file.exists());
+    assert_eq!(only(&listing).state, Installed::Written);
+    assert!(file.exists());
     assert_eq!(fs::read_to_string(&taken).unwrap(), "someone else's\n");
 }
 

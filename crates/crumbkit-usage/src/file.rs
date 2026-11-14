@@ -1,11 +1,13 @@
 //! The usage log's file: its directory, its lock file, its size limit and
 //! its trim.
 
-use std::fs::{self, DirBuilder, File, OpenOptions, TryLockError};
+use std::fs::{DirBuilder, File, OpenOptions, TryLockError};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant};
+
+use crumbkit_durable::{Mode, write_atomically};
 
 use super::platform;
 
@@ -120,47 +122,18 @@ fn lock(file: &File, wait: Duration) -> io::Result<()> {
 }
 
 /// Replaces the log `file` in `dir` with a new log that holds only its
-/// newest whole lines that fit in `keep` bytes. The kept lines go to a
-/// temporary file in `dir`, which is synced and then renamed over
-/// `usage.jsonl`, so a run that ends during the trim leaves either the old
-/// log or the new one. The caller holds the lock. `file` closes before the
-/// rename, because Windows can refuse to rename over a file that is open.
+/// newest whole lines that fit in `keep` bytes, which only the user can
+/// read. The kept lines go through crumbkit-durable's `write_atomically`, so
+/// a run that ends during the trim leaves either the old log or the new one.
+/// The caller holds the lock. `file` closes before the write, because Windows
+/// can refuse to rename over a file that is open.
 fn trim(dir: &Path, mut file: File, keep: usize) -> io::Result<()> {
     let mut text = Vec::new();
     file.seek(SeekFrom::Start(0))?;
     file.read_to_end(&mut text)?;
     drop(file);
-    let temporary = dir.join(format!("usage.jsonl.{}.tmp", std::process::id()));
-    let replaced = write_trimmed(&temporary, newest(&text, keep)).and_then(|()| {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the usage log owns its file, which a trim replaces"
-        )]
-        fs::rename(&temporary, dir.join(LOG))
-    });
-    if replaced.is_err() {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the usage log owns its temporary file, and removes one that a trim could not finish"
-        )]
-        let _ = fs::remove_file(&temporary);
-    }
-    replaced
-}
-
-/// Writes `kept` to the file at `temporary`, which only the user can read,
-/// and syncs it, so the bytes reach the disk before the file replaces the log. A file left by
-/// an earlier process with the same id is overwritten.
-fn write_trimmed(temporary: &Path, kept: &[u8]) -> io::Result<()> {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the usage log owns its file, which a trim writes to a temporary file first"
-    )]
-    let mut file =
-        platform::private_file(OpenOptions::new().write(true).create(true).truncate(true))
-            .open(temporary)?;
-    file.write_all(kept)?;
-    file.sync_all()
+    write_atomically(&dir.join(LOG), newest(&text, keep), Mode::Private)?;
+    Ok(())
 }
 
 /// Returns whether the last byte of `file`, which holds `len` bytes, is a

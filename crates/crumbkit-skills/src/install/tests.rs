@@ -249,18 +249,18 @@ fn no_agent_dir_installs_nothing() {
 }
 
 #[test]
-fn install_fails_when_its_temporary_file_name_is_taken() {
+fn install_skips_a_taken_temporary_name_and_leaves_the_file_there() {
     let home = Home::new();
     let agents = home.mkdir(".agents/skills");
     fs::create_dir(agents.join("shelf")).unwrap();
-    let taken = agents.join(format!("shelf/.SKILL.md.{}.tmp", std::process::id()));
+    let taken = agents.join(format!("shelf/.SKILL.md.{}.0.tmp", std::process::id()));
     write(&taken, "someone else's file");
 
     let rows = home.install(&SkillsInstall::default());
 
-    assert_eq!(states(&rows), [Installed::Failed]);
+    assert_eq!(states(&rows), [Installed::Written]);
     assert_eq!(fs::read_to_string(&taken).unwrap(), "someone else's file");
-    assert!(!agents.join("shelf/SKILL.md").exists());
+    assert_eq!(installed(&agents), SKILL.installed());
 }
 
 #[test]
@@ -544,14 +544,22 @@ fn a_plain_install_finishes_the_copy_that_an_interrupted_install_left() {
     let home = Home::new();
     let agents = home.mkdir(".agents/skills");
     fs::create_dir(agents.join("shelf")).unwrap();
-    let taken = agents.join(format!("shelf/.report.json.{}.tmp", std::process::id()));
-    write(&taken, "someone else's file");
+    // All 16 temporary names of report.json are taken, so its write fails
+    // after REFERENCE.md is written.
+    let taken: Vec<_> = (0..16)
+        .map(|n| agents.join(format!("shelf/.report.json.{}.{n}.tmp", std::process::id())))
+        .collect();
+    for name in &taken {
+        write(name, "someone else's file");
+    }
     let failed = home.install_skill(&WITH_FILES, &SkillsInstall::default());
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the test removes the file that made the first install fail"
-    )]
-    fs::remove_file(&taken).unwrap();
+    for name in &taken {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the test removes the files that made the first install fail"
+        )]
+        fs::remove_file(name).unwrap();
+    }
 
     let rows = home.install_skill(&WITH_FILES, &SkillsInstall::default());
 

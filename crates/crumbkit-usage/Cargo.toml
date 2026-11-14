@@ -16,6 +16,9 @@ include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICE
 # (ADR-0057), and `self usage` and `self figures list` print crumbkit
 # listings with crumbkit's `Run` and `Page`.
 crumbkit = { workspace = true }
+# A trim replaces the log with its newest lines through crumbkit-durable's
+# `write_atomically`.
+crumbkit-durable = { workspace = true }
 # The record names commands and flags from the tool's `clap::Command`, and
 # `SelfUsage` and `SelfFigures` derive `clap::Args`.
 clap = { workspace = true, features = ["derive"] }

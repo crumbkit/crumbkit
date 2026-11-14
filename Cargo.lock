@@ -80,6 +80,7 @@ version = "0.5.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-durable",
  "crumbkit-markdown",
  "crumbkit-skills",
  "crumbkit-test",
@@ -193,6 +194,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "crumbkit-derive",
+ "crumbkit-durable",
  "humantime",
  "is-ai-agent",
  "miette",
@@ -282,6 +284,7 @@ version = "0.5.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-durable",
  "schemars",
  "serde",
  "serde_json",
@@ -311,6 +314,7 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-child",
+ "crumbkit-durable",
  "crumbkit-process",
  "etcetera",
  "getrandom",

@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use crumbkit::{Document, Prose};
+use crumbkit_durable::{Mode, write_atomically};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -110,9 +111,5 @@ fn write(file: &Path, text: &str) -> Result<(), DocsError> {
         )]
         fs::create_dir_all(dir).map_err(failed)?;
     }
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "docs owns the file of the reference, and writes it"
-    )]
-    fs::write(file, text).map_err(failed)
+    write_atomically(file, text.as_bytes(), Mode::Umask).map_err(|error| failed(error.into()))
 }

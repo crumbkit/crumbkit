@@ -1,8 +1,7 @@
 use std::ffi::OsString;
-use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{display, home_in, write_atomically};
+use super::{display, home_in};
 
 /// Returns an absolute home directory. On Windows an absolute path needs a
 /// drive, so `/home/ada` would not count.
@@ -47,32 +46,4 @@ fn a_verbatim_unc_path_and_a_unix_path_display_unchanged() {
         r"\\?\UNC\server\share"
     );
     assert_eq!(display(Path::new("/home/ada")), "/home/ada");
-}
-
-#[test]
-fn write_atomically_replaces_the_file_and_leaves_no_temporary_file() {
-    let dir = tempfile::tempdir().unwrap();
-    let file = dir.path().join("shelf.fish");
-    write_atomically(&file, "old\n").unwrap();
-
-    write_atomically(&file, "new\n").unwrap();
-
-    assert_eq!(fs::read_to_string(&file).unwrap(), "new\n");
-    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
-}
-
-#[test]
-fn write_atomically_fails_and_overwrites_nothing_when_its_temporary_name_is_taken() {
-    let dir = tempfile::tempdir().unwrap();
-    let file = dir.path().join("shelf.fish");
-    let taken = dir
-        .path()
-        .join(format!(".shelf.fish.{}.tmp", std::process::id()));
-    write_atomically(&taken, "someone else's\n").unwrap();
-
-    let error = write_atomically(&file, "new\n").unwrap_err();
-
-    assert_eq!(error.kind(), std::io::ErrorKind::AlreadyExists);
-    assert!(!file.exists());
-    assert_eq!(fs::read_to_string(&taken).unwrap(), "someone else's\n");
 }

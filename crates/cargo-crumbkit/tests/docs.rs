@@ -51,3 +51,32 @@ fn docs_writes_the_reference_that_shelf_checks_in_and_names_the_file() {
         fs::read_to_string(SHELF_REFERENCE).unwrap()
     );
 }
+
+#[test]
+fn docs_writes_a_bare_output_file_name_in_the_current_directory() {
+    // The binary runs in a directory inside the workspace's target
+    // directory, so cargo finds the workspace by searching the parents of
+    // the current directory when `docs` builds shelf.
+    let dir = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).unwrap();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test runs the built binary as cargo runs a subcommand"
+    )]
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-crumbkit"))
+        .args(["crumbkit", "docs", "--bin", "shelf", "--out", "commands.md"])
+        .current_dir(dir.path())
+        .env("CARGO_TERM_QUIET", "true")
+        .env("CARGO_TARGET_DIR", TARGET_DIR)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(dir.path().join("commands.md")).unwrap(),
+        fs::read_to_string(SHELF_REFERENCE).unwrap()
+    );
+}

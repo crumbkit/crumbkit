@@ -12,6 +12,19 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reader or a crash sees the old bytes or the new bytes
   ([behaviour/durable-files]).
 
+### Changed
+
+- crumbkit, crumbkit-skills, crumbkit-usage, cargo-crumbkit: installs, the
+  usage trim, `docs` and `tool-skill draft` write through crumbkit-durable.
+  `docs` and `draft` replace a symbolic link at the output path, and the
+  file gets mode `0666` less the umask ([behaviour/durable-files]).
+
+### Removed
+
+- crumbkit: breaking: `files::write_atomically` is removed. A caller uses
+  `crumbkit_durable::write_atomically(path, text.as_bytes(), Mode::Umask)`
+  ([behaviour/durable-files]).
+
 ## [0.5.0](https://github.com/crumbkit/crumbkit/compare/v0.4.1...v0.5.0) - 2026-11-14
 ### Added
 

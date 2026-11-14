@@ -83,8 +83,9 @@ writes only under the XDG directories that it names. Install marks its
 file with a comment that names the tool, after zsh's `#compdef` line, and
 replaces only a marked file. It skips any other file, or a link to one,
 unless `--force` replaces the file or the link itself. It writes through a
-new temporary file and a rename, and a file already at the temporary name
-fails the row. The zsh file also calls its completion function, so the
+new temporary file and a rename, as
+[durable files](../durable-files.md) describes, and skips a temporary name
+that is already taken. The zsh file also calls its completion function, so the
 first Tab press of a session completes. `check` lists only a missing,
 differing or unreadable file and exits with 1 when there is one.
 
