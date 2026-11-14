@@ -358,13 +358,13 @@ fn write_file(skill: &Skill, text: &str, dirs: &[PathBuf], file: &Path, force: b
             continue;
         }
         if let Err(error) = write_atomically(&path, body.as_bytes(), Mode::Umask) {
-            return row(Installed::Failed, Some(error.to_string()), &path);
+            return row(Installed::Failed, Some(error.source.to_string()), &path);
         }
         written = true;
     }
     if old.as_deref() != Some(text) {
         if let Err(error) = write_atomically(file, text.as_bytes(), Mode::Umask) {
-            return row(Installed::Failed, Some(error.to_string()), file);
+            return row(Installed::Failed, Some(error.source.to_string()), file);
         }
         written = true;
     }

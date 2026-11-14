@@ -60,7 +60,7 @@ fn write(shell: Shell, bin: &str, file: &Path, text: &str, force: bool) -> Insta
         Mode::Umask,
     ) {
         Ok(()) => row(Installed::Written, path, reason),
-        Err(error) => row(Installed::Failed, path, Some(error.to_string())),
+        Err(error) => row(Installed::Failed, path, Some(error.source.to_string())),
     };
     let foreign = |reason: String| {
         if force {
