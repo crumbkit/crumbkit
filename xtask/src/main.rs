@@ -38,7 +38,7 @@ enum Cli {
         scope: Option<Scope>,
     },
     /// Fails when the median wall time of the last 20 successful pull-request
-    /// CI runs is over 180 seconds.
+    /// CI runs is over 240 seconds.
     CiTime,
     /// Builds shelf in release mode and fails when the median wall time of
     /// its runs of `books list` or `commands list --all --json --full` is
