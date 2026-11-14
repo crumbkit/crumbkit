@@ -76,9 +76,24 @@ jobs:
         run: cargo xtask run-time
       - if: ${{ always() }}
         run: |
+          mkdir -p out/head
           for b in root_help refusal; do
-            f=$(find target/gungraun -name "callgrind.run.$b.out" -o -name "callgrind.*$b*.out" | grep -v '\.old' | head -1)
-            echo "=== $b: $f"
-            callgrind_annotate --inclusive=yes "$f" | head -70
+            f=target/gungraun/crumbkit-benches/runs/runs/run.$b/callgrind.run.$b.out
+            callgrind_annotate --inclusive=yes --threshold=100 "$f" > out/head/$b.incl.txt || true
+            callgrind_annotate --tree=calling --inclusive=yes --threshold=100 "$f" > out/head/$b.tree.txt || true
           done
-          find target/gungraun -name 'callgrind*.out' | head -20
+      - if: ${{ always() }}
+        run: |
+          git checkout db7f1f07 -- crates examples Cargo.toml Cargo.lock
+          cargo bench -p crumbkit-benches || true
+          mkdir -p out/old
+          for b in root_help refusal; do
+            f=target/gungraun/crumbkit-benches/runs/runs/run.$b/callgrind.run.$b.out
+            callgrind_annotate --inclusive=yes --threshold=100 "$f" > out/old/$b.incl.txt || true
+            callgrind_annotate --tree=calling --inclusive=yes --threshold=100 "$f" > out/old/$b.tree.txt || true
+          done
+      - if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile
+          path: out
