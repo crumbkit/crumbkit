@@ -37,7 +37,8 @@ fills whatever is at that name.
   caller that returns `io::Result` adopts the function with `?`.
 - A directory sync that fails with `EINVAL` or `ENOTSUP` counts as done, as
   SQLite counts it, because some SMB and FUSE mounts cannot sync a
-  directory. Any other error returns `SyncDirectory` after the target was
+  directory. `ENOSYS` counts as done too, because std gives it the same
+  kind as `EOPNOTSUPP`. Any other error returns `SyncDirectory` after the target was
   replaced.
 - On Windows the directory is not synced, because std cannot open a
   directory there and NTFS journals the rename, and `mode` is ignored. Each

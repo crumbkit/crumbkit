@@ -48,7 +48,9 @@ old file's. The function creates no directory.
 A failure returns a [`WriteError`] whose `step` names the step that failed.
 A failure before the directory sync leaves the target unchanged and removes
 the temporary file. A failed directory sync means the target already holds
-the new bytes, and after a power loss it may hold the old ones.
+the new bytes, and after a power loss it may hold the old ones. A directory
+sync that fails with `EINVAL`, `ENOTSUP` or `ENOSYS` counts as done, because
+some SMB and FUSE mounts cannot sync a directory.
 
 ## Platforms
 

@@ -54,7 +54,7 @@ target, and converting it to an `io::Error` keeps the error's kind.
 
 | Step | What fails | State left |
 | --- | --- | --- |
-| `Create` | the path has no file name (`InvalidInput`), the directory is missing or read-only, or 16 names are taken (`AlreadyExists`) | nothing written |
+| `Create` | the path has no file name (`InvalidInput`), the directory is missing or read-only, the file name is longer than about 236 bytes, so the temporary name, up to 19 bytes longer, passes a 255-byte name limit (`ENAMETOOLONG`), or 16 names are taken (`AlreadyExists`) | nothing written |
 | `Write` | no space, an I/O error | target unchanged, temporary file removed |
 | `Sync` | the file system cannot flush the file | target unchanged, temporary file removed |
 | `Rename` | the target is a directory, the rename crosses devices, or Windows refuses to share the target | target unchanged, temporary file removed |
@@ -62,8 +62,8 @@ target, and converting it to an `io::Error` keeps the error's kind.
 
 A directory sync that fails with `EINVAL` or `ENOTSUP` counts as done, as
 SQLite counts it, because some file systems, such as SMB and some FUSE
-mounts, cannot sync a directory. std also gives `ENOSYS` the kind of
-`ENOTSUP`, so it counts as done too.
+mounts, cannot sync a directory. `ENOSYS` counts as done too, because std
+gives it the kind of `EOPNOTSUPP`, `Unsupported`.
 
 Why: ADR-0221.
 

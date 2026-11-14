@@ -119,9 +119,12 @@ const NAMES: u32 = 16;
 /// before [`WriteStep::SyncDirectory`] leaves `path` unchanged and removes
 /// the temporary file. `path` without a file name fails at
 /// [`WriteStep::Create`] with `InvalidInput` before any file is opened,
-/// and 16 taken names fail there with `AlreadyExists`. A directory sync
-/// that fails with `EINVAL` or `ENOTSUP`, as on some SMB and FUSE mounts
-/// that cannot sync a directory, counts as done.
+/// and 16 taken names fail there with `AlreadyExists`. The temporary name
+/// is up to 19 bytes longer than `path`'s file name, so on a file system
+/// that allows 255 bytes in a name, a file name longer than about 236
+/// bytes fails at [`WriteStep::Create`] with `ENAMETOOLONG`. A directory
+/// sync that fails with `EINVAL`, `ENOTSUP` or `ENOSYS`, as on some SMB
+/// and FUSE mounts that cannot sync a directory, counts as done.
 pub fn write_atomically(path: &Path, bytes: &[u8], mode: Mode) -> Result<(), WriteError> {
     let fail = |step, source| WriteError {
         step,
@@ -192,25 +195,24 @@ pub(crate) fn directory(path: &Path) -> &Path {
 
 /// `ENOTSUP` on Apple systems, where it differs from `EOPNOTSUPP` and std
 /// gives it no error kind of its own.
-#[cfg(target_vendor = "apple")]
-const APPLE_ENOTSUP: Option<i32> = Some(45);
-#[cfg(not(target_vendor = "apple"))]
-const APPLE_ENOTSUP: Option<i32> = None;
+const APPLE_ENOTSUP: i32 = 45;
 
-/// Returns the result of a directory sync with `EINVAL` and `ENOTSUP`
-/// counted as done, as SQLite counts them, because a file system that
-/// cannot sync a directory returns them.
+/// Returns the result of a directory sync with `EINVAL`, `ENOTSUP` and
+/// `ENOSYS` counted as done, as SQLite counts the first two, because a
+/// file system that cannot sync a directory returns them.
 ///
 /// std gives `EINVAL` the kind `InvalidInput`, and `EOPNOTSUPP` and `ENOSYS`
-/// the kind `Unsupported`. `ENOTSUP` is `EOPNOTSUPP` on Linux and the BSDs,
-/// and a value of its own on Apple systems, which this checks by number.
+/// the kind `Unsupported`, so `ENOSYS` counts as done with `ENOTSUP`.
+/// `ENOTSUP` is `EOPNOTSUPP` on Linux and the BSDs, and a value of its own
+/// on Apple systems, which this checks by number.
 pub(crate) fn directory_sync_settles(result: io::Result<()>) -> io::Result<()> {
     match result {
         Err(error)
             if matches!(
                 error.kind(),
                 io::ErrorKind::InvalidInput | io::ErrorKind::Unsupported
-            ) || (APPLE_ENOTSUP.is_some() && error.raw_os_error() == APPLE_ENOTSUP) =>
+            ) || (cfg!(target_vendor = "apple")
+                && error.raw_os_error() == Some(APPLE_ENOTSUP)) =>
         {
             Ok(())
         }
