@@ -33,8 +33,9 @@ replacing a file and taking a file lock (ADR-0221, ADR-0222).
 Two runs that find the key missing or damaged at once end with the same
 key, and the log works on a file system without hard links. A run that
 finds no 16-byte key takes the lock twice, which costs one more open and
-lock; a run that reads a good key takes no extra lock. clippy refuses `std::fs::rename`, `std::fs::copy`
-and the `std::fs::File` lock methods outside crumbkit-durable.
+lock; a run that reads a good key takes no extra lock. clippy refuses
+`std::fs::rename`, `std::fs::copy`, `std::fs::hard_link` and the
+`std::fs::File` lock methods outside crumbkit-durable.
 
 Considered: keeping `hard_link` for the first key and adding a lock only
 around a replacement, which keeps the FAT failure; one lock held from the

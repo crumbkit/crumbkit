@@ -28,7 +28,7 @@ const KEY: &str = "usage.key";
 pub(super) fn key(dir: &Path) -> Option<[u8; 16]> {
     match read(dir).ok()? {
         Some(key) => Some(key),
-        None => create(dir),
+        None => create(dir, Instant::now() + LIMITS.wait),
     }
 }
 
@@ -45,12 +45,13 @@ fn read(dir: &Path) -> io::Result<Option<[u8; 16]>> {
 /// Writes a new key to the key file in `dir` and returns it, unless another
 /// run wrote a 16-byte key first, whose key it returns.
 ///
-/// It takes the lock on `usage.lock`, waiting as long as an append does, and
-/// reads the key again under the lock, so when two runs find the key missing
-/// or damaged at once, one writes the key and the other reads it. The lock
-/// drops when it returns, before the run's append takes it again.
-fn create(dir: &Path) -> Option<[u8; 16]> {
-    let _lock = PathLock::acquire(&dir.join(LOCK), Instant::now() + LIMITS.wait).ok()?;
+/// It takes the lock on `usage.lock`, waiting until `deadline`, and reads the
+/// key again under the lock, so when two runs find the key missing or
+/// damaged at once, one writes the key and the other reads it. It returns
+/// `None` when the lock is still held at `deadline`. The lock drops when it
+/// returns, before the run's append takes it again.
+fn create(dir: &Path, deadline: Instant) -> Option<[u8; 16]> {
+    let _lock = PathLock::acquire(&dir.join(LOCK), deadline).ok()?;
     if let Some(key) = read(dir).ok()? {
         return Some(key);
     }

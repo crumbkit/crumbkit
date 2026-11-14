@@ -114,7 +114,7 @@ option.
 [`cli.rs`]: ../../examples/shelf/src/cli.rs
 [`lib.rs`]: ../../examples/shelf/src/lib.rs
 [schemas]: schemas
-[ADR-0029]: ../../docs/decisions/api/usage/0029-usage-log.md
+[ADR-0029]: ../../docs/decisions/api/usage/log/0029-usage-log.md
 [ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
 [ADR-0034]: ../../docs/decisions/api/usage/0034-usage-report.md
 [ADR-0095]: ../../docs/decisions/api/usage/0095-text-hand-over-own-signals-and-menu.md

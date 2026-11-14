@@ -3,11 +3,11 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
 use std::sync::Barrier;
 use std::thread;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crumbkit_durable::PathLock;
 
-use super::{create, key};
+use super::{create, key, read};
 use crate::file::create_dir;
 use crate::testing::TempDir;
 
@@ -65,7 +65,10 @@ fn a_run_that_loses_the_race_to_create_the_key_reads_the_winner_s_key() {
     let dir = TempDir::new("key-race");
     write_key(&dir, b"0123456789abcdef");
 
-    assert_eq!(create(dir.path()), Some(*b"0123456789abcdef"));
+    assert_eq!(
+        create(dir.path(), Instant::now()),
+        Some(*b"0123456789abcdef")
+    );
     assert_eq!(files(&dir), ["usage.key", "usage.lock"]);
 }
 
@@ -88,24 +91,23 @@ fn two_runs_that_find_a_damaged_key_at_once_end_with_the_same_key() {
         write_key(&dir, b"damaged");
         let start = Barrier::new(2);
 
+        // Each run reads the key as `key` does and then creates it, with a
+        // lock wait long enough that a slow disk never ends it.
         let (first, second) = thread::scope(|scope| {
             let run = || {
                 start.wait();
-                key(dir.path())
+                read(dir.path())
+                    .unwrap()
+                    .or_else(|| create(dir.path(), Instant::now() + Duration::from_secs(10)))
             };
             let first = scope.spawn(run);
             let second = scope.spawn(run);
             (first.join().unwrap(), second.join().unwrap())
         });
 
-        // A run whose lock wait runs out, as when a slow disk delays the
-        // other run's sync, gets no key and writes no line. Every key that
-        // a run returns is the kept key, and at least one run gets it.
         let kept = fs::read(dir.path().join("usage.key")).unwrap();
-        assert!(first.is_some() || second.is_some());
-        for returned in [first, second].into_iter().flatten() {
-            assert_eq!(returned.as_slice(), kept.as_slice());
-        }
+        assert_eq!(first.map(Vec::from), Some(kept.clone()));
+        assert_eq!(second.map(Vec::from), Some(kept));
     }
 }
 
