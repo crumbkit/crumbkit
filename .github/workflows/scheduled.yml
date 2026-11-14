@@ -84,6 +84,7 @@ jobs:
           done
       - if: ${{ always() }}
         run: |
+          git fetch --depth=1 origin db7f1f07
           git checkout db7f1f07 -- crates examples Cargo.toml Cargo.lock
           cargo bench -p crumbkit-benches || true
           mkdir -p out/old
