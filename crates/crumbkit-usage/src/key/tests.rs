@@ -1,8 +1,13 @@
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
+use std::sync::Barrier;
+use std::thread;
+use std::time::{Duration, Instant};
 
-use super::{create, key};
+use crumbkit_durable::PathLock;
+
+use super::{create, key, read};
 use crate::file::create_dir;
 use crate::testing::TempDir;
 
@@ -36,7 +41,7 @@ fn the_first_run_creates_a_16_byte_key_and_later_runs_reuse_it() {
 
     assert_eq!(first, second);
     assert_eq!(fs::read(dir.path().join("usage.key")).unwrap(), first);
-    assert_eq!(files(&dir), ["usage.key"]);
+    assert_eq!(files(&dir), ["usage.key", "usage.lock"]);
 }
 
 // Windows files have access control lists in place of Unix modes.
@@ -60,8 +65,11 @@ fn a_run_that_loses_the_race_to_create_the_key_reads_the_winner_s_key() {
     let dir = TempDir::new("key-race");
     write_key(&dir, b"0123456789abcdef");
 
-    assert_eq!(create(dir.path()), Some(*b"0123456789abcdef"));
-    assert_eq!(files(&dir), ["usage.key"]);
+    assert_eq!(
+        create(dir.path(), Instant::now()),
+        Some(*b"0123456789abcdef")
+    );
+    assert_eq!(files(&dir), ["usage.key", "usage.lock"]);
 }
 
 #[test]
@@ -73,7 +81,44 @@ fn an_empty_key_file_is_replaced_with_a_new_key_that_later_runs_reuse() {
 
     assert_eq!(key(dir.path()), Some(replaced));
     assert_eq!(fs::read(dir.path().join("usage.key")).unwrap(), replaced);
-    assert_eq!(files(&dir), ["usage.key"]);
+    assert_eq!(files(&dir), ["usage.key", "usage.lock"]);
+}
+
+#[test]
+fn two_runs_that_find_a_damaged_key_at_once_end_with_the_same_key() {
+    let dir = TempDir::new("key-damaged-race");
+    for _ in 0..200 {
+        write_key(&dir, b"damaged");
+        let start = Barrier::new(2);
+
+        // Each run reads the key as `key` does and then creates it, with a
+        // lock wait long enough that a slow disk never ends it.
+        let (first, second) = thread::scope(|scope| {
+            let run = || {
+                start.wait();
+                read(dir.path())
+                    .unwrap()
+                    .or_else(|| create(dir.path(), Instant::now() + Duration::from_secs(10)))
+            };
+            let first = scope.spawn(run);
+            let second = scope.spawn(run);
+            (first.join().unwrap(), second.join().unwrap())
+        });
+
+        let kept = fs::read(dir.path().join("usage.key")).unwrap();
+        assert_eq!(first.map(Vec::from), Some(kept.clone()));
+        assert_eq!(second.map(Vec::from), Some(kept));
+    }
+}
+
+#[test]
+fn a_lock_held_past_the_wait_leaves_a_damaged_key_and_gives_no_key() {
+    let dir = TempDir::new("key-lock-busy");
+    write_key(&dir, b"damaged");
+    let _holder = PathLock::acquire(&dir.path().join("usage.lock"), Instant::now()).unwrap();
+
+    assert_eq!(key(dir.path()), None);
+    assert_eq!(fs::read(dir.path().join("usage.key")).unwrap(), b"damaged");
 }
 
 #[test]

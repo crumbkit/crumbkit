@@ -29,6 +29,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit_durable::write_atomically(path, text.as_bytes(), Mode::Umask)`
   ([behaviour/durable-files]).
 
+### Fixed
+
+- crumbkit-usage: usage logging now works on file systems without hard
+  links, such as FAT, and two runs that find a damaged key at once end with
+  the same key, because a run writes the key under the log's lock
+  ([behaviour/usage-log]).
+
 ## [0.5.0](https://github.com/crumbkit/crumbkit/compare/v0.4.1...v0.5.0) - 2026-11-14
 ### Added
 

@@ -140,6 +140,10 @@ pub(crate) fn copy_tree(from: &Path, to: &Path) -> io::Result<()> {
             fs::create_dir_all(&target)?;
             copy_tree(&source, &target)?;
         } else {
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "the copy writes only below `to`, a fresh directory that a TempDir owns"
+            )]
             fs::copy(&source, &target)?;
         }
     }

@@ -228,7 +228,12 @@ fn lock_opened(
     };
     let mut reopens = 0;
     loop {
-        match file.try_lock() {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "crumbkit-durable owns taking the lock on a lock file"
+        )]
+        let tried = file.try_lock();
+        match tried {
             Ok(()) => {}
             Err(TryLockError::WouldBlock) => {
                 let now = Instant::now();

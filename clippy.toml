@@ -27,6 +27,11 @@ disallowed-methods = [
     { path = "std::fs::create_dir_all", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
     { path = "std::fs::remove_file", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
     { path = "std::fs::remove_dir_all", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
-    { path = "std::fs::rename", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
-    { path = "std::fs::hard_link", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::rename", reason = "replace a file through crumbkit_durable::write_atomically" },
+    { path = "std::fs::copy", reason = "replace a file through crumbkit_durable::write_atomically" },
+    { path = "std::fs::hard_link", reason = "replace a file through crumbkit_durable::write_atomically" },
+    { path = "std::fs::File::lock", reason = "lock through crumbkit_durable::PathLock" },
+    { path = "std::fs::File::try_lock", reason = "lock through crumbkit_durable::PathLock" },
+    { path = "std::fs::File::lock_shared", reason = "lock through crumbkit_durable::PathLock" },
+    { path = "std::fs::File::try_lock_shared", reason = "lock through crumbkit_durable::PathLock" },
 ]

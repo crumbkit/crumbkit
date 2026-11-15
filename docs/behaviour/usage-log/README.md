@@ -205,18 +205,16 @@ never do.
 The key is 16 random bytes from `/dev/urandom`, or from getrandom on
 Windows, kept in `usage.key` beside the log with mode 0600 on Unix.
 
-- The first run writes the key to a temporary file in the same directory,
-  syncs it, and links it into place as `usage.key` with `hard_link`, which
-  fails when the name exists. `usage.key` therefore either holds a whole key
-  or does not exist, and when two first runs race, the loser reads the
-  winner's key.
-- A `usage.key` of the wrong length, such as one left by an older version,
-  is replaced with a new key through `rename`, so the run and later runs
-  write their lines again.
-- On a Windows file system without hard links, such as FAT, `hard_link`
-  fails, and every run drops its line without a word.
+- A run that finds `usage.key` missing or of the wrong length, such as one
+  left by an older version, takes the lock on `usage.lock` and reads the
+  key again. It keeps a 16-byte key that another run wrote meanwhile, and
+  otherwise writes a new key through [durable files](../durable-files.md),
+  so two runs that find it damaged at once end with the same key.
+- A crash leaves the old key or the new one, never part of one.
+- A run that cannot take the lock within 100 ms or write the key writes no
+  line. It drops the lock before its append.
 
-Why: ADR-0029.
+Why: ADR-0029, ADR-0223.
 
 ## The log file
 
@@ -237,9 +235,9 @@ Why: ADR-0029.
 ## Appending, locking and trimming
 
 - A run appends its line while it holds the lock on `usage.lock`, which it
-  takes with `File::try_lock`. It retries for at most 100 ms, and when the
-  lock is still held it drops its line. The lock has a file of its own,
-  which is never renamed.
+  takes through [durable files](../durable-files.md). It waits for at most
+  100 ms, and when the lock is still held it drops its line. The lock has a
+  file of its own, which is never renamed.
 - A line longer than 1 KiB is dropped.
 - When the log is over its size limit, the run keeps its newest whole lines
   that fit in half of the limit and then appends its own, while it holds the
