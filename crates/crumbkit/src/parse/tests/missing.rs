@@ -81,7 +81,7 @@ fn the_bare_root_is_still_refused_with_the_root_page_on_standard_error() {
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.out, "");
-    assert!(!parsed.err.is_empty());
+    assert_ne!(parsed.err, "");
 }
 
 #[test]

@@ -514,6 +514,7 @@ where
         }
         Err(error) => error,
     };
+    let error = group_help::<C>(&mut command, &path, &words, tool, error);
     if matches!(
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
@@ -530,28 +531,32 @@ where
         let stop = Stop::new(printed, code, json, command, tool, path, words);
         return Err(Unparsed::Stopped(stop));
     }
-    // A command line that names a group alone prints the group's `-h` page
-    // as `-h` does (ADR-0225). The group answers `-h` unless the tool turned
-    // its help flag off, and then the refusal stands.
-    let error = if names_group(&mut command, &path, &error, &words) {
-        let mut asked = words.clone();
-        asked.push(OsString::from("-h"));
-        let args = pick::args(&command, &asked);
-        match attempt::<C>(&mut command, args, tool) {
-            Err(help) if help.kind() == ErrorKind::DisplayHelp => {
-                let code = print_page(sink, &help, standard);
-                crate::events::helped(&command, &path, long_help, code);
-                let words = caller.unwrap_or(words);
-                let stop = Stop::new(Printed::Help, code, json, command, tool, path, words);
-                return Err(Unparsed::Stopped(stop));
-            }
-            _ => error,
-        }
-    } else {
-        error
-    };
     let refusal = command_line_refusal::<C>(&mut command, tool, &path, &error, &words);
     let output = stop::stopped(json, command, tool);
     let refused = Refused::new(refusal, Some(error), path, output, words, typed, caller);
     Err(Unparsed::Refused(refused))
+}
+
+/// Returns clap's help request for the group that `words` name alone, when
+/// `error` refused them because they stop at a group with visible
+/// subcommands (ADR-0225), so the run prints the group's `-h` page as `-h`
+/// does. It returns `error` for every other refusal, and when the group does
+/// not answer `-h`, as when the tool turned its help flag off.
+fn group_help<C: FromArgMatches>(
+    command: &mut Command,
+    path: &[String],
+    words: &[OsString],
+    tool: &Tool,
+    error: clap::Error,
+) -> clap::Error {
+    if !names_group(command, path, &error, words) {
+        return error;
+    }
+    let mut asked = words.to_vec();
+    asked.push(OsString::from("-h"));
+    let args = pick::args(command, &asked);
+    match attempt::<C>(command, args, tool) {
+        Err(help) if help.kind() == ErrorKind::DisplayHelp => help,
+        _ => error,
+    }
 }
