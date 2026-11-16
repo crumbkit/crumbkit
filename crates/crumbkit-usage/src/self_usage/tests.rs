@@ -536,3 +536,39 @@ fn the_usage_report_documents_are_marked_as_crumbkit_s_own() {
     assert!(crate::SELF_RUNS_LIST.is_built_in());
     assert!(crate::SELF_RUNS_EXPORT.is_built_in());
 }
+
+#[test]
+fn a_slow_command_that_mostly_waited_on_locks_says_so() {
+    let locked = json!({"ms": 2_000, "lock_ms": 1_500});
+    let log = [
+        line(1, "books show", &locked),
+        line(2, "books show", &locked),
+    ]
+    .concat();
+
+    assert_eq!(
+        rows(&log)[1],
+        (
+            "mostly waiting".to_owned(),
+            2,
+            "books show".to_owned(),
+            "slow runs spent half their time or more waiting on locks".to_owned()
+        )
+    );
+}
+
+#[test]
+fn a_slow_command_whose_waits_split_between_locks_and_other_systems_names_other_systems() {
+    let locked = json!({"ms": 2_000, "lock_ms": 1_500});
+    let remote = json!({"ms": 2_000, "facts": {"waited_ms": 1_500}});
+    let log = [
+        line(1, "books show", &locked),
+        line(2, "books show", &remote),
+    ]
+    .concat();
+
+    assert_eq!(
+        rows(&log)[1].3,
+        "slow runs spent half their time or more waiting on another system"
+    );
+}

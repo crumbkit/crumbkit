@@ -7,13 +7,14 @@
 
 use std::fmt::Write as _;
 use std::hash::Hasher as _;
+use std::time::Duration;
 
 use clap::{Arg, Command};
 use schemars::JsonSchema;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use siphasher::sip::SipHasher24;
 
-use super::facts::Written;
+use super::facts::{Label, LabelText, Written};
 use super::program::Program;
 use crumbkit::{Code, Spelling};
 
@@ -154,6 +155,47 @@ pub(super) struct Run {
     /// empty note (ADR-0050). It is present only when one had none.
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) empty: bool,
+    /// The milliseconds that the run spent waiting to take locks, summed,
+    /// which the tool reports with `lock_waited`. It is present only when
+    /// it is more than 0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "u64")]
+    #[schemars(extend("minimum" = 1))]
+    pub(super) lock_ms: Option<u64>,
+    /// Where the run took place, one label from the tool's own constants,
+    /// which the tool reports with `context`. The last report stays.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "label"
+    )]
+    #[schemars(with = "LabelText")]
+    pub(super) context: Option<Label>,
+}
+
+impl Run {
+    /// Adds `time` to the time that the run spent waiting to take locks. A
+    /// time under 1 ms adds nothing, and a sum that would pass `u64::MAX`
+    /// stays there.
+    pub(super) fn add_lock_wait(&mut self, time: Duration) {
+        let ms = u64::try_from(time.as_millis()).unwrap_or(u64::MAX);
+        if ms > 0 {
+            self.lock_ms = Some(self.lock_ms.unwrap_or(0).saturating_add(ms));
+        }
+    }
+}
+
+/// Serializes `context`, which `skip_serializing_if` has found present, as
+/// its text.
+#[expect(
+    clippy::ref_option,
+    reason = "serde's serialize_with passes the field by reference"
+)]
+fn label<S: Serializer>(context: &Option<Label>, serializer: S) -> Result<S::Ok, S::Error> {
+    match context {
+        Some(label) => serializer.serialize_str(label.as_str()),
+        None => serializer.serialize_none(),
+    }
 }
 
 /// A name from the tool's own vocabulary: a command path, a flag, a version

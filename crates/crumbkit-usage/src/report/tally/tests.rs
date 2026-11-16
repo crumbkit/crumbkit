@@ -456,3 +456,47 @@ fn a_command_that_is_not_slow_is_never_mostly_waiting() {
 
     assert_eq!(kinds(&report), [(Kind::SlowCommand, "books list", 1)]);
 }
+
+#[test]
+fn a_slow_run_that_waited_on_locks_counts_as_mostly_waiting() {
+    let mut locked = Entry::run("a", 1, "books show");
+    locked.ms = SLOW;
+    locked.lock_ms = SLOW / 2;
+    let mut both = Entry::run("a", 2, "books show");
+    both.ms = SLOW;
+    both.lock_ms = SLOW / 4;
+    both.facts.waited_ms = SLOW / 4;
+    let mut little = Entry::run("a", 3, "books show");
+    little.ms = SLOW;
+    little.lock_ms = SLOW / 2 - 1;
+
+    let waiting = report(&[locked, both, little]);
+
+    assert_eq!(
+        kinds(&waiting),
+        [
+            (Kind::SlowCommand, "books show", 3),
+            (Kind::MostlyWaiting, "books show", 2),
+        ]
+    );
+}
+
+#[test]
+fn the_figures_count_the_waiting_runs_that_waited_longer_on_locks_than_on_other_systems() {
+    let timed = |at, lock_ms, waited_ms| {
+        let mut entry = Entry::run("a", at, "books show");
+        entry.ms = SLOW;
+        entry.lock_ms = lock_ms;
+        entry.facts.waited_ms = waited_ms;
+        entry
+    };
+
+    let waiting = report(&[
+        timed(1, SLOW, 0),
+        timed(2, SLOW / 2, SLOW / 2),
+        timed(3, 0, SLOW),
+        timed(4, 1, SLOW / 2),
+    ]);
+
+    assert_eq!(figures(&waiting, "books show").waiting_on_locks, 2);
+}

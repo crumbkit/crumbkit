@@ -22,6 +22,8 @@
 //! [`UsageSummary`]: crate::UsageSummary
 //! [`Extension`]: crate::Extension
 //! [`extend`]: crate::extend()
+//! [`lock_waited`]: crate::lock_waited()
+//! [`context`]: crate::context()
 //! [`SelfUsage`]: crate::SelfUsage
 //! [`findings`]: crate::findings()
 //! [`SelfFigures`]: crate::SelfFigures
@@ -46,6 +48,7 @@
 mod caller;
 mod context;
 mod facts;
+mod fields;
 mod file;
 mod key;
 mod observer;
@@ -66,6 +69,7 @@ pub use self::facts::{Extension, Facts, Key, Label, extend};
 // `log_path` exists for cargo-crumbkit's `weigh --usage`, which reads the
 // log where this crate writes it. No tool calls it, so it stays out of the
 // documentation.
+pub use self::fields::{context, lock_waited};
 #[doc(hidden)]
 pub use self::file::log_path;
 pub use self::recorder::{Log, start, start_under};

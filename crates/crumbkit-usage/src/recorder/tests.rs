@@ -15,7 +15,7 @@ use crate::file::LIMITS;
 use crate::program::Program;
 use crate::record::Help;
 use crate::testing::TempDir;
-use crate::{Extension, Facts, Key};
+use crate::{Extension, Facts, Key, Label};
 use crumbkit::{Code, Spelling, ToolName};
 
 mod processes;
@@ -550,4 +550,48 @@ fn the_signal_thread_s_guard_ends_the_process_when_writing_the_line_panics() {
 
     assert!(panicked.is_err());
     assert_eq!(ENDED_WITH.load(std::sync::atomic::Ordering::SeqCst), 15);
+}
+
+#[test]
+fn a_run_that_waited_on_locks_records_lock_ms_in_its_line() {
+    let state = TempDir::new("lock-ms");
+    let slot = Mutex::new(State::Recording(parsed()));
+
+    update(&slot, |recorder| {
+        recorder.run.add_lock_wait(Duration::from_millis(30));
+    });
+    update(&slot, |recorder| {
+        recorder.run.add_lock_wait(Duration::from_millis(12));
+    });
+
+    let recorder = lock(&slot).and_then(take).unwrap();
+    assert_eq!(saved(&state, recorder, false)[0]["lock_ms"], 42);
+}
+
+#[test]
+fn a_run_with_no_lock_wait_and_no_context_records_neither_field() {
+    let state = TempDir::new("no-lock-ms");
+
+    let line = &saved(&state, parsed(), false)[0];
+
+    assert!(line.get("lock_ms").is_none(), "{line}");
+    assert!(line.get("context").is_none(), "{line}");
+}
+
+#[test]
+fn the_last_context_call_wins() {
+    let state = TempDir::new("context");
+    let mut recorder = parsed();
+
+    recorder.run.context = Some(Label::new("project"));
+    recorder.run.context = Some(Label::new("member"));
+
+    assert_eq!(saved(&state, recorder, false)[0]["context"], "member");
+}
+
+#[test]
+fn lock_waited_and_context_do_nothing_when_no_log_was_started() {
+    // No unit test starts the process's log, so its recorder stays idle.
+    crate::lock_waited(Duration::from_millis(5));
+    crate::context(Label::new("member"));
 }

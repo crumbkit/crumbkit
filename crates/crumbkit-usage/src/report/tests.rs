@@ -39,6 +39,7 @@ fn report(log: &[u8], since: u64) -> Report {
         since * 1000,
         &tree(),
         &[],
+        &[],
         &mut tally,
         |_| {},
     );
@@ -148,6 +149,7 @@ fn the_reader_leaves_out_the_runs_of_an_excluded_program_before_it_counts_anythi
         0,
         &tree(),
         &exclude,
+        &[],
         &mut tally,
         |entry| {
             read_back.push(entry.program);
@@ -180,6 +182,7 @@ fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
         BufReader::with_capacity(7, log.as_bytes()),
         0,
         &tree(),
+        &[],
         &[],
         &mut tally,
         |_| {},
@@ -335,8 +338,8 @@ proptest! {
     ) {
         let mut tally = Tally::new(2);
         let tool = tree();
-        read(Cursor::new(log_of(&runs[..split])), 0, &tool, &[], &mut tally, |_| {});
-        read(Cursor::new(log_of(&runs[split..])), 0, &tool, &[], &mut tally, |_| {});
+        read(Cursor::new(log_of(&runs[..split])), 0, &tool, &[], &[], &mut tally, |_| {});
+        read(Cursor::new(log_of(&runs[split..])), 0, &tool, &[], &[], &mut tally, |_| {});
 
         prop_assert_eq!(tally.report(), report(log_of(&runs).as_bytes(), 0));
     }
@@ -348,4 +351,43 @@ proptest! {
 
         prop_assert_eq!(report.runs, runs.len() as u64);
     }
+}
+
+/// Returns `line` with `context` as the place where its run took place.
+fn placed(line: &str, context: &str) -> String {
+    let mut record: serde_json::Value = serde_json::from_str(line).unwrap();
+    record["context"] = json!(context);
+    format!("{record}\n")
+}
+
+#[test]
+fn the_reader_keeps_only_the_runs_of_the_named_contexts_before_it_counts_anything() {
+    let log = [
+        line(1, "books list"),
+        placed(&line(2, "books show"), "member"),
+        placed(&line(3, "books show"), "project"),
+        placed(&line(4, "books show"), "elsewhere"),
+    ]
+    .concat();
+    let contexts = ["member".to_owned(), "project".to_owned()];
+    let mut tally = Tally::new(2);
+    let mut read_back = Vec::new();
+
+    read(
+        Cursor::new(log.as_str()),
+        0,
+        &tree(),
+        &[],
+        &contexts,
+        &mut tally,
+        |entry| read_back.push(entry.context),
+    );
+
+    let report = tally.report();
+    assert_eq!(report.runs, 2);
+    assert_eq!(report.skipped, 0);
+    assert_eq!(
+        read_back,
+        [Some("member".to_owned()), Some("project".to_owned())]
+    );
 }

@@ -96,6 +96,11 @@ impl Label {
         );
         Self(text)
     }
+
+    /// Returns the label's text.
+    pub(crate) const fn as_str(self) -> &'static str {
+        self.0
+    }
 }
 
 /// A tool's own facts about one run, which the usage log writes under the
@@ -282,7 +287,7 @@ impl Written {
     dead_code,
     reason = "the type exists only to describe a label in the schema"
 )]
-struct LabelText(String);
+pub(crate) struct LabelText(String);
 
 /// One extension of a run, stored without its type.
 trait Stored: Send {
@@ -377,7 +382,7 @@ const fn is_key(name: &str) -> bool {
 
 /// Returns whether `text` is a [`Label`]: 1 to 64 bytes of ASCII letters,
 /// digits and `_-./:{}`.
-const fn is_label(text: &str) -> bool {
+pub(crate) const fn is_label(text: &str) -> bool {
     let bytes = text.as_bytes();
     if bytes.is_empty() || bytes.len() > 64 {
         return false;

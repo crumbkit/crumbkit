@@ -100,7 +100,16 @@ is left out. `trace`, `run` and `parent` place the run in a W3C trace, as
 are optional, and a record with them keeps the `v1` id. Every field other
 than `facts` is one that crumbkit writes and checks.
 
-Why: ADR-0029, ADR-0007, ADR-0095.
+Two optional core fields carry facts that every tool shares. `lock_ms` is
+the milliseconds that the run spent waiting to take locks, summed, and is
+left out when it is 0. A tool adds to it with `crumbkit_usage::lock_waited`,
+passing the time that each lock reports, such as
+`crumbkit_durable::PathLock::waited`. `context` is one `Label` that says
+where the run took place, which a tool sets with `crumbkit_usage::context`,
+and the last call of a run stays. Both calls do nothing without a started
+log. Unlike `facts`, the log never leaves these two out to fit the line.
+
+Why: ADR-0029, ADR-0007, ADR-0095, ADR-0232.
 
 ## The tool's own facts
 

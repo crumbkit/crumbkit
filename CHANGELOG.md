@@ -25,6 +25,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   through a new temporary file, a sync, a rename and a directory sync, so a
   reader or a crash sees the old bytes or the new bytes
   ([behaviour/durable-files]).
+- crumbkit-usage: the usage record gains optional `lock_ms` and `context`
+  fields, set with `lock_waited` and `context`. `self usage` counts lock waits
+  towards `mostly waiting`, `self runs list` shows both fields, and `self runs
+  list` and `self figures list` take `--context <LABEL>`
+  ([behaviour/usage-log]).
 - crumbkit-durable: `PathLock::acquire` locks a lock file and checks that
   the locked file is still at the path, so a holder that waited while
   another program replaced the file locks the new one

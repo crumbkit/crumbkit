@@ -41,8 +41,9 @@ const LONGEST: usize = MAX_LINE + 1;
 /// `each`. `tool` is the tool's command after `Command::build`. A record
 /// that names anything else is counted as skipped, adds nothing more and
 /// never reaches `each`, whatever its program. A valid record that an
-/// excluded program marked adds nothing at all, not even to the skipped
-/// records.
+/// excluded program marked, and a valid record whose context is none of
+/// `contexts` when `contexts` is not empty, adds nothing at all, not even
+/// to the skipped records.
 ///
 /// It reads one line at a time and keeps at most [`LONGEST`] bytes of it.
 /// A line that is not a whole record, such as the last line of a run that
@@ -54,6 +55,7 @@ pub(super) fn read(
     since: u64,
     tool: &Command,
     exclude: &[Program],
+    contexts: &[String],
     tally: &mut Tally,
     mut each: impl FnMut(Entry),
 ) {
@@ -66,7 +68,7 @@ pub(super) fn read(
         }
         if !known::known(tool, &entry) {
             tally.skip();
-        } else if !entry.marked_by(exclude) {
+        } else if !entry.marked_by(exclude) && entry.placed_in(contexts) {
             tally.add(&entry);
             each(entry);
         }
@@ -186,7 +188,8 @@ pub(super) enum Kind {
     SlowCommand,
     /// A command is a slow command, and some of its runs that took at least
     /// 1 second spent at least half that time waiting on another system, as
-    /// the tool reported through its facts. It counts those runs.
+    /// the tool reported through its facts, or on locks, as it reported
+    /// through `lock_waited`. It counts those runs.
     #[serde(rename = "mostly waiting")]
     MostlyWaiting,
 }
@@ -244,4 +247,7 @@ pub(super) struct Figures {
     pub(super) all: u64,
     /// The runs that typed `--long`.
     pub(super) long: u64,
+    /// The runs that took at least 1 second, spent half their time or more
+    /// waiting, and waited at least as long on locks as on other systems.
+    pub(super) waiting_on_locks: u64,
 }

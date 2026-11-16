@@ -78,8 +78,11 @@ struct Command {
     /// The runs whose output a listing or stream cut short.
     cut_short: u64,
     /// The runs that took at least [`SLOW`] and spent at least half their
-    /// wall time waiting on another system.
+    /// wall time waiting on locks or on another system.
     waiting: u64,
+    /// The runs counted in `waiting` that waited at least as long on locks
+    /// as on other systems.
+    waiting_on_locks: u64,
 }
 
 impl Tally {
@@ -127,8 +130,11 @@ impl Tally {
         command.runs += 1;
         command.help_before += help_before;
         command.ms.push(entry.ms);
-        if entry.ms >= SLOW && entry.facts.waited_ms.saturating_mul(2) >= entry.ms {
+        if entry.mostly_waited(SLOW) {
             command.waiting += 1;
+            if entry.waited_on_locks() {
+                command.waiting_on_locks += 1;
+            }
         }
         if let Some(bytes) = entry.out_bytes {
             command.out_bytes.push(bytes);
@@ -216,6 +222,7 @@ impl Tally {
                 full: command.full,
                 all: command.all,
                 long: command.long,
+                waiting_on_locks: command.waiting_on_locks,
             });
         }
         findings.sort_by(|a, b| {

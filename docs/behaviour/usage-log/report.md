@@ -75,13 +75,13 @@ The report has nine findings. Each counts runs under one command path.
 | `short page` | A session followed a cut-short listing within 60 s with the same command and `--all` or `--limit`. The record holds no limit value, so any `--limit` counts, also one that asks for fewer rows than the default page. |
 | `heavy output` | The 95th percentile of a command's output is at least 20,000 bytes, which is about 5,000 tokens of a coding agent's context. |
 | `slow command` | The 95th percentile of a command's wall time is at least 1,000 ms. |
-| `mostly waiting` | A `slow command` whose runs of at least 1,000 ms spent at least half that time waiting on another system, as the tool's [facts](README.md#the-tools-own-facts) record. It counts those runs. |
+| `mostly waiting` | A `slow command` whose runs of at least 1,000 ms spent at least half that time waiting on another system, as the tool's [facts](README.md#the-tools-own-facts) record, or on locks, as its `lock_ms` records. It counts those runs. Its suggestion names locks when most of those runs waited at least as long on locks as on other systems, and another system otherwise. |
 
 The report reads only `waited_ms` from a record's facts, and never the
 tool's counts or labels, so no name or label from the facts reaches the
 report.
 
-Why: ADR-0034, ADR-0145.
+Why: ADR-0034, ADR-0145, ADR-0232.
 
 ## Checking records
 
@@ -95,6 +95,8 @@ counts it, so a hand-edited line cannot put its text in the report.
 - A code and each tolerated code must be 1 to 128 ASCII letters, digits, `_`,
   `-` and `:`. A code with whitespace or any other character fails.
 - A caller must be `person`, `unknown` or an id that is-ai-agent gives.
+- A context, when there is one, must be a `Label`: 1 to 64 ASCII letters,
+  digits, braces and `_-./:`.
 - The trace id must be 32 lowercase hex digits, and the run's and the
   parent's span ids 16, as the writer formats them.
 
@@ -139,11 +141,14 @@ Why: ADR-0034, ADR-0016, ADR-0037, ADR-0190.
 `self figures list` prints the figures of every command in the log, one row
 each in path order, with the root under the tool's name. It pages with
 `--limit` and `--all`, takes the flags of `self usage`, applies the same
-record checks and prints the same summary. Its document is
-`<tool>/self-figures-list/v1`, checked in as
+record checks and prints the same summary. `--context <LABEL>`, repeated or
+with labels separated by commas, keeps only the runs whose `context` is one
+of the labels. Runs with another context or none are left out before
+anything is counted, so they add to no figure and to no skipped count. Its
+document is `<tool>/self-figures-list/v1`, checked in as
 `crates/crumbkit-usage/schemas/self-figures-list-v1.json`.
 
-Why: ADR-0034, ADR-0190.
+Why: ADR-0034, ADR-0190, ADR-0232.
 
 ## self runs list
 
@@ -155,11 +160,14 @@ order within a session. Its flags, checks and summary are those of
 `crates/crumbkit-usage/schemas/self-runs-list-v1.json`.
 
 A row names its session by an ordinal from 1, never by the keyed hash. It
-gives the run's end to the second in UTC and the W3C trace ids. The
+gives the run's end to the second in UTC and the W3C trace ids. The long
+columns `lock_ms` and `context` give the milliseconds the run waited on
+locks, 0 when it reported none, and its context, null when it reported none.
+`self runs list` takes the same `--context` flag as `self figures list`. The
 listing holds every run in the window in memory, about 29,000 for a 10 MB
 log.
 
-Why: ADR-0190.
+Why: ADR-0190, ADR-0232.
 
 ## self runs export
 
