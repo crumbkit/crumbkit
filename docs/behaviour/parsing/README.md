@@ -57,9 +57,8 @@ standard error, so a tool's `main` returns the stop's code as it does after
 `parse`. `Run::new_to` prints the refusal to a sink instead. `Run::new`
 keeps the words for the `--yes` recovery. It reads no `--no-input`.
 
-A tool with personal aliases passes its arguments through
-`crumbkit_aliases::expand` before it parses, and passes the `Command` that
-`expand` read to `try_parse_to`, as the [aliases page](aliases.md) describes.
+A tool with aliases passes its arguments through `Aliases::expand` before it
+parses, and passes the `Command` that `expand` read to `try_parse_to`, as the [aliases page](aliases.md) describes.
 A tool that reads a refused command line before it prints calls `try_parse_to`
 ([a refusal that the tool prints](#a-refusal-that-the-tool-prints)).
 

@@ -1,19 +1,16 @@
 //! `<tool> aliases list`, which lists the built-in aliases of the command
-//! tree and the entries of the aliases file, with the problem of each entry
-//! that does not work.
-
-use std::fmt;
-use std::path::Path;
+//! tree and the entries of every source, with the problem of each entry that
+//! does not work.
 
 use clap::{Args, Command};
 use crumbkit::help::quote;
-use crumbkit::{Document, Error, Failure, Listing, Page, Problem, Row, Run};
+use crumbkit::{Document, Listing, Page, Problem, Row, Run};
 use schemars::JsonSchema;
 use serde::Serialize;
-use toml::de::{DeTable, DeValue};
 
-use crate::codes::UNREADABLE;
-use crate::entry::{wins, words};
+use crate::Aliases;
+use crate::judge::Content;
+use crate::source::Source;
 
 #[cfg(test)]
 mod tests;
@@ -25,19 +22,9 @@ pub const ALIASES_LIST: Document<Listing<AliasRow>> = Document::new(
     "crumbkit",
     "aliases-list",
     1,
-    "The built-in aliases and the entries of the aliases file, with the problem of each entry that does not work.",
+    "The built-in aliases and the entries of every source, with the problem of each entry that does not work.",
 )
 .built_in();
-
-/// The problem of an entry whose name a real command takes.
-const SHADOWED: &str = "the tool has a command or built-in alias of this name, which wins";
-
-/// The problem of an entry named `help` in a tool without a command of that
-/// name. crumbkit answers the word `help` itself, before any alias expands.
-const HELP: &str = "the tool answers the word help with its own help, which wins";
-
-/// The problem of an entry whose value is not a list of one or more words.
-const BAD_VALUE: &str = "the value must be a list of one or more words";
 
 /// The arguments of `<tool> aliases list`: the paging flags.
 ///
@@ -54,16 +41,16 @@ pub struct AliasesList {
     page: Page,
 }
 
-/// One built-in alias or aliases file entry, as `aliases list` prints it.
+/// One built-in alias or source entry, as `aliases list` prints it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct AliasRow {
-    /// The words that a person types after the tool's name, such as `books ls` for a built-in alias or `mine` for an entry of the aliases file.
+    /// The words that a person types after the tool's name, such as `books ls` for a built-in alias or `mine` for an entry of a source.
     name: String,
     /// The command that the alias stands for, without the tool's name, such as `books list`. An entry's words are quoted for a POSIX shell, and the command is empty when the entry's value is not a list of words.
     command: String,
     /// Why the entry does not expand, or empty when the alias works.
     problem: String,
-    /// Where the alias comes from: the tool's name for a built-in alias, or the path of the aliases file for an entry.
+    /// Where the alias comes from: the tool's name for a built-in alias, or the path of the file or the origin of the source for an entry.
     from: String,
 }
 
@@ -78,132 +65,114 @@ impl Row for AliasRow {
     const PROBLEM: Option<Problem<Self>> = Some(Problem::field("problem"));
 }
 
-/// Returns the built-in aliases of the command tree that `run` holds and
-/// the entries of the aliases file at `file`,
-/// one page of them as `args` asks, for the tool to pass to
-/// [`finish`](crumbkit::finish) with [`ALIASES_LIST`].
-///
-/// The entries with a problem come first, so a page cut short by a limit
-/// still shows every problem it can (OUTPUT-3). The built-in aliases
-/// follow, in the depth-first order of the visible tree. A built-in alias is a clap alias, hidden or visible, of a visible
-/// subcommand, and its name is its full path below the root, such as
-/// `books ls` for the alias `ls` of `books list`. A hidden command and
-/// everything below it are left out, and so are the aliases of arguments and
-/// the short and long flag aliases of flag subcommands. The entries of the
-/// file come last in name order. Each entry has the problem that keeps it
-/// from expanding, as [`expand`](crate::expand) decides it, and the entries
-/// with a problem keep name order among themselves.
-///
-/// It builds the whole command tree through `Run::command`, so it sees
-/// each command that `Command::defer` adds.
-///
-/// A missing file, or no file because the environment gives no config
-/// directory, lists the built-in aliases only. The listing's note, which
-/// the text output prints on standard error after the table, names the file
-/// and says when it does not exist yet, or says why the tool has no aliases
-/// file.
-///
-/// # Errors
-///
-/// Returns a failure with the code `<tool>::aliases::unreadable` when a
-/// file is at `file` but cannot be read or parsed. The message names the
-/// path and the reason, and the recovery asks the person to fix or remove
-/// the file.
-pub fn list(
-    run: &mut Run,
-    file: Option<&Path>,
-    args: &AliasesList,
-) -> Result<Listing<AliasRow>, Error> {
-    let command = run.command();
-    let text = match file {
-        Some(path) => crate::file::read(path).map_err(|error| AliasesError::Unreadable {
-            path: path.display().to_string(),
-            reason: error.to_string(),
-        })?,
-        None => None,
-    };
-    Ok(listing(command, file, text.as_deref(), args)?)
-}
-
-/// Returns the page of rows that `args` asks for, with the note that names
-/// the file, in the order that [`rows`] gives. `text` is `None` when no file
-/// is at `file`.
-///
-/// # Errors
-///
-/// Returns [`AliasesError::Unreadable`] when `text` is not a TOML table.
-fn listing(
-    command: &Command,
-    file: Option<&Path>,
-    text: Option<&str>,
-    args: &AliasesList,
-) -> Result<Listing<AliasRow>, AliasesError> {
-    let tool = command.get_name();
-    let note = match (file, text) {
-        (Some(path), Some(_)) => format!("Aliases file: {}", path.display()),
-        (Some(path), None) => format!("Aliases file: {}, which does not exist yet", path.display()),
-        (None, _) => {
-            format!("{tool} has no aliases file, because the home directory cannot be found.")
-        }
-    };
-    let rows = rows(command, file, text)?;
-    Ok(args.page.first_of(rows).described("aliases").note(note))
-}
-
-/// Returns every row: the entries of `text`, the aliases file at `file`,
-/// that have a problem, then the built-in aliases of `command`, then the
-/// entries without a problem. The entries are in name order within each
-/// group.
-///
-/// # Errors
-///
-/// Returns [`AliasesError::Unreadable`] when `text` is not a TOML table.
-fn rows(
-    command: &Command,
-    file: Option<&Path>,
-    text: Option<&str>,
-) -> Result<Vec<AliasRow>, AliasesError> {
-    let tool = command.get_name();
-    let mut rows = Vec::new();
-    built_in(command, &[], tool, &mut rows);
-    let (Some(path), Some(text)) = (file, text) else {
-        return Ok(rows);
-    };
-    let path = path.display().to_string();
-    let table = DeTable::parse(text).map_err(|error| AliasesError::Unreadable {
-        reason: parse_reason(text, &error),
-        path: path.clone(),
-    })?;
-    let mut entries: Vec<(&str, &DeValue<'_>)> = table
-        .get_ref()
-        .iter()
-        .map(|(name, value)| (name.get_ref().as_ref(), value.get_ref()))
-        .collect();
-    // A `DeTable` keeps keys in name order unless some crate in the build
-    // enables toml's `preserve_order` feature, which keeps file order, so
-    // the rows sort here.
-    entries.sort_by_key(|&(name, _)| name);
-    for (name, value) in entries {
-        let words = words(value);
-        let problem = if name == "help" && command.find_subcommand(name).is_none() {
-            HELP
-        } else if wins(command, name) {
-            SHADOWED
-        } else if words.is_none() {
-            BAD_VALUE
-        } else {
-            ""
-        };
-        rows.push(AliasRow {
-            name: name.to_owned(),
-            command: words.map(|words| join(&words)).unwrap_or_default(),
-            problem: problem.to_owned(),
-            from: path.clone(),
-        });
+impl Aliases {
+    /// Returns the built-in aliases of the command tree that `run` holds and
+    /// the entries of every source, one page of them as `args` asks, for the
+    /// tool to pass to [`finish`](crumbkit::finish) with [`ALIASES_LIST`].
+    ///
+    /// The entries with a problem come first, so a page cut short by a limit
+    /// still shows every problem it can (OUTPUT-3). The built-in aliases
+    /// follow, in the depth-first order of the visible tree. A built-in alias
+    /// is a clap alias, hidden or visible, of a visible subcommand, and its
+    /// name is its full path below the root, such as `books ls` for the alias
+    /// `ls` of `books list`. A hidden command and everything below it are left
+    /// out, and so are the aliases of arguments and the short and long flag
+    /// aliases of flag subcommands. The entries of the sources come last,
+    /// each source in the order the tool added it and the entries of one
+    /// source in name order. Each entry has the problem that keeps it from
+    /// expanding, as [`expand`](Aliases::expand) decides it, and the entries
+    /// with a problem keep that order among themselves. The `from` column
+    /// names the source: the path of a file, or the origin that the tool
+    /// gave.
+    ///
+    /// A source that cannot be read or parsed has one row with its origin as
+    /// the name and the reason as the problem, so the command exits with 1
+    /// and the other sources still list.
+    ///
+    /// It builds the whole command tree through `Run::command`, so it sees
+    /// each command that `Command::defer` adds.
+    ///
+    /// A missing file, or no file because the environment gives no config
+    /// directory, lists the other aliases only. The listing's note, which the
+    /// text output prints on standard error after the table, names each file
+    /// and says when it does not exist yet, or says why the tool has no
+    /// aliases file.
+    #[must_use]
+    pub fn list(&self, run: &mut Run, args: &AliasesList) -> Listing<AliasRow> {
+        self.listing(run.command(), args)
     }
-    // A stable sort keeps the order above within each group (OUTPUT-3).
-    rows.sort_by_key(|row| row.problem.is_empty());
-    Ok(rows)
+
+    /// Returns the page of rows that `args` asks for, with the note that
+    /// names the files, in the order that [`Aliases::rows`] gives.
+    pub(crate) fn listing(&self, command: &Command, args: &AliasesList) -> Listing<AliasRow> {
+        let rows = self.rows(command);
+        let listing = args.page.first_of(rows).described("aliases");
+        match self.note(command.get_name()) {
+            Some(note) => listing.note(note),
+            None => listing,
+        }
+    }
+
+    /// Returns the note that names each aliases file, or `None` when no
+    /// source is a file.
+    fn note(&self, tool: &str) -> Option<String> {
+        let notes: Vec<String> = self
+            .sources()
+            .iter()
+            .filter_map(Source::file_state)
+            .map(|(path, exists)| match (path, exists) {
+                (Some(path), true) => format!("Aliases file: {path}"),
+                (Some(path), false) => format!("Aliases file: {path}, which does not exist yet"),
+                (None, _) => {
+                    format!(
+                        "{tool} has no aliases file, because the home directory cannot be found."
+                    )
+                }
+            })
+            .collect();
+        (!notes.is_empty()).then(|| notes.join("\n"))
+    }
+
+    /// Returns every row: the entries with a problem, then the built-in
+    /// aliases of `command`, then the entries without a problem. The entries
+    /// are in source order, and in name order within a source.
+    fn rows(&self, command: &Command) -> Vec<AliasRow> {
+        let tool = command.get_name();
+        let mut rows = Vec::new();
+        built_in(command, &[], tool, &mut rows);
+        for (source, content) in self.judge(command, |_| true) {
+            let from = source.origin();
+            match content {
+                Content::Missing => {}
+                Content::Unreadable(reason) => rows.push(AliasRow {
+                    name: from.clone(),
+                    command: String::new(),
+                    problem: format!("cannot be read: {reason}"),
+                    from,
+                }),
+                Content::Items(mut items) => {
+                    // A `DeTable` keeps keys in name order unless some crate in
+                    // the build enables toml's `preserve_order` feature, which
+                    // keeps file order, so the rows sort here.
+                    items.sort_by_key(|judged| judged.item.name());
+                    for judged in items {
+                        let item = judged.item;
+                        rows.push(AliasRow {
+                            name: item.name(),
+                            command: item.words.as_ref().map_or_else(String::new, |words| {
+                                join(&words.iter().map(String::as_str).collect::<Vec<_>>())
+                            }),
+                            problem: judged.problem.unwrap_or_default(),
+                            from: from.clone(),
+                        });
+                    }
+                }
+            }
+        }
+        // A stable sort keeps the order above within each group (OUTPUT-3).
+        rows.sort_by_key(|row| row.problem.is_empty());
+        rows
+    }
 }
 
 /// Adds a row to `rows` for each alias of each visible subcommand of
@@ -236,43 +205,3 @@ fn join(words: &[&str]) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
-
-/// Returns the reason that `text` is not a TOML table: the parser's message,
-/// after the line number of the place it points at when it points at one.
-fn parse_reason(text: &str, error: &toml::de::Error) -> String {
-    let line = error
-        .span()
-        .and_then(|span| text.get(..span.start))
-        .map(|before| before.matches('\n').count() + 1);
-    match line {
-        Some(line) => format!("line {line}: {}", error.message()),
-        None => error.message().to_owned(),
-    }
-}
-
-/// A failure of `aliases list`.
-#[derive(Debug, Failure)]
-enum AliasesError {
-    /// A file is at the aliases file's path but cannot be read or parsed.
-    #[failure(code = UNREADABLE, hint = "fix or remove {path}")]
-    Unreadable {
-        /// The path of the file.
-        path: String,
-        /// The I/O error or the parser's message.
-        reason: String,
-    },
-}
-
-/// Prints the message, such as `cannot read the aliases file
-/// /home/ada/.config/shelf/aliases.toml: line 2: invalid array`.
-impl fmt::Display for AliasesError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unreadable { path, reason } => {
-                write!(f, "cannot read the aliases file {path}: {reason}")
-            }
-        }
-    }
-}
-
-impl std::error::Error for AliasesError {}

@@ -1,7 +1,7 @@
 # ADR-0027. Aliases
 
 - Date: 2026-10-10
-- Status: accepted
+- Status: amended by ADR-0228
 
 ## Context
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "crumbkit/aliases-list/v1",
-  "description": "The built-in aliases and the entries of the aliases file, with the problem of each entry that does not work.",
+  "description": "The built-in aliases and the entries of every source, with the problem of each entry that does not work.",
   "type": "object",
   "properties": {
     "cut": {
@@ -108,7 +108,7 @@
   ],
   "$defs": {
     "AliasRow": {
-      "description": "One built-in alias or aliases file entry, as `aliases list` prints it.",
+      "description": "One built-in alias or source entry, as `aliases list` prints it.",
       "type": "object",
       "properties": {
         "command": {
@@ -116,11 +116,11 @@
           "type": "string"
         },
         "from": {
-          "description": "Where the alias comes from: the tool's name for a built-in alias, or the path of the aliases file for an entry.",
+          "description": "Where the alias comes from: the tool's name for a built-in alias, or the path of the file or the origin of the source for an entry.",
           "type": "string"
         },
         "name": {
-          "description": "The words that a person types after the tool's name, such as `books ls` for a built-in alias or `mine` for an entry of the aliases file.",
+          "description": "The words that a person types after the tool's name, such as `books ls` for a built-in alias or `mine` for an entry of a source.",
           "type": "string"
         },
         "problem": {

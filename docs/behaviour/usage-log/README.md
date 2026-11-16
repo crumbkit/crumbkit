@@ -74,7 +74,7 @@ Why: ADR-0029, ADR-0057.
   [`events::tolerated`](../../../crates/crumbkit/src/events.rs). The line's
   `tolerated` field lists the first 8 distinct codes in the order reported, and
   drops later codes, so the line stays within its size limit.
-- crumbkit-aliases' `expand` calls
+- crumbkit-aliases' `Aliases::expand` calls
   [`events::aliased`](../../../crates/crumbkit/src/events.rs) when it replaces
   an [alias](../parsing/aliases.md). The line then records `"alias": true`
   and the expanded command. crumbkit-aliases has no feature of its own.

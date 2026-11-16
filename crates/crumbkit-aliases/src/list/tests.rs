@@ -1,13 +1,15 @@
-//! Tests for `aliases list`, which lists the built-in and personal aliases.
+//! Tests for `aliases list`, which lists the built-in aliases and the
+//! entries of every source.
 
 use std::path::Path;
 use std::process::ExitCode;
 
-use crumbkit::{Error, Listing, Run, Sink, finish_to};
+use crumbkit::{Listing, Run, Sink, finish_to};
 use serde_json::{Value, json};
 
-use super::{ALIASES_LIST, AliasRow, AliasesList, list, listing};
+use super::{ALIASES_LIST, AliasRow, AliasesList};
 use crate::testing::tree;
+use crate::{Aliases, Entry, Kind, Source};
 
 /// The path that the personal rows name as their source.
 const FILE: &str = "/home/ada/.config/shelf/aliases.toml";
@@ -35,11 +37,20 @@ fn args(words: &[&str]) -> AliasesList {
     <AliasesList as clap::FromArgMatches>::from_arg_matches(matches).unwrap()
 }
 
-/// Returns the rows for an aliases file at [`FILE`] that holds `text`, as
+/// Returns the aliases of a personal file at [`FILE`] that holds `text`.
+fn personal(text: &str) -> Aliases {
+    Aliases::new().source(Source::text_at(FILE, Kind::Personal, Some(text)))
+}
+
+/// Returns the rows of `aliases`, as JSON.
+fn rows_of(aliases: &Aliases) -> Value {
+    serde_json::to_value(aliases.listing(&tree(), &args(&[]))).unwrap()
+}
+
+/// Returns the rows for a personal file at [`FILE`] that holds `text`, as
 /// JSON.
 fn listed(text: &str) -> Value {
-    let listing = listing(&tree(), Some(Path::new(FILE)), Some(text), &args(&[]));
-    serde_json::to_value(listing.unwrap()).unwrap()
+    rows_of(&personal(text))
 }
 
 /// Returns the row named `name`.
@@ -58,15 +69,15 @@ struct Finished {
     err: String,
 }
 
-/// Finishes `result` into memory as a tool's handler does.
-fn finish(output: Run, result: Result<Listing<AliasRow>, Error>) -> Finished {
+/// Finishes `listing` into memory as a tool's handler does.
+fn finish(output: Run, listing: Listing<AliasRow>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
         ALIASES_LIST,
-        result,
+        Ok::<_, crumbkit::Error>(listing),
     );
     Finished {
         code: ExitCode::from(code),
@@ -204,9 +215,10 @@ fn an_entry_whose_value_is_not_a_list_of_one_or_more_words_says_so() {
 #[test]
 fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_yet() {
     let missing = Path::new(env!("CARGO_MANIFEST_DIR")).join("no-such-aliases.toml");
+    let aliases = Aliases::new().source(Source::file(Some(missing.clone())));
 
-    let listing = list(&mut output(), Some(&missing), &args(&["--limit", "1"])).unwrap();
-    let finished = finish(output(), Ok(listing));
+    let listing = aliases.listing(&tree(), &args(&["--limit", "1"]));
+    let finished = finish(output(), listing);
 
     assert_eq!(
         finished.out,
@@ -224,9 +236,9 @@ fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_y
 
 #[test]
 fn a_note_on_standard_error_names_a_file_that_exists_even_when_it_is_empty() {
-    let listing = listing(&tree(), Some(Path::new(FILE)), Some(""), &args(&[]));
+    let listing = personal("").listing(&tree(), &args(&[]));
 
-    let finished = finish(output(), listing.map_err(Error::from));
+    let finished = finish(output(), listing);
 
     assert!(
         finished
@@ -241,14 +253,9 @@ fn a_note_on_standard_error_names_a_file_that_exists_even_when_it_is_empty() {
 #[test]
 fn a_page_cut_by_a_limit_counts_every_alias_with_a_problem_in_its_note() {
     let text = "bad = 3\nbooks = [\"books\", \"show\", \"1\"]\n";
-    let listing = listing(
-        &tree(),
-        Some(Path::new(FILE)),
-        Some(text),
-        &args(&["--limit", "1"]),
-    );
+    let listing = personal(text).listing(&tree(), &args(&["--limit", "1"]));
 
-    let finished = finish(output(), listing.map_err(Error::from));
+    let finished = finish(output(), listing);
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(
@@ -263,9 +270,9 @@ fn a_page_cut_by_a_limit_counts_every_alias_with_a_problem_in_its_note() {
 
 #[test]
 fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
-    let listing = listing(&tree(), None, None, &args(&[]));
+    let aliases = Aliases::new().source(Source::file(None));
 
-    let finished = finish(output(), listing.map_err(Error::from));
+    let finished = finish(output(), aliases.listing(&tree(), &args(&[])));
 
     assert_eq!(
         finished.err,
@@ -274,52 +281,191 @@ fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
 }
 
 #[test]
-fn a_file_that_cannot_be_read_fails_with_its_path_and_the_reason() {
+fn a_file_that_cannot_be_read_shows_one_problem_row_and_the_command_exits_with_1() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let aliases = Aliases::new().source(Source::file(Some(directory.to_path_buf())));
 
-    let finished = finish(output(), list(&mut output(), Some(directory), &args(&[])));
+    let finished = finish(output(), aliases.listing(&tree(), &args(&[])));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
-    assert_eq!(finished.out, "");
+    let line = finished.out.lines().nth(1).unwrap();
     assert!(
-        finished.err.starts_with(&format!(
-            "error: cannot read the aliases file {}: ",
-            directory.display()
-        )),
+        line.starts_with(&directory.display().to_string()),
         "{}",
-        finished.err
+        finished.out
     );
+    assert!(line.contains("cannot be read: "), "{}", finished.out);
+    assert_eq!(finished.out.lines().count(), 4, "{}", finished.out);
+}
+
+#[test]
+fn a_file_that_cannot_be_parsed_shows_a_problem_row_with_the_line_and_the_parser_s_message() {
+    let rows = listed("mine = [\"books\"]\nours = [");
+
+    let problem = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["from"] == FILE)
+        .unwrap();
+    assert_eq!(problem["name"], FILE);
     assert!(
-        finished
-            .err
-            .contains(&format!("help:  fix or remove {}", directory.display())),
-        "{}",
-        finished.err
+        problem["problem"]
+            .as_str()
+            .unwrap()
+            .starts_with("cannot be read: line 2: "),
+        "{problem}"
     );
-    assert!(
-        finished
-            .err
-            .ends_with("code:  shelf::aliases::unreadable\n"),
-        "{}",
-        finished.err
+    assert_eq!(rows.as_array().unwrap().len(), 3);
+}
+
+#[test]
+fn the_rows_of_every_source_carry_the_origin_of_their_source() {
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "a lazy source's loader returns a Result"
+    )]
+    fn entries() -> Result<Vec<Entry>, String> {
+        Ok(vec![Entry::new("repo run", ["books", "show"])])
+    }
+    let aliases = Aliases::new()
+        .source(Source::text_at(
+            FILE,
+            Kind::Personal,
+            Some(r#"mine = ["books"]"#),
+        ))
+        .source(Source::table(
+            "shelf defaults",
+            &[("wt ls", &["books", "list"])],
+        ))
+        .source(Source::lazy("repository", Kind::Shipped, entries));
+
+    let rows = rows_of(&aliases);
+
+    assert_eq!(row(&rows, "mine")["from"], FILE);
+    assert_eq!(row(&rows, "wt ls")["from"], "shelf defaults");
+    assert_eq!(row(&rows, "repo run")["from"], "repository");
+    assert_eq!(row(&rows, "wt ls")["command"], "books list");
+}
+
+#[test]
+fn a_source_that_cannot_be_read_does_not_hide_the_rows_of_the_others() {
+    fn fails() -> Result<Vec<Entry>, String> {
+        Err("no network".to_owned())
+    }
+    let aliases = Aliases::new()
+        .source(Source::lazy("repository", Kind::Shipped, fails))
+        .source(Source::table("shelf", &[("wt", &["books", "list"])]));
+
+    let rows = rows_of(&aliases);
+
+    assert_eq!(
+        row(&rows, "repository")["problem"],
+        "cannot be read: no network"
+    );
+    assert_eq!(row(&rows, "wt")["problem"], "");
+}
+
+#[test]
+fn a_key_that_names_a_real_command_path_says_the_real_one_wins() {
+    let aliases = Aliases::new().source(Source::table(
+        "shelf",
+        &[
+            ("books list", &["books", "show"]),
+            ("books recent", &["books", "show"]),
+        ],
+    ));
+
+    let rows = rows_of(&aliases);
+
+    assert_eq!(
+        row(&rows, "books list")["problem"],
+        "the tool has a command or built-in alias of this name, which wins"
+    );
+    assert_eq!(row(&rows, "books recent")["problem"], "");
+}
+
+#[test]
+fn a_file_key_that_starts_with_a_command_has_no_problem() {
+    let rows = listed("\"books recent\" = [\"books\", \"show\"]");
+
+    assert_eq!(row(&rows, "books recent")["problem"], "");
+}
+
+#[test]
+fn a_lazy_key_that_starts_with_a_command_says_a_lazy_source_cannot_start_with_one() {
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "a lazy source's loader returns a Result"
+    )]
+    fn entries() -> Result<Vec<Entry>, String> {
+        Ok(vec![Entry::new("books recent", ["books", "show"])])
+    }
+    let aliases = Aliases::new().source(Source::lazy("repository", Kind::Shipped, entries));
+
+    let rows = rows_of(&aliases);
+
+    assert_eq!(
+        row(&rows, "books recent")["problem"],
+        "the first word is a command of the tool, and entries of a lazy source cannot start with one"
     );
 }
 
 #[test]
-fn a_file_that_cannot_be_parsed_fails_with_the_line_and_the_parser_s_message() {
-    let error = listing(
-        &tree(),
-        Some(Path::new(FILE)),
-        Some("mine = [\"books\"]\nours = ["),
-        &args(&[]),
-    )
-    .unwrap_err();
+fn an_entry_that_an_earlier_source_wins_over_says_which_source_wins() {
+    let aliases = Aliases::new()
+        .source(Source::text_at(
+            FILE,
+            Kind::Personal,
+            Some(r#"wt = ["books", "show"]"#),
+        ))
+        .source(Source::table(
+            "shelf defaults",
+            &[("wt", &["books", "list"]), ("wt ls", &["books", "list"])],
+        ));
 
-    assert!(
-        error
-            .to_string()
-            .starts_with(&format!("cannot read the aliases file {FILE}: line 2: ")),
-        "{error}"
+    let rows = rows_of(&aliases);
+
+    let wins = format!("an entry of {FILE} wins");
+    assert_eq!(
+        rows.as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["from"] == "shelf defaults")
+            .count(),
+        2
+    );
+    for row in rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["from"] == "shelf defaults")
+    {
+        assert_eq!(row["problem"], wins.as_str(), "{row}");
+    }
+}
+
+#[test]
+fn a_key_that_starts_with_help_says_the_tool_answers_help_itself() {
+    let rows = listed(r#""help me" = ["books", "list"]"#);
+
+    assert_eq!(
+        row(&rows, "help me")["problem"],
+        "the tool answers the word help with its own help, which wins"
+    );
+}
+
+#[test]
+fn a_key_without_words_says_it_needs_one() {
+    let rows = listed(r#""  " = ["books", "list"]"#);
+
+    assert_eq!(
+        rows.as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["from"] == FILE)
+            .unwrap()["problem"],
+        "the key must be one or more words"
     );
 }
 

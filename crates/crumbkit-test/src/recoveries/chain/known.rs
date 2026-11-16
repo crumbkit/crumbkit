@@ -7,12 +7,11 @@ use crumbkit::{Code, Spelling};
 
 use super::{Chain, Walk};
 
-/// The codes of crumbkit's add-on crates: crumbkit-child's `codes::ALL` and
-/// crumbkit-aliases's `codes::ALL`. A test compares this list with theirs.
+/// The codes of crumbkit's add-on crates: crumbkit-child's `codes::ALL`. A
+/// test compares this list with it.
 pub(crate) const ADD_ON_CODES: &[Code<'static>] = &[
     Code::new("crumbkit", "child", "not_found"),
     Code::new("crumbkit", "child", "not_started"),
-    Code::new("crumbkit", "aliases", "unreadable"),
 ];
 
 /// Returns the codes of crumbkit and of its add-on crates: the one source

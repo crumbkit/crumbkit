@@ -29,7 +29,7 @@ fn failing_with(label: &str, code: &str) -> Setup {
 fn an_add_on_crates_code_spelled_with_the_tools_name_has_its_recovery_followed() {
     for (label, code) in [
         ("recoveries-add-on-child", "tool::child::not_found"),
-        ("recoveries-add-on-aliases", "tool::aliases::unreadable"),
+        ("recoveries-add-on-child-spawn", "tool::child::not_started"),
     ] {
         let setup = failing_with(label, code);
 
@@ -108,31 +108,27 @@ fn an_undeclared_start_in_the_crumbkit_component_on_neither_built_in_list_fails_
 fn undeclared_starts_with_the_add_on_crates_codes_run_without_a_declaration() {
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let child = failure("tool::child::not_found", r#"{"kind":"retry"}"#);
-    let aliases = failure("tool::aliases::unreadable", r#"{"kind":"retry"}"#);
+    let spawn = failure("tool::child::not_started", r#"{"kind":"retry"}"#);
     let setup = Setup::new(
         "recoveries-add-on-starts",
         &[
             ("books show 7 --json", 1, show.as_str(), ""),
             ("books show 8 --json", 1, child.as_str(), ""),
-            ("books show 9 --json", 1, aliases.as_str(), ""),
+            ("books show 9 --json", 1, spawn.as_str(), ""),
         ],
     );
     let starts = [
         SHOW_7[0],
         Failing::new(crumbkit_child::codes::NOT_FOUND, &["books", "show", "8"]),
-        Failing::new(crumbkit_aliases::codes::UNREADABLE, &["books", "show", "9"]),
+        Failing::new(crumbkit_child::codes::NOT_STARTED, &["books", "show", "9"]),
     ];
 
     assert_eq!(problems(&setup, &recoveries(&setup, &starts, OTHERS)), None);
 }
 
 #[test]
-fn the_add_on_codes_are_the_codes_that_crumbkit_child_and_crumbkit_aliases_declare() {
-    let declared: Vec<_> = crumbkit_child::codes::ALL
-        .iter()
-        .chain(crumbkit_aliases::codes::ALL)
-        .copied()
-        .collect();
+fn the_add_on_codes_are_the_codes_that_crumbkit_child_declares() {
+    let declared: Vec<_> = crumbkit_child::codes::ALL.to_vec();
 
     assert_eq!(ADD_ON_CODES, declared);
 }

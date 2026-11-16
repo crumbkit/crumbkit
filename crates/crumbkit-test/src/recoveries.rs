@@ -458,7 +458,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
         }
     }
     let known = known_codes(&declared, spelling);
-    // crumbkit's add-on crates, such as crumbkit-aliases, own codes in the
+    // crumbkit's add-on crates, such as crumbkit-child, own codes in the
     // `crumbkit` component that `crumbkit::codes::ALL` does not list. The
     // walk finds them on the built-in lists, so only the declared codes
     // give components.
