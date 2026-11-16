@@ -252,9 +252,12 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 /// suggested flag or subcommand that the tool hid, and leaves out clap's tip
 /// when it suggests nothing else.
 ///
-/// A command line that stops at a command with visible subcommands, such
-/// as `shelf books`, prints that command's `-h` page to the error writer.
-/// With `--json`, the refusal prints to the output writer as one
+/// A command line that names a group with visible subcommands, such as
+/// `shelf books`, prints that group's short `-h` page to the output writer
+/// and ends with code 0, as `shelf books -h` does (ADR-0225). A group
+/// followed by `--`, or the tool's root named alone, is refused: the group's
+/// page goes to the error writer. With `--json`, that refusal prints to the
+/// output writer as one
 /// `<tool>/failure/v1` document, as a failure does with `finish`, with the
 /// message ``the command `shelf books` needs a subcommand``. The
 /// walk finds `--json` in the words before any `--` where clap reads it as a
@@ -514,7 +517,7 @@ where
         }
         Err(error) => error,
     };
-    let error = group_help::<C>(&mut command, &path, &words, tool, error);
+    let error = group_help::<C>(&mut command, &path, root.len(), &words, tool, error);
     if matches!(
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
@@ -545,11 +548,12 @@ where
 fn group_help<C: FromArgMatches>(
     command: &mut Command,
     path: &[String],
+    root_len: usize,
     words: &[OsString],
     tool: &Tool,
     error: clap::Error,
 ) -> clap::Error {
-    if !names_group(command, path, &error, words) {
+    if !names_group(command, path, root_len, &error, words) {
         return error;
     }
     let mut asked = words.to_vec();

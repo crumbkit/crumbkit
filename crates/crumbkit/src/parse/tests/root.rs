@@ -86,3 +86,42 @@ fn help_above_the_tool_s_root_prints_no_topic() {
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.out, "");
 }
+
+#[test]
+fn the_tool_s_root_named_alone_is_still_refused_with_its_page_on_standard_error() {
+    let parsed = parse(&["tool", "planets"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    assert!(
+        parsed.err.starts_with("Work with planets\n"),
+        "{}",
+        parsed.err
+    );
+}
+
+#[test]
+fn a_group_below_the_tool_s_root_named_alone_prints_its_page_on_standard_output() {
+    let tool = || {
+        tree().mut_subcommand("planets", |planets| {
+            planets.subcommand(
+                clap::Command::new("moons")
+                    .subcommand_required(true)
+                    .subcommand(clap::Command::new("list")),
+            )
+        })
+    };
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let stop = parse_tree_to::<()>(
+        &mut Sink::new(&mut out, &mut err),
+        tool(),
+        &TOOL,
+        ["tool", "planets", "moons"],
+    )
+    .err();
+
+    assert_eq!(stop.as_ref().map(Stop::exit_code), Some(ExitCode::SUCCESS));
+    assert!(err.is_empty());
+    assert!(!out.is_empty());
+}

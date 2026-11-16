@@ -216,8 +216,8 @@ on the line has a `-h` help page. A refused
 command line exits with 2 unless the tool record lists another code
 ([exit codes](exit-codes.md)).
 
-A command line that names a group with visible subcommands and nothing
-after it is not a refusal: it prints the group's short `-h` page on
+A command line that names a group with visible subcommands, without a
+subcommand or a `--`, is not a refusal: it prints the group's short `-h` page on
 standard output and exits 0, as `-h` on the group does, and the usage log
 records it as a help run. The bare root and a group followed by `--` stay
 refusals. A group followed by `--` prints the group's `-h` page on standard

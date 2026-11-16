@@ -108,6 +108,41 @@ fn a_group_s_failure_document_names_its_visible_subcommands_in_declaration_order
 }
 
 #[test]
+fn a_group_whose_help_flag_is_turned_off_is_still_refused_with_code_2() {
+    let tool = || {
+        Command::new("tool").subcommand(
+            Command::new("planets")
+                .disable_help_flag(true)
+                .subcommand_required(true)
+                .subcommand(Command::new("show")),
+        )
+    };
+    admits(tool(), &["tool", "planets"], &["tool", "planets", "show"]);
+    let parsed = parse_tree(tool(), &["tool", "planets"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    assert_ne!(parsed.err, "");
+}
+
+#[test]
+fn a_group_whose_subcommands_are_all_hidden_is_still_refused_with_code_2() {
+    let tool = || {
+        Command::new("tool").subcommand(
+            Command::new("planets")
+                .subcommand_required(true)
+                .subcommand(Command::new("orbit").hide(true)),
+        )
+    };
+    admits(tool(), &["tool", "planets"], &["tool", "planets", "orbit"]);
+    let parsed = parse_tree(tool(), &["tool", "planets"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    assert_ne!(parsed.err, "");
+}
+
+#[test]
 fn a_leaf_that_needs_arguments_keeps_the_refusal_lines_with_its_usage_line() {
     let tool = || {
         Command::new("tool").subcommand(

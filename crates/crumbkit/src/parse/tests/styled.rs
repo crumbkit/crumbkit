@@ -156,7 +156,7 @@ fn refusal_streams(args: &[&str], styled: bool) -> (String, String) {
 
 /// Command lines that `tree()` refuses: a missing argument, an unknown
 /// flag, a flag without its value, a mistyped subcommand, and a group
-/// without its subcommand, which prints the group's page.
+/// followed by `--`, which prints the group's page.
 const REFUSED: [&[&str]; 5] = [
     &["tool", "planets", "show"],
     &["tool", "planets", "show", "mars", "--srt", "name"],
