@@ -59,6 +59,81 @@ assert_eq!(
 assert_eq!(BooksError::CODES, &[NOT_FOUND, REMOVED_FILE]);
 ```
 
+## Reviewed sentences
+
+A variant can carry a fixed sentence that a person reviewed, which is safe to
+show to anyone. `#[failure(reviewed)]` on the enum makes a variant without a
+`sentence` a compile error that names the variant. The sentence is a string
+literal on one line with no `{`, so no value from the run reaches it. A
+variant that uses `forward` takes its sentence from the failure it wraps.
+
+```rust
+use std::fmt;
+
+use crumbkit::{Call, Code, Failure, Recovery};
+
+const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+const NO_STATE: Code<'static> = Code::new("shelf", "state", "missing");
+
+#[derive(Debug, Failure)]
+#[failure(reviewed)]
+pub enum ReviewedError {
+    #[failure(
+        code = NOT_FOUND,
+        sentence = "The catalogue has no book with that id.",
+        recovery = Recovery::Run(Call::new(&["books", "list"])),
+    )]
+    NotFound,
+    #[failure(
+        code = NO_STATE,
+        sentence = "The state directory is missing.",
+        hint = "set HOME to a directory",
+    )]
+    NoState,
+}
+
+impl fmt::Display for ReviewedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("a books failure")
+    }
+}
+
+impl std::error::Error for ReviewedError {}
+
+assert_eq!(
+    ReviewedError::NoState.sentence(),
+    Some("The state directory is missing.")
+);
+```
+
+A variant without a sentence under `reviewed` does not compile:
+
+```compile_fail
+use std::fmt;
+
+use crumbkit::{Code, Failure};
+
+const NO_STATE: Code<'static> = Code::new("shelf", "state", "missing");
+
+#[derive(Debug, Failure)]
+#[failure(reviewed)]
+pub enum ReviewedError {
+    #[failure(code = NO_STATE, hint = "set HOME to a directory")]
+    NoState,
+}
+
+impl fmt::Display for ReviewedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("a books failure")
+    }
+}
+
+impl std::error::Error for ReviewedError {}
+```
+
+The check covers a type that derives `Failure`. A failure written by hand and
+a code from `Code::runtime` escape it.
+
 The type still implements `Display` and `std::error::Error` itself, by hand
 or with another derive. The documentation of each derive in this crate
 lists its keys and shows the code that it writes.
