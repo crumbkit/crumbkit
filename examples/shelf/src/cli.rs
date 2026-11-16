@@ -1,6 +1,7 @@
 //! shelf's command-line grammar.
 
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
 use clap::error::ErrorKind;
 use clap::{Args, Parser, Subcommand};
@@ -14,7 +15,7 @@ use crumbkit::pick::{Choices, Menu};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::tool::RefusalContext;
 use crumbkit::{Call, DryRun, NoInput, Page, Tool, ViewFlags, Yes};
-use crumbkit_aliases::AliasesList;
+use crumbkit_aliases::{Aliases, AliasesList, Source};
 use crumbkit_skills::Skill;
 use crumbkit_usage::{
     SELF_FIGURES_LIST, SELF_RUNS_EXPORT, SELF_RUNS_LIST, SELF_USAGE, SelfFigures, SelfRuns,
@@ -27,6 +28,15 @@ use crate::books::{self, BOOKS_LIST, BOOKS_REMOVE, BOOKS_SHOW, BOOKS_SUMMARIZE, 
 
 #[cfg(test)]
 mod tests;
+
+/// shelf's aliases: the entries of its aliases file.
+pub(crate) static ALIASES: LazyLock<Aliases> =
+    LazyLock::new(|| Aliases::new().source(Source::file(crumbkit_aliases::file("shelf"))));
+
+/// Returns the names that the root's help prints for shelf's aliases.
+fn alias_names(command: &clap::Command) -> Vec<String> {
+    ALIASES.names(command)
+}
 
 /// Browse a small catalogue of public-domain books.
 #[derive(Debug, Parser)]
@@ -223,7 +233,7 @@ pub const TOOL: Tool = Tool::new()
                 "Where shelf's books come from and how their ids work",
                 include_str!("cli/catalogue.txt"),
             )])
-            .personal_aliases(crumbkit_aliases::names),
+            .personal_aliases(alias_names),
     )
     .picker(&MENU);
 

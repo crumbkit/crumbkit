@@ -18,8 +18,8 @@ pub use crate::books::{
     UNREADABLE_IDS_FILE,
 };
 use crate::cli::{
-    AliasesCommand, BooksCommand, CommandsCommand, CompletionCommand, FiguresCommand, Resource,
-    RunsCommand, SKILL, SchemasCommand, SelfCommand,
+    ALIASES, AliasesCommand, BooksCommand, CommandsCommand, CompletionCommand, FiguresCommand,
+    Resource, RunsCommand, SKILL, SchemasCommand, SelfCommand,
 };
 pub use crate::cli::{Cli, TOOL};
 
@@ -37,8 +37,8 @@ pub const CODES: &[crumbkit::Code<'static>] = books::BooksError::CODES;
 /// the result or the failure in the format that the output flags choose and
 /// returns the process's exit code.
 ///
-/// Before parsing, `crumbkit_aliases::expand` replaces a personal alias in
-/// the first word with its words from shelf's aliases file, so clap,
+/// Before parsing, `Aliases::expand` replaces a personal alias in the
+/// first word with its words from shelf's aliases file, so clap,
 /// help and every output see only real commands.
 ///
 /// `crumbkit::try_parse_to` returns the parsed `Cli` and a `Run`. The
@@ -67,8 +67,7 @@ where
     T: Into<OsString>,
 {
     let command = Cli::command();
-    let file = crumbkit_aliases::file(command.get_name());
-    let args = crumbkit_aliases::expand(&command, args, file.as_deref());
+    let args = ALIASES.expand(&command, args);
     // The aliases needed the tree, so the parse takes that tree and the run
     // builds it once.
     let parsed =
@@ -155,7 +154,7 @@ where
         Resource::Completion { command } => completion(run, command),
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {
-                let result = crumbkit_aliases::list(&mut run, file.as_deref(), &args);
+                let result = Ok::<_, crumbkit::Error>(ALIASES.list(&mut run, &args));
                 let document = crumbkit_aliases::ALIASES_LIST;
                 crumbkit::finish(run, document, result)
             }

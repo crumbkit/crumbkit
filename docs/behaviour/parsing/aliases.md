@@ -1,10 +1,10 @@
 # Aliases
 
 This page covers the aliases of a tool's commands: the built-in aliases that
-a tool declares in clap, and the personal aliases that a person writes in a
-file. The published crate
+a tool declares in clap, and the aliases that come from sources, such as a
+person's file or a table in the tool's code. The published crate
 [crumbkit-aliases](../../../crates/crumbkit-aliases/README.md) holds the
-personal aliases, so only a tool with personal aliases builds toml.
+sources, so only a tool with aliases from sources builds toml.
 
 ## Aliases are for people
 
@@ -21,45 +21,80 @@ costs only help bytes and a second spelling.
 
 Why: ADR-0027.
 
-## Personal aliases
+## Sources
 
-A personal alias is an entry of `aliases.toml` in the tool's config
-directory, which the etcetera crate finds by the XDG base directory rules
-([`file`](../../../crates/crumbkit-aliases/src/file.rs)). An absolute
-`XDG_CONFIG_HOME` is the config directory without asking etcetera, because
-etcetera first looks up the home directory, which reads the password
+A tool builds one
+[`Aliases`](../../../crates/crumbkit-aliases/src/aliases.rs) value from
+[`Source`](../../../crates/crumbkit-aliases/src/source.rs)s in order. A source
+is one of three kinds:
+
+- `Source::file(path)` reads a person's `aliases.toml`. It is `Kind::Personal`.
+- `Source::table(origin, entries)` holds entries in the tool's code. It is
+  `Kind::Shipped` and costs no reading.
+- `Source::lazy(origin, kind, read)` calls `read` for its entries. A tool
+  uses it for entries that live somewhere that costs time to read.
+
+A key is one or more words, such as `wt ls`, and its value is a list of one or
+more words. The first source that has a matching entry wins, so a tool lists
+the person's file first and its own sources after it. Within one source, the
+longest key that the leading words spell wins. Why: ADR-0228.
+
+## Expanding
+
+The person's file is
+[`file`](../../../crates/crumbkit-aliases/src/file.rs) in the tool's config
+directory, which the etcetera crate finds by the XDG base directory rules. An
+absolute `XDG_CONFIG_HOME` is the config directory without asking etcetera,
+because etcetera first looks up the home directory, which reads the password
 database when `HOME` is unset. The usage log finds its state directory the
 same way ([usage log](../usage-log/README.md)).
 
 A tool passes its arguments through
-[`expand`](../../../crates/crumbkit-aliases/src/expand.rs) before
+[`Aliases::expand`](../../../crates/crumbkit-aliases/src/expand.rs) before
 `try_parse_to`, and passes `try_parse_to` the `Command` that `expand` read.
-`expand` replaces only the first word, once, with no shell, and
-a real command always wins. It never prints or fails, and it tells the usage
-log that an alias expanded.
+`expand` matches the words after the tool's name against the keys, replaces
+the matched words with the entry's words once, with no shell, and appends the
+words that followed. The replacement is not matched again (ADR-0027). A real
+command always wins: a key that names a real command path, such as `books
+list` or `books ls`, never expands. `expand` never prints or fails, and it
+tells the usage log that an alias expanded.
+
+When the first word is a command, `expand` consults only tables. A file and a
+lazy source are read only when the first word is no command, so a run that
+types a command pays for no reading. A key of a file or a lazy source that has
+more than one word therefore cannot start with a command. A key of a table
+can, as in `books recent`, when the key as a whole is no command.
+
+A source that cannot be read or parsed is skipped, and the later sources still
+apply.
 
 The hidden `<tool> aliases list` command
-([`list`](../../../crates/crumbkit-aliases/src/list.rs)) shows the built-in
-aliases and the file's entries, with the problem of each entry that does not
-expand. It exits with 1 while an entry has a problem
+([`Aliases::list`](../../../crates/crumbkit-aliases/src/list.rs)) shows the
+built-in aliases and the entries of every source, with the source of each row
+in its `from` column and the problem of each entry that does not expand. A
+source that cannot be read has one row with the reason as its problem. The
+command exits with 1 while a row has a problem
 ([rows that report a problem](../output/listings/README.md#rows-that-report-a-problem)).
 
-Why: ADR-0027, ADR-0029, ADR-0050.
+Why: ADR-0027, ADR-0029, ADR-0050, ADR-0228.
 
-## Personal aliases in help
+## Aliases in help
 
-A tool that wants a person's aliases in help sets `Help::personal_aliases`
-to [`names`](../../../crates/crumbkit-aliases/src/names.rs) and opts out of
+A tool that wants aliases in help sets `Help::personal_aliases` to a function
+of its own that returns `Aliases::names`, and opts out of
 `Rule::PersonalAliases`, which `check_names` enforces. The clap root's `-h`
 and `--help` then name each entry that expands on one line, after the
-`Topics:` line. `parse` calls `names` only when it prints that help, so no
-other run reads the file. Those names differ between machines, so the
-opt-out report says that help, golden files and what an agent sees then
-differ ([opt-outs](../adoption/opt-outs.md)). shelf opts in to show the line.
+`Topics:` line. `parse` calls the function only when it prints that help, so
+no other run reads a source. `Aliases::names` leaves out the entries of a
+source added with `Source::unlisted`. `Aliases::shipped_names` returns only the
+names of `Kind::Shipped` sources, which are the same on every machine. The
+names of a person's file differ between machines, so the opt-out report says
+that help, golden files and what an agent sees then differ
+([opt-outs](../adoption/opt-outs.md)). shelf opts in to show the line.
 
-crumbkit-test's help checks print help without a person's aliases, through
+crumbkit-test's help checks print help without the aliases, through
 `Help::without_personal_aliases`. `check_examples` and
 `cargo crumbkit weigh` run the binary with an empty config directory, so
 golden files and budgets are the same on every machine.
 
-Why: ADR-0027.
+Why: ADR-0027, ADR-0228.

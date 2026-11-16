@@ -1,58 +1,89 @@
-//! The names of a person's aliases that the root's help prints, for a tool
-//! that opts in to showing them (ADR-0027).
+//! The names of the aliases that the root's help prints, for a tool that
+//! opts in to showing them (ADR-0027).
 
 use clap::Command;
-use toml::de::DeTable;
 
-use crate::entry::{wins, words};
+use crate::Aliases;
+use crate::source::{Kind, Loaded, Source};
 
 #[cfg(test)]
 mod tests;
 
-/// Returns the names of the entries of the aliases file of the tool whose
-/// clap root is `command` that expand, in name order, for the tool to pass
-/// to `Help::personal_aliases`:
-///
-/// ```
-/// use crumbkit::Tool;
-/// use crumbkit::help::Help;
-///
-/// const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(crumbkit_aliases::names));
-/// ```
-///
-/// It reads the file that [`file`](crate::file) names for the root's name.
-/// An entry that a real command shadows, and an entry whose value is not a
-/// list of one or more words, does not expand, so it has no name here, and
-/// `<tool> aliases list` reports its problem. A missing file, a file that
-/// cannot be read or parsed, and an environment without a home directory
-/// give no names. Like [`expand`](crate::expand), it never prints and never
-/// fails.
-///
-/// crumbkit's `parse` calls it only when it prints the root's help, so no
-/// other run reads the file.
-#[must_use]
-pub fn names(command: &Command) -> Vec<String> {
-    let text =
-        crate::file(command.get_name()).and_then(|path| crate::file::read(&path).ok().flatten());
-    working(command, text.as_deref())
-}
+impl Aliases {
+    /// Returns the names of the entries of the listed sources that expand
+    /// against `command`, the tool's clap root, in name order and without
+    /// repeats, for the tool to pass to `Help::personal_aliases` through a
+    /// function of its own:
+    ///
+    /// ```
+    /// use std::sync::LazyLock;
+    ///
+    /// use clap::Command;
+    /// use crumbkit::Tool;
+    /// use crumbkit::help::Help;
+    /// use crumbkit_aliases::{Aliases, Source};
+    ///
+    /// static ALIASES: LazyLock<Aliases> = LazyLock::new(|| {
+    ///     Aliases::new().source(Source::file(crumbkit_aliases::file("shelf")))
+    /// });
+    ///
+    /// fn alias_names(command: &Command) -> Vec<String> {
+    ///     ALIASES.names(command)
+    /// }
+    ///
+    /// const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(alias_names));
+    /// ```
+    ///
+    /// A source added with [`Source::unlisted`] has no names. An entry that
+    /// a real command shadows, and an entry whose value is not a list of one
+    /// or more words, does not expand, so it has no name here, and
+    /// `<tool> aliases list` reports its problem. A missing file, a source
+    /// that cannot be read or parsed, and an environment without a home
+    /// directory give no names. Like [`expand`](Aliases::expand), it never
+    /// prints and never fails.
+    ///
+    /// crumbkit's `parse` calls the tool's function only when it prints the
+    /// root's help, so no other run reads a source.
+    ///
+    /// [`Source::unlisted`]: crate::Source::unlisted
+    #[must_use]
+    pub fn names(&self, command: &Command) -> Vec<String> {
+        self.collect(command, |_| true)
+    }
 
-/// Returns the names of the entries of `text`, the text of the aliases
-/// file or `None` when there is none, that expand against `command`, in
-/// name order.
-fn working(command: &Command, text: Option<&str>) -> Vec<String> {
-    let Some(Ok(table)) = text.map(DeTable::parse) else {
-        return Vec::new();
-    };
-    let mut names: Vec<String> = table
-        .get_ref()
-        .iter()
-        .filter(|(name, value)| !wins(command, name.get_ref()) && words(value.get_ref()).is_some())
-        .map(|(name, _)| name.get_ref().to_string())
-        .collect();
-    // A `DeTable` keeps file order when some crate in the build enables
-    // toml's `preserve_order` feature, so the names sort here, as the rows
-    // of `aliases list` do.
-    names.sort();
-    names
+    /// Returns the names that [`names`](Aliases::names) returns from the
+    /// sources of kind [`Kind::Shipped`], which are the same on every
+    /// machine, so a help page that names only these is the same on every
+    /// machine too.
+    #[must_use]
+    pub fn shipped_names(&self, command: &Command) -> Vec<String> {
+        self.collect(command, |source| source.kind() == Kind::Shipped)
+    }
+
+    /// Returns the names of the listed sources that `keep` accepts, sorted
+    /// and without repeats.
+    fn collect(&self, command: &Command, keep: impl Fn(&Source) -> bool) -> Vec<String> {
+        let mut names = Vec::new();
+        for source in self
+            .sources()
+            .iter()
+            .filter(|source| source.listed() && keep(source))
+        {
+            let Loaded::Items(items) = source.load() else {
+                continue;
+            };
+            names.extend(
+                items
+                    .iter()
+                    .filter(|item| item.problem(command, source.reads()).is_none())
+                    .map(|item| item.name()),
+            );
+        }
+        // A `DeTable` keeps file order when some crate in the build enables
+        // toml's `preserve_order` feature, so the names sort here, as the
+        // rows of `aliases list` do.
+        names.sort();
+        names.dedup();
+        names
+    }
 }

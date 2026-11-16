@@ -298,7 +298,6 @@ version = "0.5.0"
 dependencies = [
  "clap",
  "crumbkit",
- "crumbkit-aliases",
  "crumbkit-child",
  "crumbkit-markdown",
  "proptest",

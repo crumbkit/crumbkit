@@ -20,6 +20,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the locked file is still at the path, so a holder that waited while
   another program replaced the file locks the new one
   ([behaviour/durable-files]).
+- crumbkit-aliases: `Aliases` holds ordered `Source`s, a file, a table or a
+  lazy loader, and the first source with a match wins. A key can be several
+  words, such as `wt ls` ([behaviour/parsing/aliases]).
+- crumbkit-aliases: `aliases list` names each row's source in `from` and shows
+  one problem row for a source that cannot be read
+  ([behaviour/parsing/aliases]).
+- crumbkit-aliases: `Aliases::shipped_names` and `Source::unlisted` choose the
+  aliases that help names ([behaviour/parsing/aliases]).
 
 ### Changed
 
@@ -33,6 +41,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: `files::write_atomically` is removed. A caller uses
   `crumbkit_durable::write_atomically(path, text.as_bytes(), Mode::Umask)`
   ([behaviour/durable-files]).
+- crumbkit-aliases: breaking: the functions `expand`, `names` and `list` are
+  methods of `Aliases`, and `list` returns the `Listing` without a `Result`.
+  `file` stays and its path goes to `Source::file`
+  ([behaviour/parsing/aliases]).
+- crumbkit-aliases: breaking: the `codes` module and the code
+  `<tool>::aliases::unreadable` are removed, because a source that cannot be
+  read is one problem row of `aliases list` ([behaviour/parsing/aliases]).
 
 ### Fixed
 

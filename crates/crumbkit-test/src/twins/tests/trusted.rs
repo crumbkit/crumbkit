@@ -21,7 +21,7 @@ const UNLISTED: Code<'static> = Code::new("crumbkit", "books", "unlisted");
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books show
 /// 5` fails with crumbkit-child's code `tool::child::not_found`, `books
-/// show 4` fails with crumbkit-aliases's code `tool::aliases::unreadable`,
+/// show 4` fails with crumbkit-child's code `tool::child::not_started`,
 /// `books show 6` fails with `UNLISTED`, which prints with the tool's name,
 /// and `books show 2` exits with code 0, with or without `--json` at the
 /// end. Any other command line fails with code 3.
@@ -30,7 +30,7 @@ line="$*"
 case "${line% --json}" in
   'books show 7') printf 'error: no book 7\n  code:  tool::books::not_found\n' >&2; exit 1;;
   'books show 5') printf 'error: cannot run `viewer`: no such program\n  code:  tool::child::not_found\n' >&2; exit 1;;
-  'books show 4') printf 'error: the aliases file is unreadable\n  code:  tool::aliases::unreadable\n' >&2; exit 1;;
+  'books show 4') printf 'error: cannot start `viewer`\n  code:  tool::child::not_started\n' >&2; exit 1;;
   'books show 6') printf 'error: unlisted\n  code:  tool::books::unlisted\n' >&2; exit 1;;
   'books show 2') echo shown; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
@@ -55,9 +55,9 @@ const SHOW_5: Twin<'_> = Twin::new(
     &["books", "show", "2"],
 );
 
-/// The twin of crumbkit-aliases's code of an unreadable file.
+/// The twin of crumbkit-child's code of a program that did not start.
 const SHOW_4: Twin<'_> = Twin::new(
-    Failing::new(crumbkit_aliases::codes::UNREADABLE, &["books", "show", "4"]),
+    Failing::new(crumbkit_child::codes::NOT_STARTED, &["books", "show", "4"]),
     &["books", "show", "2"],
 );
 
@@ -77,7 +77,7 @@ fn checked(
 }
 
 #[test]
-fn a_twin_of_a_child_code_or_an_aliases_code_needs_no_declaration() {
+fn a_twin_of_a_child_code_needs_no_declaration() {
     assert_eq!(
         checked(
             &[&[NOT_FOUND]],
@@ -90,12 +90,8 @@ fn a_twin_of_a_child_code_or_an_aliases_code_needs_no_declaration() {
 }
 
 #[test]
-fn a_declared_child_code_or_aliases_code_needs_no_twin() {
-    let codes: &[&[Code<'_>]] = &[&[
-        NOT_FOUND,
-        crumbkit_child::codes::NOT_STARTED,
-        crumbkit_aliases::codes::UNREADABLE,
-    ]];
+fn a_declared_child_code_needs_no_twin() {
+    let codes: &[&[Code<'_>]] = &[&[NOT_FOUND, crumbkit_child::codes::NOT_STARTED]];
 
     assert_eq!(checked(codes, &[SHOW_7], &Tool::new(), &[]), None);
 }

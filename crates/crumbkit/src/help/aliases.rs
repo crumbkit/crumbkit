@@ -6,12 +6,12 @@ use clap::Command;
 use super::Help;
 
 impl Help {
-    /// Sets the function that returns the names of a person's aliases, such
-    /// as `crumbkit_aliases::names`, so the `-h` and `--help` of the clap
-    /// root end with a line such as ``Personal aliases: firsts, mine.
-    /// `shelf aliases list` shows what each runs.``, between the `Topics:`
-    /// line and the `Next:` line. A person's aliases expand only in the
-    /// first word after the tool's name, so the line is on the clap root's
+    /// Sets the function that returns the names of the aliases, such as one
+    /// that calls `crumbkit_aliases::Aliases::names`, so the `-h` and
+    /// `--help` of the clap root end with a line such as ``Personal aliases:
+    /// firsts, mine. `shelf aliases list` shows what each runs.``, between
+    /// the `Topics:` line and the `Next:` line. Aliases expand only at the
+    /// start of the words after the tool's name, so the line is on the clap root's
     /// help alone.
     ///
     /// [`parse`](crate::parse) calls `names` with the clap root only when

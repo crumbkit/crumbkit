@@ -37,3 +37,4 @@ its trace context.
 - [ADR-0031. Output](output/README.md)
 - [ADR-0170. Processes](processes/README.md)
 - [ADR-0099. The types that need no clap](core/README.md)
+- [ADR-0229. Aliases](aliases/README.md)

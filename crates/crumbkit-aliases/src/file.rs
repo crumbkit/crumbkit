@@ -22,9 +22,9 @@ mod tests;
 /// `XDG_CONFIG_HOME` is the config directory without that lookup. The
 /// function touches no file.
 ///
-/// A tool's `main` calls it once and passes the result to
-/// [`expand`](crate::expand) and [`list`](crate::list), so both read the same
-/// file, and a test passes its own path to them instead.
+/// A tool passes the result to [`Source::file`](crate::Source::file), so
+/// `expand`, `names` and `list` read the same file, and a test passes its own
+/// path instead.
 #[must_use]
 pub fn file(tool: &str) -> Option<PathBuf> {
     #[expect(
