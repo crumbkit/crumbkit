@@ -4,7 +4,7 @@
 use clap::Command;
 
 use crate::Aliases;
-use crate::judge::Content;
+use crate::judge::{Content, judge};
 use crate::source::{Kind, Source};
 
 #[cfg(test)]
@@ -13,7 +13,7 @@ mod tests;
 impl Aliases {
     /// Returns the names of the entries of the listed sources that expand
     /// against `command`, the tool's clap root, in name order and without
-    /// repeats, for the tool to pass to `Help::personal_aliases` through a
+    /// repeats, for the tool to pass to `Help::aliases` through a
     /// function of its own:
     ///
     /// ```
@@ -21,18 +21,22 @@ impl Aliases {
     ///
     /// use clap::Command;
     /// use crumbkit::Tool;
-    /// use crumbkit::help::Help;
+    /// use crumbkit::help::{Help, Scope};
     /// use crumbkit_aliases::{Aliases, Source};
     ///
     /// static ALIASES: LazyLock<Aliases> = LazyLock::new(|| {
     ///     Aliases::new().source(Source::file(crumbkit_aliases::file("shelf")))
     /// });
     ///
-    /// fn alias_names(command: &Command) -> Vec<String> {
-    ///     ALIASES.names(command)
+    /// fn alias_names(command: &Command, scope: Scope) -> Vec<String> {
+    ///     match scope {
+    ///         Scope::All => ALIASES.names(command),
+    ///         Scope::Shipped => ALIASES.shipped_names(command),
+    ///     }
     /// }
     ///
-    /// const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(alias_names));
+    /// const TOOL: Tool = Tool::new()
+    ///     .help(Help::new().aliases(alias_names).alias_scope(Scope::All));
     /// ```
     ///
     /// A source added with [`Source::unlisted`] has no names. An entry that
@@ -63,11 +67,17 @@ impl Aliases {
     }
 
     /// Returns the names of the listed sources that `keep` accepts, sorted
-    /// and without repeats.
+    /// and without repeats. Only the sources that `keep` accepts are read and
+    /// can hide an entry.
     fn collect(&self, command: &Command, keep: impl Fn(&Source) -> bool) -> Vec<String> {
+        let sources: Vec<&Source> = self
+            .sources()
+            .iter()
+            .filter(|source| keep(source))
+            .collect();
         let mut names = Vec::new();
-        for (source, content) in self.judge(command, &keep) {
-            if !(source.listed() && keep(source)) {
+        for (source, content) in sources.iter().zip(judge(command, &sources)) {
+            if !source.listed() {
                 continue;
             }
             if let Content::Items(items) = content {

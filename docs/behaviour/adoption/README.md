@@ -17,7 +17,7 @@ crumbkit's behaviour.
 
 | Record | Path | What it declares |
 | --- | --- | --- |
-| `Help` | `crumbkit::help::Help` | Groups, leaves, topics, file formats, the root, root verbs and personal aliases. |
+| `Help` | `crumbkit::help::Help` | Groups, leaves, topics, file formats, the root, root verbs and aliases. |
 | `Failures` | `crumbkit::tool::Failures` | Exit codes, the refusal alternatives and the refusal hint. |
 | `Output` | `crumbkit::tool::Output` | The output budget, the JSON layout and terminal detection. |
 

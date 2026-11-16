@@ -10,7 +10,7 @@ use crumbkit::completion::{
     COMPLETION_CHECK, COMPLETION_INSTALL, COMPLETION_PRINT, CompletionCheck, CompletionInstall,
     CompletionPrint,
 };
-use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf, Topic};
+use crumbkit::help::{Effects, Example, Goal, Group, Help, Leaf, Scope, Topic};
 use crumbkit::pick::{Choices, Menu};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::tool::RefusalContext;
@@ -34,8 +34,11 @@ pub(crate) static ALIASES: LazyLock<Aliases> =
     LazyLock::new(|| Aliases::new().source(Source::file(crumbkit_aliases::file("shelf"))));
 
 /// Returns the names that the root's help prints for shelf's aliases.
-fn alias_names(command: &clap::Command) -> Vec<String> {
-    ALIASES.names(command)
+fn alias_names(command: &clap::Command, scope: Scope) -> Vec<String> {
+    match scope {
+        Scope::All => ALIASES.names(command),
+        Scope::Shipped => ALIASES.shipped_names(command),
+    }
 }
 
 /// Browse a small catalogue of public-domain books.
@@ -233,7 +236,8 @@ pub const TOOL: Tool = Tool::new()
                 "Where shelf's books come from and how their ids work",
                 include_str!("cli/catalogue.txt"),
             )])
-            .personal_aliases(alias_names),
+            .aliases(alias_names)
+            .alias_scope(Scope::All),
     )
     .picker(&MENU);
 

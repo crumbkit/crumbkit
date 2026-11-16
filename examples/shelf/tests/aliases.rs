@@ -94,14 +94,14 @@ fn aliases_list_exits_with_0_when_every_alias_works() {
 }
 
 #[test]
-fn the_root_s_help_names_each_personal_alias_that_expands() {
+fn the_root_s_help_names_each_alias_that_expands() {
     let home = home().unwrap();
 
     for flag in ["-h", "--help"] {
         shelf(home.path(), &[flag])
             .success()
             .stdout_eq(
-                "...\nPersonal aliases: firsts. `shelf aliases list` shows what each runs.\nNext: shelf <COMMAND> -h\n",
+                "...\nAliases: firsts. `shelf aliases list` shows what each runs.\nNext: shelf <COMMAND> -h\n",
             )
             .stderr_eq("");
     }

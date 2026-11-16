@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 use clap::Command;
 use clap::error::ErrorKind;
+use crumbkit::help::Scope;
 use crumbkit::{Sink, Tool};
 
 use crate::examples::{Examples, setup_problem};
@@ -149,7 +150,7 @@ pub(crate) fn pages<'a>(
     let tool = match pages.source {
         Source::Clap => return clap_pages(command, flag, problems),
         Source::Binary(_, examples) => return binary_pages(command, examples, flag, problems),
-        Source::Rendered(tool) => tool.help(tool.get_help().without_personal_aliases()),
+        Source::Rendered(tool) => tool.help(tool.get_help().alias_scope(Scope::Shipped)),
     };
     let mut pages = Vec::new();
     for visit in tree::walk_visible(command) {

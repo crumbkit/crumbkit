@@ -105,7 +105,7 @@ assert_eq!(run(&["shelf", "aliases", "list"]), ExitCode::SUCCESS);
 ```
 
 A tool that wants aliases on its root's help passes a function that calls
-`Aliases::names` to `Help::personal_aliases`, and its tests opt out of
+`Aliases::names` to `Help::aliases` with `Scope::All`, and its tests opt out of
 `Rule::PersonalAliases`, because the root's help then differs between
 machines ([ADR-0027]). `Aliases::shipped_names` returns only the names of
 shipped sources, which are the same on every machine. `Source::unlisted`

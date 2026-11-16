@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::Aliases;
-use crate::judge::Content;
+use crate::judge::{Content, judge};
 use crate::source::Source;
 
 #[cfg(test)]
@@ -140,7 +140,8 @@ impl Aliases {
         let tool = command.get_name();
         let mut rows = Vec::new();
         built_in(command, &[], tool, &mut rows);
-        for (source, content) in self.judge(command, |_| true) {
+        let sources: Vec<&Source> = self.sources().iter().collect();
+        for (source, content) in sources.iter().zip(judge(command, &sources)) {
             let from = source.origin();
             match content {
                 Content::Missing => {}
