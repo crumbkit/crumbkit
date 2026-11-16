@@ -64,6 +64,8 @@ pub struct Effects {
     /// Whether the command reaches systems outside the tool, such as a web
     /// service.
     open_world: bool,
+    /// Whether the command runs a program that the caller names.
+    runs_program: bool,
 }
 
 /// How a command that writes many items ends when one of them fails, which
@@ -131,6 +133,7 @@ impl Effects {
             change: Change::Nothing,
             idempotent: true,
             open_world: false,
+            runs_program: false,
         }
     }
 
@@ -142,6 +145,7 @@ impl Effects {
             change: Change::Additive(Writes::NONE),
             idempotent: false,
             open_world: false,
+            runs_program: false,
         }
     }
 
@@ -153,6 +157,7 @@ impl Effects {
             change: Change::Destructive(Writes::NONE),
             idempotent: false,
             open_world: false,
+            runs_program: false,
         }
     }
 
@@ -171,6 +176,7 @@ impl Effects {
             }),
             idempotent: false,
             open_world: false,
+            runs_program: false,
         }
     }
 
@@ -254,6 +260,47 @@ impl Effects {
         self
     }
 
+    /// Marks the command as running a program that the caller names, such
+    /// as `starmap run -- cargo run`, which starts the program after `--`.
+    /// A tool that confirms before it starts a caller's program keys on
+    /// this marker, because open-world alone also marks a read-only command
+    /// that reaches a web service. A command that runs a caller's program
+    /// reaches outside the tool, so this also marks the command as
+    /// open-world, and no effects declare a program without it.
+    ///
+    /// # Panics
+    ///
+    /// Panics on [`Effects::read_only`], because a program that the caller
+    /// names can change anything, so a read-only hint would mislead a
+    /// caller. A `const` that calls it on read-only effects fails to
+    /// compile:
+    ///
+    /// ```compile_fail
+    /// use crumbkit::help::Effects;
+    ///
+    /// const EXEC: Effects = Effects::read_only().runs_program();
+    /// ```
+    #[must_use]
+    pub const fn runs_program(mut self) -> Self {
+        // RUST-5's exception for a `const fn` that checks the arguments of
+        // a constant, as `with_items` has.
+        assert!(
+            !matches!(self.change, Change::Nothing),
+            "a command that runs a caller's program is not read-only"
+        );
+        self.open_world = true;
+        self.runs_program = true;
+        self
+    }
+
+    /// Reports whether the command runs a program that the caller names.
+    /// Only the tests read it, because help and `commands list` read the
+    /// field.
+    #[cfg(test)]
+    pub(crate) const fn is_running_program(self) -> bool {
+        self.runs_program
+    }
+
     /// Reports whether the command changes nothing.
     #[must_use]
     pub const fn is_read_only(&self) -> bool {
@@ -320,25 +367,50 @@ impl Effects {
     #[doc(hidden)]
     #[must_use]
     pub const fn line(self) -> &'static str {
-        match (self.change, self.idempotent, self.open_world) {
-            (Change::Nothing, _, false) => "Effects: read-only, closed-world.",
-            (Change::Nothing, _, true) => "Effects: read-only, open-world.",
-            (Change::Additive(_), false, false) => {
+        // `runs_program` implies `open_world` and a command that changes
+        // something, so only those arms name it.
+        match (
+            self.change,
+            self.idempotent,
+            self.open_world,
+            self.runs_program,
+        ) {
+            (Change::Nothing, _, false, _) => "Effects: read-only, closed-world.",
+            (Change::Nothing, _, true, _) => "Effects: read-only, open-world.",
+            (Change::Additive(_), false, false, _) => {
                 "Effects: additive, not idempotent, closed-world."
             }
-            (Change::Additive(_), false, true) => "Effects: additive, not idempotent, open-world.",
-            (Change::Additive(_), true, false) => "Effects: additive, idempotent, closed-world.",
-            (Change::Additive(_), true, true) => "Effects: additive, idempotent, open-world.",
-            (Change::Destructive(_), false, false) => {
+            (Change::Additive(_), false, true, false) => {
+                "Effects: additive, not idempotent, open-world."
+            }
+            (Change::Additive(_), false, true, true) => {
+                "Effects: additive, not idempotent, open-world, runs a program the caller names."
+            }
+            (Change::Additive(_), true, false, _) => "Effects: additive, idempotent, closed-world.",
+            (Change::Additive(_), true, true, false) => {
+                "Effects: additive, idempotent, open-world."
+            }
+            (Change::Additive(_), true, true, true) => {
+                "Effects: additive, idempotent, open-world, runs a program the caller names."
+            }
+            (Change::Destructive(_), false, false, _) => {
                 "Effects: destructive, not idempotent, closed-world."
             }
-            (Change::Destructive(_), false, true) => {
+            (Change::Destructive(_), false, true, false) => {
                 "Effects: destructive, not idempotent, open-world."
             }
-            (Change::Destructive(_), true, false) => {
+            (Change::Destructive(_), false, true, true) => {
+                "Effects: destructive, not idempotent, open-world, runs a program the caller names."
+            }
+            (Change::Destructive(_), true, false, _) => {
                 "Effects: destructive, idempotent, closed-world."
             }
-            (Change::Destructive(_), true, true) => "Effects: destructive, idempotent, open-world.",
+            (Change::Destructive(_), true, true, false) => {
+                "Effects: destructive, idempotent, open-world."
+            }
+            (Change::Destructive(_), true, true, true) => {
+                "Effects: destructive, idempotent, open-world, runs a program the caller names."
+            }
         }
     }
 }
@@ -447,17 +519,19 @@ pub(crate) fn writes_schema() -> Value {
 }
 
 /// Serializes the effects as an object with the four properties of the
-/// Model Context Protocol's tool annotations, in its order, such as
-/// `{"read_only":true,"destructive":false,"idempotent":true,"open_world":false}`.
+/// Model Context Protocol's tool annotations, in its order, and then
+/// `runs_program`, such as
+/// `{"read_only":true,"destructive":false,"idempotent":true,"open_world":false,"runs_program":false}`.
 ///
 /// This impl is written by hand so crumbkit needs no `serde_derive`.
 impl Serialize for Effects {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut effects = serializer.serialize_struct("Effects", 4)?;
+        let mut effects = serializer.serialize_struct("Effects", 5)?;
         effects.serialize_field("read_only", &self.is_read_only())?;
         effects.serialize_field("destructive", &self.is_destructive())?;
         effects.serialize_field("idempotent", &self.idempotent)?;
         effects.serialize_field("open_world", &self.open_world)?;
+        effects.serialize_field("runs_program", &self.runs_program)?;
         effects.end()
     }
 }
@@ -486,7 +560,11 @@ pub(crate) fn schema() -> Value {
                 "description": "Whether the command reaches systems outside the tool, such as a web service.",
                 "type": "boolean",
             },
+            "runs_program": {
+                "description": "Whether the command runs a program that the caller names, such as the program after `--`. It is true only when open_world is true.",
+                "type": "boolean",
+            },
         },
-        "required": ["read_only", "destructive", "idempotent", "open_world"],
+        "required": ["read_only", "destructive", "idempotent", "open_world", "runs_program"],
     })
 }

@@ -44,8 +44,8 @@ const ALLOW: &[Allow] = &[
 
 /// The budgets of the paths through reading's help.
 const PATH_BUDGETS: PathBudgets<'_> = PathBudgets::new("tests/golden/examples").path(
-    4_300,
-    "reading's longest path, commands list, reads about 4,050 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.",
+    4_600,
+    "reading's longest path, commands list, reads about 4,430 bytes, so 4,600 bytes leaves room for small changes and catches a page or an output that grows by much.",
 );
 
 /// reading's built binary, the directory that holds its example golden

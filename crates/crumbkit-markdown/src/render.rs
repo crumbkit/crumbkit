@@ -359,5 +359,11 @@ fn help_effects(effects: Effects) -> HelpEffects {
     if effects.open_world {
         line = line.open_world();
     }
+    // A document that marks a read-only command as running a program is
+    // malformed, and `runs_program` would panic on it, so the line words it
+    // as read-only.
+    if effects.runs_program && !effects.read_only {
+        line = line.runs_program();
+    }
     line
 }

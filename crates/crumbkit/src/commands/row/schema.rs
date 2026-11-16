@@ -62,6 +62,10 @@ fn argument_schema() -> Schema {
                 "description": "Whether the argument also works after every subcommand below the command that defines it.",
                 "type": "boolean",
             },
+            "after_double_dash": {
+                "description": "Whether the argument takes the values written after `--`, which is clap's `last` setting. A command line that gives the argument values writes `--` before them.",
+                "type": "boolean",
+            },
             "one_of": {
                 "description": "The visible arguments that can be given in place of this one. These are the other arguments of each required group that holds it and, when the argument is required, the arguments it conflicts with. The list is empty when no argument can be given in its place.",
                 "type": "array",
@@ -80,6 +84,7 @@ fn argument_schema() -> Schema {
             "help",
             "long_help",
             "global",
+            "after_double_dash",
             "one_of",
         ],
     })

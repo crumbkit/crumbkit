@@ -46,6 +46,8 @@ Every row has every field except `goals` and `prints_no_result`, with
 `null` or an empty list for what a command lacks, so a program reads every
 row the same way.
 
+- An entry of `arguments` has [`after_double_dash`](after-double-dash/README.md),
+  `true` for `last`.
 - Each entry of `arguments` has `value_hint`, the kebab-case name of the
   clap `ValueHint` of the argument, such as `file-path`, `dir-path` or
   `any-path`, and `null` when clap reports none. clap reports `any-path` for

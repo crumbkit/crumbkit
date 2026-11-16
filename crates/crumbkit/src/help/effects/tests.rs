@@ -101,13 +101,58 @@ fn help_names_every_property_of_a_command_that_changes_something() {
 }
 
 #[test]
-fn the_json_object_holds_the_four_properties_in_mcp_order() {
+fn the_json_object_holds_the_four_properties_in_mcp_order_and_then_runs_program() {
     let json = serde_json::to_string(&Effects::destructive().idempotent()).unwrap();
 
     assert_eq!(
         json,
-        r#"{"read_only":false,"destructive":true,"idempotent":true,"open_world":false}"#
+        r#"{"read_only":false,"destructive":true,"idempotent":true,"open_world":false,"runs_program":false}"#
     );
+}
+
+#[test]
+fn a_command_that_runs_a_program_is_also_open_world() {
+    let effects = Effects::additive().runs_program();
+
+    assert!(effects.is_running_program());
+    assert!(effects.is_open_world());
+    assert!(!Effects::additive().open_world().is_running_program());
+}
+
+#[test]
+fn the_json_object_of_a_program_running_command_says_so_and_is_open_world() {
+    let json = serde_json::to_string(&Effects::additive().runs_program()).unwrap();
+
+    assert_eq!(
+        json,
+        r#"{"read_only":false,"destructive":false,"idempotent":false,"open_world":true,"runs_program":true}"#
+    );
+}
+
+#[test]
+fn help_names_a_program_the_caller_names_after_the_world() {
+    let lines = [
+        Effects::additive().runs_program().line(),
+        Effects::additive().idempotent().runs_program().line(),
+        Effects::destructive().runs_program().line(),
+        Effects::destructive().idempotent().runs_program().line(),
+    ];
+
+    assert_eq!(
+        lines,
+        [
+            "Effects: additive, not idempotent, open-world, runs a program the caller names.",
+            "Effects: additive, idempotent, open-world, runs a program the caller names.",
+            "Effects: destructive, not idempotent, open-world, runs a program the caller names.",
+            "Effects: destructive, idempotent, open-world, runs a program the caller names.",
+        ]
+    );
+}
+
+#[test]
+#[should_panic(expected = "a command that runs a caller's program is not read-only")]
+fn a_read_only_command_cannot_run_a_program_the_caller_names() {
+    let _ = Effects::read_only().runs_program();
 }
 
 #[test]

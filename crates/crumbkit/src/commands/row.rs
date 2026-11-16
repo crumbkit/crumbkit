@@ -66,6 +66,10 @@ pub struct CommandRow {
 
 /// One argument of a command, as the command's help shows it.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "the four flags are the four booleans of the argument's row in `commands list`"
+)]
 struct Argument {
     // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
     name: String,
@@ -79,6 +83,7 @@ struct Argument {
     help: Option<String>,
     long_help: Option<String>,
     global: bool,
+    after_double_dash: bool,
     one_of: Vec<String>,
 }
 
@@ -327,6 +332,7 @@ impl Argument {
                 .map(ToString::to_string),
             long_help: arg.get_long_help().map(ToString::to_string),
             global: arg.is_global_set(),
+            after_double_dash: arg.is_last_set(),
             one_of: one_of(arg, command),
         }
     }
@@ -498,7 +504,7 @@ impl Serialize for CommandRow {
 
 impl Serialize for Argument {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut argument = serializer.serialize_struct("Argument", 12)?;
+        let mut argument = serializer.serialize_struct("Argument", 13)?;
         argument.serialize_field("name", &self.name)?;
         argument.serialize_field("short", &self.short)?;
         argument.serialize_field("value_names", &self.value_names)?;
@@ -510,6 +516,7 @@ impl Serialize for Argument {
         argument.serialize_field("help", &self.help)?;
         argument.serialize_field("long_help", &self.long_help)?;
         argument.serialize_field("global", &self.global)?;
+        argument.serialize_field("after_double_dash", &self.after_double_dash)?;
         argument.serialize_field("one_of", &self.one_of)?;
         argument.end()
     }

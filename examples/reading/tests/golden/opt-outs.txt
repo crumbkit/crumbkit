@@ -31,8 +31,8 @@ suite/skip: Check::CommandReference
   Cost: No test checks this check's rules anywhere in the tool, so a change that breaks one of them passes unnoticed and an agent meets the broken convention.
 
 path-budget/path: every path through reading
-  Budget: 4300 bytes, where the default is 8000 bytes.
-  Reason: reading's longest path, commands list, reads about 4,050 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.
+  Budget: 4600 bytes, where the default is 8000 bytes.
+  Reason: reading's longest path, commands list, reads about 4,430 bytes, so 4,600 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below the default.
 
 reading has 7 declarations.
