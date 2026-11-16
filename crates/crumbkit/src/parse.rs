@@ -559,7 +559,9 @@ fn group_help<C: FromArgMatches>(
     let mut asked = words.to_vec();
     asked.push(OsString::from("-h"));
     let args = pick::args(command, &asked);
-    match attempt::<C>(command, args, tool) {
+    // The probe parses a copy, because a parse that clap refuses leaves the
+    // command in a state that words the refusal of the original line wrongly.
+    match attempt::<C>(&mut command.clone(), args, tool) {
         Err(help) if help.kind() == ErrorKind::DisplayHelp => help,
         _ => error,
     }
