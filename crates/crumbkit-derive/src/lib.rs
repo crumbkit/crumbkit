@@ -27,13 +27,20 @@ mod tests;
 /// | `alternative = EXPR` | variant or struct | One `Recovery` that `alternatives()` returns. The key can repeat, and the list keeps the written order. |
 /// | `field(NAME = EXPR, ...)` | variant or struct | One `Field` for each name, in the written order. Each name must be one or more lowercase ASCII letters, digits and underscores. |
 /// | `url = EXPR` | variant or struct | The `&str` that `url()` returns. |
+/// | `sentence = "..."` | variant or struct | The fixed sentence that `sentence()` returns. It is one line of text with no `{`, so no value from the run reaches it. |
 /// | `diagnostic` | variant or struct | `diagnostic()` returns the failure itself, which must implement `miette::Diagnostic`. |
 /// | `forward` | variant or struct with one field | Every method except `diagnostic()` calls the same method on that field, which must implement `Failure`. `diagnostic()` forwards only with the `diagnostic` key. |
 /// | `forward = FIELD` | variant or struct with named fields | Every method except `diagnostic()` calls the same method on the named field, as `forward` does. |
+/// | `reviewed` | type | Every variant that does not forward, or the struct, needs `sentence`, and a missing one is a compile error that names the variant. |
 /// | `crate = PATH` | type | The path of the crate that holds `Failure`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each variant that does not forward needs `code` and exactly one of
-/// `recovery`, `hint` and `no_next_step`. A forwarding variant takes no other
+/// `recovery`, `hint` and `no_next_step`. A type marked `reviewed` also needs
+/// `sentence` on each such variant. A variant that forwards is not checked,
+/// so a forwarded type is checked only when it is marked `reviewed` itself.
+/// The check covers a type that derives
+/// `Failure`, and a failure written by hand or a code from `Code::runtime`
+/// escapes it. A forwarding variant takes no other
 /// key except `diagnostic`, which forwards `diagnostic()` too. A key given
 /// twice, an unknown key and a missing key are compile errors that name the
 /// variant.
@@ -129,6 +136,15 @@ mod tests;
 ///         }
 ///     }
 ///
+///     fn sentence(&self) -> ::std::option::Option<&'static str> {
+///         match self {
+///             Self::NotFound { .. } => ::std::option::Option::None,
+///             Self::RemovedFile { .. } => ::std::option::Option::None,
+///             Self::NoStateDirectory => ::std::option::Option::None,
+///             Self::Book(f0) => ::crumbkit::Failure::sentence(f0),
+///         }
+///     }
+///
 ///     fn diagnostic(&self) -> ::std::option::Option<&dyn ::miette::Diagnostic> {
 ///         match self {
 ///             Self::NotFound { .. } => ::std::option::Option::None,
@@ -147,7 +163,7 @@ mod tests;
 /// }
 /// ```
 ///
-/// The derive leaves out `alternatives`, `fields` and `url` when no variant
+/// The derive leaves out `alternatives`, `fields`, `url` and `sentence` when no variant
 /// gives the key and no variant forwards, so the trait's default applies. It
 /// writes `diagnostic` only when a variant gives `diagnostic`, so a type that
 /// gives none builds without the `miette` feature. The generated

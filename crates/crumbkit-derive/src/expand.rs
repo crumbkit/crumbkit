@@ -31,6 +31,7 @@ fn write(failure: &FailureType) -> TokenStream {
     let alternatives = alternatives(krate, arms);
     let fields = fields(krate, arms);
     let url = url(krate, arms);
+    let sentence = sentence(krate, arms);
     let diagnostic = diagnostic(krate, arms);
     let codes = codes(arms);
     let doc = format!(
@@ -45,6 +46,7 @@ fn write(failure: &FailureType) -> TokenStream {
             #alternatives
             #fields
             #url
+            #sentence
             #diagnostic
         }
 
@@ -182,6 +184,32 @@ fn url(krate: &Path, arms: &[Arm]) -> TokenStream {
     });
     quote! {
         fn url(&self) -> ::std::option::Option<&str> {
+            match self {
+                #(#arms)*
+            }
+        }
+    }
+}
+
+/// Writes `sentence()`, unless no arm has a sentence or forwards.
+fn sentence(krate: &Path, arms: &[Arm]) -> TokenStream {
+    if !needed(arms, |own| own.sentence.is_some()) {
+        return TokenStream::new();
+    }
+    let arms = arms.iter().map(|arm| match &arm.answers {
+        Answers::Own(own) if own.sentence.is_some() => {
+            let pattern = unbound(arm);
+            let sentence = &own.sentence;
+            quote!(#pattern => ::std::option::Option::Some(#sentence),)
+        }
+        Answers::Own(_) => {
+            let pattern = unbound(arm);
+            quote!(#pattern => ::std::option::Option::None,)
+        }
+        Answers::Forward { field, .. } => forward(krate, arm, field, "sentence"),
+    });
+    quote! {
+        fn sentence(&self) -> ::std::option::Option<&'static str> {
             match self {
                 #(#arms)*
             }

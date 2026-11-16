@@ -3,6 +3,8 @@ use quote::quote;
 
 use crate::expand::expand;
 
+mod sentences;
+
 /// Returns the derive's output for `input` as text.
 fn expanded(input: TokenStream) -> String {
     let input = syn::parse2(input).expect("the test input is a Rust type");
@@ -95,6 +97,15 @@ fn the_expansion_of_the_sample_enum_matches_the_documented_expansion() {
                     Self::RemovedFile { name, error } => ::std::option::Option::Some("https://example.org/removed"),
                     Self::NoStateDirectory => ::std::option::Option::None,
                     Self::Book(f0) => ::crumbkit::Failure::url(f0),
+                }
+            }
+
+            fn sentence(&self) -> ::std::option::Option<&'static str> {
+                match self {
+                    Self::NotFound { .. } => ::std::option::Option::None,
+                    Self::RemovedFile { .. } => ::std::option::Option::None,
+                    Self::NoStateDirectory => ::std::option::Option::None,
+                    Self::Book(f0) => ::crumbkit::Failure::sentence(f0),
                 }
             }
 
@@ -400,7 +411,7 @@ fn an_unknown_key_is_refused_with_the_list_of_accepted_keys() {
     });
     assert_eq!(
         message,
-        "#[failure(...)] has no key `colour`. Its keys are `code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `diagnostic` and `forward`, and `crate` on the type"
+        "#[failure(...)] has no key `colour`. Its keys are `code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type"
     );
 }
 

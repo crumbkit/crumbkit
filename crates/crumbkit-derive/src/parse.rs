@@ -9,7 +9,7 @@ use syn::{Attribute, Data, DeriveInput, Expr, Fields, Ident, LitStr, Path, Visib
 
 /// The keys that `#[failure(...)]` accepts, as the message about an unknown
 /// key lists them.
-const KEYS: &str = "`code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `diagnostic` and `forward`, and `crate` on the type";
+const KEYS: &str = "`code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type";
 
 /// A type that derives `Failure`, as its attributes describe it.
 pub(crate) struct FailureType {
@@ -71,6 +71,8 @@ pub(crate) struct Own {
     pub(crate) alternatives: Vec<Expr>,
     /// The variant's fields as names and values, in the written order.
     pub(crate) fields: Vec<(String, Expr)>,
+    /// The variant's reviewed sentence.
+    pub(crate) sentence: Option<LitStr>,
     /// The variant's url.
     pub(crate) url: Option<Expr>,
     /// Whether `diagnostic()` returns the failure itself.
@@ -106,7 +108,8 @@ pub(crate) fn read(input: &DeriveInput) -> syn::Result<FailureType> {
         Data::Struct(data) => {
             let owner = format!("the type `{name}`");
             let shape = shape(&data.fields);
-            let answers = type_keys.answers(&owner, &shape, name.span())?;
+            let reviewed = type_keys.reviewed;
+            let answers = type_keys.answers(&owner, &shape, name.span(), reviewed)?;
             vec![Arm {
                 path: quote!(Self),
                 shape,
@@ -114,7 +117,11 @@ pub(crate) fn read(input: &DeriveInput) -> syn::Result<FailureType> {
             }]
         }
         Data::Enum(data) => {
-            if let Some((key, span)) = type_keys.given.iter().find(|(key, _)| key != "crate") {
+            if let Some((key, span)) = type_keys
+                .given
+                .iter()
+                .find(|(key, _)| !matches!(key.as_str(), "crate" | "reviewed"))
+            {
                 return Err(syn::Error::new(
                     *span,
                     format!(
@@ -128,6 +135,7 @@ pub(crate) fn read(input: &DeriveInput) -> syn::Result<FailureType> {
                     format!("the enum `{name}` has no variants, so it has no failure to describe"),
                 ));
             }
+            let reviewed = type_keys.reviewed;
             let mut arms = Vec::new();
             for variant in &data.variants {
                 let ident = &variant.ident;
@@ -139,8 +147,14 @@ pub(crate) fn read(input: &DeriveInput) -> syn::Result<FailureType> {
                         "`crate` goes in the #[failure(...)] attribute of the type",
                     ));
                 }
+                if let Some((_, span)) = keys.given.iter().find(|(key, _)| key == "reviewed") {
+                    return Err(syn::Error::new(
+                        *span,
+                        "`reviewed` goes in the #[failure(...)] attribute of the type",
+                    ));
+                }
                 let shape = shape(&variant.fields);
-                let answers = keys.answers(&owner, &shape, ident.span())?;
+                let answers = keys.answers(&owner, &shape, ident.span(), reviewed)?;
                 arms.push(Arm {
                     path: quote!(Self::#ident),
                     shape,
@@ -208,6 +222,10 @@ struct Keys {
     fields: Vec<(String, Expr)>,
     /// `url = EXPR`.
     url: Option<Expr>,
+    /// `sentence = "text"`.
+    sentence: Option<LitStr>,
+    /// `reviewed`, on the type.
+    reviewed: bool,
     /// `diagnostic`.
     diagnostic: bool,
     /// `forward` or `forward = FIELD`.
@@ -245,6 +263,24 @@ impl Keys {
             "hint" => set(&mut self.hint, meta.value()?.parse()?, twice)?,
             "no_next_step" => set(&mut self.no_next_step, meta.value()?.parse()?, twice)?,
             "url" => set(&mut self.url, meta.value()?.parse()?, twice)?,
+            "sentence" => {
+                let sentence: LitStr = meta.value()?.parse().map_err(|error: syn::Error| {
+                    syn::Error::new(
+                        error.span(),
+                        format!(
+                            "{owner} gives a `sentence` that is not a string literal, and a sentence is fixed text"
+                        ),
+                    )
+                })?;
+                check_sentence(&sentence, owner)?;
+                set(&mut self.sentence, sentence, twice)?;
+            }
+            "reviewed" => {
+                if self.reviewed {
+                    return Err(twice());
+                }
+                self.reviewed = true;
+            }
             "alternative" => self.alternatives.push(meta.value()?.parse()?),
             "field" => meta.parse_nested_meta(|field| self.read_field(&field, owner))?,
             "diagnostic" => {
@@ -300,14 +336,23 @@ impl Keys {
     }
 
     /// Checks the keys of one variant, or of a struct, and returns its
-    /// answers. `span` is where an error about a missing key points.
-    fn answers(self, owner: &str, shape: &Shape, span: Span) -> syn::Result<Answers> {
+    /// answers. `span` is where an error about a missing key points, and
+    /// `reviewed` says that the type is marked `#[failure(reviewed)]`, so the
+    /// failure needs a sentence unless it forwards.
+    fn answers(
+        self,
+        owner: &str,
+        shape: &Shape,
+        span: Span,
+        reviewed: bool,
+    ) -> syn::Result<Answers> {
         if let Some(field) = self.forward {
-            if self
-                .given
-                .iter()
-                .any(|(key, _)| !matches!(key.as_str(), "forward" | "diagnostic" | "crate"))
-            {
+            if self.given.iter().any(|(key, _)| {
+                !matches!(
+                    key.as_str(),
+                    "forward" | "diagnostic" | "crate" | "reviewed"
+                )
+            }) {
                 return Err(syn::Error::new(
                     span,
                     format!(
@@ -327,6 +372,14 @@ impl Keys {
                 format!("{owner} needs `code = ...` or `forward` in #[failure(...)]"),
             ));
         };
+        if reviewed && self.sentence.is_none() {
+            return Err(syn::Error::new(
+                span,
+                format!(
+                    "{owner} needs `sentence = \"...\"` because its type is marked `#[failure(reviewed)]`"
+                ),
+            ));
+        }
         let recovery = match (self.recovery, self.hint, self.no_next_step) {
             (Some(expr), None, None) => RecoveryKey::Expr(expr),
             (None, Some(hint), None) => RecoveryKey::Hint(hint),
@@ -353,10 +406,31 @@ impl Keys {
             recovery,
             alternatives: self.alternatives,
             fields: self.fields,
+            sentence: self.sentence,
             url: self.url,
             diagnostic: self.diagnostic,
         })))
     }
+}
+
+/// Refuses a sentence that is empty, has a line break or has a `{`, because
+/// a reviewed sentence is one line of fixed text, and a placeholder would let
+/// a value from the run into it.
+fn check_sentence(sentence: &LitStr, owner: &str) -> syn::Result<()> {
+    let text = sentence.value();
+    let problem = if text.trim().is_empty() {
+        "an empty `sentence`, and a sentence needs text"
+    } else if text.contains(['\n', '\r']) {
+        "a `sentence` with a line break, and a sentence is one line"
+    } else if text.contains('{') {
+        "a `sentence` with `{`, and a sentence is fixed text with no placeholders"
+    } else {
+        return Ok(());
+    };
+    Err(syn::Error::new_spanned(
+        sentence,
+        format!("{owner} gives {problem}"),
+    ))
 }
 
 /// Sets `slot` to `value`, or returns the error that `twice` makes when the
