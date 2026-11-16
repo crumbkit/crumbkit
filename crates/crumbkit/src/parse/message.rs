@@ -123,6 +123,20 @@ fn group_page(command: &mut Command, path: &[String], error: &clap::Error) -> Op
     Some(node.render_help())
 }
 
+/// Reports whether `error` refused a command line that stops at a group
+/// with visible subcommands, below the root, that a person can ask for
+/// help with `-h` (ADR-0225). A line with `--` keeps its refusal.
+pub(super) fn names_group(
+    command: &mut Command,
+    path: &[String],
+    error: &clap::Error,
+    words: &[OsString],
+) -> bool {
+    !path.is_empty()
+        && !words.iter().any(|word| word == "--")
+        && group_page(command, path, error).is_some()
+}
+
 /// Reports whether clap refused the command line with `error` because it
 /// stopped at a command that needs more: a subcommand or arguments.
 fn needs_more(error: &clap::Error) -> bool {

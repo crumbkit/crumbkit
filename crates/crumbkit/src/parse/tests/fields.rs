@@ -55,7 +55,7 @@ fn a_missing_required_argument_names_the_argument() {
 
 #[test]
 fn a_command_that_needs_a_subcommand_has_no_fields() {
-    let parsed = parse(&["tool", "planets", "--json"]);
+    let parsed = parse(&["tool", "planets", "--json", "--"]);
 
     assert_eq!(fields(&parsed.out), None);
 }

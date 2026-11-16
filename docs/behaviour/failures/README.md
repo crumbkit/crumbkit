@@ -216,9 +216,13 @@ on the line has a `-h` help page. A refused
 command line exits with 2 unless the tool record lists another code
 ([exit codes](exit-codes.md)).
 
-A command line that stops at a group with visible subcommands prints the
-group's `-h` page on standard error in text, with no `error:`, `help:` or
-`code:` line, and exits with the code of a refused command line. Its failure
+A command line that names a group with visible subcommands and nothing
+after it is not a refusal: it prints the group's short `-h` page on
+standard output and exits 0, as `-h` on the group does, and the usage log
+records it as a help run. The bare root and a group followed by `--` stay
+refusals. A group followed by `--` prints the group's `-h` page on standard
+error in text, with no `error:`, `help:` or `code:` line, and exits with the
+code of a refused command line. Its failure
 document says that the group needs a subcommand and names the group's
 visible subcommands in the order that the tool declares them, as in
 ``the command `shelf books` needs a subcommand: list, show, summarize, remove``.
@@ -274,7 +278,7 @@ crumbkit's own alternatives and before the kept calls.
 
 [Parsing](../parsing/README.md) covers when `parse` refuses a command line.
 
-Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106, ADR-0118, ADR-0123,
+Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106, ADR-0118, ADR-0225, ADR-0123,
 ADR-0124.
 
 ## The `miette` feature

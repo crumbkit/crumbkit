@@ -143,7 +143,8 @@ rustdoc of `parse_to` states the message and the recovery.
   ([refused command lines](../failures/README.md#refused-command-lines)).
 - In text, a refusal from clap prints clap's usage as `usage:` lines under
   the message. A command line that stops at a group with visible
-  subcommands prints the group's `-h` page in place of the refusal lines.
+  subcommands and a `--` after it prints the group's `-h` page in place of
+  the refusal lines.
 
 In text, a refusal and the group page printed in its place carry clap's
 styles on standard error when crumbkit's `color` feature is on. `parse`,
@@ -200,7 +201,7 @@ A command that refuses the caller after parsing, such as a handler that
 rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
-Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0123, ADR-0124,
+Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0225, ADR-0123, ADR-0124,
 ADR-0131, ADR-0133.
 
 ## A refusal that the tool prints

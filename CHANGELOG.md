@@ -18,6 +18,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a command line that names a group without its subcommand, such
+  as `tool workspace`, prints the group's short `-h` page on standard output
+  and exits 0, as `tool workspace -h` does, and the usage log records it as a
+  help run. The bare root and a group followed by `--` stay refusals, and
+  `crumbkit-test`'s twin check reads the code of a group followed by `--`
+  from a `--json` run ([behaviour/failures]).
 - crumbkit, crumbkit-skills, crumbkit-usage, cargo-crumbkit: installs, the
   usage trim, `docs` and `tool-skill draft` write through crumbkit-durable.
   `docs` and `draft` replace a symbolic link at the output path, and the

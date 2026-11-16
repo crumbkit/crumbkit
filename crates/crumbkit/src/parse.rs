@@ -13,7 +13,7 @@ pub use self::stop::{Printed, Stop};
 use self::attempt::{Attempt, attempt};
 use self::help_word::{ask_for_help, has_topics, print_topic, topic_page, without_help};
 use self::lines::add_help_lines;
-use self::message::command_line_refusal;
+use self::message::{command_line_refusal, names_group};
 use self::page::print_page;
 use self::pick::{Picking, Step};
 use self::walk::{help_word, program_stem, walk};
@@ -530,6 +530,26 @@ where
         let stop = Stop::new(printed, code, json, command, tool, path, words);
         return Err(Unparsed::Stopped(stop));
     }
+    // A command line that names a group alone prints the group's `-h` page
+    // as `-h` does (ADR-0225). The group answers `-h` unless the tool turned
+    // its help flag off, and then the refusal stands.
+    let error = if names_group(&mut command, &path, &error, &words) {
+        let mut asked = words.clone();
+        asked.push(OsString::from("-h"));
+        let args = pick::args(&command, &asked);
+        match attempt::<C>(&mut command, args, tool) {
+            Err(help) if help.kind() == ErrorKind::DisplayHelp => {
+                let code = print_page(sink, &help, standard);
+                crate::events::helped(&command, &path, long_help, code);
+                let words = caller.unwrap_or(words);
+                let stop = Stop::new(Printed::Help, code, json, command, tool, path, words);
+                return Err(Unparsed::Stopped(stop));
+            }
+            _ => error,
+        }
+    } else {
+        error
+    };
     let refusal = command_line_refusal::<C>(&mut command, tool, &path, &error, &words);
     let output = stop::stopped(json, command, tool);
     let refused = Refused::new(refusal, Some(error), path, output, words, typed, caller);

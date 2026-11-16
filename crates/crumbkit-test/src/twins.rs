@@ -63,7 +63,7 @@ mod tests;
 /// code from a `<tool>/failure/v1` document on standard output, or from
 /// the first entry of a batch's `failures`, and then from the last `code:`
 /// line on standard error. A refused line that runs no command and prints
-/// no code, such as a line that stops at a group and prints the group's
+/// no code, such as a group followed by `--`, which prints the group's
 /// help page, runs again with `--json` added, and the check reads the code
 /// from that run. The rule of the exits below applies to the first run.
 ///
@@ -298,7 +298,7 @@ pub(super) fn refuse(
             .map(|failure| failure.code().to_owned())
     };
     let mut printed = first(&output);
-    // A line that stops at a group prints the group's help page in text,
+    // A group followed by `--` prints the group's help page in text,
     // which holds no code, so the check reads the code from the same line
     // run with `--json` (ADR-0118).
     if printed.is_none() && !words::named(command, refused.words()).runs {
