@@ -80,6 +80,18 @@ value can be a list, an object or null as well as a scalar
 
 Why: ADR-0001, ADR-0007, ADR-0081.
 
+## Reviewed sentences
+
+A failure can return a fixed sentence through `Failure::sentence`, which a
+person reviewed and which is safe to show to anyone. The sentence is static
+text, so no value from the run reaches it, and the default is `None`.
+`Error::sentence` returns the sentence of the failure inside. The JSON failure
+document holds it under `sentence` when the failure has one, and the text form
+keeps printing the message. The document keeps the id `<tool>/failure/v1`,
+because the property is optional.
+
+Why: ADR-0001, ADR-0007, ADR-0226.
+
 ## Debug-build warnings
 
 A build with debug assertions writes one `warning:` line on standard error

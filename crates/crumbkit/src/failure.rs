@@ -109,6 +109,10 @@ mod tests;
 ///     fn url(&self) -> Option<&str> {
 ///         self.book.url()
 ///     }
+///
+///     fn sentence(&self) -> Option<&'static str> {
+///         self.book.sentence()
+///     }
 /// }
 ///
 /// let failure = ReadingList { name: "summer".to_owned(), book: NoSuchBook(7) };
@@ -223,6 +227,22 @@ pub trait Failure: std::error::Error {
     /// Returns a page that explains the failure, or `None`, the default,
     /// when there is none.
     fn url(&self) -> Option<&str> {
+        None
+    }
+
+    /// Returns a fixed sentence that a person reviewed, which is safe to show
+    /// to anyone, or `None`, the default, for a failure that has none.
+    ///
+    /// The sentence is static text, so it holds no value from the run. A tool
+    /// that wants the build to fail when a coded failure has no sentence
+    /// derives `Failure` with `#[failure(reviewed)]` on the enum, which
+    /// requires `sentence = "..."` on each variant that does not `forward`. A
+    /// failure written by hand and a code from [`Code::runtime`] are not
+    /// checked.
+    ///
+    /// `crumbkit::finish` prints the sentence under `sentence` in JSON and
+    /// leaves it out of the text form, which prints `Display`.
+    fn sentence(&self) -> Option<&'static str> {
         None
     }
 
@@ -400,6 +420,13 @@ impl Error {
     #[must_use]
     pub fn failure(&self) -> &(dyn Failure + Send + Sync + 'static) {
         &*self.0
+    }
+
+    /// Returns the reviewed sentence of the failure inside, or `None` when it
+    /// has none ([`Failure::sentence`]).
+    #[must_use]
+    pub fn sentence(&self) -> Option<&'static str> {
+        self.0.sentence()
     }
 }
 

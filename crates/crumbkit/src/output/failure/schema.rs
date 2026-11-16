@@ -71,6 +71,10 @@ impl JsonSchema for PreparedFailure<'_> {
                     "description": "A page that explains the failure. It is present only when the failure has one.",
                     "type": "string",
                 },
+                "sentence": {
+                    "description": "A fixed sentence that a person reviewed, safe to show to anyone. It is present only when the failure has one.",
+                    "type": "string",
+                },
             },
             "required": ["schema", "code", "message", "recovery"],
         })
