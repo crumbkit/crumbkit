@@ -14,9 +14,8 @@ differing or stale file and shows snapbox's report of both texts. A person
 reviews the rewritten files with `git diff`.
 
 `SNAPSHOTS=overwrite` is safe in parallel test processes. Each rewritten
-file goes through a temporary file and a rename, and a check that deletes
-stale files locks its directory, waiting up to 120 seconds for another
-overwrite of it.
+file goes through a temporary file and a rename, and a run that skips an
+example keeps its golden files.
 
 Why: ADR-0004, ADR-0232.
 

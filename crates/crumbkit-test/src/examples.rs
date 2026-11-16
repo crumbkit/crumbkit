@@ -14,7 +14,7 @@ use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 
 use crate::allow::{Allowances, Rule};
 use crate::failures::{self, Reader};
-use crate::goldens::{compare, lock_directory, remove_stale};
+use crate::goldens::{compare, remove_stale};
 use crate::help::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
@@ -181,10 +181,10 @@ mod tests;
 /// With `SNAPSHOTS=overwrite` the check is safe in test processes that run
 /// at once, as cargo-nextest runs them. It writes each file through a
 /// temporary file and a rename, so a reader sees the old file or the new
-/// one in full, and it locks `dir` until it finishes, so two overwrites of
-/// one directory run one after the other. The lock waits up to 120 seconds
-/// and then reports a problem. Two different checks still need two
-/// directories (ADR-0232).
+/// one in full. A run that skips an example for a missing precondition
+/// never deletes that example's golden files, whether or not they exist yet,
+/// so another run in the same directory that provides the precondition keeps
+/// them. Two different checks still need two directories (ADR-0232).
 ///
 /// # Panics
 ///
@@ -234,7 +234,6 @@ fn check(
     let layout = tool.get_output().get_json_layout();
     let tool_name = tool.tool_name(command);
     let mut problems = Vec::new();
-    let _lock = lock_directory(dir, overwrite, &mut problems);
     // The problems of runs that fail, which the message lists under a
     // heading of their own, because the tool's binary breaks them and the
     // command tree and golden files do not.
@@ -353,9 +352,10 @@ fn remove_stale_goldens(
 /// because `examples` does not provide every precondition that it needs.
 /// For a skipped example, it adds a note that names the missing
 /// preconditions to `skipped`, and adds the name of the example's `.stderr`
-/// golden file to `stderr_names` when the file exists, because the run that
-/// provides the preconditions owns the golden files and this run keeps them
-/// as they are.
+/// golden file to `stderr_names` whether or not the file exists, because the
+/// run that provides the preconditions owns the golden files and this run
+/// keeps them as they are. Listing an absent name costs nothing, and a file
+/// that a parallel run writes after this check is still kept.
 fn skip(
     examples: &Examples<'_>,
     example: &Example,
@@ -368,9 +368,7 @@ fn skip(
         return false;
     }
     let stderr_name = stderr_golden_name(&example_golden_name(line));
-    if Path::new(examples.goldens()).join(&stderr_name).is_file() {
-        stderr_names.push(stderr_name);
-    }
+    stderr_names.push(stderr_name);
     skipped.push(format!(
         "{line}: the check skipped the example, because the run does not provide `{}`",
         missing.join("`, `")

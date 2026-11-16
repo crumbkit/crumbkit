@@ -72,7 +72,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/usage-log]).
 - crumbkit-test: `SNAPSHOTS=overwrite` is safe with parallel test processes.
   Each golden file is written through a temporary file and a rename, and a
-  check that deletes stale files locks its directory
+  run that skips an example keeps its golden files
   ([behaviour/checks/golden-files]).
 
 ## [0.5.0](https://github.com/crumbkit/crumbkit/compare/v0.4.1...v0.5.0) - 2026-11-14
