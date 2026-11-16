@@ -1,7 +1,7 @@
 # ADR-0228. Aliases come from ordered sources
 
 - Date: 2026-11-16
-- Status: accepted
+- Status: amended by ADR-0230
 - Supersedes: ADR-0027, which it amends
 
 ## Context

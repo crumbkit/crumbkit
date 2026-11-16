@@ -7,6 +7,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit: `Help::aliases` takes a function of the clap root and a `Scope`,
+  and `Help::alias_scope` chooses `Shipped` (the default) or `All`. The root's
+  help line reads `Aliases:` ([behaviour/parsing/aliases]).
+
 - crumbkit: `Failure::sentence` returns a fixed sentence that a person
   reviewed, and `Error::sentence` returns the one of the failure inside. The
   failure document gains an optional string `sentence`
@@ -46,6 +50,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit: breaking: `Help::personal_aliases`, `without_personal_aliases` and
+  `get_personal_aliases` are removed. A tool calls `Help::aliases` and
+  `Help::alias_scope` ([behaviour/parsing/aliases]).
 - crumbkit: breaking: `files::write_atomically` is removed. A caller uses
   `crumbkit_durable::write_atomically(path, text.as_bytes(), Mode::Umask)`
   ([behaviour/durable-files]).

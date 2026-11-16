@@ -147,9 +147,9 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 ///   help <TOPIC>` prints one.``, in `-h` and in `--help`. A root without
 ///   subcommands and without topics of the tool's own has no such line.
 /// - When `tool` has
-///   [`Help::personal_aliases`](crate::help::Help::personal_aliases), the clap
-///   root's `-h` and `--help` name the person's aliases on one line, such as
-///   ``Personal aliases: firsts, mine. `shelf aliases list` shows what each
+///   [`Help::aliases`](crate::help::Help::aliases), the clap
+///   root's `-h` and `--help` name the aliases on one line, such as
+///   ``Aliases: firsts, mine. `shelf aliases list` shows what each
 ///   runs.`` Only a run that prints the clap root's help calls the tool
 ///   record's function.
 /// - The help of a command with a visible subcommand ends with a line that
@@ -456,15 +456,11 @@ where
     // No `Run` exists before parsing, so a refusal and a `Stop` take
     // `--json` from the walk.
     let (path, long_help, json) = (walked.path, walked.long_help, walked.json);
-    // Only a run that prints the clap root's help reads a person's aliases.
-    let aliases = if walked.help && path.is_empty() {
-        tool.get_help().get_personal_aliases()
-    } else {
-        None
-    };
     #[cfg(feature = "tracing")]
     crate::trace::spans::command(&path);
-    add_help_lines(&mut command, tool, has_topics, aliases, &path, long_help);
+    // Only a run that prints the clap root's help reads the aliases.
+    let at_root = walked.help && path.is_empty();
+    add_help_lines(&mut command, tool, has_topics, at_root, &path, long_help);
 
     // `Run::confirm` repeats the typed words, so they outlive parsing.
     let mut words = args.get(1..).unwrap_or_default().to_vec();

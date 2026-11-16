@@ -38,7 +38,7 @@
       "costs": [
         "Root help differs between machines, because each person's aliases file adds its own names.",
         "An agent can copy an alias from help that does not exist on another machine or in a script that another person runs.",
-        "Help golden files and help budgets measure help without personal aliases, so a long aliases file can push the root help past its budget unchecked."
+        "Help golden files and help budgets measure help with the shipped aliases only, so a long aliases file can push the root help past its budget unchecked."
       ],
       "budget": null
     },

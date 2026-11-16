@@ -82,21 +82,26 @@ Why: ADR-0027, ADR-0029, ADR-0050, ADR-0228.
 
 ## Aliases in help
 
-A tool that wants aliases in help sets `Help::personal_aliases` to a function
-of its own that returns `Aliases::names`, and opts out of
-`Rule::PersonalAliases`, which `check_names` enforces. The clap root's `-h`
-and `--help` then name each entry that expands on one line, after the
-`Topics:` line. `parse` calls the function only when it prints that help, so
-no other run reads a source. `Aliases::names` leaves out the entries of a
-source added with `Source::unlisted`. `Aliases::shipped_names` returns only the
-names of `Kind::Shipped` sources, which are the same on every machine. The
-names of a person's file differ between machines, so the opt-out report says
-that help, golden files and what an agent sees then differ
-([opt-outs](../adoption/opt-outs.md)). shelf opts in to show the line.
+A tool that wants aliases in help sets `Help::aliases` to a function of its
+own that takes the clap root and a `Scope`. It returns `Aliases::shipped_names`
+for `Scope::Shipped` and `Aliases::names` for `Scope::All`. The clap root's
+`-h` and `--help` then end with a line such as `Aliases: recent, wt ls.` after
+the `Topics:` line. `parse` calls the function only when it prints that help,
+so no other run reads a source. `Aliases::names` leaves out the entries of a
+source added with `Source::unlisted`. `Aliases::shipped_names` judges only the
+sources of `Kind::Shipped`, so it never reads a person's file, and its names
+are the same on every machine.
 
-crumbkit-test's help checks print help without the aliases, through
-`Help::without_personal_aliases`. `check_examples` and
+The scope is `Scope::Shipped` unless the tool sets `Help::alias_scope` to
+`Scope::All`. A tool that sets `Scope::All` shows the entries of a person's
+file, which differ between machines, so it opts out of `Rule::PersonalAliases`,
+which `check_names` enforces, and the opt-out report says that help, golden
+files and what an agent sees then differ ([opt-outs](../adoption/opt-outs.md)).
+shelf opts in to show the line.
+
+crumbkit-test's help checks print help with `Scope::Shipped`, whatever scope
+the tool sets. `check_examples` and
 `cargo crumbkit weigh` run the binary with an empty config directory, so
 golden files and budgets are the same on every machine.
 
-Why: ADR-0027, ADR-0228.
+Why: ADR-0027, ADR-0228, ADR-0230.

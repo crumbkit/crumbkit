@@ -20,6 +20,7 @@ pub(crate) mod words;
 
 use clap::Command;
 
+pub use self::aliases::Scope;
 pub use self::effects::{Effects, Items};
 pub use self::format::FileFormat;
 pub use self::group::{Goal, Group};
@@ -79,14 +80,16 @@ pub struct Help {
     /// own heading, with the tool's reason, or `None` when the tool declares
     /// none.
     root_verbs: Option<(&'static [&'static str], &'static str)>,
-    /// The function that returns the names of a person's aliases, which
-    /// the root's help names, or `None` when help names no aliases.
-    personal_aliases: Option<fn(&Command) -> Vec<String>>,
+    /// The function that returns the names of the aliases, which the root's
+    /// help names, or `None` when help names no aliases.
+    aliases: Option<fn(&Command, Scope) -> Vec<String>>,
+    /// Which aliases the function returns when the root's help prints.
+    alias_scope: Scope,
 }
 
 impl Help {
     /// Returns help with no groups, no leaves, no topics, no file formats,
-    /// no root verbs and no personal aliases, rooted at the clap root.
+    /// no root verbs and no aliases, rooted at the clap root.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -96,7 +99,8 @@ impl Help {
             file_formats: &[],
             root: &[],
             root_verbs: None,
-            personal_aliases: None,
+            aliases: None,
+            alias_scope: Scope::Shipped,
         }
     }
 

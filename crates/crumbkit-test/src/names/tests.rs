@@ -7,7 +7,7 @@ use super::check_names;
 use crate::Pages;
 use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
-use crumbkit::help::Help;
+use crumbkit::help::{Help, Scope};
 
 #[test]
 fn commands_and_arguments_with_one_name_and_one_short_form_pass() {
@@ -171,27 +171,35 @@ fn a_visible_alias_passes_when_an_opt_out_names_its_command() {
     check_names(&shelf, Pages::clap(), ALLOW);
 }
 
-/// Names one alias, for a tool record that shows a person's aliases on the
-/// root's help.
-fn names(_: &Command) -> Vec<String> {
-    vec!["mine".to_owned()]
+/// Names one alias that only a person's file has, for a tool record that
+/// shows it on the root's help.
+fn names(_: &Command, scope: Scope) -> Vec<String> {
+    match scope {
+        Scope::All => vec!["mine".to_owned()],
+        Scope::Shipped => Vec::new(),
+    }
+}
+
+/// Names one shipped alias, which every machine has.
+fn shipped(_: &Command, _: Scope) -> Vec<String> {
+    vec!["wt".to_owned()]
 }
 
 #[test]
 fn a_tool_that_names_personal_aliases_on_the_root_s_help_fails_without_an_opt_out() {
-    const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(names));
+    const TOOL: Tool = Tool::new().help(Help::new().aliases(names).alias_scope(Scope::All));
     let shelf = Command::new("shelf").subcommand(Command::new("books"));
 
     assert_eq!(
         panic_message(|| check_names(&shelf, Pages::rendered(&TOOL), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
-         shelf: the tool record names a person's aliases on the root's help, and help shows one name for each command"
+         shelf: the tool record names aliases on the root's help that differ between machines, and help shows one name for each command"
     );
 }
 
 #[test]
 fn a_tool_that_names_personal_aliases_passes_with_an_opt_out_for_the_root() {
-    const TOOL: Tool = Tool::new().help(Help::new().personal_aliases(names));
+    const TOOL: Tool = Tool::new().help(Help::new().aliases(names).alias_scope(Scope::All));
     const ALLOW: &[Allow] = &[Allow::new(
         Rule::PersonalAliases,
         "",
@@ -200,4 +208,12 @@ fn a_tool_that_names_personal_aliases_passes_with_an_opt_out_for_the_root() {
     let shelf = Command::new("shelf").subcommand(Command::new("books"));
 
     check_names(&shelf, Pages::rendered(&TOOL), ALLOW);
+}
+
+#[test]
+fn a_tool_that_names_only_shipped_aliases_on_the_root_s_help_passes_without_an_opt_out() {
+    const TOOL: Tool = Tool::new().help(Help::new().aliases(shipped));
+    let shelf = Command::new("shelf").subcommand(Command::new("books"));
+
+    check_names(&shelf, Pages::rendered(&TOOL), &[]);
 }

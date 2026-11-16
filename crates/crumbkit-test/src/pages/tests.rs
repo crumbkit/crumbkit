@@ -1,7 +1,7 @@
 //! Tests for the help pages that the help checks read.
 
 use clap::{Arg, ArgAction, Command};
-use crumbkit::help::{Example, Goal, Group, Help, Leaf};
+use crumbkit::help::{Example, Goal, Group, Help, Leaf, Scope};
 use crumbkit::{Tool, ViewFlags};
 
 use super::{Pages, pages};
@@ -133,25 +133,36 @@ fn a_command_without_a_help_flag_has_no_clap_page_and_one_problem() {
     );
 }
 
-/// Fails the test, for a tool record whose personal aliases no page may read.
-fn unread(_: &Command) -> Vec<String> {
-    panic!("a help page read the personal aliases");
+/// Names one shipped alias, and fails the test when a page asks for every
+/// alias, because a person's aliases differ between machines.
+fn shipped_only(_: &Command, scope: Scope) -> Vec<String> {
+    assert_eq!(scope, Scope::Shipped, "a help page asked for every alias");
+    vec!["wt".to_owned()]
 }
 
 #[test]
-fn the_pages_leave_out_the_personal_aliases_so_they_match_on_every_machine() {
+fn the_pages_name_the_shipped_aliases_only_so_they_match_on_every_machine() {
     let tool = tree();
     let mut problems = Vec::new();
 
     let with_aliases = pages(
         &tool,
-        Pages::rendered(&TOOL.help(TOOL.get_help().personal_aliases(unread))),
+        Pages::rendered(
+            &TOOL.help(
+                TOOL.get_help()
+                    .aliases(shipped_only)
+                    .alias_scope(Scope::All),
+            ),
+        ),
         "-h",
         &mut problems,
     );
-    let plain = pages(&tool, Pages::rendered(&TOOL), "-h", &mut problems);
 
-    assert_eq!(with_aliases[0].1, plain[0].1);
+    assert!(
+        with_aliases[0].1.contains("Aliases: wt. "),
+        "{}",
+        with_aliases[0].1
+    );
     assert!(problems.is_empty(), "{problems:?}");
 }
 

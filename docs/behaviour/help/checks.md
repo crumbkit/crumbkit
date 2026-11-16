@@ -15,7 +15,7 @@ they read a tool's help pages:
 
 - `Pages::rendered` runs `crumbkit::parse_to` in memory on a clone of the
   tree. A page is then the plain text that a caller reads on a pipe, with
-  every line crumbkit adds except the line that names a person's aliases.
+  every line crumbkit adds, naming shipped aliases only.
 - `Pages::binary` runs the tool's binary for each page, as `check_examples`
   runs an example. A tool that builds part of its help at run time, such as
   from settings it reads at start, passes it. The example tool reading reads
@@ -80,9 +80,8 @@ Why: ADR-0025, ADR-0033.
 `check_help_goldens` compares each `-h` and `--help` page with a golden file
 through snapbox ([golden files](../checks/golden-files.md)). It fails on a
 stale file, so its directory holds only help golden files. The help checks
-print help without a person's aliases, through
-`Help::without_personal_aliases`, so the golden files are the same on every
-machine.
+print help with `Scope::Shipped`, through `Help::alias_scope`, so the golden
+files are the same on every machine.
 
 Why: ADR-0025, ADR-0004, ADR-0027.
 

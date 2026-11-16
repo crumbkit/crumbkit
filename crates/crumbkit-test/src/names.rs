@@ -5,6 +5,7 @@ use crate::Pages;
 use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, argument_name};
 use clap::Command;
+use crumbkit::help::Scope;
 
 #[cfg(test)]
 mod tests;
@@ -40,9 +41,9 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 ///   command's name;
 /// - an argument with a visible long alias or a visible short alias;
 /// - a tool record in `pages` that names a person's aliases on the root's help
-///   with `Help::personal_aliases`, unless an opt-out from
+///   with `Help::aliases` and `Help::alias_scope(Scope::All)`, unless an opt-out from
 ///   [`Rule::PersonalAliases`] names the root, because those names differ
-///   between machines (ADR-0027);
+///   between machines (ADR-0027, ADR-0228);
 /// - an opt-out from [`Rule::OneName`] or [`Rule::PersonalAliases`] that
 ///   names no command or excuses no problem.
 ///
@@ -79,12 +80,12 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 pub fn check_names(command: &Command, pages: Pages<'_>, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::OneName, Rule::PersonalAliases]);
     let mut problems = Vec::new();
-    let personal_aliases = pages
-        .tool()
-        .is_some_and(|tool| tool.get_help().get_personal_aliases().is_some());
+    let personal_aliases = pages.tool().is_some_and(|tool| {
+        tool.get_help().get_aliases().is_some() && tool.get_help().get_alias_scope() == Scope::All
+    });
     if personal_aliases && !allowances.excuses(Rule::PersonalAliases, "") {
         problems.push(format!(
-            "{}: the tool record names a person's aliases on the root's help, {COMMAND_RULE}",
+            "{}: the tool record names aliases on the root's help that differ between machines, {COMMAND_RULE}",
             command.get_name()
         ));
     }

@@ -126,3 +126,15 @@ fn an_unlisted_source_still_wins_over_a_later_entry() {
 
     assert_eq!(aliases.names(&tree()), Vec::<String>::new());
 }
+
+#[test]
+fn shipped_names_never_read_a_personal_source() {
+    fn boom() -> Result<Vec<crate::Entry>, String> {
+        panic!("shipped_names read a personal source")
+    }
+    let aliases = Aliases::new()
+        .source(Source::lazy("personal", Kind::Personal, boom))
+        .source(Source::table("shelf", &[("recent", &["books", "list"])]));
+
+    assert_eq!(aliases.shipped_names(&tree()), ["recent"]);
+}

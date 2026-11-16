@@ -39,15 +39,20 @@ pub(super) fn add_help_lines(
     command: &mut Command,
     tool: &Tool,
     has_topics: bool,
-    aliases: Option<fn(&Command) -> Vec<String>>,
+    name_aliases: bool,
     path: &[String],
     long_help: bool,
 ) {
     let root = tool.get_help().root_in(command);
     let tool_name = command.get_name();
-    let aliases = match aliases.map(|names| names(command)) {
+    let help = tool.get_help();
+    let names = help
+        .get_aliases()
+        .filter(|_| name_aliases)
+        .map(|names| names(command, help.get_alias_scope()));
+    let aliases = match names {
         Some(names) if !names.is_empty() => format!(
-            "Personal aliases: {}. `{tool_name} aliases list` shows what each runs.",
+            "Aliases: {}. `{tool_name} aliases list` shows what each runs.",
             names.join(", ")
         ),
         _ => String::new(),
