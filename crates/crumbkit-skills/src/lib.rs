@@ -25,7 +25,7 @@
 //! [ADR-0199]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0199-skill-files.md
 //! [ADR-0201]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0201-several-skills.md
 //! [ADR-0216]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0216-a-tool-mounts-its-skills-commands-from-crumbkit-skills.md
-//! [ADR-0231]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0231-skills-help-names-the-tool.md
+//! [ADR-0233]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0233-skills-help-names-the-tool.md
 #![doc = include_str!("../README.md")]
 
 mod check;

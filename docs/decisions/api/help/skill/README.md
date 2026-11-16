@@ -76,4 +76,4 @@ Considered: treating a missing usage directory as no usage, which hides a mistyp
 - [ADR-0200. Skill check reads every Markdown file of a skill](0200-skill-check-reads-every-file.md)
 - [ADR-0201. A tool ships several agent skills](0201-several-skills.md)
 - [ADR-0216. A tool mounts its skills commands from crumbkit-skills](0216-a-tool-mounts-its-skills-commands-from-crumbkit-skills.md)
-- [ADR-0231. Skills help names the tool](0231-skills-help-names-the-tool.md)
+- [ADR-0233. Skills help names the tool](0233-skills-help-names-the-tool.md)

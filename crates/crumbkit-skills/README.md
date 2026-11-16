@@ -100,7 +100,7 @@ shelf's [`cli.rs`] and [`lib.rs`] show the mount.
   counts as current.
 - The [schemas] describe the `<tool>/skills-install/v1`,
   `<tool>/skills-check/v1` and `<tool>/skills-print/v1` documents.
-- [ADR-0192], [ADR-0199], [ADR-0201], [ADR-0216] and [ADR-0231] record why they work this way.
+- [ADR-0192], [ADR-0199], [ADR-0201], [ADR-0216] and [ADR-0233] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.

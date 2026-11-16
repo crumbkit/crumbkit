@@ -1,6 +1,6 @@
 //! The mount, which gives a tool its `skills` commands in one enum field,
 //! one match arm and three leaves, with the tool's name in their help
-//! (ADR-0216, ADR-0231).
+//! (ADR-0216, ADR-0233).
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -42,7 +42,7 @@ pub enum SkillsAction {
 }
 
 /// Defines the clap `Subcommand` enum of a tool's `skills` group, with the
-/// tool's name in each about line and each example (ADR-0231). The first
+/// tool's name in each about line and each example (ADR-0233). The first
 /// argument is the enum's name, with any attributes and visibility before
 /// it, and the second is the tool's name as its usage line writes it, such as
 /// `"shelf"` or `"cargo crumbkit"`, as a string literal.

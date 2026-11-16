@@ -1,4 +1,4 @@
-# ADR-0231. Skills help names the tool
+# ADR-0233. Skills help names the tool
 
 - Date: 2026-11-16
 - Status: accepted
