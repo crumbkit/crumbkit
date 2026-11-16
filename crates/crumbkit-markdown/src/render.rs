@@ -359,5 +359,8 @@ fn help_effects(effects: Effects) -> HelpEffects {
     if effects.open_world {
         line = line.open_world();
     }
+    if effects.runs_program {
+        line = line.runs_program();
+    }
     line
 }

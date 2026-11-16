@@ -12,6 +12,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (clap's `last` setting) and `false` for every other argument
   ([behaviour/help/commands-list]).
 
+- crumbkit: `Effects::runs_program` marks a command that runs a program the
+  caller names and also sets open-world. Help words it, and the `effects`
+  object of a `commands list` row has `runs_program`
+  ([behaviour/effects]).
+
 - crumbkit: `Help::aliases` takes a function of the clap root and a `Scope`,
   and `Help::alias_scope` chooses `Shipped` (the default) or `All`. The root's
   help line reads `Aliases:` ([behaviour/parsing/aliases]).

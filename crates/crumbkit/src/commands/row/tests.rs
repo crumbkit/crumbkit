@@ -25,7 +25,20 @@ fn a_row_holds_the_effects_that_the_leaf_declares() {
 
     assert_eq!(
         row(&TOOL)["effects"],
-        json!({"read_only": false, "destructive": true, "idempotent": true, "open_world": false})
+        json!({"read_only": false, "destructive": true, "idempotent": true, "open_world": false, "runs_program": false})
+    );
+}
+
+#[test]
+fn a_row_says_that_a_leaf_runs_a_program_and_reaches_the_open_world() {
+    const TOOL: Tool = Tool::new()
+        .help(Help::new().leaves(&[
+            Leaf::new(&["books", "remove"]).effects(Effects::additive().runs_program()),
+        ]));
+
+    assert_eq!(
+        row(&TOOL)["effects"],
+        json!({"read_only": false, "destructive": false, "idempotent": false, "open_world": true, "runs_program": true})
     );
 }
 

@@ -287,13 +287,18 @@
             "read_only": {
               "description": "Whether the command changes nothing.",
               "type": "boolean"
+            },
+            "runs_program": {
+              "description": "Whether the command runs a program that the caller names, such as the program after `--`. It is true only when open_world is true.",
+              "type": "boolean"
             }
           },
           "required": [
             "read_only",
             "destructive",
             "idempotent",
-            "open_world"
+            "open_world",
+            "runs_program"
           ]
         },
         "examples": {

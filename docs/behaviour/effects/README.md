@@ -30,6 +30,13 @@ something names whether it is idempotent, so a missing word never stands for
 row, with MCP's four properties as booleans, and writes `null` for a command
 without effects ([commands list](../help/commands-list.md)).
 
+`Effects::runs_program` marks a command that runs a program the caller names,
+such as `starmap run -- cargo run`. It also sets open-world, so no command
+runs a caller's program without it. Help adds `runs a program the caller
+names` to the effects line, and `commands list` writes `runs_program` as a
+fifth boolean under `effects`. A tool that confirms before it starts such a
+program keys on it, because open-world alone also marks read-only commands.
+
 A leaf without effects reads as unknown, and an agent must assume that it may
 destroy data. crumbkit-test's
 [`check_effects`](../../../crates/crumbkit-test/src/effects.rs) requires

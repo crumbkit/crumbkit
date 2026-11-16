@@ -142,7 +142,7 @@ pub(crate) struct Exit {
 #[derive(Clone, Copy, Debug, Deserialize)]
 #[expect(
     clippy::struct_excessive_bools,
-    reason = "the four flags are the four booleans of the document's effects object"
+    reason = "the five flags are the five booleans of the document's effects object"
 )]
 pub(crate) struct Effects {
     /// Whether the command changes nothing.
@@ -153,6 +153,10 @@ pub(crate) struct Effects {
     pub(crate) idempotent: bool,
     /// Whether the command reaches systems outside the tool.
     pub(crate) open_world: bool,
+    /// Whether the command runs a program that the caller names. A document
+    /// written before the field existed leaves it out, which reads as false.
+    #[serde(default)]
+    pub(crate) runs_program: bool,
 }
 
 /// The guards of a command that writes (ADR-0047).
