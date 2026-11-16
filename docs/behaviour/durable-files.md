@@ -118,7 +118,9 @@ that were at `path`. Another program can still remove or
 replace the lock file while a holder has it, and a second acquirer then
 locks the new file. `still_current` compares the identities again and is
 false once that happened, so a holder about to change what the lock guards
-calls it first.
+calls it first. `waited` returns how long the acquire took, from its start
+to the moment it held the lock, including the open and each reopen, so a
+tool that records its waiting on locks adds it.
 
 The lock belongs to the open file, so it is not re-entrant: a second
 acquire of one path in one process waits for the first. A child that
@@ -128,7 +130,7 @@ acquire of one path in one process waits for the first. A child that
 An uncontended acquire makes four system calls, the open, `flock`, `fstat`
 and `lstat`, and a wait repeats only `flock`.
 
-Why: ADR-0222.
+Why: ADR-0222, ADR-0231.
 
 ## Lock failures
 
