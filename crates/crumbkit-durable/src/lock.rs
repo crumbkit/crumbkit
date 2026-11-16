@@ -49,6 +49,7 @@ pub struct PathLock {
     file: File,
     path: PathBuf,
     identity: Identity,
+    waited: Duration,
 }
 
 /// The step of [`PathLock::acquire_unless`] that failed.
@@ -195,6 +196,15 @@ impl PathLock {
     pub fn still_current(&self) -> io::Result<bool> {
         Ok(platform::path_identity(&self.path)? == Some(self.identity))
     }
+
+    /// Returns how long the acquire that made this lock took, from its
+    /// start to the moment it held the lock. The time includes opening the
+    /// file and any reopen after another program replaced the file. A
+    /// caller that reports the time spent waiting on locks adds this.
+    #[must_use]
+    pub fn waited(&self) -> Duration {
+        self.waited
+    }
 }
 
 /// Opens the lock file at `path`, creating it when it is absent.
@@ -253,6 +263,7 @@ fn lock_opened(
                 file,
                 path: path.to_path_buf(),
                 identity,
+                waited: started.elapsed(),
             });
         }
         // Another program replaced or removed the file while this call

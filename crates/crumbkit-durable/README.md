@@ -66,7 +66,9 @@ another program replaced or removed it. While no other program replaces or
 removes the file, two holders therefore never both return holding
 different files. The crate never removes a lock file, and
 [`PathLock::still_current`] tells a holder that another program did. A
-failure returns a [`LockError`], which is `Busy` when the wait ends.
+failure returns a [`LockError`], which is `Busy` when the wait ends. A
+lock that was taken reports the time its acquire took through
+[`PathLock::waited`].
 
 ## Platforms
 
@@ -91,6 +93,7 @@ option.
 [`WriteError`]: src/write.rs
 [`PathLock::acquire`]: src/lock.rs
 [`PathLock::still_current`]: src/lock.rs
+[`PathLock::waited`]: src/lock.rs
 [`LockError`]: src/lock.rs
 [ADR-0221]: ../../docs/decisions/api/effects/0221-the-durable-crate.md
 [ADR-0222]: ../../docs/decisions/api/effects/0222-a-path-lock-checks-its-file-is-still-at-the-path.md

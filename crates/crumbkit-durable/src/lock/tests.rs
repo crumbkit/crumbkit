@@ -265,3 +265,35 @@ fn dropping_the_lock_releases_it() {
     // release.
     assert_eq!(fs::read(&path).unwrap(), b"");
 }
+
+#[test]
+fn a_lock_taken_without_waiting_reports_a_short_wait() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.lock");
+
+    let lock = PathLock::acquire(&path, later()).unwrap();
+
+    assert!(
+        lock.waited() < Duration::from_secs(1),
+        "{:?}",
+        lock.waited()
+    );
+}
+
+#[test]
+fn a_lock_taken_after_another_holder_released_reports_the_time_it_waited() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.lock");
+    let first = PathLock::acquire(&path, later()).unwrap();
+
+    let second = wait_in_thread(&path);
+    thread::sleep(Duration::from_millis(60));
+    drop(first);
+
+    let second = second.join().unwrap().unwrap();
+    assert!(
+        second.waited() >= Duration::from_millis(60),
+        "{:?}",
+        second.waited()
+    );
+}

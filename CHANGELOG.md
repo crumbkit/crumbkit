@@ -29,6 +29,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the locked file is still at the path, so a holder that waited while
   another program replaced the file locks the new one
   ([behaviour/durable-files]).
+- crumbkit-durable: `PathLock::waited` returns how long the acquire that made
+  the lock took ([behaviour/durable-files]).
 - crumbkit-aliases: `Aliases` holds ordered `Source`s, a file, a table or a
   lazy loader, and the first source with a match wins. A key can be several
   words, such as `wt ls` ([behaviour/parsing/aliases]).
