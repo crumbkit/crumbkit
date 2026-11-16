@@ -3,11 +3,11 @@
 `self usage` reads a tool's [usage log](README.md) and reports the patterns
 where callers waste effort. `self figures list` prints the figures of every
 command in the log, and `self runs list` prints each run, grouped by
-session. All three are part of the crumbkit-usage crate. The rustdoc of
+session. The rustdoc of
 [`self_usage`](../../../crates/crumbkit-usage/src/self_usage.rs),
 [`self_figures`](../../../crates/crumbkit-usage/src/self_figures.rs) and
 [`self_runs`](../../../crates/crumbkit-usage/src/self_runs.rs) shows the
-wiring and an example of each output, and shelf mounts all three commands.
+wiring and an example of each output.
 
 ## Mounting the commands
 
@@ -36,17 +36,15 @@ before now, and the summary names the UTC day on which the duration starts.
 copy from another machine. `--exclude-program <NAME>` leaves out a
 [program's runs](program/README.md).
 
-The report reads the log once, a line at a time. It holds at most 1,025
+The report reads the log once, a line at a time, and holds at most 1,025
 bytes of a line, which is the longest record and its newline, and skips a
-longer line as damaged. It keeps counts per command and what each session's
-findings need of its earlier runs, and never a copy of the file. A line that
-is not a whole `<tool>/usage/v1` record is skipped. On a 10 MB log of
-about 29,000 records, the release build of shelf runs `self usage` in about
-45 ms, which includes the trim that the run's own log line causes.
+longer one. It keeps counts per command and what each session's
+findings need, never a copy of the file. A line that
+is not a whole `<tool>/usage/v1` record is skipped. On a 10 MB log of about 29,000 records, shelf's release
+build runs `self usage` in about 45 ms.
 
-A tool whose root command has an empty name has no name to find its log
-by, and a missing or unreadable log reads as empty. Either way the report
-has no runs and exits 0, because every usage-log failure stays silent.
+A root command with an empty name, or a missing or unreadable log, gives a
+report with no runs that exits 0, since usage-log failures stay silent.
 
 Why: ADR-0034.
 
@@ -75,13 +73,12 @@ The report has nine findings. Each counts runs under one command path.
 | `short page` | A session followed a cut-short listing within 60 s with the same command and `--all` or `--limit`. The record holds no limit value, so any `--limit` counts, also one that asks for fewer rows than the default page. |
 | `heavy output` | The 95th percentile of a command's output is at least 20,000 bytes, which is about 5,000 tokens of a coding agent's context. |
 | `slow command` | The 95th percentile of a command's wall time is at least 1,000 ms. |
-| `mostly waiting` | A `slow command` whose runs of at least 1,000 ms spent at least half that time waiting on another system, as the tool's [facts](README.md#the-tools-own-facts) record. It counts those runs. |
+| `mostly waiting` | A `slow command` whose runs of at least 1,000 ms spent at least half that time waiting on another system, as the tool's [facts](README.md#the-tools-own-facts) record, or on locks (`lock_ms`). It counts those runs, and its suggestion names locks when most of them waited mostly on locks. |
 
-The report reads only `waited_ms` from a record's facts, and never the
-tool's counts or labels, so no name or label from the facts reaches the
-report.
+The report reads only `waited_ms` from a record's facts, so no name or
+label from them reaches the report.
 
-Why: ADR-0034, ADR-0145.
+Why: ADR-0034, ADR-0145, ADR-0234.
 
 ## Checking records
 
@@ -95,6 +92,8 @@ counts it, so a hand-edited line cannot put its text in the report.
 - A code and each tolerated code must be 1 to 128 ASCII letters, digits, `_`,
   `-` and `:`. A code with whitespace or any other character fails.
 - A caller must be `person`, `unknown` or an id that is-ai-agent gives.
+- A context, when there is one, must be a `Label`: 1 to 64 ASCII letters,
+  digits, braces and `_-./:`.
 - The trace id must be 32 lowercase hex digits, and the run's and the
   parent's span ids 16, as the writer formats them.
 
@@ -108,17 +107,15 @@ Why: ADR-0034, ADR-0190.
 The output is a [listing](../output/listings/README.md) whose rows are the
 findings, the most runs first. The report never prints a hash, a session or
 a time finer than a day. Text prints a summary line above the table, such
-as `1,284 runs in 23 sessions since 30 Sep: claude-code 1,201, person 83.`
-The text summary line ends with the codes that the most runs tolerated, when
-there are any.
+as `1,284 runs in 23 sessions since 30 Sep: claude-code 1,201, person 83.`,
+which ends with the codes that the most runs tolerated, when there are any.
 
 JSON is the `<tool>/self-usage/v1` document, checked in as
 `crates/crumbkit-usage/schemas/self-usage-v1.json`. Its `summary` holds the runs,
 sessions, callers, since day, skipped count and the 10 codes that the most
 runs tolerated. With `--json --full`, each row also holds the figures of its
 command, such as its runs, failures, medians and 95th percentiles, and the `Next:`
-line points there. A command without a finding has no row, so `--full`
-gives no figures for it.
+line points there. A command without a finding has no row.
 
 Four groups of figures need a definition.
 
@@ -139,11 +136,11 @@ Why: ADR-0034, ADR-0016, ADR-0037, ADR-0190.
 `self figures list` prints the figures of every command in the log, one row
 each in path order, with the root under the tool's name. It pages with
 `--limit` and `--all`, takes the flags of `self usage`, applies the same
-record checks and prints the same summary. Its document is
-`<tool>/self-figures-list/v1`, checked in as
+record checks and prints the same summary. `--context <LABEL>` (repeatable) keeps only runs with one of those contexts,
+before anything is counted. Its document is `<tool>/self-figures-list/v1`, checked in as
 `crates/crumbkit-usage/schemas/self-figures-list-v1.json`.
 
-Why: ADR-0034, ADR-0190.
+Why: ADR-0034, ADR-0190, ADR-0234.
 
 ## self runs list
 
@@ -155,11 +152,13 @@ order within a session. Its flags, checks and summary are those of
 `crates/crumbkit-usage/schemas/self-runs-list-v1.json`.
 
 A row names its session by an ordinal from 1, never by the keyed hash. It
-gives the run's end to the second in UTC and the W3C trace ids. The
+gives the run's end to the second in UTC and the W3C trace ids. The long
+columns `lock_ms` and `context` give the lock wait and the context. It takes
+the same `--context` flag as `self figures list`. The
 listing holds every run in the window in memory, about 29,000 for a 10 MB
 log.
 
-Why: ADR-0190.
+Why: ADR-0190, ADR-0234.
 
 ## self runs export
 

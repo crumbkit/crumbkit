@@ -336,6 +336,7 @@ List the figures of each command in shelf's usage log
 - `--since <DURATION>`: How far back to read the usage log, such as 12h, 7d or 2w. Default: `7d`.
 - `--log <FILE>`: Read this usage log instead of the tool's own
 - `--exclude-program <NAME>`: Leave out the runs that a program with this name marked, such as flightdeck. Takes more than one value.
+- `--context <LABEL>`: Keep only the runs that reported this context, such as project. Takes more than one value.
 - `--limit <N>`: Print at most this many rows. Default: `25`.
 - `--all`: Print every row
 
@@ -393,6 +394,7 @@ List each run in shelf's usage log, grouped by session
 - `--since <DURATION>`: How far back to read the usage log, such as 12h, 7d or 2w. Default: `7d`.
 - `--log <FILE>`: Read this usage log instead of the tool's own
 - `--exclude-program <NAME>`: Leave out the runs that a program with this name marked, such as flightdeck. Takes more than one value.
+- `--context <LABEL>`: Keep only the runs that reported this context, such as project. Takes more than one value.
 - `--limit <N>`: Print at most this many rows. Default: `25`.
 - `--all`: Print every row
 
@@ -430,6 +432,8 @@ shelf self runs list --since 1d --all
 - `trace`: The id of the W3C trace that the run belongs to, as 32 lowercase hex digits.
 - `run`: The run's own span id, as 16 lowercase hex digits, which its child runs name as their parent.
 - `parent`: The span id of the run's caller, as 16 lowercase hex digits, or null when the run started a new trace.
+- `lock_ms`: The milliseconds that the run spent waiting to take locks, or 0 when the tool reported none.
+- `context`: The label of the place where the run took place, or null when the tool reported none.
 
 Effects: read-only, closed-world.
 

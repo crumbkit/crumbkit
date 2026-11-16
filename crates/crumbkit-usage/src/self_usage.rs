@@ -39,6 +39,7 @@ use clap::{Args, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use super::facts::is_label;
 use super::program::{self, Program};
 use super::report::{Entry, Figures, Finding, Kind, Report, Tally, read};
 use crumbkit::{Call, Document, Listing, Run, Step, Tool, ViewFlags};
@@ -239,6 +240,48 @@ pub fn findings(run: &mut Run, tool: &Tool, args: &SelfUsage) -> Listing<Finding
     )
 }
 
+/// The `--context` flag of `self runs list` and `self figures list`: the
+/// contexts whose runs the listing keeps.
+#[derive(Args, Clone, Debug, Default, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
+pub(super) struct ContextFilter {
+    /// Keep only the runs that reported this context, such as project
+    #[arg(
+        long = "context",
+        value_name = "LABEL",
+        value_delimiter = ',',
+        value_parser = context_label
+    )]
+    pub(super) labels: Vec<String>,
+}
+
+impl ContextFilter {
+    /// Returns `selection` with only the runs of the named contexts.
+    pub(super) fn apply(&self, mut selection: Selection) -> Selection {
+        selection.context.clone_from(&self.labels);
+        selection
+    }
+}
+
+/// Returns the text of the label that `text` is, for clap's parser of
+/// `--context`.
+///
+/// # Errors
+///
+/// Returns why `text` is refused when it is not a label.
+fn context_label(text: &str) -> Result<String, String> {
+    if is_label(text) {
+        Ok(text.to_owned())
+    } else {
+        Err(
+            "a context is 1 to 64 ASCII letters, digits, braces and _-./:, such as project"
+                .to_owned(),
+        )
+    }
+}
+
 /// The runs that a report reads: those that ended in a period before a
 /// time, less those that an excluded program marked.
 pub(super) struct Selection {
@@ -248,6 +291,8 @@ pub(super) struct Selection {
     pub(super) now: SystemTime,
     /// The programs whose runs the report leaves out.
     pub(super) exclude: Vec<Program>,
+    /// The contexts whose runs the report keeps, or none to keep every run.
+    pub(super) context: Vec<String>,
 }
 
 impl SelfUsage {
@@ -257,6 +302,7 @@ impl SelfUsage {
             since: self.since,
             now,
             exclude: self.exclude_program.clone(),
+            context: Vec::new(),
         }
     }
 }
@@ -352,6 +398,7 @@ pub(super) fn summarize(
             start_ms,
             tool_name,
             &selection.exclude,
+            &selection.context,
             &mut tally,
             each,
         );
@@ -440,7 +487,10 @@ fn suggestion(finding: &Finding, figures: Option<&Figures>) -> String {
             grouped(figures.and_then(|figures| figures.p95_ms).unwrap_or(0))
         ),
         Kind::MostlyWaiting => {
-            "slow runs spent half their time or more waiting on another system".to_owned()
+            let on_locks =
+                figures.is_some_and(|figures| figures.waiting_on_locks * 2 > finding.runs);
+            let cause = if on_locks { "locks" } else { "another system" };
+            format!("slow runs spent half their time or more waiting on {cause}")
         }
     }
 }

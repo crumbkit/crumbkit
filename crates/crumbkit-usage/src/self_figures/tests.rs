@@ -145,3 +145,32 @@ fn the_figures_leave_out_the_runs_of_an_excluded_program_and_keep_those_of_anoth
         [("books list".to_owned(), 2), ("books show".to_owned(), 1)]
     );
 }
+
+#[test]
+fn the_figures_keep_only_the_runs_of_the_named_contexts() {
+    let log = [
+        line(300, "books list", &json!({"context": "member"})),
+        line(200, "books list", &json!({"context": "project"})),
+        line(100, "books show", &json!({})),
+    ]
+    .concat();
+    let mut selection = selection(Duration::from_secs(86_400), now());
+    selection.context = vec!["member".to_owned()];
+    let listing = figures_from(
+        &tree(),
+        &Tool::new(),
+        Some(Cursor::new(log)),
+        &selection,
+        None,
+    );
+
+    let rows: Vec<_> = listing
+        .rows()
+        .iter()
+        .map(|row| serde_json::to_value(row).unwrap())
+        .collect();
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["command"], "books list");
+    assert_eq!(rows[0]["runs"], 1);
+}

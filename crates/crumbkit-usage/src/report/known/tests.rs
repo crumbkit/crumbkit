@@ -158,3 +158,21 @@ fn a_record_whose_trace_run_or_parent_id_is_not_lowercase_hex_of_the_right_lengt
         assert!(!known(&tool, &entry), "{entry:?}");
     }
 }
+
+#[test]
+fn a_record_is_known_only_when_its_context_is_a_label_or_absent() {
+    let tool = tree();
+    let context = |name: Option<&str>| {
+        let mut entry = run("books show", &[]);
+        entry.context = name.map(ToOwned::to_owned);
+        known(&tool, &entry)
+    };
+
+    assert!(context(None));
+    assert!(context(Some("member")));
+    assert!(context(Some("/books/{id}")));
+    assert!(!context(Some("")));
+    assert!(!context(Some("has space")));
+    assert!(!context(Some("--password=hunter2")));
+    assert!(!context(Some(&"a".repeat(65))));
+}

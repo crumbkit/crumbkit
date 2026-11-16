@@ -37,7 +37,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::report::Entry;
-use super::self_usage::{Selection, SelfUsage, UsageSummary, open, summarize};
+use super::self_usage::{ContextFilter, Selection, SelfUsage, UsageSummary, open, summarize};
 use crumbkit::{Document, Listing, Page, Run, Tool};
 
 #[cfg(test)]
@@ -65,6 +65,10 @@ pub struct SelfRuns {
     /// How far back to read and which log to read.
     #[command(flatten)]
     usage: SelfUsage,
+
+    /// Which contexts to keep.
+    #[command(flatten)]
+    context: ContextFilter,
 
     /// How many runs to print.
     #[command(flatten)]
@@ -98,6 +102,12 @@ pub struct RunRow {
     code: Option<String>,
     /// The run's wall time in milliseconds.
     ms: u64,
+    /// The milliseconds that the run spent waiting to take locks, or 0 when
+    /// the tool reported none.
+    lock_ms: u64,
+    /// The label of the place where the run took place, or null when the
+    /// tool reported none.
+    context: Option<String>,
     /// The bytes that the run wrote to standard output, or null when the
     /// run did not reach `finish`.
     out_bytes: Option<u64>,
@@ -133,6 +143,8 @@ impl crumbkit::Row for RunRow {
         "trace",
         "run",
         "parent",
+        "lock_ms",
+        "context",
     ];
 }
 
@@ -143,7 +155,8 @@ impl crumbkit::Row for RunRow {
 ///
 /// It reads the log that [`findings`](super::findings) reads, in the same
 /// way, leaves out and counts the same records, and leaves out the runs of
-/// each program that `--exclude-program` names. The rows are grouped
+/// each program that `--exclude-program` names and, when `--context` names
+/// any, the runs that reported none of those contexts. The rows are grouped
 /// by session, the session whose first run came first in the log first,
 /// and follow the log's order within each session. `tool` is the tool
 /// record, which gives the exit code of a refused command line for the
@@ -158,7 +171,7 @@ pub fn runs(run: &mut Run, tool: &Tool, args: &SelfRuns) -> Listing<RunRow, Usag
         tool_name,
         tool,
         open(tool_name, &args.usage),
-        &args.usage.selection(SystemTime::now()),
+        &args.context.apply(args.usage.selection(SystemTime::now())),
         args.page.limit(),
     )
 }
@@ -210,6 +223,8 @@ fn row(tool_name: &str, index: usize, place: usize, entry: Entry) -> RunRow {
         exit: entry.exit,
         code: entry.code,
         ms: entry.ms,
+        lock_ms: entry.lock_ms,
+        context: entry.context,
         out_bytes: entry.out_bytes,
         truncated: entry.truncated,
         trace: entry.trace,

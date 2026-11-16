@@ -79,6 +79,8 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
         out_bytes: Some(1840),
         truncated: true,
         empty: true,
+        lock_ms: Some(1234),
+        context: Some(Label::new("member")),
     };
 
     let record = parsed(record);
@@ -100,6 +102,8 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
     assert_eq!(record["out_bytes"], 1840);
     assert_eq!(record["truncated"], true);
     assert_eq!(record["empty"], true);
+    assert_eq!(record["lock_ms"], 1234);
+    assert_eq!(record["context"], "member");
     assert_eq!(record["interrupted"], true);
 }
 
@@ -312,5 +316,59 @@ fn the_checked_in_schema_admits_exactly_the_program_names_that_the_writer_record
             .unwrap()
             .iter()
             .all(|field| field != "program")
+    );
+}
+
+#[test]
+fn a_run_with_no_lock_wait_leaves_lock_ms_out_of_its_line() {
+    let mut record = bare();
+    record.run.add_lock_wait(std::time::Duration::ZERO);
+
+    assert!(parsed(record).get("lock_ms").is_none());
+}
+
+#[test]
+fn lock_waits_add_up_in_milliseconds_and_saturate() {
+    let mut run = Run::default();
+    run.add_lock_wait(std::time::Duration::from_millis(40));
+    run.add_lock_wait(std::time::Duration::from_micros(2_500));
+    assert_eq!(run.lock_ms, Some(42));
+
+    run.add_lock_wait(std::time::Duration::MAX);
+    run.add_lock_wait(std::time::Duration::from_millis(1));
+    assert_eq!(run.lock_ms, Some(u64::MAX));
+}
+
+#[test]
+fn a_line_that_passes_the_size_limit_keeps_lock_ms_and_context() {
+    let mut record = bare();
+    record.run.command = Some(name(&"x".repeat(600)));
+    record.run.lock_ms = Some(1234);
+    record.run.context = Some(Label::new("member"));
+    record.facts = Some(long_labels(16));
+
+    let line = parsed(record);
+
+    assert!(line.get("facts").is_none());
+    assert_eq!(line["lock_ms"], 1234);
+    assert_eq!(line["context"], "member");
+}
+
+#[test]
+fn a_record_with_lock_ms_and_context_is_described_by_the_checked_in_schema() {
+    let schema: Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/schemas/usage-v1.json"
+    )))
+    .unwrap();
+    let required = schema["required"].as_array().unwrap();
+
+    assert_eq!(schema["properties"]["lock_ms"]["type"], "integer");
+    assert_eq!(schema["properties"]["lock_ms"]["minimum"], 1);
+    assert_eq!(schema["properties"]["context"]["$ref"], "#/$defs/Label");
+    assert!(
+        !required
+            .iter()
+            .any(|name| name == "lock_ms" || name == "context")
     );
 }

@@ -37,7 +37,9 @@ use clap::{Args, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::self_usage::{CommandFigures, Selection, SelfUsage, UsageSummary, open, summarize};
+use super::self_usage::{
+    CommandFigures, ContextFilter, Selection, SelfUsage, UsageSummary, open, summarize,
+};
 use crumbkit::{Document, Listing, Page, Run, Tool};
 
 #[cfg(test)]
@@ -65,6 +67,10 @@ pub struct SelfFigures {
     /// How far back to read and which log to read.
     #[command(flatten)]
     usage: SelfUsage,
+
+    /// Which contexts to keep.
+    #[command(flatten)]
+    context: ContextFilter,
 
     /// How many commands to print.
     #[command(flatten)]
@@ -110,7 +116,8 @@ impl crumbkit::Row for FiguresRow {
 ///
 /// It reads the log that [`findings`](super::findings) reads, in the same
 /// way, leaves out and counts the same records, and leaves out the runs of
-/// each program that `--exclude-program` names. The rows follow the
+/// each program that `--exclude-program` names and, when `--context` names
+/// any, the runs that reported none of those contexts. The rows follow the
 /// order of the command paths, with the root first under the tool's name.
 /// A command that the log does not name has no row. `tool` is the
 /// tool record, whose exit codes give the meaning of each exit from 3.
@@ -125,7 +132,7 @@ pub fn figures(
         tool_name,
         tool,
         open(tool_name, &args.usage),
-        &args.usage.selection(SystemTime::now()),
+        &args.context.apply(args.usage.selection(SystemTime::now())),
         args.page.limit(),
     )
 }

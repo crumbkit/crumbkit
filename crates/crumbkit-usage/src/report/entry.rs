@@ -80,6 +80,14 @@ pub(crate) struct Entry {
     /// Whether the run ended on SIGINT or SIGTERM.
     #[serde(default)]
     pub(crate) interrupted: bool,
+    /// The milliseconds that the run spent waiting to take locks, or 0 when
+    /// the tool reported none.
+    #[serde(default)]
+    pub(crate) lock_ms: u64,
+    /// The label of the place where the run took place, when the tool
+    /// reported one.
+    #[serde(default)]
+    pub(crate) context: Option<String>,
     /// The one part of the tool's own facts that the report reads.
     #[serde(default)]
     pub(crate) facts: Facts,
@@ -129,6 +137,34 @@ impl Entry {
         self.program
             .as_deref()
             .is_some_and(|program| exclude.iter().any(|excluded| excluded.as_str() == program))
+    }
+
+    /// Returns whether the run took place in one of `contexts`, which is
+    /// true for every run when `contexts` is empty.
+    pub(crate) fn placed_in(&self, contexts: &[String]) -> bool {
+        contexts.is_empty()
+            || self
+                .context
+                .as_deref()
+                .is_some_and(|context| contexts.iter().any(|named| named == context))
+    }
+
+    /// Returns the milliseconds that the run spent waiting on locks and on
+    /// other systems together.
+    pub(crate) fn waited_ms(&self) -> u64 {
+        self.lock_ms.saturating_add(self.facts.waited_ms)
+    }
+
+    /// Returns whether the run took at least `slow` ms and spent half its
+    /// time or more waiting, on locks or on other systems (ADR-0145).
+    pub(crate) fn mostly_waited(&self, slow: u64) -> bool {
+        self.ms >= slow && self.waited_ms().saturating_mul(2) >= self.ms
+    }
+
+    /// Returns whether the run waited at least as long on locks as on
+    /// other systems.
+    pub(crate) fn waited_on_locks(&self) -> bool {
+        self.lock_ms >= self.facts.waited_ms
     }
 
     /// Returns whether the caller typed `flag`.
@@ -181,6 +217,8 @@ impl Entry {
             out_bytes: Some(100),
             truncated: false,
             interrupted: false,
+            lock_ms: 0,
+            context: None,
             facts: Facts::default(),
         }
     }

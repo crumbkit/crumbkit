@@ -79,7 +79,7 @@ fn a_row_holds_the_shape_of_its_run_its_end_to_the_second_and_its_trace_ids() {
         rows[1],
         json!({"session": 1, "step": 2, "at": "2026-10-11T11:56:40Z", "caller": "person",
             "command": "books list", "flags": ["--all"], "help": false, "exit": 0,
-            "code": null, "ms": 10, "out_bytes": 500, "truncated": true,
+            "code": null, "ms": 10, "lock_ms": 0, "context": null, "out_bytes": 500, "truncated": true,
             "trace": "4bf92f3577b34da6a3ce929d0e0e4736", "run": "00f067aa0ba902b7",
             "parent": null})
     );
@@ -193,4 +193,80 @@ fn the_runs_leave_out_those_of_an_excluded_program_and_keep_those_of_another() {
         commands(&selection(Duration::from_secs(86_400), now())),
         ["books list", "books list", "books show"]
     );
+}
+
+#[test]
+fn a_row_holds_the_milliseconds_the_run_waited_on_locks_and_its_context() {
+    let log = [
+        line(
+            200,
+            "books show",
+            &json!({"lock_ms": 1234, "context": "member"}),
+        ),
+        line(100, "books list", &json!({})),
+    ]
+    .concat();
+
+    let (rows, _, _) = rows(&log, None);
+
+    assert_eq!(rows[0]["lock_ms"], 1234);
+    assert_eq!(rows[0]["context"], "member");
+    assert_eq!(rows[1]["lock_ms"], 0);
+    assert_eq!(rows[1]["context"], Value::Null);
+}
+
+#[test]
+fn a_run_whose_context_is_not_a_label_is_skipped_and_counted() {
+    let log = [
+        line(200, "books show", &json!({"context": "has space"})),
+        line(100, "books list", &json!({"context": "member"})),
+    ]
+    .concat();
+
+    let (rows, _, summary) = rows(&log, None);
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(summary["skipped"], 1);
+}
+
+#[test]
+fn the_runs_keep_only_those_of_the_named_contexts() {
+    let log = [
+        line(300, "books list", &json!({"context": "member"})),
+        line(200, "books list", &json!({"context": "project"})),
+        line(100, "books show", &json!({})),
+    ]
+    .concat();
+    let only = |names: &[&str]| {
+        let mut selection = selection(Duration::from_secs(86_400), now());
+        selection.context = names.iter().map(|name| (*name).to_owned()).collect();
+        let listing = runs_from(
+            &tree(),
+            &Tool::new(),
+            Some(Cursor::new(log.as_str())),
+            &selection,
+            None,
+        );
+        listing
+            .rows()
+            .iter()
+            .map(|row| serde_json::to_value(row).unwrap()["context"].clone())
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(only(&["member"]), [json!("member")]);
+    assert_eq!(
+        only(&["member", "project"]),
+        [json!("member"), json!("project")]
+    );
+    assert_eq!(only(&[]), [json!("member"), json!("project"), Value::Null]);
+}
+
+#[test]
+fn self_runs_list_takes_a_repeatable_context_flag() {
+    let tool =
+        Cli::try_parse_from(["tool", "--context", "member", "--context", "project,x"]).unwrap();
+
+    assert_eq!(tool.args.context.labels, ["member", "project", "x"]);
+    assert!(Cli::try_parse_from(["tool", "--context", "has space"]).is_err());
 }

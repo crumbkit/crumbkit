@@ -28,6 +28,10 @@
       "description": "The command path below the tool's name, such as books show.",
       "$ref": "#/$defs/Name"
     },
+    "context": {
+      "description": "Where the run took place, one label from the tool's own constants,\nwhich the tool reports with `context`. The last report stays.",
+      "$ref": "#/$defs/Label"
+    },
     "empty": {
       "description": "Whether a listing or a stream had no rows, so its output printed the\nempty note (ADR-0050). It is present only when one had none.",
       "type": "boolean"
@@ -63,6 +67,12 @@
     "interrupted": {
       "description": "Whether the line was written when the run ended on SIGINT or SIGTERM.\nIt is present only when that is so.",
       "type": "boolean"
+    },
+    "lock_ms": {
+      "description": "The milliseconds that the run spent waiting to take locks, summed,\nwhich the tool reports with `lock_waited`. It is present only when\nit is more than 0.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 1
     },
     "ms": {
       "description": "The run's wall time in milliseconds, from `start` to the line.",

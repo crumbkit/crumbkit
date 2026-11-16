@@ -7,7 +7,8 @@ use serde_json::{Value, json};
 
 use super::signals::Ending;
 use super::{
-    Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line, write, written,
+    RECORDER, Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line,
+    write, written,
 };
 use crate::caller::Caller;
 use crate::context::Context;
@@ -15,7 +16,7 @@ use crate::file::LIMITS;
 use crate::program::Program;
 use crate::record::Help;
 use crate::testing::TempDir;
-use crate::{Extension, Facts, Key};
+use crate::{Extension, Facts, Key, Label};
 use crumbkit::{Code, Spelling, ToolName};
 
 mod processes;
@@ -550,4 +551,65 @@ fn the_signal_thread_s_guard_ends_the_process_when_writing_the_line_panics() {
 
     assert!(panicked.is_err());
     assert_eq!(ENDED_WITH.load(std::sync::atomic::Ordering::SeqCst), 15);
+}
+
+#[test]
+fn a_run_that_waited_on_locks_records_lock_ms_in_its_line() {
+    let state = TempDir::new("lock-ms");
+    let slot = Mutex::new(State::Recording(parsed()));
+
+    update(&slot, |recorder| {
+        recorder.run.add_lock_wait(Duration::from_millis(30));
+    });
+    update(&slot, |recorder| {
+        recorder.run.add_lock_wait(Duration::from_millis(12));
+    });
+
+    let recorder = lock(&slot).and_then(take).unwrap();
+    assert_eq!(saved(&state, recorder, false)[0]["lock_ms"], 42);
+}
+
+#[test]
+fn a_run_with_no_lock_wait_and_no_context_records_neither_field() {
+    let state = TempDir::new("no-lock-ms");
+
+    let line = &saved(&state, parsed(), false)[0];
+
+    assert!(line.get("lock_ms").is_none(), "{line}");
+    assert!(line.get("context").is_none(), "{line}");
+}
+
+#[test]
+fn the_last_context_call_wins() {
+    let state = TempDir::new("context");
+    let mut recorder = parsed();
+
+    recorder.run.context = Some(Label::new("project"));
+    recorder.run.context = Some(Label::new("member"));
+
+    assert_eq!(saved(&state, recorder, false)[0]["context"], "member");
+}
+
+#[test]
+fn the_public_lock_waited_and_context_calls_reach_the_started_log_and_do_nothing_before_it() {
+    let state = TempDir::new("public-fields");
+    // This is the only test that touches the process's own recorder.
+    assert!(matches!(*lock(&RECORDER).unwrap(), State::Idle));
+
+    crate::lock_waited(Duration::from_millis(5));
+    crate::context(Label::new("ignored"));
+
+    assert!(matches!(*lock(&RECORDER).unwrap(), State::Idle));
+
+    *lock(&RECORDER).unwrap() = State::Recording(parsed());
+    crate::lock_waited(Duration::from_millis(5));
+    crate::lock_waited(Duration::from_millis(7));
+    crate::context(Label::new("project"));
+    crate::context(Label::new("member"));
+    let recorder = take(lock(&RECORDER).unwrap()).unwrap();
+    *lock(&RECORDER).unwrap() = State::Idle;
+
+    let line = &saved(&state, recorder, false)[0];
+    assert_eq!(line["lock_ms"], 12, "{line}");
+    assert_eq!(line["context"], "member", "{line}");
 }

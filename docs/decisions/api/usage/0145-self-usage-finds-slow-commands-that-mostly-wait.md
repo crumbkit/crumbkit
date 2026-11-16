@@ -1,7 +1,7 @@
 # ADR-0145. `self usage` finds slow commands that mostly wait
 
 - Date: 2026-10-23
-- Status: accepted
+- Status: amended by ADR-0234
 - Supersedes: ADR-0034, which it amends
 
 ## Context

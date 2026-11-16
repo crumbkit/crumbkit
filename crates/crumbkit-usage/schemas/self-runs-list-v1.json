@@ -174,6 +174,13 @@
           "description": "The command path below the tool's name, such as `books show`, or the\ntool's name for its root command.",
           "type": "string"
         },
+        "context": {
+          "description": "The label of the place where the run took place, or null when the\ntool reported none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "exit": {
           "description": "The run's exit code, or null when the run ended before it exited.",
           "type": [
@@ -194,6 +201,12 @@
         "help": {
           "description": "Whether the run printed a help page.",
           "type": "boolean"
+        },
+        "lock_ms": {
+          "description": "The milliseconds that the run spent waiting to take locks, or 0 when\nthe tool reported none.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
         },
         "ms": {
           "description": "The run's wall time in milliseconds.",

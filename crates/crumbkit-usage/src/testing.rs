@@ -90,6 +90,7 @@ pub(super) fn selection(since: Duration, now: SystemTime) -> Selection {
         since,
         now,
         exclude: Vec::new(),
+        context: Vec::new(),
     }
 }
 
@@ -137,5 +138,6 @@ pub(super) fn without_flightdeck() -> Selection {
         since: Duration::from_secs(86_400),
         now: now(),
         exclude: vec![Program::new("flightdeck").unwrap()],
+        context: Vec::new(),
     }
 }

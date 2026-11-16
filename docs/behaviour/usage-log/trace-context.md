@@ -1,12 +1,11 @@
 # Trace context
 
 A run of a tool joins the trace of whatever started it and passes the trace
-on to its children. This page covers the standards crumbkit follows for
-that, what the usage log records of the trace, and the `tracing` feature's
-spans. The rustdoc of the [`trace`](../../../crates/crumbkit/src/trace.rs)
-module states how a run reads the context, what
-[`trace::child_env`](../../../crates/crumbkit/src/trace.rs) returns, and
-which fields each span records.
+on to its children. This page covers the standards crumbkit follows, what the usage log records
+of the trace, and the `tracing` feature's spans. The rustdoc of the
+[`trace`](../../../crates/crumbkit/src/trace.rs) module states how a run
+reads the context, what `trace::child_env` returns, and the fields of each
+span.
 
 ## Standards and variables
 
@@ -17,11 +16,8 @@ the random-trace-id flag of
 the `TRACEPARENT` and `TRACESTATE` environment variables of OpenTelemetry's
 [environment-variable carrier](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.61.0/specification/context/env-carriers.md)
 in specification v1.61.0. crumbkit reads only those two uppercase names,
-reads them once at start-up, and injects the context into the environment
-of a child through `trace::child_env`.
-
-crumbkit never reads, forwards or records `BAGGAGE`, so a child inherits it
-as it would without crumbkit.
+once at start-up, and injects the context into a child's environment through
+`trace::child_env`. It never reads, forwards or records `BAGGAGE`.
 
 Why: ADR-0030.
 
