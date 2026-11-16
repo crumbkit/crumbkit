@@ -2,7 +2,7 @@
 
 - Date: 2026-11-16
 - Status: accepted
-- Supersedes: ADR-0001, ADR-0007 and ADR-0097, which it amends
+- Supersedes: ADR-0001, which it amends
 
 ## Context
 
@@ -24,7 +24,8 @@ missing.
 - The failure document gains an optional string `sentence`, which is
   present only when the failure has one. The document keeps the id
   `crumbkit/failure/v1`, because a reader that ignores an unknown optional
-  property reads the new document unchanged. The text form keeps printing
+  property reads the new document unchanged, and ADR-0007 keeps the `v1`
+  id when a field is added as optional. The text form keeps printing
   `Display`.
 - The derive accepts `sentence = "..."` on a variant or a struct. The value
   is a string literal on one line with no `{`, so the derive refuses an
@@ -33,7 +34,10 @@ missing.
   `format!` placeholder as `hint` has would let in.
 - `#[failure(reviewed)]` on the type makes a missing `sentence` on any
   variant that does not forward, or on the struct, a compile error that
-  names it. A variant that forwards returns the wrapped failure's sentence.
+  names it. A variant that forwards returns the wrapped failure's sentence, and the
+  derive does not check that the wrapped type has one. The wrapped type is
+  checked only when it is marked `reviewed` itself, and the derive adds no
+  marker trait to require that.
   A type without `reviewed` is unchanged, so a tool adds the key to one
   enum at a time.
 - crumbkit-test gets no `check_sentences`. A hand-written impl and a code

@@ -1,7 +1,7 @@
 # ADR-0097. crumbkit holds the types that need no clap
 
 - Date: 2026-10-19
-- Status: amended by ADR-0226
+- Status: accepted
 - Supersedes: ADR-0032
 
 ## Context
