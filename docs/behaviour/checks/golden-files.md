@@ -13,7 +13,12 @@ and deletes each stale file when the environment variable
 differing or stale file and shows snapbox's report of both texts. A person
 reviews the rewritten files with `git diff`.
 
-Why: ADR-0004.
+`SNAPSHOTS=overwrite` is safe in parallel test processes. Each rewritten
+file goes through a temporary file and a rename, and a check that deletes
+stale files locks its directory, waiting up to 120 seconds for another
+overwrite of it.
+
+Why: ADR-0004, ADR-0231.
 
 ## Placeholders in example golden files
 

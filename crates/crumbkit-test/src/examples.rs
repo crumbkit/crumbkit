@@ -14,7 +14,7 @@ use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 
 use crate::allow::{Allowances, Rule};
 use crate::failures::{self, Reader};
-use crate::goldens::{compare, remove_stale};
+use crate::goldens::{compare, lock_directory, remove_stale};
 use crate::help::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
@@ -176,6 +176,16 @@ mod tests;
 /// crumbkit_test::check_examples(&shelf, &TOOL, &EXAMPLES);
 /// ```
 ///
+/// # Parallel test processes
+///
+/// With `SNAPSHOTS=overwrite` the check is safe in test processes that run
+/// at once, as cargo-nextest runs them. It writes each file through a
+/// temporary file and a rename, so a reader sees the old file or the new
+/// one in full, and it locks `dir` until it finishes, so two overwrites of
+/// one directory run one after the other. The lock waits up to 120 seconds
+/// and then reports a problem. Two different checks still need two
+/// directories (ADR-0231).
+///
 /// # Panics
 ///
 /// Panics when a run, a golden file or an opt-out breaks a rule above, or
@@ -224,6 +234,7 @@ fn check(
     let layout = tool.get_output().get_json_layout();
     let tool_name = tool.tool_name(command);
     let mut problems = Vec::new();
+    let _lock = lock_directory(dir, overwrite, &mut problems);
     // The problems of runs that fail, which the message lists under a
     // heading of their own, because the tool's binary breaks them and the
     // command tree and golden files do not.
@@ -311,25 +322,31 @@ fn check(
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
     inputs::stale_stdin(command.get_name(), tool, dir, &mut problems);
-    remove_stale(
-        dir,
-        &names,
-        "txt",
-        overwrite,
-        "checked example",
-        &mut problems,
-    );
-    remove_stale(
-        dir,
-        &stderr_names,
-        "stderr",
-        overwrite,
-        "checked example that writes to standard error",
-        &mut problems,
-    );
+    remove_stale_goldens(dir, &names, &stderr_names, overwrite, &mut problems);
     allowances.finish(command, &mut problems);
     report(&problems, &failures);
     skipped
+}
+
+/// Adds a problem to `problems` for each `.txt` file in `dir` that is not in
+/// `names` and each `.stderr` file that is not in `stderr_names`, or deletes
+/// the file when `overwrite` is set.
+fn remove_stale_goldens(
+    dir: &Path,
+    names: &[String],
+    stderr_names: &[String],
+    overwrite: bool,
+    problems: &mut Vec<String>,
+) {
+    remove_stale(dir, names, "txt", overwrite, "checked example", problems);
+    remove_stale(
+        dir,
+        stderr_names,
+        "stderr",
+        overwrite,
+        "checked example that writes to standard error",
+        problems,
+    );
 }
 
 /// Reports whether the run skips `example`, whose command line is `line`,

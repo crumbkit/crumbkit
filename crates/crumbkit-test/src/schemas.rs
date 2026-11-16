@@ -8,7 +8,7 @@ use crumbkit::Tool;
 use snapbox::Assert;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 
-use crate::goldens::{compare, remove_stale};
+use crate::goldens::{compare, lock_directory, remove_stale};
 use crate::tree;
 
 #[cfg(test)]
@@ -63,6 +63,16 @@ mod tests;
 /// crumbkit_test::check_schema_goldens(&shelf, &Tool::new(), "tests/golden/schemas");
 /// ```
 ///
+/// # Parallel test processes
+///
+/// With `SNAPSHOTS=overwrite` the check is safe in test processes that run
+/// at once, as cargo-nextest runs them. It writes each file through a
+/// temporary file and a rename, so a reader sees the old file or the new
+/// one in full, and it locks `dir` until it finishes, so two overwrites of
+/// one directory run one after the other. The lock waits up to 120 seconds
+/// and then reports a problem. Two different checks still need two
+/// directories (ADR-0231).
+///
 /// # Panics
 ///
 /// Panics when a document or a golden file breaks a rule above, or when
@@ -80,6 +90,7 @@ pub fn check_schema_goldens(command: &Command, tool: &Tool, dir: impl AsRef<Path
 fn check(command: &Command, tool: &Tool, dir: &Path, assert: &Assert) {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let mut problems = Vec::new();
+    let _lock = lock_directory(dir, overwrite, &mut problems);
     find_conflicts(command, tool, &mut problems);
     // Each golden file name with the id of the document that has it.
     let mut names: Vec<(String, String)> = Vec::new();

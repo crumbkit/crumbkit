@@ -17,5 +17,6 @@ tests and fuzzing, and performance budgets.
 - [ADR-0185. One suite runs every convention check](0185-convention-suite.md)
 - [ADR-0053. Recovery chains](0053-recovery-chains.md)
 - [ADR-0163. Example preconditions](0163-example-preconditions.md)
+- [ADR-0231. SNAPSHOTS=overwrite is safe with parallel test processes](0231-overwrite-is-safe-with-parallel-test-processes.md)
 - [ADR-0006. Property tests and fuzzing](0006-property-tests-and-fuzzing.md)
 - [ADR-0008. Performance budgets](0008-performance-budgets-and-benchmarks.md)

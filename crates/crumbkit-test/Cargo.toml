@@ -31,6 +31,11 @@ clap = { workspace = true, features = ["help"] }
 # stopped it (ADR-0005). Without `diff`, a mismatch shows the expected and the
 # actual text in full.
 snapbox = { workspace = true }
+# `SNAPSHOTS=overwrite` writes each golden file through a temporary file and
+# a rename, so a check in another test process never reads a partial file,
+# and holds a lock on the golden directory from its first read to its stale
+# scan, so two overwrites of one directory run one after the other (ADR-0003).
+crumbkit-durable = { workspace = true }
 # The schema golden check writes each document's JSON Schema as
 # pretty-printed JSON, as crumbkit's checked-in schema files hold it.
 # serde_json needs `std` or `alloc` to build at all.

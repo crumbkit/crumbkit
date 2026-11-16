@@ -2,9 +2,12 @@
 //! in golden files.
 
 use std::fs;
-use std::path::Path;
+use std::hash::{DefaultHasher, Hash as _, Hasher as _};
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use clap::Command;
+use crumbkit_durable::{Mode, PathLock, write_atomically};
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, Data};
 
@@ -61,6 +64,16 @@ mod tests;
 /// crumbkit_test::check_help_goldens(&shelf, Pages::rendered(&Tool::new()), "tests/golden/help");
 /// ```
 ///
+/// # Parallel test processes
+///
+/// With `SNAPSHOTS=overwrite` the check is safe in test processes that run
+/// at once, as cargo-nextest runs them. It writes each file through a
+/// temporary file and a rename, so a reader sees the old file or the new
+/// one in full, and it locks `dir` until it finishes, so two overwrites of
+/// one directory run one after the other. The lock waits up to 120 seconds
+/// and then reports a problem. Two different checks still need two
+/// directories (ADR-0231).
+///
 /// # Panics
 ///
 /// Panics when a page or a golden file breaks a rule above, or when
@@ -80,6 +93,7 @@ pub fn check_help_goldens(command: &Command, pages: Pages<'_>, dir: impl AsRef<P
 fn check(command: &Command, pages: Pages<'_>, dir: &Path, assert: &Assert) {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let mut problems = Vec::new();
+    let _lock = lock_directory(dir, overwrite, &mut problems);
     // Each golden file name with the command line of the page that has it.
     let mut names: Vec<(String, String)> = Vec::new();
     for (flag, suffix) in [("-h", "h"), ("--help", "help")] {
@@ -105,7 +119,11 @@ fn check(command: &Command, pages: Pages<'_>, dir: &Path, assert: &Assert) {
 /// page or its output, with the golden file `file` through `assert`, and
 /// adds a problem to `problems` when the file is missing or differs. When
 /// the action of `assert` is to overwrite, it writes or rewrites the file
-/// instead.
+/// instead, through [`write_golden`].
+///
+/// An overwrite compares the bytes itself and never lets snapbox write,
+/// because snapbox truncates the file and then writes it, so a test process
+/// that reads the file in between sees an empty or partial file.
 pub(crate) fn compare(
     assert: &Assert,
     line: &str,
@@ -114,7 +132,16 @@ pub(crate) fn compare(
     file: &Path,
     problems: &mut Vec<String>,
 ) {
-    if assert.selected_action() != Action::Overwrite && !file.is_file() {
+    if assert.selected_action() == Action::Overwrite {
+        if fs::read(file).is_ok_and(|current| current == actual.as_bytes()) {
+            return;
+        }
+        if let Err(problem) = write_golden(file, actual.as_bytes()) {
+            problems.push(format!("{line}: {problem}"));
+        }
+        return;
+    }
+    if !file.is_file() {
         problems.push(format!(
             "{line}: the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it",
             file.display()
@@ -128,6 +155,87 @@ pub(crate) fn compare(
             file.display()
         ));
     }
+}
+
+/// Writes `bytes` to the golden file `file`, and creates its directory when
+/// it is missing. Every check that writes a golden file calls this, so a
+/// reader of the file, such as a check in another test process, sees the old
+/// file or the new one in full.
+///
+/// The write goes through a temporary file in the same directory, named
+/// `.<file>.<pid>.<n>.tmp`, and a rename over `file`
+/// ([`crumbkit_durable::write_atomically`]). The temporary name ends in
+/// `tmp`, which no check treats as a golden file extension, so a stale scan
+/// never deletes it or counts it.
+pub(crate) fn write_golden(file: &Path, bytes: &[u8]) -> Result<(), String> {
+    if let Some(parent) = file.parent() {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the golden check owns its directory and creates it before the first golden file"
+        )]
+        let created = fs::create_dir_all(parent);
+        created.map_err(|error| {
+            format!(
+                "the golden directory `{}` cannot be created: {error}",
+                parent.display()
+            )
+        })?;
+    }
+    write_atomically(file, bytes, Mode::Umask).map_err(|error| {
+        format!(
+            "the golden file `{}` cannot be written: {error}: {}",
+            file.display(),
+            error.source
+        )
+    })
+}
+
+/// How long [`lock_directory`] waits for another check of the same
+/// directory before it reports a problem.
+const LOCK_WAIT: Duration = Duration::from_secs(120);
+
+/// With `overwrite` set, locks `dir` for the caller's whole check and
+/// returns the lock, which the caller keeps until the check ends, so
+/// another test process that overwrites the same directory waits for this
+/// one. Without `overwrite` it returns `None`, because a comparison only
+/// reads. When the lock cannot be taken within [`LOCK_WAIT`], it adds a
+/// problem to `problems` and returns `None`.
+///
+/// A check that deletes stale golden files decides what is stale from the
+/// files that exist when it scans, and from the golden files that a skipped
+/// example keeps. A second overwrite that writes a golden file between
+/// those two reads would lose it to the scan. The lock makes the two
+/// overwrites run one after the other, and each sees the files of the first.
+///
+/// The lock file is in the system's temporary directory, named by a hash of
+/// the absolute path of `dir`, so the golden directory holds no extra file.
+pub(crate) fn lock_directory(
+    dir: &Path,
+    overwrite: bool,
+    problems: &mut Vec<String>,
+) -> Option<PathLock> {
+    if !overwrite {
+        return None;
+    }
+    let file = lock_file(dir);
+    match PathLock::acquire(&file, Instant::now() + LOCK_WAIT) {
+        Ok(lock) => Some(lock),
+        Err(error) => {
+            problems.push(format!(
+                "the golden directory `{}` cannot be locked for `SNAPSHOTS=overwrite`: {error}",
+                dir.display()
+            ));
+            None
+        }
+    }
+}
+
+/// Returns the path of the lock file for the golden directory `dir`.
+fn lock_file(dir: &Path) -> PathBuf {
+    let absolute = std::path::absolute(dir).unwrap_or_else(|_| dir.to_path_buf());
+    let mut hasher = DefaultHasher::new();
+    absolute.hash(&mut hasher);
+    std::env::temp_dir().join(format!("crumbkit-test-{:016x}.lock", hasher.finish()))
 }
 
 /// Adds a problem to `problems` for each file in `dir` with the extension
