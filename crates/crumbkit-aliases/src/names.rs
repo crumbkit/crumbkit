@@ -4,8 +4,8 @@
 use clap::Command;
 
 use crate::Aliases;
-use crate::entry::Item;
-use crate::source::{Kind, Loaded, Source};
+use crate::judge::Content;
+use crate::source::{Kind, Source};
 
 #[cfg(test)]
 mod tests;
@@ -36,8 +36,9 @@ impl Aliases {
     /// ```
     ///
     /// A source added with [`Source::unlisted`] has no names. An entry that
-    /// a real command shadows, and an entry whose value is not a list of one
-    /// or more words, does not expand, so it has no name here, and
+    /// a real command shadows, an entry that an earlier source wins over, and
+    /// an entry whose value is not a list of one or more words, does not
+    /// expand, so it has no name here, and
     /// `<tool> aliases list` reports its problem. A missing file, a source
     /// that cannot be read or parsed, and an environment without a home
     /// directory give no names. Like [`expand`](Aliases::expand), it never
@@ -65,20 +66,18 @@ impl Aliases {
     /// and without repeats.
     fn collect(&self, command: &Command, keep: impl Fn(&Source) -> bool) -> Vec<String> {
         let mut names = Vec::new();
-        for source in self
-            .sources()
-            .iter()
-            .filter(|source| source.listed() && keep(source))
-        {
-            let Loaded::Items(items) = source.load() else {
+        for (source, content) in self.judge(command) {
+            if !(source.listed() && keep(source)) {
                 continue;
-            };
-            names.extend(
-                items
-                    .iter()
-                    .filter(|item| item.problem(command, source.reads()).is_none())
-                    .map(Item::name),
-            );
+            }
+            if let Content::Items(items) = content {
+                names.extend(
+                    items
+                        .iter()
+                        .filter(|judged| judged.problem.is_none())
+                        .map(|judged| judged.item.name()),
+                );
+            }
         }
         // A `DeTable` keeps file order when some crate in the build enables
         // toml's `preserve_order` feature, so the names sort here, as the

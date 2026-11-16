@@ -68,3 +68,32 @@ fn the_shipped_names_leave_out_every_personal_source() {
     assert_eq!(aliases.names(&tree()), ["mine", "wt"]);
     assert_eq!(aliases.shipped_names(&tree()), ["wt"]);
 }
+
+#[test]
+fn an_entry_that_an_earlier_source_wins_over_has_no_name() {
+    let aliases = Aliases::new()
+        .source(Source::text(
+            Kind::Personal,
+            Some(r#"wt = ["books", "show"]"#),
+        ))
+        .source(Source::table(
+            "shelf",
+            &[
+                ("wt", &["books", "list"]),
+                ("wt ls", &["books", "list"]),
+                ("recent", &["books", "list"]),
+            ],
+        ));
+
+    assert_eq!(aliases.names(&tree()), ["recent", "wt"]);
+    assert_eq!(aliases.shipped_names(&tree()), ["recent"]);
+}
+
+#[test]
+fn an_unlisted_source_still_wins_over_a_later_entry() {
+    let aliases = Aliases::new()
+        .source(Source::table("hidden", &[("wt", &["books", "show"])]).unlisted())
+        .source(Source::table("shelf", &[("wt ls", &["books", "list"])]));
+
+    assert_eq!(aliases.names(&tree()), Vec::<String>::new());
+}

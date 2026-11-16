@@ -37,9 +37,9 @@ pub const CODES: &[crumbkit::Code<'static>] = books::BooksError::CODES;
 /// the result or the failure in the format that the output flags choose and
 /// returns the process's exit code.
 ///
-/// Before parsing, `Aliases::expand` replaces a personal alias in the
-/// first word with its words from shelf's aliases file, so clap,
-/// help and every output see only real commands.
+/// Before parsing, `Aliases::expand` replaces the leading words of the
+/// command line that spell a key of shelf's aliases file with the key's words,
+/// so clap, help and every output see only real commands.
 ///
 /// `crumbkit::try_parse_to` returns the parsed `Cli` and a `Run`. The
 /// run holds the command with crumbkit's help lines and the words that

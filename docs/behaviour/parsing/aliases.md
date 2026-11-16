@@ -59,11 +59,13 @@ command always wins: a key that names a real command path, such as `books
 list` or `books ls`, never expands. `expand` never prints or fails, and it
 tells the usage log that an alias expanded.
 
-When the first word is a command, `expand` consults only tables. A file and a
-lazy source are read only when the first word is no command, so a run that
-types a command pays for no reading. A key of a file or a lazy source that has
-more than one word therefore cannot start with a command. A key of a table
-can, as in `books recent`, when the key as a whole is no command.
+When the first word is a command, `expand` leaves a lazy source unread, so a
+run that types a command pays for no loading. A key of a lazy source that has
+more than one word therefore cannot start with a command. A key of a file or a
+table can, as in `books recent`, when the key as a whole is no command.
+
+An entry that an earlier source wins over is never used. `aliases list` gives
+it a problem that names the earlier source, and `names` leaves it out.
 
 A source that cannot be read or parsed is skipped, and the later sources still
 apply.

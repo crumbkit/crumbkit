@@ -33,11 +33,16 @@ in help by default with a per-source opt-out, and expansion happens once per run
 - A source that cannot be read is skipped, and the later sources still apply.
   `expand` still never prints. `aliases list` shows one problem row for that
   source and exits with 1, so the `aliases::unreadable` code is removed.
-- A file and a lazy source are read only when the first word is no command, as
-  ADR-0027 decided for the file, so a run that types a command pays for no
-  reading. A key of such a source with more than one word cannot start with a
-  command, and `aliases list` says so. A table costs nothing to consult, so its
-  keys can start with a command.
+- A lazy source is read only when the first word is no command, so a run that
+  types a command pays for no loading. A key of a lazy source with more than
+  one word cannot start with a command, and `aliases list` says so. A file and
+  a table are consulted for every command line, so their keys can start with a
+  command, as in `books recent`, when the key as a whole is no command. A
+  table is matched in place, and the file costs one read of a small file.
+- An entry that an earlier source wins over, because the earlier source holds
+  a working key that is the whole of its key or the start of it, gets a problem
+  in `aliases list` that names the earlier source, and it has no name in
+  `names` or `shipped_names`.
 - The `Aliases:` line of the root's help names the entries of shipped sources,
   which are the same on every machine, unless the source is `.unlisted()`.
   Personal entries stay out unless the tool opts out of `Rule::PersonalAliases`,
@@ -54,5 +59,4 @@ in help by default with a per-source opt-out, and expansion happens once per run
 that used the free functions builds an `Aliases` once. ADR-0079 needs no change.
 
 Considered: the longest key across all sources, repeated expansion to a depth
-of 4, an opt-in for shipped entries in help, reading the file for every command
-line so a personal key can start with a command.
+of 4, an opt-in for shipped entries in help.

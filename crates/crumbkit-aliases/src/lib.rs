@@ -24,6 +24,7 @@ mod aliases;
 mod entry;
 mod expand;
 mod file;
+mod judge;
 mod list;
 mod names;
 mod source;

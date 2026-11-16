@@ -5,7 +5,7 @@ use std::ffi::OsString;
 use clap::Command;
 
 use crate::Aliases;
-use crate::entry::{longest, wins};
+use crate::entry::{longest, longest_in, wins};
 use crate::source::Loaded;
 
 #[cfg(test)]
@@ -27,8 +27,8 @@ impl Aliases {
     /// `expand` returns `args` unchanged when there is no first word, when
     /// the first word is not UTF-8 or starts with `-`, and when it is
     /// `help`. When the first word is a subcommand of the root or one of its
-    /// aliases, hidden or not, `expand` consults only a [`Source::table`]
-    /// and leaves a file and a lazy source unread. A real command always
+    /// aliases, hidden or not, `expand` leaves a lazy source unread and
+    /// consults every other source. A real command always
     /// wins over an alias: a key that names a real command path, such as
     /// `books list`, never expands.
     ///
@@ -63,18 +63,27 @@ impl Aliases {
             .map_while(|word| word.to_str())
             .collect();
         for source in self.sources() {
-            if source.reads() && first_is_command {
+            if source.deferred() && first_is_command {
                 continue;
             }
-            let Loaded::Items(items) = source.load() else {
-                continue;
-            };
-            let Some(item) = longest(&items, command, source.reads(), &typed) else {
-                continue;
-            };
-            let Some(replacement) = &item.words else {
-                continue;
-            };
+            let (key_len, replacement): (usize, Vec<OsString>) =
+                if let Some(table) = source.table_entries() {
+                    let Some((len, words)) = longest_in(table, command, &typed) else {
+                        continue;
+                    };
+                    (len, words.iter().map(OsString::from).collect())
+                } else {
+                    let Loaded::Items(items) = source.load() else {
+                        continue;
+                    };
+                    let Some(item) = longest(&items, command, source.deferred(), &typed) else {
+                        continue;
+                    };
+                    let Some(words) = &item.words else {
+                        continue;
+                    };
+                    (item.key.len(), words.iter().map(OsString::from).collect())
+                };
             // The run observer learns that an alias expanded, and the usage
             // log's line holds the expanded command (ADR-0029, ADR-0057).
             crumbkit::events::aliased();
@@ -82,8 +91,8 @@ impl Aliases {
             return rest
                 .next()
                 .into_iter()
-                .chain(replacement.iter().map(OsString::from))
-                .chain(rest.skip(item.key.len()))
+                .chain(replacement)
+                .chain(rest.skip(key_len))
                 .collect();
         }
         args

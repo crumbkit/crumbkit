@@ -386,13 +386,63 @@ fn a_key_that_names_a_real_command_path_says_the_real_one_wins() {
 }
 
 #[test]
-fn a_file_key_that_starts_with_a_command_says_a_file_cannot_start_with_one() {
+fn a_file_key_that_starts_with_a_command_has_no_problem() {
     let rows = listed("\"books recent\" = [\"books\", \"show\"]");
+
+    assert_eq!(row(&rows, "books recent")["problem"], "");
+}
+
+#[test]
+fn a_lazy_key_that_starts_with_a_command_says_a_lazy_source_cannot_start_with_one() {
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "a lazy source's loader returns a Result"
+    )]
+    fn entries() -> Result<Vec<Entry>, String> {
+        Ok(vec![Entry::new("books recent", ["books", "show"])])
+    }
+    let aliases = Aliases::new().source(Source::lazy("repository", Kind::Shipped, entries));
+
+    let rows = rows_of(&aliases);
 
     assert_eq!(
         row(&rows, "books recent")["problem"],
-        "the first word is a command of the tool, and entries of a file or a lazy source cannot start with one"
+        "the first word is a command of the tool, and entries of a lazy source cannot start with one"
     );
+}
+
+#[test]
+fn an_entry_that_an_earlier_source_wins_over_says_which_source_wins() {
+    let aliases = Aliases::new()
+        .source(Source::text_at(
+            FILE,
+            Kind::Personal,
+            Some(r#"wt = ["books", "show"]"#),
+        ))
+        .source(Source::table(
+            "shelf defaults",
+            &[("wt", &["books", "list"]), ("wt ls", &["books", "list"])],
+        ));
+
+    let rows = rows_of(&aliases);
+
+    let wins = format!("an entry of {FILE} wins");
+    assert_eq!(
+        rows.as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["from"] == "shelf defaults")
+            .count(),
+        2
+    );
+    for row in rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["from"] == "shelf defaults")
+    {
+        assert_eq!(row["problem"], wins.as_str(), "{row}");
+    }
 }
 
 #[test]

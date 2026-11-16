@@ -29,7 +29,7 @@ fn boom() -> Result<Vec<Entry>, String> {
 }
 
 /// Expands `words` against the test tool and fails the test if `expand`
-/// reads a file or a lazy source.
+/// reads a lazy source.
 fn expanded_unread(words: &[&str]) -> Vec<OsString> {
     Aliases::new()
         .source(Source::lazy("lazy", Kind::Shipped, boom))
@@ -158,14 +158,14 @@ fn an_alias_whose_words_start_with_another_alias_expands_once() {
 }
 
 #[test]
-fn a_real_command_is_left_unchanged_without_reading_a_file_or_a_lazy_source() {
+fn a_real_command_is_left_unchanged_without_reading_a_lazy_source() {
     let words = ["shelf", "books", "list"];
 
     assert_eq!(expanded_unread(&words), os(&words));
 }
 
 #[test]
-fn a_built_in_alias_is_left_for_clap_without_reading_a_file_or_a_lazy_source() {
+fn a_built_in_alias_is_left_for_clap_without_reading_a_lazy_source() {
     let visible = ["shelf", "b", "list"];
     let hidden_command = ["shelf", "adm", "reset"];
 
@@ -174,21 +174,21 @@ fn a_built_in_alias_is_left_for_clap_without_reading_a_file_or_a_lazy_source() {
 }
 
 #[test]
-fn help_is_left_unchanged_without_reading_a_file_or_a_lazy_source() {
+fn help_is_left_unchanged_without_reading_a_lazy_source() {
     let words = ["shelf", "help", "books"];
 
     assert_eq!(expanded_unread(&words), os(&words));
 }
 
 #[test]
-fn a_flag_as_the_first_word_is_left_unchanged_without_reading_a_file_or_a_lazy_source() {
+fn a_flag_as_the_first_word_is_left_unchanged_without_reading_a_lazy_source() {
     let words = ["shelf", "--json", "mine"];
 
     assert_eq!(expanded_unread(&words), os(&words));
 }
 
 #[test]
-fn a_command_line_without_a_first_word_is_left_unchanged_without_reading_a_file_or_a_lazy_source() {
+fn a_command_line_without_a_first_word_is_left_unchanged_without_reading_a_lazy_source() {
     assert_eq!(expanded_unread(&["shelf"]), os(&["shelf"]));
     assert_eq!(expanded_unread(&[]), os(&[]));
 }
@@ -285,13 +285,39 @@ fn an_entry_whose_value_is_not_a_list_of_one_or_more_words_is_left_unexpanded() 
 }
 
 #[test]
-fn a_file_key_of_two_words_expands_and_a_file_key_that_starts_with_a_command_does_not() {
-    let text = "\"wt ls\" = [\"books\", \"list\"]\n\"books recent\" = [\"books\", \"show\"]";
+fn a_file_key_of_two_words_expands_even_when_it_starts_with_a_command() {
+    let text = "\"wt ls\" = [\"books\", \"list\"]\n\"books recent\" = [\"books\", \"show\"]\n\"books list\" = [\"books\", \"show\"]";
 
     assert_eq!(
         expanded(text, &["shelf", "wt", "ls", "x"]),
         os(&["shelf", "books", "list", "x"])
     );
-    let words = ["shelf", "books", "recent"];
-    assert_eq!(expanded(text, &words), os(&words));
+    assert_eq!(
+        expanded(text, &["shelf", "books", "recent", "x"]),
+        os(&["shelf", "books", "show", "x"])
+    );
+    let real = ["shelf", "books", "list"];
+    assert_eq!(expanded(text, &real), os(&real));
+}
+
+#[test]
+fn a_lazy_key_of_two_words_that_starts_with_a_command_never_expands() {
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "a lazy source's loader returns a Result"
+    )]
+    fn entries() -> Result<Vec<Entry>, String> {
+        Ok(vec![
+            Entry::new("books recent", ["books", "show"]),
+            Entry::new("wt ls", ["books", "list"]),
+        ])
+    }
+    let aliases = Aliases::new().source(Source::lazy("lazy", Kind::Shipped, entries));
+    let recent = ["shelf", "books", "recent"];
+
+    assert_eq!(aliases.expand(&tree(), recent), os(&recent));
+    assert_eq!(
+        aliases.expand(&tree(), ["shelf", "wt", "ls"]),
+        os(&["shelf", "books", "list"])
+    );
 }

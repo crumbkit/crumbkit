@@ -3,6 +3,8 @@
 
 use clap::Command;
 
+use crate::source::Table;
+
 /// The problem of an entry whose key a real command takes.
 pub(crate) const SHADOWED: &str =
     "the tool has a command or built-in alias of this name, which wins";
@@ -18,10 +20,11 @@ pub(crate) const BAD_VALUE: &str = "the value must be a list of one or more word
 /// The problem of an entry whose key has no word.
 pub(crate) const NO_KEY: &str = "the key must be one or more words";
 
-/// The problem of an entry in a file or a lazy source whose key has more
-/// than one word and starts with a command. Those sources are read only when
-/// the first word is no command, so such an entry could never match.
-pub(crate) const STARTS_WITH_COMMAND: &str = "the first word is a command of the tool, and entries of a file or a lazy source cannot start with one";
+/// The problem of an entry in a lazy source whose key has more than one word
+/// and starts with a command. A lazy source is read only when the first word
+/// is no command, so such an entry could never match.
+pub(crate) const STARTS_WITH_COMMAND: &str =
+    "the first word is a command of the tool, and entries of a lazy source cannot start with one";
 
 /// One entry of a source, as every source loads it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -49,41 +52,52 @@ impl Item {
     }
 
     /// Returns why this item does not expand against `command`, or `None`
-    /// when it does. `reads` says whether its source is read from a file or
-    /// a loader, which `expand` consults only when the first word is no
-    /// command, so such an item cannot start with a command and have more
-    /// words.
-    pub(crate) fn problem(&self, command: &Command, reads: bool) -> Option<&'static str> {
-        let Some(first) = self.key.first() else {
-            return Some(NO_KEY);
-        };
-        if first == "help" {
-            return Some(if command.find_subcommand("help").is_none() {
-                HELP
-            } else {
-                SHADOWED
-            });
-        }
-        if reads && command.find_subcommand(first).is_some() {
-            return Some(if self.key.len() == 1 {
-                SHADOWED
-            } else {
-                STARTS_WITH_COMMAND
-            });
-        }
-        if !reads && names_a_command(command, &self.key) {
-            return Some(SHADOWED);
-        }
-        self.words.is_none().then_some(BAD_VALUE)
+    /// when it does. `deferred` says whether its source is a lazy one, which
+    /// `expand` consults only when the first word is no command, so such an
+    /// item cannot start with a command and have more words.
+    pub(crate) fn problem(&self, command: &Command, deferred: bool) -> Option<&'static str> {
+        problem_of(&self.key, self.words.is_some(), command, deferred)
     }
+}
+
+/// Returns why an entry with the words `key` does not expand against
+/// `command`, or `None` when it does. `has_words` says whether its value is a
+/// list of one or more words.
+pub(crate) fn problem_of<K: AsRef<str>>(
+    key: &[K],
+    has_words: bool,
+    command: &Command,
+    deferred: bool,
+) -> Option<&'static str> {
+    let Some(first) = key.first().map(AsRef::as_ref) else {
+        return Some(NO_KEY);
+    };
+    if first == "help" {
+        return Some(if command.find_subcommand("help").is_none() {
+            HELP
+        } else {
+            SHADOWED
+        });
+    }
+    if deferred && command.find_subcommand(first).is_some() {
+        return Some(if key.len() == 1 {
+            SHADOWED
+        } else {
+            STARTS_WITH_COMMAND
+        });
+    }
+    if !deferred && names_a_command(command, key) {
+        return Some(SHADOWED);
+    }
+    (!has_words).then_some(BAD_VALUE)
 }
 
 /// Returns whether `command` has a subcommand at the path `key`, each word
 /// a name or an alias, hidden or not.
-fn names_a_command(command: &Command, key: &[String]) -> bool {
+fn names_a_command<K: AsRef<str>>(command: &Command, key: &[K]) -> bool {
     let mut current = command;
     for word in key {
-        match current.find_subcommand(word) {
+        match current.find_subcommand(word.as_ref()) {
             Some(next) => current = next,
             None => return false,
         }
@@ -106,7 +120,7 @@ pub(crate) fn wins(command: &Command, word: &str) -> bool {
 pub(crate) fn longest<'a>(
     items: &'a [Item],
     command: &Command,
-    reads: bool,
+    deferred: bool,
     typed: &[&str],
 ) -> Option<&'a Item> {
     items
@@ -114,7 +128,30 @@ pub(crate) fn longest<'a>(
         .filter(|item| {
             item.key.len() <= typed.len()
                 && item.key.iter().zip(typed).all(|(key, word)| key == word)
-                && item.problem(command, reads).is_none()
+                && item.problem(command, deferred).is_none()
         })
         .max_by_key(|item| item.key.len())
+}
+
+/// Returns the number of words of the longest key of `table` that the
+/// leading words of `typed` spell and that expands against `command`, with
+/// its replacement words. It copies nothing: only an entry whose first word
+/// is the first typed word builds a list of words.
+pub(crate) fn longest_in(
+    table: Table,
+    command: &Command,
+    typed: &[&str],
+) -> Option<(usize, &'static [&'static str])> {
+    let first = typed.first()?;
+    table
+        .iter()
+        .filter(|(key, _)| key.split_whitespace().next() == Some(first))
+        .filter_map(|&(key, words)| {
+            let key: Vec<&str> = key.split_whitespace().collect();
+            (key.len() <= typed.len()
+                && key.iter().zip(typed).all(|(key, word)| key == word)
+                && problem_of(&key, true, command, false).is_none())
+            .then_some((key.len(), words))
+        })
+        .max_by_key(|(len, _)| *len)
 }

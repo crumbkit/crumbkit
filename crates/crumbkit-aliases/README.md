@@ -30,7 +30,8 @@ A tool builds one [`Aliases`] value from [`Source`]s in precedence order.
 The first source with a matching entry wins, and the longest key in a source
 wins over a shorter one. [`Source::file`] reads the person's file,
 [`Source::table`] holds entries in the tool's code, and [`Source::lazy`]
-loads entries only when a run types a first word that is no command.
+loads entries only when a run types a first word that is no command, so a
+lazy key of several words cannot start with a command.
 
 A tool passes its arguments through [`Aliases::expand`] before it parses
 them, and adds a hidden `aliases list` command that [`Aliases::list`]

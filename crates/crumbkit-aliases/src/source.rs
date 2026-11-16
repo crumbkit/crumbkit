@@ -99,9 +99,9 @@ impl Source {
     /// has no config directory.
     ///
     /// A key of the file is one or more words, and its value is a list of
-    /// one or more words, as in `"wt ls" = ["books", "list"]`. A file is
-    /// read only when the first word after the tool's name is no command, so
-    /// a key of two or more words in a file cannot start with a command.
+    /// one or more words, as in `"wt ls" = ["books", "list"]`. `expand` reads
+    /// the file for every command line, so a key can start with a command,
+    /// such as `books recent`, when the key as a whole is no command.
     #[must_use]
     pub const fn file(path: Option<PathBuf>) -> Self {
         Self {
@@ -115,9 +115,9 @@ impl Source {
     /// `origin` says where the entries come from, and `aliases list` prints
     /// it in each row's `from` column.
     ///
-    /// A table costs no reading, so `expand` consults it for every command
-    /// line, and a key can start with a command, as in `books recent`, when
-    /// the key as a whole is no command.
+    /// `expand` consults a table for every command line, and a key can
+    /// start with a command, as in `books recent`, when the key as a whole is
+    /// no command.
     #[must_use]
     pub const fn table(origin: &'static str, entries: Table) -> Self {
         Self {
@@ -131,7 +131,8 @@ impl Source {
     /// them. `origin` says where the entries come from.
     ///
     /// `expand` calls `read` only when the first word after the tool's name
-    /// is no command, so a run that types a command pays nothing. A failure
+    /// is no command, so a run that types a command pays nothing. A key of
+    /// more than one word cannot start with a command. A failure
     /// of `read` skips the source, and `aliases list` shows its message in
     /// one row.
     #[must_use]
@@ -183,10 +184,19 @@ impl Source {
         self.listed
     }
 
-    /// Returns whether loading the source reads a file or calls a function,
-    /// so `expand` leaves it alone when the first word is a command.
-    pub(crate) const fn reads(&self) -> bool {
-        !matches!(self.origin, Origin::Table(..))
+    /// Returns whether the source calls a function to load, so `expand`
+    /// leaves it alone when the first word is a command.
+    pub(crate) const fn deferred(&self) -> bool {
+        matches!(self.origin, Origin::Lazy(..))
+    }
+
+    /// Returns the table of a [`Source::table`], which `expand` matches
+    /// without copying it, or `None` for any other source.
+    pub(crate) const fn table_entries(&self) -> Option<Table> {
+        match self.origin {
+            Origin::Table(_, entries) => Some(entries),
+            _ => None,
+        }
     }
 
     /// Returns the label that `aliases list` prints for the source: the

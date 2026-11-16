@@ -9,8 +9,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::Aliases;
-use crate::entry::Item;
-use crate::source::{Loaded, Source};
+use crate::judge::Content;
+use crate::source::Source;
 
 #[cfg(test)]
 mod tests;
@@ -140,29 +140,29 @@ impl Aliases {
         let tool = command.get_name();
         let mut rows = Vec::new();
         built_in(command, &[], tool, &mut rows);
-        for source in self.sources() {
+        for (source, content) in self.judge(command) {
             let from = source.origin();
-            match source.load() {
-                Loaded::Missing => {}
-                Loaded::Unreadable(reason) => rows.push(AliasRow {
+            match content {
+                Content::Missing => {}
+                Content::Unreadable(reason) => rows.push(AliasRow {
                     name: from.clone(),
                     command: String::new(),
                     problem: format!("cannot be read: {reason}"),
                     from,
                 }),
-                Loaded::Items(mut items) => {
+                Content::Items(mut items) => {
                     // A `DeTable` keeps keys in name order unless some crate in
                     // the build enables toml's `preserve_order` feature, which
                     // keeps file order, so the rows sort here.
-                    items.sort_by_key(Item::name);
-                    for item in items {
-                        let problem = item.problem(command, source.reads());
+                    items.sort_by_key(|judged| judged.item.name());
+                    for judged in items {
+                        let item = judged.item;
                         rows.push(AliasRow {
                             name: item.name(),
                             command: item.words.as_ref().map_or_else(String::new, |words| {
                                 join(&words.iter().map(String::as_str).collect::<Vec<_>>())
                             }),
-                            problem: problem.unwrap_or_default().to_owned(),
+                            problem: judged.problem.unwrap_or_default(),
                             from: from.clone(),
                         });
                     }
