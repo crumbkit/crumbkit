@@ -49,7 +49,9 @@ Why: ADR-0057, ADR-0075, ADR-0048, ADR-0209.
   code, the bytes that standard output's writer accepted and whether a listing
   left rows out or had none. After a closed pipe the count is at most the
   result's size. On Linux it may include up to 1 KiB that the writer buffered
-  and never delivered. On macOS a result written in one piece records 0, even
+  and never delivered, and the bytes that the pipe held and the reader never
+  read, up to the pipe's capacity, which is 64 KiB by default. A stream line
+  left unread in the pipe counts as delivered. On macOS a result written in one piece records 0, even
   when the reader received part of it. A stream counts only whole delivered
   lines, and `finish` counts a partial write. This covers a
   stream ended through `end` or `refuse`; a tool that calls `events::ended`

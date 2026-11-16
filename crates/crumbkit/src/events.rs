@@ -300,7 +300,9 @@ impl Finished {
     ///
     /// When the reader closes the pipe, the count is at most the result's
     /// size. On Linux it may include up to 1 KiB that the writer buffered and
-    /// never delivered. On macOS a result written in one piece records 0, even
+    /// never delivered, and the bytes that the pipe held and the reader never
+    /// read, up to the pipe's capacity, which is 64 KiB by default. A stream
+    /// line left unread in the pipe counts as delivered. On macOS a result written in one piece records 0, even
     /// when the reader received part of it. A stream counts only whole
     /// delivered lines, and `finish` counts a partial write. The count covers
     /// streams ended through `end` or `refuse`. A tool that calls [`ended`]
