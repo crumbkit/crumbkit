@@ -213,6 +213,8 @@ pub(crate) struct PreparedFailure<'a> {
     fields: Vec<(String, FieldValue<'static>)>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
+    /// The failure's reviewed sentence, when it has one.
+    sentence: Option<&'static str>,
     /// clap's usage lines of a refused command line, each without clap's
     /// `Usage:` label, which the text form prints under the `error:` line.
     /// It is empty for every other failure.
@@ -301,6 +303,7 @@ impl<'a> PreparedFailure<'a> {
             alternatives,
             fields,
             url: failure.url().map(str::to_owned),
+            sentence: failure.sentence(),
             usage: &[],
             key: None,
         }
@@ -503,8 +506,8 @@ impl PreparedFailure<'_> {
     /// failure names at least one value, `labels` when the
     /// failure has a diagnostic with at least one label, `related` when that
     /// diagnostic has related diagnostics, `recovery`,
-    /// `alternatives` when at least one alternative offers a step, and `url`
-    /// when the failure has one. The failure document and an entry of
+    /// `alternatives` when at least one alternative offers a step, `url`
+    /// when the failure has one, and `sentence` when the failure has one. The failure document and an entry of
     /// a batch's `failures` both write their fields here, so the two differ
     /// only in `schema`.
     ///
@@ -537,6 +540,9 @@ impl PreparedFailure<'_> {
         }
         if let Some(url) = &self.url {
             map.serialize_entry("url", url)?;
+        }
+        if let Some(sentence) = self.sentence {
+            map.serialize_entry("sentence", sentence)?;
         }
         Ok(())
     }

@@ -7,6 +7,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit: `Failure::sentence` returns a fixed sentence that a person
+  reviewed, and `Error::sentence` returns the one of the failure inside. The
+  failure document gains an optional string `sentence`
+  ([behaviour/failures]).
+
 - crumbkit-durable: a new crate whose `write_atomically` replaces a file
   through a new temporary file, a sync, a rename and a directory sync, so a
   reader or a crash sees the old bytes or the new bytes

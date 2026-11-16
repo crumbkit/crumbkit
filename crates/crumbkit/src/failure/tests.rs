@@ -31,6 +31,32 @@ impl Failure for NoSuchBook {
     }
 }
 
+/// A failure that carries a reviewed sentence.
+#[derive(Debug)]
+struct Reviewed;
+
+impl fmt::Display for Reviewed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("book 7 is not in the catalogue")
+    }
+}
+
+impl std::error::Error for Reviewed {}
+
+impl Failure for Reviewed {
+    fn code(&self) -> Code<'_> {
+        NOT_FOUND
+    }
+
+    fn recovery(&self) -> Recovery {
+        Recovery::Retry
+    }
+
+    fn sentence(&self) -> Option<&'static str> {
+        Some("The catalogue has no book with that id.")
+    }
+}
+
 /// A failure for a request that took too long.
 #[derive(Debug)]
 struct Timeout;
@@ -217,4 +243,26 @@ fn a_recovery_is_built_from_borrowed_or_owned_text() {
             reason: "the daemon owns this socket".to_owned()
         }
     );
+}
+
+#[test]
+fn a_failure_without_a_sentence_returns_none() {
+    assert_eq!(NoSuchBook(7).sentence(), None);
+}
+
+#[test]
+fn a_failure_with_a_sentence_returns_it() {
+    assert_eq!(
+        Reviewed.sentence(),
+        Some("The catalogue has no book with that id.")
+    );
+}
+
+#[test]
+fn an_error_returns_the_sentence_of_the_failure_it_wraps() {
+    assert_eq!(
+        Error::from(Reviewed).sentence(),
+        Some("The catalogue has no book with that id.")
+    );
+    assert_eq!(Error::from(NoSuchBook(7)).sentence(), None);
 }

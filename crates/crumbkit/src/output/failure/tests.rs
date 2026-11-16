@@ -93,6 +93,7 @@ struct Missing {
     alternatives: Vec<Recovery>,
     fields: Vec<(&'static str, FieldValue<'static>)>,
     url: Option<&'static str>,
+    sentence: Option<&'static str>,
 }
 
 impl fmt::Display for Missing {
@@ -132,6 +133,10 @@ impl Failure for Missing {
     fn url(&self) -> Option<&str> {
         self.url
     }
+
+    fn sentence(&self) -> Option<&'static str> {
+        self.sentence
+    }
 }
 
 /// Returns a failure with no cause, no alternatives and no url, whose
@@ -144,6 +149,7 @@ fn missing(recovery: Recovery) -> Missing {
         alternatives: Vec::new(),
         fields: Vec::new(),
         url: None,
+        sentence: None,
     }
 }
 
@@ -604,5 +610,56 @@ fn a_batch_failure_entry_has_the_failure_document_schema_without_its_schema_prop
     assert_eq!(
         entry["required"],
         serde_json::json!(["code", "message", "recovery"])
+    );
+}
+
+#[test]
+fn the_failure_document_holds_the_sentence_when_the_failure_has_one() {
+    let failure = Missing {
+        sentence: Some("The solar system has no planet with that name."),
+        ..missing(Recovery::Retry)
+    };
+
+    let finished = fail_with(&["--json"], failure);
+
+    assert!(
+        finished
+            .out
+            .contains(r#""sentence":"The solar system has no planet with that name.""#),
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
+fn the_failure_document_leaves_out_the_sentence_when_the_failure_has_none() {
+    let finished = fail_with(&["--json"], missing(Recovery::Retry));
+
+    assert!(!finished.out.contains(r#""sentence""#), "{}", finished.out);
+}
+
+#[test]
+fn the_text_form_prints_the_message_and_not_the_sentence() {
+    let failure = Missing {
+        sentence: Some("The solar system has no planet with that name."),
+        ..missing(Recovery::Retry)
+    };
+
+    let finished = fail_with(&[], failure);
+
+    assert!(!finished.err.contains("with that name"), "{}", finished.err);
+}
+
+#[test]
+fn the_failure_schema_describes_an_optional_string_sentence() {
+    let schema = super::document_schema().to_value();
+
+    assert_eq!(schema["properties"]["sentence"]["type"], "string");
+    assert!(
+        !schema["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|name| name == "sentence")
     );
 }
