@@ -13,4 +13,4 @@ trims the log, and how a run writes the key.
 
 - [ADR-0029. Usage log](0029-usage-log.md)
 - [ADR-0223. The usage key is written under the usage lock](0223-the-usage-key-is-written-under-the-usage-lock.md)
-- [ADR-0232. The usage record carries lock wait and context](0232-the-usage-record-carries-lock-wait-and-context.md)
+- [ADR-0234. The usage record carries lock wait and context](0234-the-usage-record-carries-lock-wait-and-context.md)

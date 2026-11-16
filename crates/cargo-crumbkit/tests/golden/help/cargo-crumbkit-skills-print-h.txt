@@ -1,4 +1,4 @@
-Print this tool's skill
+Print cargo crumbkit's skill
 
 Usage: cargo crumbkit skills print [OPTIONS]
 

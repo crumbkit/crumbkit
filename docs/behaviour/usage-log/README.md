@@ -100,7 +100,7 @@ the milliseconds spent waiting for locks (`lock_waited`, fed by
 `PathLock::waited`) and is left out when 0. `context` is one `Label` set with
 `context`; the last call wins.
 
-Why: ADR-0029, ADR-0007, ADR-0095, ADR-0232.
+Why: ADR-0029, ADR-0007, ADR-0095, ADR-0234.
 
 ## The tool's own facts
 

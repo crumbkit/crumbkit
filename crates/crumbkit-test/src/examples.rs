@@ -176,6 +176,16 @@ mod tests;
 /// crumbkit_test::check_examples(&shelf, &TOOL, &EXAMPLES);
 /// ```
 ///
+/// # Parallel test processes
+///
+/// With `SNAPSHOTS=overwrite` the check is safe in test processes that run
+/// at once, as cargo-nextest runs them. It writes each file through a
+/// temporary file and a rename, so a reader sees the old file or the new
+/// one in full. A run that skips an example for a missing precondition
+/// never deletes that example's golden files, whether or not they exist yet,
+/// so another run in the same directory that provides the precondition keeps
+/// them. Two different checks still need two directories (ADR-0232).
+///
 /// # Panics
 ///
 /// Panics when a run, a golden file or an opt-out breaks a rule above, or
@@ -311,34 +321,41 @@ fn check(
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
     inputs::stale_stdin(command.get_name(), tool, dir, &mut problems);
-    remove_stale(
-        dir,
-        &names,
-        "txt",
-        overwrite,
-        "checked example",
-        &mut problems,
-    );
-    remove_stale(
-        dir,
-        &stderr_names,
-        "stderr",
-        overwrite,
-        "checked example that writes to standard error",
-        &mut problems,
-    );
+    remove_stale_goldens(dir, &names, &stderr_names, overwrite, &mut problems);
     allowances.finish(command, &mut problems);
     report(&problems, &failures);
     skipped
+}
+
+/// Adds a problem to `problems` for each `.txt` file in `dir` that is not in
+/// `names` and each `.stderr` file that is not in `stderr_names`, or deletes
+/// the file when `overwrite` is set.
+fn remove_stale_goldens(
+    dir: &Path,
+    names: &[String],
+    stderr_names: &[String],
+    overwrite: bool,
+    problems: &mut Vec<String>,
+) {
+    remove_stale(dir, names, "txt", overwrite, "checked example", problems);
+    remove_stale(
+        dir,
+        stderr_names,
+        "stderr",
+        overwrite,
+        "checked example that writes to standard error",
+        problems,
+    );
 }
 
 /// Reports whether the run skips `example`, whose command line is `line`,
 /// because `examples` does not provide every precondition that it needs.
 /// For a skipped example, it adds a note that names the missing
 /// preconditions to `skipped`, and adds the name of the example's `.stderr`
-/// golden file to `stderr_names` when the file exists, because the run that
-/// provides the preconditions owns the golden files and this run keeps them
-/// as they are.
+/// golden file to `stderr_names` whether or not the file exists, because the
+/// run that provides the preconditions owns the golden files and this run
+/// keeps them as they are. Listing an absent name costs nothing, and a file
+/// that a parallel run writes after this check is still kept.
 fn skip(
     examples: &Examples<'_>,
     example: &Example,
@@ -351,9 +368,7 @@ fn skip(
         return false;
     }
     let stderr_name = stderr_golden_name(&example_golden_name(line));
-    if Path::new(examples.goldens()).join(&stderr_name).is_file() {
-        stderr_names.push(stderr_name);
-    }
+    stderr_names.push(stderr_name);
     skipped.push(format!(
         "{line}: the check skipped the example, because the run does not provide `{}`",
         missing.join("`, `")

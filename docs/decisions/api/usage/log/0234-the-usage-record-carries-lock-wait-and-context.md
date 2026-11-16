@@ -1,4 +1,4 @@
-# ADR-0232. The usage record carries lock wait and context
+# ADR-0234. The usage record carries lock wait and context
 
 - Date: 2026-11-16
 - Status: accepted

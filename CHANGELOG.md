@@ -46,6 +46,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-skills: `skills_command!` takes the tool's name and defines the
+  `skills` enum, so the `skills` help names the tool. It removes
+  `SkillsCommand`. `install_leaf`, `check_leaf` and `print_leaf` become the
+  enum's functions, and `run` and `run_to` take `impl Into<SkillsAction>`
+  ([crumbkit-skills]).
 - crumbkit: a command line that names a group without its subcommand
   prints the group's `-h` page on standard output and exits 0, as a help
   run. The bare root and a group followed by `--` stay refusals ([behaviour/failures]).
@@ -76,6 +81,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   links, such as FAT, and two runs that find a damaged key at once end with
   the same key, because a run writes the key under the log's lock
   ([behaviour/usage-log]).
+- crumbkit-test: `SNAPSHOTS=overwrite` is safe with parallel test processes.
+  Each golden file is written through a temporary file and a rename, and a
+  run that skips an example keeps its golden files
+  ([behaviour/checks/golden-files]).
 
 ## [0.5.0](https://github.com/crumbkit/crumbkit/compare/v0.4.1...v0.5.0) - 2026-11-14
 ### Added
@@ -1971,6 +1980,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/adoption/opt-outs]: docs/behaviour/adoption/opt-outs.md
 [behaviour/checks]: docs/behaviour/checks/README.md
 [`Suite`]: crates/crumbkit-test/src/suite.rs
+[behaviour/checks/golden-files]: docs/behaviour/checks/golden-files.md
 [behaviour/checks/end-to-end]: docs/behaviour/checks/end-to-end.md
 [behaviour/checks/recovery-chains]: docs/behaviour/checks/recovery-chains.md
 [behaviour/durable-files]: docs/behaviour/durable-files.md

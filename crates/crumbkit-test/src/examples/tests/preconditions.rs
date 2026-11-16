@@ -102,3 +102,52 @@ fn a_skipped_example_still_counts_towards_golden_file_names_that_two_examples_sh
          sh -c 'echo  books': the example's golden file name `sh-c-echo-books.txt` is also the name for the example `sh -c 'echo books'`"
     );
 }
+
+/// The tool record of one example that writes to standard error and needs
+/// `docker`, and one that needs nothing, so a run without `docker` has work
+/// to do between its skip and its stale scan.
+const NOISY: Tool =
+    Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["-c"]).examples(&[
+            Example::new(&["echo containers; echo note >&2"], "Print the containers")
+                .needs(&["docker"]),
+            Example::new(&["echo books"], "Print a word"),
+            Example::new(&["echo authors"], "Print another word"),
+            Example::new(&["echo shelves"], "Print a third word"),
+        ])]),
+    );
+
+#[test]
+fn a_run_that_skips_an_example_never_deletes_the_golden_file_that_a_run_in_parallel_writes_for_it()
+{
+    for round in 0..20 {
+        let dir = TempDir::new(&format!("examples-needs-parallel-{round}")).unwrap();
+
+        std::thread::scope(|scope| {
+            let with = scope.spawn(|| {
+                run(
+                    &NOISY,
+                    &examples(&dir).provides(&["docker"]),
+                    Action::Overwrite,
+                )
+            });
+            let without = scope.spawn(|| run(&NOISY, &examples(&dir), Action::Overwrite));
+            with.join().unwrap();
+            without.join().unwrap();
+        });
+
+        // Both orders of the two runs end with the three goldens of the
+        // examples that run everywhere and the two of the `docker` example.
+        assert_eq!(
+            dir.names(),
+            [
+                "sh-c-echo-authors.txt",
+                "sh-c-echo-books.txt",
+                "sh-c-echo-containers-echo-note-2.stderr",
+                "sh-c-echo-containers-echo-note-2.txt",
+                "sh-c-echo-shelves.txt",
+            ],
+            "round {round}"
+        );
+    }
+}

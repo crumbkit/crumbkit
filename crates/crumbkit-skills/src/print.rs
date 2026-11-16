@@ -1,7 +1,7 @@
 //! The `skills print` command, which prints one of a tool's skills
 //! (ADR-0192, ADR-0201).
 //!
-//! A tool mounts the command with [`SkillsCommand`](crate::SkillsCommand),
+//! A tool mounts the command with [`skills_command!`](crate::skills_command),
 //! whose `Print` variant has no arguments, and one call to
 //! [`run`](crate::run), which passes the result of [`print`] for the first
 //! skill to [`finish`](crumbkit::finish) with the document

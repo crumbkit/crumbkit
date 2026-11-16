@@ -299,6 +299,7 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-child",
+ "crumbkit-durable",
  "crumbkit-markdown",
  "proptest",
  "schemars",

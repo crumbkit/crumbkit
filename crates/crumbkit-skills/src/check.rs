@@ -2,7 +2,7 @@
 //! of a tool's skills with the skill that the binary embeds (ADR-0192,
 //! ADR-0201).
 //!
-//! A tool mounts the command with [`SkillsCommand`](crate::SkillsCommand),
+//! A tool mounts the command with [`skills_command!`](crate::skills_command),
 //! whose `Check` variant takes [`SkillsCheck`], and one call to
 //! [`run`](crate::run), which passes the result of [`check`] to
 //! [`finish`](crumbkit::finish) with the document [`SKILLS_CHECK`]:

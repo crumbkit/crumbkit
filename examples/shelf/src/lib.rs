@@ -150,7 +150,7 @@ where
                 command: RunsCommand::Export(args),
             } => crumbkit_usage::export(run, &args),
         },
-        Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], &command),
+        Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], command),
         Resource::Completion { command } => completion(run, command),
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {
