@@ -1,7 +1,7 @@
 //! The `skills install` command, which writes each of a tool's skills into
 //! each agent skills directory (ADR-0192, ADR-0201).
 //!
-//! A tool mounts the command with [`SkillsCommand`](crate::SkillsCommand),
+//! A tool mounts the command with [`skills_command!`](crate::skills_command),
 //! whose `Install` variant takes [`SkillsInstall`], and one call to
 //! [`run`](crate::run), which passes the result of [`install`] to
 //! [`finish`](crumbkit::finish) with the document [`SKILLS_INSTALL`]:
