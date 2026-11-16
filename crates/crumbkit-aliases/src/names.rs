@@ -66,7 +66,7 @@ impl Aliases {
     /// and without repeats.
     fn collect(&self, command: &Command, keep: impl Fn(&Source) -> bool) -> Vec<String> {
         let mut names = Vec::new();
-        for (source, content) in self.judge(command) {
+        for (source, content) in self.judge(command, &keep) {
             if !(source.listed() && keep(source)) {
                 continue;
             }

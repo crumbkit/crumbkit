@@ -28,9 +28,13 @@ pub(crate) enum Content {
 impl Aliases {
     /// Reads every source and returns it with the verdict on each entry. An
     /// entry that works in its own source still has a problem when an earlier
-    /// source holds a working entry whose key is the whole of its key or the
-    /// start of it, because `expand` takes the earlier entry first.
-    pub(crate) fn judge(&self, command: &Command) -> Vec<(&Source, Content)> {
+    /// source that `hides` accepts holds a working entry whose key is the whole
+    /// of its key or the start of it, because `expand` takes the earlier entry first.
+    pub(crate) fn judge(
+        &self,
+        command: &Command,
+        hides: impl Fn(&Source) -> bool,
+    ) -> Vec<(&Source, Content)> {
         let sources = self.sources();
         let loaded: Vec<Loaded> = sources.iter().map(Source::load).collect();
         let mut judged = Vec::with_capacity(sources.len());
@@ -47,7 +51,7 @@ impl Aliases {
                                 .problem(command, source.deferred())
                                 .map(str::to_owned)
                                 .or_else(|| {
-                                    hidden_by(command, &sources[..at], &loaded[..at], item)
+                                    hidden_by(command, &sources[..at], &loaded[..at], item, &hides)
                                 }),
                         })
                         .collect(),
@@ -66,10 +70,11 @@ fn hidden_by(
     before: &[Source],
     loaded: &[Loaded],
     item: &Item,
+    hides: &impl Fn(&Source) -> bool,
 ) -> Option<String> {
     let first_is_command = wins(command, item.key.first()?);
     before.iter().zip(loaded).find_map(|(source, loaded)| {
-        if source.deferred() && first_is_command {
+        if !hides(source) || (source.deferred() && first_is_command) {
             return None;
         }
         let Loaded::Items(items) = loaded else {

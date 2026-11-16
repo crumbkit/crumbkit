@@ -140,7 +140,7 @@ impl Aliases {
         let tool = command.get_name();
         let mut rows = Vec::new();
         built_in(command, &[], tool, &mut rows);
-        for (source, content) in self.judge(command) {
+        for (source, content) in self.judge(command, |_| true) {
             let from = source.origin();
             match content {
                 Content::Missing => {}

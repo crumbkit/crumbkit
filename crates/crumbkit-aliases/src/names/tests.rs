@@ -86,7 +86,36 @@ fn an_entry_that_an_earlier_source_wins_over_has_no_name() {
         ));
 
     assert_eq!(aliases.names(&tree()), ["recent", "wt"]);
-    assert_eq!(aliases.shipped_names(&tree()), ["recent"]);
+}
+
+#[test]
+fn shipped_names_ignore_personal_sources_so_help_is_the_same_on_every_machine() {
+    let aliases = Aliases::new()
+        .source(Source::text(
+            Kind::Personal,
+            Some(r#"wt = ["books", "show"]"#),
+        ))
+        .source(Source::table(
+            "shelf",
+            &[("wt", &["books", "list"]), ("wt ls", &["books", "list"])],
+        ));
+
+    assert_eq!(aliases.shipped_names(&tree()), ["wt", "wt ls"]);
+}
+
+#[test]
+fn a_shipped_entry_that_an_earlier_shipped_source_wins_over_has_no_shipped_name() {
+    let aliases = Aliases::new()
+        .source(Source::table("first", &[("wt", &["books", "show"])]))
+        .source(Source::table(
+            "second",
+            &[
+                ("wt ls", &["books", "list"]),
+                ("recent", &["books", "list"]),
+            ],
+        ));
+
+    assert_eq!(aliases.shipped_names(&tree()), ["recent", "wt"]);
 }
 
 #[test]
