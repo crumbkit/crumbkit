@@ -1,7 +1,7 @@
 # ADR-0222. A path lock checks that its file is still at the path
 
 - Date: 2026-11-14
-- Status: accepted
+- Status: amended by ADR-0231
 - Supersedes: ADR-0221, which it amends
 - Missed: ADR-0221 kept crumbkit-durable to the standard library and to file writes, and missed the file locks that the same tools take, whose open needs `O_NOFOLLOW`, which std does not name.
 
