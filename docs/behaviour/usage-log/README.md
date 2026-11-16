@@ -2,8 +2,8 @@
 
 The usage log appends one JSON line per run of a tool to a file on the
 user's machine, from the crumbkit-usage crate. This page covers how a tool
-turns the log on, what each run reports, what the line holds and never
-holds, where the file lives, and concurrent runs and signals. The
+turns the log on, what each run reports, what the line holds, where the file
+lives, and concurrent runs and signals. The
 [trace context](trace-context.md) page covers the trace ids, the
 [usage report](report.md) page the reports, and the
 [program](program/README.md) page how a program marks its runs.
@@ -11,15 +11,12 @@ holds, where the file lives, and concurrent runs and signals. The
 ## The crate and its platforms
 
 The log is the crumbkit-usage crate, which depends on crumbkit. A tool that
-does not depend on crumbkit-usage compiles none of the log's code and none
-of its dependencies. crumbkit-usage's
+does not depend on it compiles none of the log's code. crumbkit-usage's
 [`Cargo.toml`](../../../crates/crumbkit-usage/Cargo.toml) lists the crates
-that it adds and the reason for each. The crate builds on Unix and
-Windows, and a build for any other target fails with a compile error. The
-calls that differ between the two platforms live in
-[`platform.rs`](../../../crates/crumbkit-usage/src/platform.rs), which
-has a Unix half and a Windows half, and the rest of the log has no `cfg` of
-its own.
+that it adds and why. The crate builds on Unix and
+Windows, and a build for any other target fails. The calls that differ
+live in [`platform.rs`](../../../crates/crumbkit-usage/src/platform.rs),
+and the rest of the log has no `cfg`.
 
 Why: ADR-0029, ADR-0003.
 
@@ -32,12 +29,10 @@ A tool depends on crumbkit-usage and adds one line to `main`:
 recorder, such as a second `start` in one process or a run that answers a
 shell's [completion request](../parsing/completion.md). `start` installs the
 log as one of the process's [run observers](../run-observer/README.md) with
-`crumbkit::events::observe`, beside any observer that the tool installed
-before it.
+`crumbkit::events::observe`, beside any observer the tool installed first.
 
-`start` never builds the tool's command tree. `parse` gives the recorder the
-tool's name and version from the command it parses against, so a run that
-ends before it reaches `parse` writes no line.
+`start` never builds the command tree. `parse` gives the recorder the
+tool's name and version, so a run that ends before `parse` writes no line.
 
 Why: ADR-0029, ADR-0057.
 
@@ -100,14 +95,10 @@ is left out. `trace`, `run` and `parent` place the run in a W3C trace, as
 are optional, and a record with them keeps the `v1` id. Every field other
 than `facts` is one that crumbkit writes and checks.
 
-Two optional core fields carry facts that every tool shares. `lock_ms` is
-the milliseconds that the run spent waiting to take locks, summed, and is
-left out when it is 0. A tool adds to it with `crumbkit_usage::lock_waited`,
-passing the time that each lock reports, such as
-`crumbkit_durable::PathLock::waited`. `context` is one `Label` that says
-where the run took place, which a tool sets with `crumbkit_usage::context`,
-and the last call of a run stays. Both calls do nothing without a started
-log. Unlike `facts`, the log never leaves these two out to fit the line.
+Two optional core fields are never left out to fit the line. `lock_ms` sums
+the milliseconds spent waiting for locks (`lock_waited`, fed by
+`PathLock::waited`) and is left out when 0. `context` is one `Label` set with
+`context`; the last call wins.
 
 Why: ADR-0029, ADR-0007, ADR-0095, ADR-0232.
 

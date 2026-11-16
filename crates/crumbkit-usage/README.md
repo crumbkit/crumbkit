@@ -52,9 +52,7 @@ A tool records value-free facts of its own, such as the requests it sent
 to a server and the time it waited for them, with an [`Extension`] type and
 [`extend`]. The extension writes each fact into [`Facts`] under a [`Key`],
 and a [`Label`] is one value from the tool's own fixed vocabulary, such
-as the route template `/books/{id}`. Two core fields need no extension:
-[`lock_waited`] adds the time a run waited to take a lock, and [`context`]
-sets one [`Label`] that says where the run took place.
+as the route template `/books/{id}`. [`lock_waited`] and [`context`] set the two core fields.
 
 A tool adds `self usage` with [`SelfUsage`] and [`findings`],
 `self figures list` with [`SelfFigures`] and [`figures`], and

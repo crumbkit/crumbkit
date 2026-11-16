@@ -49,7 +49,7 @@ adding it to `waited_ms` would hide which of the two slowed the run.
 ## Consequences
 
 A tool that reports neither field writes the same lines as before. A tool that
-reports them adds up to 35 bytes to a line. Old lines read as 0 and none.
+reports them adds up to 108 bytes to a line. Old lines read as 0 and none.
 
 Considered: a `usage/v2` id, which forces every reader to change for two
 optional fields; adding the lock wait to `waited_ms`, which needs no schema

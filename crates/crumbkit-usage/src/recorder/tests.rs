@@ -7,7 +7,8 @@ use serde_json::{Value, json};
 
 use super::signals::Ending;
 use super::{
-    Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line, write, written,
+    RECORDER, Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line,
+    write, written,
 };
 use crate::caller::Caller;
 use crate::context::Context;
@@ -590,8 +591,25 @@ fn the_last_context_call_wins() {
 }
 
 #[test]
-fn lock_waited_and_context_do_nothing_when_no_log_was_started() {
-    // No unit test starts the process's log, so its recorder stays idle.
+fn the_public_lock_waited_and_context_calls_reach_the_started_log_and_do_nothing_before_it() {
+    let state = TempDir::new("public-fields");
+    // This is the only test that touches the process's own recorder.
+    assert!(matches!(*lock(&RECORDER).unwrap(), State::Idle));
+
     crate::lock_waited(Duration::from_millis(5));
+    crate::context(Label::new("ignored"));
+
+    assert!(matches!(*lock(&RECORDER).unwrap(), State::Idle));
+
+    *lock(&RECORDER).unwrap() = State::Recording(parsed());
+    crate::lock_waited(Duration::from_millis(5));
+    crate::lock_waited(Duration::from_millis(7));
+    crate::context(Label::new("project"));
     crate::context(Label::new("member"));
+    let recorder = take(lock(&RECORDER).unwrap()).unwrap();
+    *lock(&RECORDER).unwrap() = State::Idle;
+
+    let line = &saved(&state, recorder, false)[0];
+    assert_eq!(line["lock_ms"], 12, "{line}");
+    assert_eq!(line["context"], "member", "{line}");
 }
