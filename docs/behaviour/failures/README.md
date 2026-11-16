@@ -88,8 +88,7 @@ text, so no value from the run reaches it, and the default is `None`.
 `Error::sentence` returns the sentence of the failure inside. The JSON failure
 document holds it under `sentence` when the failure has one, and the text form
 keeps printing the message. The document keeps the id `<tool>/failure/v1`,
-because the property is optional. [Deriving Failure](derive.md) says how
-`#[failure(reviewed)]` makes a missing sentence a compile error.
+because the property is optional.
 
 Why: ADR-0001, ADR-0007, ADR-0226.
 
