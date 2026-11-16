@@ -1,7 +1,7 @@
 # ADR-0004. Golden files
 
 - Date: 2026-10-07
-- Status: accepted
+- Status: amended by ADR-0232
 
 ## Context
 

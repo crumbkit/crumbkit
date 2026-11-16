@@ -185,3 +185,101 @@ fn a_binary_s_pages_are_compared_with_the_golden_files() {
         &Assert::new().action(Action::Verify),
     );
 }
+
+/// A tree like `shelf()` whose root page holds `about`, so two texts of
+/// different lengths make the same golden file names with different pages.
+fn shelf_about(about: &str) -> Command {
+    Command::new("shelf")
+        .about(about.to_owned())
+        .subcommand(Command::new("books").about("Work with books"))
+}
+
+/// Overwrites the help goldens of `command` into `dir`.
+fn overwrite(command: &Command, dir: &std::path::Path) {
+    check(
+        command,
+        Pages::rendered(&Tool::new()),
+        dir,
+        &Assert::new().action(Action::Overwrite),
+    );
+}
+
+#[test]
+fn overwriting_one_directory_from_several_threads_never_shows_a_reader_a_partial_golden_file() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let short = shelf_about(&"a short page. ".repeat(4_000));
+    let long = shelf_about(&"a longer page. ".repeat(40_000));
+    // The complete text of each golden file under each of the two trees.
+    let mut complete: Vec<(String, Vec<String>)> = Vec::new();
+    for command in [&short, &long] {
+        let alone = TempDir::new("goldens-parallel-alone").unwrap();
+        overwrite(command, alone.path());
+        for name in alone.names() {
+            let text = fs::read_to_string(alone.path().join(&name)).unwrap();
+            match complete.iter_mut().find(|(known, _)| *known == name) {
+                Some((_, texts)) => texts.push(text),
+                None => complete.push((name, vec![text])),
+            }
+        }
+    }
+    let dir = TempDir::new("goldens-parallel").unwrap();
+    overwrite(&short, dir.path());
+    let done = AtomicBool::new(false);
+
+    let partial = std::thread::scope(|scope| {
+        let reader = scope.spawn(|| {
+            let mut partial = Vec::new();
+            while !done.load(Ordering::Relaxed) {
+                for (name, texts) in &complete {
+                    let Ok(text) = fs::read_to_string(dir.path().join(name)) else {
+                        partial.push(format!("{name} is missing"));
+                        continue;
+                    };
+                    if !texts.contains(&text) {
+                        partial.push(format!("{name} holds {} bytes of neither page", text.len()));
+                    }
+                }
+            }
+            partial
+        });
+        let writers: Vec<_> = (0..4)
+            .map(|index| {
+                let (short, long, dir) = (&short, &long, dir.path());
+                scope.spawn(move || {
+                    for round in 0..15 {
+                        overwrite(
+                            if (round + index) % 2 == 0 {
+                                long
+                            } else {
+                                short
+                            },
+                            dir,
+                        );
+                    }
+                })
+            })
+            .collect();
+        for writer in writers {
+            writer.join().unwrap();
+        }
+        done.store(true, Ordering::Relaxed);
+        reader.join().unwrap()
+    });
+
+    assert_eq!(partial, Vec::<String>::new());
+}
+
+#[test]
+fn a_temporary_file_that_a_crashed_overwrite_left_is_neither_stale_nor_deleted() {
+    let dir = TempDir::new("goldens-leftover").unwrap();
+    dir.write(".shelf-h.txt.1.0.tmp", "half a page");
+
+    run(&dir, Action::Overwrite);
+    run(&dir, Action::Verify);
+
+    assert_eq!(
+        dir.names().first().map(String::as_str),
+        Some(".shelf-h.txt.1.0.tmp")
+    );
+}

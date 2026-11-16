@@ -63,6 +63,13 @@ mod tests;
 /// crumbkit_test::check_schema_goldens(&shelf, &Tool::new(), "tests/golden/schemas");
 /// ```
 ///
+/// # Parallel test processes
+///
+/// With `SNAPSHOTS=overwrite` the check is safe in test processes that run
+/// at once, as cargo-nextest runs them. It writes each file through a
+/// temporary file and a rename, so a reader sees the old file or the new
+/// one in full. Two different checks still need two directories (ADR-0232).
+///
 /// # Panics
 ///
 /// Panics when a document or a golden file breaks a rule above, or when
