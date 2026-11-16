@@ -41,9 +41,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - crumbkit-skills: `skills_command!` takes the tool's name and defines the
-  `skills` enum and its leaf functions, so each about line and example of the
-  `skills` help names the tool, such as "Install shelf's skills". `run`
-  takes the enum by value ([crumbkit-skills]).
+  `skills` enum, so the `skills` help names the tool. It removes
+  `SkillsCommand`. `install_leaf`, `check_leaf` and `print_leaf` become the
+  enum's functions, and `run` and `run_to` take `impl Into<SkillsAction>`
+  ([crumbkit-skills]).
 - crumbkit: a command line that names a group without its subcommand
   prints the group's `-h` page on standard output and exits 0, as a help
   run. The bare root and a group followed by `--` stay refusals ([behaviour/failures]).
