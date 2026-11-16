@@ -122,6 +122,6 @@ fn a_group_below_the_tool_s_root_named_alone_prints_its_page_on_standard_output(
     .err();
 
     assert_eq!(stop.as_ref().map(Stop::exit_code), Some(ExitCode::SUCCESS));
-    assert!(err.is_empty());
-    assert!(!out.is_empty());
+    assert_eq!(err, b"");
+    assert_ne!(out, b"");
 }
