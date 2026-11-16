@@ -65,7 +65,7 @@ A variant can carry a fixed sentence that a person reviewed, which is safe to
 show to anyone. `#[failure(reviewed)]` on the enum makes a variant without a
 `sentence` a compile error that names the variant. The sentence is a string
 literal on one line with no `{`, so no value from the run reaches it. A
-variant that uses `forward` takes its sentence from the failure it wraps.
+variant that uses `forward` takes its sentence from the failure it wraps. The derive does not check that the wrapped type has one, so a forwarded type is checked only when it is marked `reviewed` itself.
 
 ```rust
 use std::fmt;

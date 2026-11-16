@@ -36,7 +36,9 @@ mod tests;
 ///
 /// Each variant that does not forward needs `code` and exactly one of
 /// `recovery`, `hint` and `no_next_step`. A type marked `reviewed` also needs
-/// `sentence` on each such variant. The check covers a type that derives
+/// `sentence` on each such variant. A variant that forwards is not checked,
+/// so a forwarded type is checked only when it is marked `reviewed` itself.
+/// The check covers a type that derives
 /// `Failure`, and a failure written by hand or a code from `Code::runtime`
 /// escapes it. A forwarding variant takes no other
 /// key except `diagnostic`, which forwards `diagnostic()` too. A key given

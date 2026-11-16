@@ -177,7 +177,10 @@ fn a_sentence_that_is_not_a_string_literal_is_a_compile_error() {
             NotFound,
         }
     });
-    assert_eq!(message, "expected string literal");
+    assert_eq!(
+        message,
+        "the variant `NotFound` gives a `sentence` that is not a string literal, and a sentence is fixed text"
+    );
 }
 
 #[test]

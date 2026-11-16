@@ -39,7 +39,9 @@ A hand-written impl repeats one `match` per method, and a hand-written
   brace, because a placeholder would let a run-time value into reviewed text.
   `#[failure(reviewed)]` on the type makes a variant without a `sentence` a
   compile error that names the variant, except a variant that uses
-  `forward`, which returns the wrapped failure's sentence. A failure written
+  `forward`, which returns the wrapped failure's sentence. The derive does
+  not check that the wrapped type has one, so a forwarded type is checked
+  only when it is marked `reviewed` itself. A failure written
   by hand and a code from `Code::runtime` escape the check, and a tool moves
   a hand-written impl to the derive to have it checked.
 - The derive writes no `Display`, so the message stays with the tool or

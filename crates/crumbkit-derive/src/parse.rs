@@ -264,7 +264,14 @@ impl Keys {
             "no_next_step" => set(&mut self.no_next_step, meta.value()?.parse()?, twice)?,
             "url" => set(&mut self.url, meta.value()?.parse()?, twice)?,
             "sentence" => {
-                let sentence: LitStr = meta.value()?.parse()?;
+                let sentence: LitStr = meta.value()?.parse().map_err(|error: syn::Error| {
+                    syn::Error::new(
+                        error.span(),
+                        format!(
+                            "{owner} gives a `sentence` that is not a string literal, and a sentence is fixed text"
+                        ),
+                    )
+                })?;
                 check_sentence(&sentence, owner)?;
                 set(&mut self.sentence, sentence, twice)?;
             }
