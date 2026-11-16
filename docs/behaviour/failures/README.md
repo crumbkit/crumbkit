@@ -220,7 +220,8 @@ A command line that names a group with visible subcommands, without a
 subcommand or a `--`, is not a refusal: it prints the group's short `-h` page on
 standard output and exits 0, as `-h` on the group does, and the usage log
 records it as a help run. The bare root and a group followed by `--` stay
-refusals. A group followed by `--` prints the group's `-h` page on standard
+refusals. For a tool whose `Help::root` names a subcommand, that subcommand
+named alone counts as the bare root. A group followed by `--` prints the group's `-h` page on standard
 error in text, with no `error:`, `help:` or `code:` line, and exits with the
 code of a refused command line. Its failure
 document says that the group needs a subcommand and names the group's

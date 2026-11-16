@@ -122,7 +122,11 @@ fn a_group_whose_help_flag_is_turned_off_is_still_refused_with_code_2() {
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.out, "");
-    assert_ne!(parsed.err, "");
+    assert!(
+        parsed.err.starts_with("Usage: tool planets <COMMAND>\n"),
+        "{}",
+        parsed.err
+    );
 }
 
 #[test]

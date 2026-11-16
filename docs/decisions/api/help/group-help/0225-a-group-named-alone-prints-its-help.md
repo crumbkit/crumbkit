@@ -20,7 +20,8 @@ question.
   as it records `-h`. With `--json`, the line prints what `-h --json` prints.
 - The bare root, and a group followed by `--`, stay refusals as ADR-0118
   decided: the page on standard error, the failure document with `--json`,
-  and the usage exit.
+  and the usage exit. For a tool whose `Help::root` names a subcommand, that
+  subcommand named alone counts as the bare root.
 - A group whose help flag the tool turned off stays a refusal.
 
 ## Consequences
