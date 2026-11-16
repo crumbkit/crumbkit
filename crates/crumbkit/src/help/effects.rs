@@ -267,17 +267,37 @@ impl Effects {
     /// that reaches a web service. A command that runs a caller's program
     /// reaches outside the tool, so this also marks the command as
     /// open-world, and no effects declare a program without it.
+    ///
+    /// # Panics
+    ///
+    /// Panics on [`Effects::read_only`], because a program that the caller
+    /// names can change anything, so a read-only hint would mislead a
+    /// caller. A `const` that calls it on read-only effects fails to
+    /// compile:
+    ///
+    /// ```compile_fail
+    /// use crumbkit::help::Effects;
+    ///
+    /// const EXEC: Effects = Effects::read_only().runs_program();
+    /// ```
     #[must_use]
     pub const fn runs_program(mut self) -> Self {
+        // RUST-5's exception for a `const fn` that checks the arguments of
+        // a constant, as `with_items` has.
+        assert!(
+            !matches!(self.change, Change::Nothing),
+            "a command that runs a caller's program is not read-only"
+        );
         self.open_world = true;
         self.runs_program = true;
         self
     }
 
-    /// Reports whether the command runs a program that the caller names, as
-    /// [`Effects::runs_program`] declares.
-    #[must_use]
-    pub const fn is_running_program(&self) -> bool {
+    /// Reports whether the command runs a program that the caller names.
+    /// Only the tests read it, because help and `commands list` read the
+    /// field.
+    #[cfg(test)]
+    pub(crate) const fn is_running_program(self) -> bool {
         self.runs_program
     }
 
@@ -347,8 +367,8 @@ impl Effects {
     #[doc(hidden)]
     #[must_use]
     pub const fn line(self) -> &'static str {
-        // `runs_program` implies `open_world`, so a closed-world command
-        // never has it.
+        // `runs_program` implies `open_world` and a command that changes
+        // something, so only those arms name it.
         match (
             self.change,
             self.idempotent,
@@ -356,10 +376,7 @@ impl Effects {
             self.runs_program,
         ) {
             (Change::Nothing, _, false, _) => "Effects: read-only, closed-world.",
-            (Change::Nothing, _, true, false) => "Effects: read-only, open-world.",
-            (Change::Nothing, _, true, true) => {
-                "Effects: read-only, open-world, runs a program the caller names."
-            }
+            (Change::Nothing, _, true, _) => "Effects: read-only, open-world.",
             (Change::Additive(_), false, false, _) => {
                 "Effects: additive, not idempotent, closed-world."
             }

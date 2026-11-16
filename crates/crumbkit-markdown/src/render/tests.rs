@@ -206,6 +206,22 @@ fn the_effects_line_names_a_program_the_caller_names_and_a_document_without_the_
 }
 
 #[test]
+fn a_document_that_marks_a_read_only_command_as_running_a_program_renders_it_as_read_only() {
+    let input = document(&[command(
+        "tool",
+        "Run",
+        json!({"effects": {"read_only": true, "destructive": false, "idempotent": true, "open_world": true, "runs_program": true}}),
+    )]);
+
+    assert!(
+        render(&input)
+            .unwrap()
+            .text()
+            .contains("\n\nEffects: read-only, open-world.\n")
+    );
+}
+
+#[test]
 fn a_headed_command_lists_its_json_fields_and_prints_the_headed_output_line_as_help_does() {
     let input = document(&[command(
         "tool show",

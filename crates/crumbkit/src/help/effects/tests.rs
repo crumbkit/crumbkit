@@ -132,7 +132,6 @@ fn the_json_object_of_a_program_running_command_says_so_and_is_open_world() {
 #[test]
 fn help_names_a_program_the_caller_names_after_the_world() {
     let lines = [
-        Effects::read_only().runs_program().line(),
         Effects::additive().runs_program().line(),
         Effects::additive().idempotent().runs_program().line(),
         Effects::destructive().runs_program().line(),
@@ -142,13 +141,18 @@ fn help_names_a_program_the_caller_names_after_the_world() {
     assert_eq!(
         lines,
         [
-            "Effects: read-only, open-world, runs a program the caller names.",
             "Effects: additive, not idempotent, open-world, runs a program the caller names.",
             "Effects: additive, idempotent, open-world, runs a program the caller names.",
             "Effects: destructive, not idempotent, open-world, runs a program the caller names.",
             "Effects: destructive, idempotent, open-world, runs a program the caller names.",
         ]
     );
+}
+
+#[test]
+#[should_panic(expected = "a command that runs a caller's program is not read-only")]
+fn a_read_only_command_cannot_run_a_program_the_caller_names() {
+    let _ = Effects::read_only().runs_program();
 }
 
 #[test]
