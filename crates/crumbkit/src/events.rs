@@ -266,7 +266,10 @@ impl<'a> RefusalEvent<'a> {
 pub struct Finished {
     /// The exit code that it returned.
     exit: u8,
-    /// The bytes that it wrote to standard output.
+    /// The bytes that standard output's writer accepted. A closed pipe
+    /// leaves a count of at most the result's size, and see
+    /// [`Finished::out_bytes`] for how it can differ from what the reader
+    /// received.
     out_bytes: u64,
     /// Whether a listing left rows out, or the output budget cut the result
     /// or the stream short.
@@ -293,7 +296,15 @@ impl Finished {
         self.exit
     }
 
-    /// Returns how many bytes it wrote to standard output.
+    /// Returns how many bytes standard output's writer accepted.
+    ///
+    /// When the reader closes the pipe, the count is at most the result's
+    /// size. On Linux it may include up to 1 KiB that the writer buffered and
+    /// never delivered. On macOS a result written in one piece records 0, even
+    /// when the reader received part of it. A stream counts only whole
+    /// delivered lines, and `finish` counts a partial write. The count covers
+    /// streams ended through `end` or `refuse`. A tool that calls [`ended`]
+    /// itself passes its own count.
     #[must_use]
     pub fn out_bytes(&self) -> u64 {
         self.out_bytes

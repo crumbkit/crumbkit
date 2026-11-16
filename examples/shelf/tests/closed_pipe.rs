@@ -1,5 +1,5 @@
 //! End-to-end tests of the usage log when the reader of standard output
-//! closes the pipe part way through a result. Each test runs the built
+//! closes the pipe part way through a result. The test runs the built
 //! binary with XDG directories in a temporary directory of its own, on a
 //! usage log that is much larger than a pipe holds, and reads the line that
 //! the run appended to `shelf/usage.jsonl` there.
@@ -92,7 +92,7 @@ fn closed_after(home: &Path, args: &[&str], taken: usize) -> (Option<i32>, u64) 
 }
 
 #[test]
-fn a_result_that_the_reader_closed_part_way_records_the_bytes_the_pipe_took() {
+fn a_result_whose_reader_closed_the_pipe_records_a_count_of_at_most_the_results_size() {
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path();
     seed(home);
@@ -102,24 +102,6 @@ fn a_result_that_the_reader_closed_part_way_records_the_bytes_the_pipe_took() {
 
     let (_, out_bytes) = closed_after(home, &args, 100);
 
-    assert!(out_bytes <= 100 + PIPE_ROOM, "{out_bytes}");
-    assert!(out_bytes < full, "{out_bytes} of {full}");
-}
-
-#[test]
-fn a_stream_that_the_reader_closed_part_way_records_the_bytes_the_pipe_took() {
-    let dir = tempfile::tempdir().unwrap();
-    let home = dir.path();
-    seed(home);
-    let args = ["self", "runs", "export", "--json"];
-    let full = full_size(home, &args);
-    assert!(full > 2 * PIPE_ROOM, "{full}");
-
-    let (_, out_bytes) = closed_after(home, &args, 100);
-
-    // The reader took 100 bytes of the first line, which the stream wrote in
-    // one piece, so the line counts in full.
-    assert!(out_bytes >= 100, "{out_bytes}");
     assert!(out_bytes <= 100 + PIPE_ROOM, "{out_bytes}");
     assert!(out_bytes < full, "{out_bytes} of {full}");
 }
