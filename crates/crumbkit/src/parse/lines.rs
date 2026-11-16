@@ -10,7 +10,7 @@ use clap::builder::styling::Style;
 
 use crate::Tool;
 use crate::expect;
-use crate::help::{self, Effects, Leaf, Scope, ViewFlag, leaf, topic};
+use crate::help::{self, Effects, Leaf, ViewFlag, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
 /// applies to each of those commands the groups of `tool` that name it. A group
@@ -39,13 +39,18 @@ pub(super) fn add_help_lines(
     command: &mut Command,
     tool: &Tool,
     has_topics: bool,
-    aliases: Option<(fn(&Command, Scope) -> Vec<String>, Scope)>,
+    name_aliases: bool,
     path: &[String],
     long_help: bool,
 ) {
     let root = tool.get_help().root_in(command);
     let tool_name = command.get_name();
-    let aliases = match aliases.map(|(names, scope)| names(command, scope)) {
+    let help = tool.get_help();
+    let names = help
+        .get_aliases()
+        .filter(|_| name_aliases)
+        .map(|names| names(command, help.get_alias_scope()));
+    let aliases = match names {
         Some(names) if !names.is_empty() => format!(
             "Aliases: {}. `{tool_name} aliases list` shows what each runs.",
             names.join(", ")

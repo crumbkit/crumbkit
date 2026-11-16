@@ -456,17 +456,11 @@ where
     // No `Run` exists before parsing, so a refusal and a `Stop` take
     // `--json` from the walk.
     let (path, long_help, json) = (walked.path, walked.long_help, walked.json);
-    // Only a run that prints the clap root's help reads the aliases.
-    let aliases = if walked.help && path.is_empty() {
-        let help = tool.get_help();
-        help.get_aliases()
-            .map(|names| (names, help.get_alias_scope()))
-    } else {
-        None
-    };
     #[cfg(feature = "tracing")]
     crate::trace::spans::command(&path);
-    add_help_lines(&mut command, tool, has_topics, aliases, &path, long_help);
+    // Only a run that prints the clap root's help reads the aliases.
+    let at_root = walked.help && path.is_empty();
+    add_help_lines(&mut command, tool, has_topics, at_root, &path, long_help);
 
     // `Run::confirm` repeats the typed words, so they outlive parsing.
     let mut words = args.get(1..).unwrap_or_default().to_vec();
