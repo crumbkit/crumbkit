@@ -156,13 +156,13 @@ fn refusal_streams(args: &[&str], styled: bool) -> (String, String) {
 
 /// Command lines that `tree()` refuses: a missing argument, an unknown
 /// flag, a flag without its value, a mistyped subcommand, and a group
-/// without its subcommand, which prints the group's page.
+/// followed by `--`, which prints the group's page.
 const REFUSED: [&[&str]; 5] = [
     &["tool", "planets", "show"],
     &["tool", "planets", "show", "mars", "--srt", "name"],
     &["tool", "planets", "show", "mars", "--sort"],
     &["tool", "planet"],
-    &["tool", "planets"],
+    &["tool", "planets", "--"],
 ];
 
 #[cfg(feature = "color")]
@@ -185,11 +185,11 @@ fn a_refusals_group_page_keeps_clap_s_styles_on_a_sink_whose_error_writer_wants_
     let palette = clap::builder::styling::Styles::styled();
     let (usage, literal) = (palette.get_usage(), palette.get_literal());
 
-    let styled = refusal(&["tool", "planets"], true);
+    let styled = refusal(&["tool", "planets", "--"], true);
 
     let heading = format!("{usage}Usage:{usage:#} {literal}tool planets{literal:#}");
     assert!(styled.contains(&heading), "{styled:?}");
-    assert_eq!(strip(&styled), refusal(&["tool", "planets"], false));
+    assert_eq!(strip(&styled), refusal(&["tool", "planets", "--"], false));
 }
 
 #[cfg(feature = "color")]

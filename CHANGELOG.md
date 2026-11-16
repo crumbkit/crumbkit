@@ -28,6 +28,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a command line that names a group without its subcommand
+  prints the group's `-h` page on standard output and exits 0, as a help
+  run. The bare root and a group followed by `--` stay refusals ([behaviour/failures]).
 - crumbkit, crumbkit-skills, crumbkit-usage, cargo-crumbkit: installs, the
   usage trim, `docs` and `tool-skill draft` write through crumbkit-durable.
   `docs` and `draft` replace a symbolic link at the output path, and the

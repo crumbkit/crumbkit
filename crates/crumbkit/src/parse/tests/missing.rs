@@ -20,16 +20,15 @@ fn tool_with_three_leaves() -> Command {
 }
 
 #[test]
-fn a_command_line_that_stops_at_a_group_prints_the_group_s_help_page_on_standard_error_with_code_2()
-{
+fn a_group_named_alone_prints_its_help_page_on_standard_output_with_code_0() {
     admits(tree(), &["tool", "planets"], &["tool", "planets", "weigh"]);
     let parsed = parse(&["tool", "planets"]);
     let page = parse(&["tool", "planets", "-h"]).out;
 
-    assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    assert_eq!(parsed.out, "");
+    assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert_eq!(parsed.err, "");
     assert!(page.starts_with("Work with planets\n"), "{page}");
-    assert_eq!(parsed.err, page);
+    assert_eq!(parsed.out, page);
 }
 
 #[test]
@@ -42,31 +41,47 @@ fn a_group_that_clap_refuses_without_its_page_prints_its_help_page_too() {
     let parsed = parse_tree(tool_with_three_leaves(), &["tool", "planets"]);
     let page = parse_tree(tool_with_three_leaves(), &["tool", "planets", "-h"]).out;
 
-    assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    assert_eq!(parsed.out, "");
+    assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert_eq!(parsed.err, "");
     assert!(
         page.starts_with("Usage: tool planets <COMMAND>\n"),
         "{page}"
     );
+    assert_eq!(parsed.out, page);
+}
+
+#[test]
+fn a_group_named_alone_with_json_prints_what_its_help_flag_prints_with_json() {
+    let named = ["tool", "planets", "--json"];
+    admits(tree(), &named, &["tool", "planets", "weigh", "--json"]);
+    let parsed = parse(&named);
+    let flagged = parse(&["tool", "planets", "-h", "--json"]);
+
+    assert_eq!(parsed.code, flagged.code);
+    assert_eq!(parsed.out, flagged.out);
+    assert_eq!(parsed.err, flagged.err);
+}
+
+#[test]
+fn a_group_followed_by_a_double_dash_is_still_refused_with_its_page_on_standard_error() {
+    let refused = ["tool", "planets", "--"];
+    admits(tree(), &refused, &["tool", "planets", "weigh"]);
+    let parsed = parse(&refused);
+    let page = parse(&["tool", "planets", "-h"]).out;
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
     assert_eq!(parsed.err, page);
 }
 
 #[test]
-fn a_command_line_that_stops_at_a_group_with_json_prints_the_failure_document_that_names_its_subcommands()
- {
-    let refused = ["tool", "planets", "--json"];
-    admits(tree(), &refused, &["tool", "planets", "weigh", "--json"]);
-    let parsed = parse(&refused);
+fn the_bare_root_is_still_refused_with_the_root_page_on_standard_error() {
+    admits(tree(), &["tool"], &["tool", "planets"]);
+    let parsed = parse(&["tool"]);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    let expected = concat!(
-        r#"{"schema":"tool/failure/v1","code":"tool::cli::usage","#,
-        r#""message":"the command `tool planets` needs a subcommand: show","#,
-        r#""recovery":{"kind":"run","call":"tool planets -h"}}"#,
-        "\n",
-    );
-    assert_eq!(parsed.out, expected);
-    assert_eq!(parsed.err, "");
+    assert_eq!(parsed.out, "");
+    assert_ne!(parsed.err, "");
 }
 
 #[test]
@@ -79,8 +94,8 @@ fn a_group_s_failure_document_names_its_visible_subcommands_in_declaration_order
                 .action(ArgAction::SetTrue),
         )
     };
-    let refused = ["tool", "planets", "--json"];
-    admits(tool(), &refused, &["tool", "planets", "weigh", "--json"]);
+    let refused = ["tool", "planets", "--json", "--"];
+    admits(tool(), &refused, &["tool", "planets", "--json"]);
     let parsed = parse_tree(tool(), &refused);
 
     assert!(
@@ -90,6 +105,45 @@ fn a_group_s_failure_document_names_its_visible_subcommands_in_declaration_order
         "{}",
         parsed.out
     );
+}
+
+#[test]
+fn a_group_whose_help_flag_is_turned_off_is_still_refused_with_code_2() {
+    let tool = || {
+        Command::new("tool").subcommand(
+            Command::new("planets")
+                .disable_help_flag(true)
+                .subcommand_required(true)
+                .subcommand(Command::new("show")),
+        )
+    };
+    admits(tool(), &["tool", "planets"], &["tool", "planets", "show"]);
+    let parsed = parse_tree(tool(), &["tool", "planets"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    assert!(
+        parsed.err.starts_with("Usage: tool planets <COMMAND>\n"),
+        "{}",
+        parsed.err
+    );
+}
+
+#[test]
+fn a_group_whose_subcommands_are_all_hidden_is_still_refused_with_code_2() {
+    let tool = || {
+        Command::new("tool").subcommand(
+            Command::new("planets")
+                .subcommand_required(true)
+                .subcommand(Command::new("orbit").hide(true)),
+        )
+    };
+    admits(tool(), &["tool", "planets"], &["tool", "planets", "orbit"]);
+    let parsed = parse_tree(tool(), &["tool", "planets"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    assert_ne!(parsed.err, "");
 }
 
 #[test]

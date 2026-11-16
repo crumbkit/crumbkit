@@ -13,7 +13,7 @@ pub use self::stop::{Printed, Stop};
 use self::attempt::{Attempt, attempt};
 use self::help_word::{ask_for_help, has_topics, print_topic, topic_page, without_help};
 use self::lines::add_help_lines;
-use self::message::command_line_refusal;
+use self::message::{command_line_refusal, names_group};
 use self::page::print_page;
 use self::pick::{Picking, Step};
 use self::walk::{help_word, program_stem, walk};
@@ -252,9 +252,12 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 /// suggested flag or subcommand that the tool hid, and leaves out clap's tip
 /// when it suggests nothing else.
 ///
-/// A command line that stops at a command with visible subcommands, such
-/// as `shelf books`, prints that command's `-h` page to the error writer.
-/// With `--json`, the refusal prints to the output writer as one
+/// A command line that names a group with visible subcommands, such as
+/// `shelf books`, prints that group's short `-h` page to the output writer
+/// and ends with code 0, as `shelf books -h` does (ADR-0225). A group
+/// followed by `--`, or the tool's root named alone, is refused: the group's
+/// page goes to the error writer. With `--json`, that refusal prints to the
+/// output writer as one
 /// `<tool>/failure/v1` document, as a failure does with `finish`, with the
 /// message ``the command `shelf books` needs a subcommand``. The
 /// walk finds `--json` in the words before any `--` where clap reads it as a
@@ -514,6 +517,7 @@ where
         }
         Err(error) => error,
     };
+    let error = group_help::<C>(&mut command, &path, root.len(), &words, tool, error);
     if matches!(
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
@@ -534,4 +538,31 @@ where
     let output = stop::stopped(json, command, tool);
     let refused = Refused::new(refusal, Some(error), path, output, words, typed, caller);
     Err(Unparsed::Refused(refused))
+}
+
+/// Returns clap's help request for the group that `words` name alone, when
+/// `error` refused them because they stop at a group with visible
+/// subcommands (ADR-0225), so the run prints the group's `-h` page as `-h`
+/// does. It returns `error` for every other refusal, and when the group does
+/// not answer `-h`, as when the tool turned its help flag off.
+fn group_help<C: FromArgMatches>(
+    command: &mut Command,
+    path: &[String],
+    root_len: usize,
+    words: &[OsString],
+    tool: &Tool,
+    error: clap::Error,
+) -> clap::Error {
+    if !names_group(command, path, root_len, &error, words) {
+        return error;
+    }
+    let mut asked = words.to_vec();
+    asked.push(OsString::from("-h"));
+    let args = pick::args(command, &asked);
+    // The probe parses a copy, because a parse that clap refuses leaves the
+    // command in a state that words the refusal of the original line wrongly.
+    match attempt::<C>(&mut command.clone(), args, tool) {
+        Err(help) if help.kind() == ErrorKind::DisplayHelp => help,
+        _ => error,
+    }
 }

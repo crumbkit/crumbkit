@@ -1,9 +1,13 @@
 # ADR-0118. Refusals show the usage line and a group prints its help
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0225
 - Supersedes: ADR-0001 and ADR-0106, which it amends
 - Missed: ADR-0106 listed a group's subcommands on one line, and a person exploring wants the group's page with each one's purpose. It also dropped clap's usage line.
+
+## Children
+
+- [ADR-0225. A group named alone prints its help](0225-a-group-named-alone-prints-its-help.md)
 
 ## Context
 
