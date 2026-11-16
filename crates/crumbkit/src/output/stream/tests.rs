@@ -447,6 +447,31 @@ fn a_reader_that_closes_the_pipe_stops_the_stream_and_the_exit_code_stays_0() {
 }
 
 #[test]
+fn a_stream_that_the_reader_closed_reports_the_bytes_of_the_lines_it_delivered() {
+    let mut out = Writer::new(2, io::ErrorKind::BrokenPipe);
+    let mut err = Vec::new();
+    let seen = crate::events::testing::watch(|| {
+        let mut sink = Sink::new(&mut out, &mut err);
+        let mut streaming = stream_to(&mut sink, parse(&[]), SIGHTINGS).unwrap();
+        let _ = streaming.item(&robin());
+        let _ = streaming.item(&kingfisher());
+        let _ = streaming.end(Ok::<(), Error>(()));
+    });
+
+    let finished = seen
+        .iter()
+        .find(|event| event.starts_with("finished "))
+        .unwrap();
+    assert_eq!(
+        *finished,
+        format!(
+            "finished 0 {} bytes truncated false empty false",
+            out.written.len()
+        )
+    );
+}
+
+#[test]
 fn another_write_error_is_reported_once_and_the_stream_exits_with_1() {
     let output = parse(&["--json"]);
     let mut out = Writer::new(0, io::ErrorKind::PermissionDenied);
