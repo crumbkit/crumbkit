@@ -46,7 +46,7 @@ rule's page gives its reason.
 | `RootLeaf` | `grammar/root-leaf` | a leaf sits directly under the root and is no declared [root verb](declarations.md#root-verbs) ([checks](../checks/README.md)) |
 | `ResourceName` | `grammar/resource-name` | a resource name is not lowercase dashed words |
 | `OneName` | `names/one-name` | a built-in alias shows in help ([aliases](../parsing/aliases.md)) |
-| `PersonalAliases` | `names/personal-aliases` | the root's help names every alias, including a person's, because the tool sets `Scope::All` ([aliases](../parsing/aliases.md#personal-aliases-in-help)) |
+| `PersonalAliases` | `names/personal-aliases` | the root's help names every alias, including a person's, because the tool sets `Scope::All` ([aliases](../parsing/aliases.md#aliases-in-help)) |
 | `ListPages` | `listings/list-pages` | a `list` command lacks `Page`'s flags ([checks](../checks/README.md)) |
 | `ShowIds` | `listings/show-ids` | a `show` command takes one id |
 | `RepeatsAndCommas` | `filters/repeats-and-commas` | an option with many values does not take both repeats and commas |

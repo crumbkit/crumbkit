@@ -104,12 +104,24 @@ fn run(args: &[&str]) -> ExitCode {
 assert_eq!(run(&["shelf", "aliases", "list"]), ExitCode::SUCCESS);
 ```
 
-A tool that wants aliases on its root's help passes a function that calls
-`Aliases::names` to `Help::aliases` with `Scope::All`, and its tests opt out of
-`Rule::PersonalAliases`, because the root's help then differs between
-machines ([ADR-0027]). `Aliases::shipped_names` returns only the names of
-shipped sources, which are the same on every machine. `Source::unlisted`
+A tool that wants aliases on its root's help passes `Help::aliases` a function
+that returns `Aliases::shipped_names` for `Scope::Shipped` and `Aliases::names`
+for `Scope::All`. `shipped_names` reads only shipped sources, which are the same
+on every machine. The scope is `Shipped` unless the tool sets `Help::alias_scope`
+to `All`, and a tool that does opts out of `Rule::PersonalAliases`, because the
+root's help then differs between machines ([ADR-0027]). `Source::unlisted`
 keeps a source out of both.
+
+```rust,ignore
+fn alias_names(command: &clap::Command, scope: Scope) -> Vec<String> {
+    match scope {
+        Scope::Shipped => ALIASES.shipped_names(command),
+        Scope::All => ALIASES.names(command),
+    }
+}
+
+const TOOL: Tool = Tool::new().help(Help::new().aliases(alias_names));
+```
 
 ## Where to read more
 

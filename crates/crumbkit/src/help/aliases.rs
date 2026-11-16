@@ -35,6 +35,9 @@ impl Help {
     /// from the root, and can leave out an alias that a real command shadows.
     /// When `names` returns no names, the help has no such line.
     ///
+    /// The function must not read a personal source when it receives
+    /// [`Scope::Shipped`], because crumbkit-test prints pages with that scope.
+    ///
     /// The root's help names only shipped aliases unless the tool sets
     /// [`Scope::All`] with [`Help::alias_scope`]. Then the help differs
     /// between machines, so the tool opts out of crumbkit-test's

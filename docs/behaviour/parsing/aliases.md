@@ -104,4 +104,4 @@ the tool sets. `check_examples` and
 `cargo crumbkit weigh` run the binary with an empty config directory, so
 golden files and budgets are the same on every machine.
 
-Why: ADR-0027, ADR-0228.
+Why: ADR-0027, ADR-0228, ADR-0230.
