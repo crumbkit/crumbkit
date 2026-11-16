@@ -473,13 +473,13 @@ Give coding agents shelf's skill
 
 ### Commands
 
-- [`shelf skills install`](#shelf-skills-install): Install this tool's skills into each agent skills directory that exists
-- [`shelf skills check`](#shelf-skills-check): Check that each installed copy of this tool's skills matches this build
-- [`shelf skills print`](#shelf-skills-print): Print this tool's skill
+- [`shelf skills install`](#shelf-skills-install): Install shelf's skills into each agent skills directory that exists
+- [`shelf skills check`](#shelf-skills-check): Check that each installed copy of shelf's skills matches this shelf
+- [`shelf skills print`](#shelf-skills-print): Print shelf's skill
 
 ## `shelf skills install`
 
-Install this tool's skills into each agent skills directory that exists
+Install shelf's skills into each agent skills directory that exists
 
 ### Arguments
 
@@ -488,13 +488,13 @@ Install this tool's skills into each agent skills directory that exists
 
 ### Examples
 
-Install the skills into each agent skills directory that exists.
+Install shelf's skills into each agent skills directory that exists.
 
 ```sh
 shelf skills install
 ```
 
-Install them, replacing a file or a link that install did not write.
+Install shelf's skills, replacing a file or a link that install did not write.
 
 ```sh
 shelf skills install --force
@@ -515,7 +515,7 @@ Effects: additive, idempotent, closed-world.
 
 ## `shelf skills check`
 
-Check that each installed copy of this tool's skills matches this build
+Check that each installed copy of shelf's skills matches this shelf
 
 ### Arguments
 
@@ -523,7 +523,7 @@ Check that each installed copy of this tool's skills matches this build
 
 ### Examples
 
-Report each agent skills directory whose copy is missing or differs.
+Report each agent skills directory where shelf's skills are missing or differ.
 
 ```sh
 shelf skills check
@@ -544,11 +544,11 @@ Effects: read-only, closed-world.
 
 ## `shelf skills print`
 
-Print this tool's skill
+Print shelf's skill
 
 ### Examples
 
-Print the skill.
+Print shelf's skill.
 
 ```sh
 shelf skills print

@@ -203,9 +203,9 @@ pub const TOOL: Tool = Tool::new()
                     ])
                     .effects(Effects::read_only())
                     .stream(SELF_RUNS_EXPORT),
-                crumbkit_skills::install_leaf(&["skills", "install"]),
-                crumbkit_skills::check_leaf(&["skills", "check"]),
-                crumbkit_skills::print_leaf(&["skills", "print"]),
+                SkillsCommand::install_leaf(&["skills", "install"]),
+                SkillsCommand::check_leaf(&["skills", "check"]),
+                SkillsCommand::print_leaf(&["skills", "print"]),
                 Leaf::new(&["completion", "install"])
                     .examples(&[
                         Example::new(&["--shell", "fish"], "Install shelf's completion for fish"),
@@ -240,6 +240,12 @@ pub const TOOL: Tool = Tool::new()
             .alias_scope(Scope::All),
     )
     .picker(&MENU);
+
+crumbkit_skills::skills_command!(
+    /// The commands for shelf's agent skill.
+    pub(crate) SkillsCommand,
+    "shelf"
+);
 
 /// shelf's agent skill, which `shelf skills install` writes into the agent
 /// skills directories.
@@ -281,7 +287,7 @@ pub(crate) enum Resource {
     Skills {
         /// What to do with the skill.
         #[command(subcommand)]
-        command: crumbkit_skills::SkillsCommand,
+        command: SkillsCommand,
     },
     /// Set up shelf's completion in a shell.
     Completion {

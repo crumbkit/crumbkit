@@ -44,26 +44,33 @@ assert!(printed.value().to_string().contains("shelf loans add"));
 An agent chooses a skill by its `description`, so a tool gives each job
 that an agent loads at a different moment a skill of its own.
 
-The tool mounts a `skills` group with one field, one match arm and three
-leaves, and [`run`] does the rest:
+The tool mounts a `skills` group with one macro call, one field, one match
+arm and three leaves, and [`run`] does the rest. The macro takes the tool's
+name as its usage line writes it, and puts it in each about line and each
+example of the `skills` help, such as "Install shelf's skills into each agent
+skills directory that exists":
 
 ```rust,ignore
+crumbkit_skills::skills_command!(pub(crate) SkillsCommand, "shelf");
+// ...
 /// Give coding agents shelf's skill.
 Skills {
     #[command(subcommand)]
-    command: crumbkit_skills::SkillsCommand,
+    command: SkillsCommand,
 },
 // ...
-Resource::Skills { command } => crumbkit_skills::run(run, SKILLS, &command),
+Resource::Skills { command } => crumbkit_skills::run(run, SKILLS, command),
 // ...
-crumbkit_skills::install_leaf(&["skills", "install"]),
-crumbkit_skills::check_leaf(&["skills", "check"]),
-crumbkit_skills::print_leaf(&["skills", "print"]),
+SkillsCommand::install_leaf(&["skills", "install"]),
+SkillsCommand::check_leaf(&["skills", "check"]),
+SkillsCommand::print_leaf(&["skills", "print"]),
 ```
 
-[`SkillsCommand`] has three commands, and `skills print` prints the first
-skill of the slice, so the tool lists its main skill first. [`run_to`]
-prints to a `Sink` in place of the standard streams, for a tool's tests.
+[`skills_command!`] defines the enum with `install`, `check` and `print`, and
+`skills print` prints the first skill of the slice, so the tool lists its main
+skill first. The enum converts into [`SkillsAction`], which [`run`] and
+[`run_to`] take. [`run_to`] prints to a `Sink` in place of the standard
+streams, for a tool's tests.
 
 A tool that mounts the commands itself uses the functions of each:
 
@@ -93,7 +100,7 @@ shelf's [`cli.rs`] and [`lib.rs`] show the mount.
   counts as current.
 - The [schemas] describe the `<tool>/skills-install/v1`,
   `<tool>/skills-check/v1` and `<tool>/skills-print/v1` documents.
-- [ADR-0192], [ADR-0199], [ADR-0201] and [ADR-0216] record why they work this way.
+- [ADR-0192], [ADR-0199], [ADR-0201], [ADR-0216] and [ADR-0233] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.

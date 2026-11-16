@@ -1,4 +1,4 @@
-Install this tool's skills into each agent skills directory that exists
+Install cargo crumbkit's skills into each agent skills directory that exists
 
 Usage: cargo crumbkit skills install [OPTIONS]
 
@@ -29,10 +29,10 @@ Options:
 
 Examples:
   cargo crumbkit skills install
-          Install the skills into each agent skills directory that exists
+          Install cargo crumbkit's skills into each agent skills directory that exists
 
   cargo crumbkit skills install --force
-          Install them, replacing a file or a link that install did not write
+          Install cargo crumbkit's skills, replacing a file or a link that install did not write
 
 Columns:
   state   What install did: failed, skipped, written or unchanged.

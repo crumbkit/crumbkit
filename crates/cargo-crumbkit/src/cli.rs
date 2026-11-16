@@ -111,9 +111,9 @@ pub const TOOL: Tool = Tool::new().help(
                 ])
                 .effects(Effects::additive().idempotent())
                 .document(TOOL_SKILL_DRAFT),
-            crumbkit_skills::install_leaf(&["crumbkit", "skills", "install"]),
-            crumbkit_skills::check_leaf(&["crumbkit", "skills", "check"]),
-            crumbkit_skills::print_leaf(&["crumbkit", "skills", "print"]),
+            SkillsCommand::install_leaf(&["crumbkit", "skills", "install"]),
+            SkillsCommand::check_leaf(&["crumbkit", "skills", "check"]),
+            SkillsCommand::print_leaf(&["crumbkit", "skills", "print"]),
             Leaf::new(&["crumbkit", "commands", "list"])
                 .examples(&[Example::new(&[], "List every command")])
                 .document(COMMANDS_LIST),
@@ -174,7 +174,7 @@ pub(crate) enum CrumbkitCommand {
     Skills {
         /// What to do with cargo crumbkit's skill.
         #[command(subcommand)]
-        command: crumbkit_skills::SkillsCommand,
+        command: SkillsCommand,
     },
     /// Explore cargo crumbkit's commands.
     Commands {
@@ -183,6 +183,12 @@ pub(crate) enum CrumbkitCommand {
         command: CommandsCommand,
     },
 }
+
+crumbkit_skills::skills_command!(
+    /// The commands of `cargo crumbkit skills`.
+    pub(crate) SkillsCommand,
+    "cargo crumbkit"
+);
 
 /// The commands for cargo crumbkit's own commands.
 #[derive(Debug, Subcommand)]
