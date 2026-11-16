@@ -12,6 +12,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   failure document gains an optional string `sentence`
   ([behaviour/failures]).
 
+- crumbkit-derive: `#[derive(Failure)]` accepts `sentence = "..."`, which is
+  one line with no `{`, and `#[failure(reviewed)]` on the type makes a
+  variant without one a compile error that names the variant
+  ([behaviour/failures/derive]).
+
 - crumbkit-durable: a new crate whose `write_atomically` replaces a file
   through a new temporary file, a sync, a rename and a directory sync, so a
   reader or a crash sees the old bytes or the new bytes
