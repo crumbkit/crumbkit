@@ -1,4 +1,4 @@
-# ADR-0225. Reviewed sentences
+# ADR-0227. Reviewed sentences
 
 - Date: 2026-11-16
 - Status: accepted

@@ -23,4 +23,4 @@ in place of crumbkit's failure document.
 - [ADR-0156. Hyphens in code segments](0156-hyphens-in-code-segments.md)
 - [ADR-0175. The form module's step is RecoveryStep](0175-the-form-modules-step-is-recoverystep.md)
 - [ADR-0206. Code lifetimes](code-lifetimes/README.md)
-- [ADR-0225. Reviewed sentences](reviewed-sentences/README.md)
+- [ADR-0227. Reviewed sentences](reviewed-sentences/README.md)
