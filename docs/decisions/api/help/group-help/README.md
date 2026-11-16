@@ -5,6 +5,10 @@
 - Supersedes: ADR-0001 and ADR-0106, which it amends
 - Missed: ADR-0106 listed a group's subcommands on one line, and a person exploring wants the group's page with each one's purpose. It also dropped clap's usage line.
 
+## Children
+
+- [ADR-0225. A group named alone prints its help](0225-a-group-named-alone-prints-its-help.md)
+
 ## Context
 
 A review found an adopting tool's text refusals worse for a person after
