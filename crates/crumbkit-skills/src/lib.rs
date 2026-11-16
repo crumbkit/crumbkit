@@ -11,7 +11,8 @@
 //! [`check`]: crate::check()
 //! [`SKILLS_CHECK`]: crate::SKILLS_CHECK
 //! [`CheckRow`]: crate::CheckRow
-//! [`SkillsCommand`]: crate::SkillsCommand
+//! [`SkillsAction`]: crate::SkillsAction
+//! [`skills_command!`]: crate::skills_command
 //! [`run`]: crate::run()
 //! [`run_to`]: crate::run_to()
 //! [`print`]: crate::print()
@@ -23,6 +24,7 @@
 //! [ADR-0192]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0192-agent-skills.md
 //! [ADR-0199]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0199-skill-files.md
 //! [ADR-0201]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0201-several-skills.md
+//! [ADR-0231]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0231-skills-help-names-the-tool.md
 //! [ADR-0216]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/skill/0216-a-tool-mounts-its-skills-commands-from-crumbkit-skills.md
 #![doc = include_str!("../README.md")]
 
@@ -37,8 +39,14 @@ mod testing;
 
 pub use self::check::{CheckRow, SKILLS_CHECK, SkillsCheck, check};
 pub use self::install::{InstallRow, SKILLS_INSTALL, SkillsInstall, install};
-pub use self::mount::{
-    SkillsCommand, SkillsPrint, check_leaf, install_leaf, print_leaf, run, run_to,
-};
+pub use self::mount::{SkillsAction, SkillsPrint, run, run_to};
 pub use self::print::{SKILLS_PRINT, SkillText, print};
 pub use self::skill::Skill;
+
+/// Items that [`skills_command!`] expands to. They are not a stable interface.
+#[doc(hidden)]
+pub mod __private {
+    pub use crumbkit::help::{Example, Leaf};
+
+    pub use crate::mount::{check_leaf, install_leaf, print_leaf};
+}

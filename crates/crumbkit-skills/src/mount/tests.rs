@@ -4,12 +4,14 @@ use clap::{CommandFactory as _, Parser};
 use crumbkit::help::Effects;
 use crumbkit::{DryRun, Error, Rows, Run, Sink, Tool, ViewFlags};
 
-use super::{SkillsCommand, check_leaf, install_leaf, print_leaf, run_to};
+use super::run_to;
 use crate::check::{SKILLS_CHECK, check};
 use crate::install::{SKILLS_INSTALL, install};
 use crate::print::{SKILLS_PRINT, print};
 use crate::skill::Skill;
 use crate::testing::LENDING;
+
+crate::skills_command!(SkillsCommand, "shelf");
 
 const SKILL: Skill = Skill::new(
     "shelf",
@@ -66,7 +68,7 @@ fn mounted(words: &[&str]) -> (u8, String) {
         &mut Sink::new(&mut out, Vec::new()),
         run,
         &[SKILL, LENDING],
-        &command,
+        command,
     );
     (code, String::from_utf8(out).unwrap())
 }
@@ -120,13 +122,13 @@ fn print_prints_the_first_skill_and_takes_no_name() {
 fn print_with_no_skills_prints_nothing_and_succeeds() {
     let (run, command) = parse(&["print"]);
     let mut out = Vec::new();
-    let code = run_to(&mut Sink::new(&mut out, Vec::new()), run, &[], &command);
+    let code = run_to(&mut Sink::new(&mut out, Vec::new()), run, &[], command);
     assert_eq!((code, out), (0, Vec::new()));
 }
 
 #[test]
 fn each_leaf_has_the_path_document_and_effects_of_its_command() {
-    let install = install_leaf(&["skills", "install"]);
+    let install = SkillsCommand::install_leaf(&["skills", "install"]);
     assert_eq!(install.path(), ["skills", "install"]);
     assert_eq!(
         install.get_effects(),
@@ -137,7 +139,7 @@ fn each_leaf_has_the_path_document_and_effects_of_its_command() {
         "skills-install"
     );
 
-    let check = check_leaf(&["crumbkit", "skills", "check"]);
+    let check = SkillsCommand::check_leaf(&["crumbkit", "skills", "check"]);
     assert_eq!(check.path(), ["crumbkit", "skills", "check"]);
     assert_eq!(check.get_effects(), Some(Effects::read_only()));
     assert_eq!(
@@ -145,10 +147,46 @@ fn each_leaf_has_the_path_document_and_effects_of_its_command() {
         "skills-check"
     );
 
-    let print = print_leaf(&["skills", "print"]);
+    let print = SkillsCommand::print_leaf(&["skills", "print"]);
     assert_eq!(print.get_effects(), Some(Effects::read_only()));
     assert_eq!(
         print.get_document().unwrap().document().name(),
         "skills-print"
     );
+}
+
+#[test]
+fn the_help_of_a_mounted_skills_group_names_the_tool() {
+    let command = Cli::command();
+    let skills = command.find_subcommand("skills").unwrap();
+    let abouts: Vec<String> = skills
+        .get_subcommands()
+        .map(|leaf| leaf.get_about().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        abouts,
+        [
+            "Install shelf's skills into each agent skills directory that exists",
+            "Check that each installed copy of shelf's skills matches this shelf",
+            "Print shelf's skill",
+        ]
+    );
+}
+
+#[test]
+fn the_examples_of_each_leaf_name_the_tool() {
+    let leaves = [
+        SkillsCommand::install_leaf(&["skills", "install"]),
+        SkillsCommand::check_leaf(&["skills", "check"]),
+        SkillsCommand::print_leaf(&["skills", "print"]),
+    ];
+    for leaf in leaves {
+        for example in leaf.get_examples() {
+            assert!(
+                example.about().contains("shelf's skill"),
+                "{} does not name the tool",
+                example.about()
+            );
+        }
+    }
 }

@@ -1,4 +1,4 @@
-Print this tool's skill
+Print shelf's skill
 
 Usage: shelf skills print [OPTIONS]
 

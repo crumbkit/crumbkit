@@ -1,7 +1,7 @@
 # ADR-0216. A tool mounts its skills commands from crumbkit-skills
 
 - Date: 2026-11-13
-- Status: accepted
+- Status: amended by ADR-0231
 - Supersedes: ADR-0192, which it amends
 - Missed: ADR-0192 chose three functions that each tool mounts in its own enum, and did not weigh that every tool would copy the same enum, leaves and dispatch.
 
