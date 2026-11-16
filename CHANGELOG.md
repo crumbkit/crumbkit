@@ -31,6 +31,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit-usage: `out_bytes` counts only the bytes that writes to standard
+  output accepted, for a result and for a stream, when the reader closes the
+  pipe part way through, so it stays below the size of the whole result
+  ([behaviour/usage-log]).
 - crumbkit-usage: usage logging now works on file systems without hard
   links, such as FAT, and two runs that find a damaged key at once end with
   the same key, because a run writes the key under the log's lock
