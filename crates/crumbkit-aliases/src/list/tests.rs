@@ -321,6 +321,10 @@ fn a_file_that_cannot_be_parsed_shows_a_problem_row_with_the_line_and_the_parser
 
 #[test]
 fn the_rows_of_every_source_carry_the_origin_of_their_source() {
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "a lazy source's loader returns a Result"
+    )]
     fn entries() -> Result<Vec<Entry>, String> {
         Ok(vec![Entry::new("repo run", ["books", "show"])])
     }

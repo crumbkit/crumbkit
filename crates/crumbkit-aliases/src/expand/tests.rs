@@ -197,6 +197,10 @@ fn a_command_line_without_a_first_word_is_left_unchanged_without_reading_a_file_
 static LOADS: AtomicUsize = AtomicUsize::new(0);
 
 /// A loader that counts its runs.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "a lazy source's loader returns a Result"
+)]
 fn counted() -> Result<Vec<Entry>, String> {
     LOADS.fetch_add(1, Ordering::SeqCst);
     Ok(vec![Entry::new("wt", ["books", "list"])])

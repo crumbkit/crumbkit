@@ -4,6 +4,7 @@
 use clap::Command;
 
 use crate::Aliases;
+use crate::entry::Item;
 use crate::source::{Kind, Loaded, Source};
 
 #[cfg(test)]
@@ -76,7 +77,7 @@ impl Aliases {
                 items
                     .iter()
                     .filter(|item| item.problem(command, source.reads()).is_none())
-                    .map(|item| item.name()),
+                    .map(Item::name),
             );
         }
         // A `DeTable` keeps file order when some crate in the build enables
