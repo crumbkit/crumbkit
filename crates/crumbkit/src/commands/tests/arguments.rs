@@ -57,6 +57,7 @@ fn an_argument_holds_what_its_help_shows() {
                 "help": "Print at most N books",
                 "long_help": "Print at most N books.\n\nThe default is 4.",
                 "global": false,
+                "after_double_dash": false,
                 "one_of": [],
             },
             {
@@ -71,6 +72,7 @@ fn an_argument_holds_what_its_help_shows() {
                 "help": null,
                 "long_help": null,
                 "global": false,
+                "after_double_dash": false,
                 "one_of": [],
             },
         ])
@@ -90,6 +92,7 @@ fn an_argument_holds_what_its_help_shows() {
                 "help": null,
                 "long_help": null,
                 "global": false,
+                "after_double_dash": false,
                 "one_of": ["--from"],
             },
             {
@@ -104,6 +107,7 @@ fn an_argument_holds_what_its_help_shows() {
                 "help": null,
                 "long_help": null,
                 "global": false,
+                "after_double_dash": false,
                 "one_of": ["<ID>"],
             },
         ])

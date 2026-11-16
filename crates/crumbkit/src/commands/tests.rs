@@ -12,6 +12,7 @@ use crate::help::{Example, Goal, Group, Help, Leaf};
 use crate::view::{Selection, View};
 use crate::{Document, Error, Listing, Row, Run, Sink, Tool, finish_to};
 
+mod after_double_dash;
 mod arguments;
 mod built_in;
 mod exits;

@@ -124,6 +124,10 @@
           "items": {
             "type": "object",
             "properties": {
+              "after_double_dash": {
+                "description": "Whether the argument takes the values written after `--`, which is clap's `last` setting. A command line that gives the argument values writes `--` before them.",
+                "type": "boolean"
+              },
               "defaults": {
                 "description": "The values that the argument takes when the caller leaves it out, as help shows them.",
                 "type": "array",
@@ -209,6 +213,7 @@
               "help",
               "long_help",
               "global",
+              "after_double_dash",
               "one_of"
             ]
           }
