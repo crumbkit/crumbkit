@@ -184,7 +184,7 @@ mod tests;
 /// one in full, and it locks `dir` until it finishes, so two overwrites of
 /// one directory run one after the other. The lock waits up to 120 seconds
 /// and then reports a problem. Two different checks still need two
-/// directories (ADR-0231).
+/// directories (ADR-0232).
 ///
 /// # Panics
 ///

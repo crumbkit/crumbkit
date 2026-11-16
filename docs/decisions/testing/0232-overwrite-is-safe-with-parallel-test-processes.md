@@ -1,4 +1,4 @@
-# ADR-0231. SNAPSHOTS=overwrite is safe with parallel test processes
+# ADR-0232. SNAPSHOTS=overwrite is safe with parallel test processes
 
 - Date: 2026-11-16
 - Status: accepted

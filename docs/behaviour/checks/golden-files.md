@@ -18,7 +18,7 @@ file goes through a temporary file and a rename, and a check that deletes
 stale files locks its directory, waiting up to 120 seconds for another
 overwrite of it.
 
-Why: ADR-0004, ADR-0231.
+Why: ADR-0004, ADR-0232.
 
 ## Placeholders in example golden files
 
