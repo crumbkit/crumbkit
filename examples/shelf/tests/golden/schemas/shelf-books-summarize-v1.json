@@ -110,6 +110,13 @@
             "description": "The errors that led to the failure, joined with \": \". It is present only when the failure has a cause.",
             "type": "string"
           },
+          "causes": {
+            "description": "The reasons the failure lists side by side, in order, one sentence each. It is present only when the failure lists at least one.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "code": {
             "description": "The failure's stable code, such as shelf::books::not_found. It is one or more printable ASCII characters without spaces, from ! to ~.",
             "type": "string",

@@ -3,6 +3,7 @@ use quote::quote;
 
 use crate::expand::expand;
 
+mod causes;
 mod sentences;
 
 /// Returns the derive's output for `input` as text.
@@ -23,6 +24,10 @@ fn refusal(input: TokenStream) -> String {
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the test holds the whole documented expansion, which one expression compares"
+)]
 #[test]
 fn the_expansion_of_the_sample_enum_matches_the_documented_expansion() {
     let input = quote! {
@@ -55,6 +60,15 @@ fn the_expansion_of_the_sample_enum_matches_the_documented_expansion() {
                     Self::RemovedFile { .. } => REMOVED_FILE,
                     Self::NoStateDirectory => NO_STATE_DIRECTORY,
                     Self::Book(f0) => ::crumbkit::Failure::code(f0),
+                }
+            }
+
+            fn causes(&self) -> ::std::vec::Vec<::std::string::String> {
+                match self {
+                    Self::NotFound { .. } => ::std::vec::Vec::new(),
+                    Self::RemovedFile { .. } => ::std::vec::Vec::new(),
+                    Self::NoStateDirectory => ::std::vec::Vec::new(),
+                    Self::Book(f0) => ::crumbkit::Failure::causes(f0),
                 }
             }
 
@@ -411,7 +425,7 @@ fn an_unknown_key_is_refused_with_the_list_of_accepted_keys() {
     });
     assert_eq!(
         message,
-        "#[failure(...)] has no key `colour`. Its keys are `code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type"
+        "#[failure(...)] has no key `colour`. Its keys are `code`, `recovery`, `hint`, `no_next_step`, `alternative`, `causes`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type"
     );
 }
 

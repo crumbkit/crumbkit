@@ -11,6 +11,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   passes while the child still runs, and the run goes on waiting without
   signalling the child. `ChildFinished::was_overdue` says whether it ran
   ([behaviour/process-runs]).
+- crumbkit: `Failure::causes` returns the reasons a failure lists side by
+  side. Text prints a `cause:` line for each after the `source()` chain's, and
+  the failure document gains an optional array `causes`. crumbkit-derive:
+  `causes = EXPR` ([behaviour/failures]).
+
 - crumbkit-test: `Unprovoked::area` lists every declared code of one area
   under one reason for `check_recoveries` and `check_twins`, and the recovery
   report names each code it excuses.
