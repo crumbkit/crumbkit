@@ -395,7 +395,7 @@ fn since_defaults_to_7_days_and_takes_jiff_s_friendly_durations() {
 
 #[test]
 fn since_refuses_what_jiff_s_friendly_format_does_not_read() {
-    for text in ["1M", "0", "1.5d", "yesterday", ""] {
+    for text in ["1M", "0", "1.5d", "yesterday", "", "-1h", "1h ago"] {
         let refused = Cli::try_parse_from(["tool", "--since", text]);
         assert!(refused.is_err(), "{text:?} parsed");
     }

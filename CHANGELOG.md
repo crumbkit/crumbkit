@@ -163,8 +163,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   file gets mode `0666` less the umask ([behaviour/durable-files]).
 - crumbkit, crumbkit-usage: jiff replaces humantime (RUSTSEC-2026-0542).
   `self usage --since` reads jiff's friendly durations: `1y` and `3mo` count
-  calendar years and months, and a capital `M`, a bare `0` and `1.5d` no longer
-  parse ([behaviour/usage-log/report]).
+  calendar years and months, and a capital `M`, `0`, `1.5d` and `-1h` no
+  longer parse ([behaviour/usage-log/report]).
 
 ### Removed
 

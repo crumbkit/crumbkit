@@ -7,7 +7,7 @@ use jiff::tz::TimeZone;
 use jiff::{Span, Timestamp};
 
 /// Returns `time` as a jiff timestamp, with a time after jiff's last
-/// timestamp, 9999-12-30T22:00:59Z, read as that one and a time before 1970
+/// timestamp, 9999-12-30T22:00:00.999999999Z, read as that one and a time before 1970
 /// read as the epoch, so that a wrong clock still has a form.
 fn clamped(time: SystemTime) -> Timestamp {
     Timestamp::try_from(time.max(UNIX_EPOCH)).unwrap_or(Timestamp::MAX)

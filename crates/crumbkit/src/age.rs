@@ -12,10 +12,6 @@ use crate::Shown;
 #[cfg(test)]
 mod tests;
 
-/// The seconds from 1970 to the start of the year 10000. RFC 3339 writes a
-/// year in four digits, so a time from this second on has no RFC 3339 form.
-const YEAR_10000: u64 = 253_402_300_800;
-
 /// The type of a row field that holds the time something happened, such as
 /// when a file changed. The text table shows how long ago that was, as a
 /// compact age such as `3h`, and JSON holds the time itself in RFC 3339.
@@ -47,8 +43,8 @@ const YEAR_10000: u64 = 253_402_300_800;
 /// serializes a row itself, with `serde_json` or another serializer, always
 /// gets the RFC 3339 time.
 ///
-/// A time before 1970 or from the year 10000 on has no RFC 3339 form in four
-/// digits, so its JSON fails to serialize and crumbkit reports a failed
+/// A time before 1970 or after 9999-12-30T22:00:00Z has no RFC 3339 form here,
+/// so its JSON fails to serialize and crumbkit reports a failed
 /// write. Its compact age still prints in text.
 ///
 /// ```
@@ -134,19 +130,15 @@ impl fmt::Display for Age {
 /// describes it as an inline string in the `date-time` format.
 impl Shown for Age {
     fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // A time before 1970 or from the year 10000 on has no RFC 3339 form
-        // in four digits, so both are refused here first.
-        let since_1970 = self
-            .at
+        // A time before 1970 has no RFC 3339 form here, and jiff refuses a
+        // time after 9999-12-30T22:00:00Z, so both are errors in place of a
+        // panic in the serializer.
+        self.at
             .duration_since(UNIX_EPOCH)
             .map_err(|_| S::Error::custom("an Age before 1970 has no RFC 3339 form"))?;
-        if since_1970.as_secs() >= YEAR_10000 {
-            return Err(S::Error::custom(
-                "an Age after the year 9999 has no RFC 3339 form",
-            ));
-        }
-        let time = jiff::Timestamp::try_from(self.at)
-            .map_err(|_| S::Error::custom("an Age after the year 9999 has no RFC 3339 form"))?;
+        let time = jiff::Timestamp::try_from(self.at).map_err(|_| {
+            S::Error::custom("an Age after 9999-12-30T22:00:00Z has no RFC 3339 form")
+        })?;
         serializer.collect_str(&format_args!("{time:.3}"))
     }
 

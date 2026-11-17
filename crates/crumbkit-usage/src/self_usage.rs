@@ -330,9 +330,16 @@ pub(super) fn open_log(tool: &Command, log: Option<&Path>) -> Option<BufReader<F
 }
 
 /// Reads a `--since` value in jiff's friendly duration form, such as `12h`,
-/// `7d`, `2w`, `3mo`, `1y` or `1h 30m`.
-fn parse_since(text: &str) -> Result<SpanFieldwise, jiff::Error> {
-    text.parse().map(SpanFieldwise)
+/// `7d`, `2w`, `3mo`, `1y` or `1h 30m`. A negative duration, such as `-1h` or
+/// `1h ago`, is refused, because it would start the report after now.
+fn parse_since(text: &str) -> Result<SpanFieldwise, String> {
+    let span: Span = text
+        .parse()
+        .map_err(|error: jiff::Error| error.to_string())?;
+    if span.is_negative() {
+        return Err(format!("a negative duration {text:?} starts after now"));
+    }
+    Ok(SpanFieldwise(span))
 }
 
 /// Returns the findings in `log` for the runs in `selection`, checked against
