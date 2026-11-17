@@ -67,7 +67,19 @@ pub enum Signal {
 #[derive(Debug)]
 pub(crate) struct Group {
     child: sys::Child,
-    status: Option<ExitStatus>,
+    state: State,
+}
+
+/// What a group knows about its child's reap.
+#[derive(Clone, Copy, Debug)]
+enum State {
+    /// This crate has not reaped the child, so its id names the run's group.
+    Unreaped,
+    /// [`Group::reap`] reaped the child and kept its status.
+    Reaped(ExitStatus),
+    /// A wait found that the child is no longer this process's child, so
+    /// something else reaped it and its id may name another group now.
+    Gone,
 }
 
 impl Group {
@@ -82,7 +94,7 @@ impl Group {
     pub(crate) fn start(command: Command, scope: Scope) -> io::Result<Self> {
         Ok(Self {
             child: sys::Child::spawn(command, scope)?,
-            status: None,
+            state: State::Unreaped,
         })
     }
 
@@ -122,13 +134,14 @@ impl Group {
     ///
     /// # Errors
     ///
-    /// Returns an error when the group has been reaped, and the operating
-    /// system's error when it refuses the signal.
+    /// Returns an error when the group has been reaped or the child is gone,
+    /// and the operating system's error when it refuses the signal.
     pub(crate) fn signal(&self, signal: Signal) -> io::Result<()> {
-        if self.status.is_some() {
-            return Err(io::Error::other("the child has been reaped"));
+        match self.state {
+            State::Unreaped => self.child.signal(signal),
+            State::Reaped(_) => Err(io::Error::other("the child has been reaped")),
+            State::Gone => Err(io::Error::other("the child is gone")),
         }
-        self.child.signal(signal)
     }
 
     /// Returns true when the child has exited. The child stays unreaped.
@@ -137,7 +150,7 @@ impl Group {
     ///
     /// Returns the operating system's error when it cannot tell.
     pub(crate) fn has_exited(&self) -> io::Result<bool> {
-        if self.status.is_some() {
+        if !matches!(self.state, State::Unreaped) {
             return Ok(true);
         }
         self.child.has_exited()
@@ -151,7 +164,7 @@ impl Group {
     /// Returns the operating system's error when the wait fails.
     #[cfg(all(test, unix))]
     pub(crate) fn wait_exit(&self) -> io::Result<()> {
-        if self.status.is_some() {
+        if !matches!(self.state, State::Unreaped) {
             return Ok(());
         }
         self.child.waiter().wait()
@@ -166,29 +179,45 @@ impl Group {
     /// scope, reaps the child and returns its exit status. On Unix it then
     /// waits until the group is empty for at most
     /// [`REAP_GRACE`](crate::REAP_GRACE) after the exit. A second call
-    /// returns the same status. It waits as long as the child runs, so a
-    /// caller that wants the child gone first sends [`Signal::Kill`].
+    /// returns the same status. After a wait finds that the child is no
+    /// longer this process's child, no later call signals or waits, and a
+    /// second call returns [`io::ErrorKind::NotFound`]. It waits as long
+    /// as the child runs, so a caller that wants the child gone first
+    /// sends [`Signal::Kill`].
     ///
     /// # Errors
     ///
     /// Returns the operating system's error when the wait, the kill or the
     /// reap fails.
     pub(crate) fn reap(&mut self) -> io::Result<ExitStatus> {
-        if let Some(status) = self.status {
-            return Ok(status);
+        match self.state {
+            State::Reaped(status) => return Ok(status),
+            State::Gone => {
+                return Err(io::Error::new(io::ErrorKind::NotFound, "the child is gone"));
+            }
+            State::Unreaped => {}
         }
-        let status = self.child.reap()?;
-        self.status = Some(status);
-        Ok(status)
+        match self.child.reap() {
+            Ok(status) => {
+                self.state = State::Reaped(status);
+                Ok(status)
+            }
+            Err(error) => {
+                if sys::Child::is_gone(&error) {
+                    self.state = State::Gone;
+                }
+                Err(error)
+            }
+        }
     }
 }
 
 impl Drop for Group {
     /// Kills every process in the group's scope and reaps the child, unless
-    /// [`Group::reap`] already reaped it. On Unix the drop can therefore
-    /// block for [`REAP_GRACE`](crate::REAP_GRACE).
+    /// [`Group::reap`] already reaped it or found it gone. On Unix the drop
+    /// can therefore block for [`REAP_GRACE`](crate::REAP_GRACE).
     fn drop(&mut self) {
-        if self.status.is_none() {
+        if matches!(self.state, State::Unreaped) {
             let _ = self.child.signal(Signal::Kill);
             let _ = self.reap();
         }

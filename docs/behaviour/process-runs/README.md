@@ -51,3 +51,31 @@ Invariants:
 5. An overdue time at or after the deadline never calls `report`.
 
 Why: ADR-0237.
+
+## A group whose child was reaped elsewhere
+
+A `Group` is unreaped, reaped or gone. It is gone when a wait fails with
+`ECHILD`, because another waiter reaped the child or the host ignores
+`SIGCHLD`, so the child's id may name another group now.
+
+| From | Event | To | Effect |
+| --- | --- | --- | --- |
+| unreaped | `reap` succeeds | reaped | the group was killed and emptied |
+| unreaped | `reap` fails with `ECHILD` | gone | nothing more is sent |
+| unreaped | `reap` fails otherwise | unreaped | error returned; drop still kills and reaps |
+| reaped, gone | `signal` | unchanged | refused; nothing is sent |
+| gone | `reap` | gone | returns `NotFound`; nothing is waited for |
+| unreaped | drop | dropped | SIGKILL to the group, then `reap` |
+| reaped, gone | drop | dropped | nothing |
+
+Crash point: another waiter reaps the child before the crate's first wait.
+A signal sent in that window can reach a reused id, because the crate learns
+that the child is gone only when its own wait fails.
+
+Invariants:
+
+1. No signal follows a `Group::reap` that reported the child gone or reaped.
+2. The drop sends SIGKILL only to an unreaped group.
+3. The run still reaps the child on every path where the child is still its
+   own, so a wait that fails with another error leaves the drop to kill and
+   reap.
