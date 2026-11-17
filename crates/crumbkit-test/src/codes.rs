@@ -13,10 +13,17 @@ pub(crate) enum CodeLists<'a> {
 }
 
 /// Returns every code of `lists`, in order, with a code that two lists share
-/// once for each list.
+/// once.
 pub(crate) fn declared(lists: CodeLists<'_>) -> Vec<Code<'_>> {
-    match lists {
+    let mut declared: Vec<Code<'_>> = Vec::new();
+    let all: Vec<Code<'_>> = match lists {
         CodeLists::One(list) => list.to_vec(),
         CodeLists::Many(lists) => lists.iter().flat_map(|list| list.iter().copied()).collect(),
+    };
+    for code in all {
+        if !declared.contains(&code) {
+            declared.push(code);
+        }
     }
+    declared
 }

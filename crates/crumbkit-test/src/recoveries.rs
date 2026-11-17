@@ -467,9 +467,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
     let mut declared: Vec<(String, Code<'_>)> = Vec::new();
     for code in codes::declared(recoveries.codes) {
-        if !declared.iter().any(|&(_, seen)| seen == code) {
-            declared.push((spelling.spell(code), code));
-        }
+        declared.push((spelling.spell(code), code));
     }
     let known = known_codes(&declared, spelling);
     // crumbkit's add-on crates, such as crumbkit-child, own codes in the

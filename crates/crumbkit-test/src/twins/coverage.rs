@@ -214,12 +214,7 @@ impl<'a> Twins<'a> {
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
-    let mut declared: Vec<Code<'_>> = Vec::new();
-    for code in codes::declared(twins.codes) {
-        if !declared.contains(&code) {
-            declared.push(code);
-        }
-    }
+    let declared = codes::declared(twins.codes);
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();
