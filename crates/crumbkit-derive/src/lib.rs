@@ -203,9 +203,19 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// | `column` | field | The field's name in `COLUMNS`. |
 /// | `long` | field | The field's name in `LONG_COLUMNS`. A field gives `column` or `long`, and never both. |
 /// | `uncut` | field that gives `column` or `long` | The field's name in `UNCUT_COLUMNS` as well. |
-/// | `problem` | field that gives `column` | The field's name in `PROBLEM`, as `Problem::field`. At most one field gives it. |
-/// | `warning` | field that gives `column` | The field's name in `WARNING`, as `Warning::field`. At most one field gives it, and never the field that gives `problem`. |
-/// | `crate = PATH` | type | The path of the crate that holds `Row`, `Problem` and `Warning`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
+/// | `problem` | field that gives `column` | The field's name in `PROBLEM`, as `Problem::field`. At most one field gives `problem` or `problem_by`. |
+/// | `problem_by = EXPR` | field that gives `column` | The field's name in `PROBLEM`, as `Problem::by`, with `EXPR` deciding which rows report a problem. |
+/// | `warning` | field that gives `column` | The field's name in `WARNING`, as `Warning::field`. At most one field gives `warning` or `warning_by`, and never the field that gives `problem` or `problem_by`. |
+/// | `warning_by = EXPR` | field that gives `column` | The field's name in `WARNING`, as `Warning::by`, with `EXPR` deciding which rows report a warning. |
+/// | `children` or `children(...)` | field | The field in `CHILDREN`, as `Children::field`. The options `indent = N`, `spaced`, `help = "..."`, `lines = EXPR` and `long_lines = EXPR` call the `Children` builder of the same name. At most one field gives it, and the field gives no other key. |
+/// | `flatten` | field marked `#[serde(flatten)]` | The columns of the field's type, spliced into each list at the field's position. The field gives no other key. |
+/// | `whole` | type | `WHOLE` is true. |
+/// | `remote = TYPE` | type | The impl is for `TYPE`, which the struct mirrors, in place of the struct. |
+/// | `crate = PATH` | type | The path of the crate that holds `Row`, `Problem`, `Warning` and `Children`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
+///
+/// `EXPR` is a path or a closure that does not capture, which coerces to the
+/// function pointer that the constructor takes, and `Self` in it names the
+/// type that gets the impl.
 ///
 /// Each list keeps the order of the fields in the struct, so a type
 /// reorders its columns by reordering its fields. Each name is the field's
@@ -220,12 +230,12 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// impl, and `finish` and `stream` then fail to compile for it, as they do
 /// for a hand-written impl with an empty `COLUMNS`.
 ///
-/// The derive writes the five constants and leaves every other item of
-/// `Row` to its default. A row that sets `LINE`, `CHILDREN` or `WHOLE`,
-/// sets `PROBLEM` with `Problem::by`, or overrides `cell_style` or
-/// `in_default_text`, writes `impl Row` by hand. So does an enum, and a row
-/// whose `Serialize` impl is written by hand, because the derive reads the
-/// names from serde's attributes.
+/// The derive writes `COLUMNS`, `LONG_COLUMNS`, `UNCUT_COLUMNS`, `PROBLEM`
+/// and `WARNING`, and `CHILDREN` and `WHOLE` when a key sets them, and leaves
+/// every other item of `Row` to its default. A row that sets `LINE` or
+/// overrides `cell_style` or `in_default_text` writes `impl Row` by hand. So
+/// does an enum, and a row whose `Serialize` impl is written by hand, because
+/// the derive reads the names from serde's attributes.
 ///
 /// The impl copies the type's generic parameters and its where-clause, so
 /// the type's own bounds make it `Serialize` and `JsonSchema`.
@@ -269,15 +279,95 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// }
 /// ```
 ///
+/// # Flattened fields
+///
+/// `#[row(flatten)]` on a field marked `#[serde(flatten)]` takes the
+/// columns of the field's type, which must implement `Row`, usually by
+/// deriving it. For
+///
+/// ```rust,ignore
+/// #[derive(Serialize, JsonSchema, Row)]
+/// struct File {
+///     #[row(column)]
+///     path: String,
+///     #[serde(flatten)]
+///     #[row(flatten)]
+///     stats: Stats,
+/// }
+/// ```
+///
+/// the derive writes each list as a constant that joins the names and the
+/// field type's list, and an assertion for each item that the row would
+/// drop:
+///
+/// ```rust,ignore
+/// const _: () = {
+///     const __COLUMNS: [&'static str; 1 + <Stats as ::crumbkit::Row>::COLUMNS.len()] =
+///         ::crumbkit::__row_columns(&[&["path"], <Stats as ::crumbkit::Row>::COLUMNS]);
+///     // __LONG_COLUMNS and __UNCUT_COLUMNS follow in the same way.
+///     const _: () = {
+///         ::std::assert!(<Stats as ::crumbkit::Row>::PROBLEM.is_none(), "...");
+///         // The same for WARNING and CHILDREN.
+///     };
+///     impl ::crumbkit::Row for File {
+///         const COLUMNS: &'static [&'static str] = &__COLUMNS;
+///         // ...
+///     }
+/// };
+/// ```
+///
+/// The build fails when the flattened type sets `PROBLEM`, `WARNING` or
+/// `CHILDREN`, because the outer row would drop the setting, and set it on
+/// the outer row. A flattened type that does not implement `Row` fails with
+/// the compiler's missing-trait error at the generated path.
+///
+/// # Rows for a foreign type
+///
+/// `#[row(remote = TYPE)]` follows serde's `remote`. A local struct, the
+/// mirror, lists the fields of a type that another crate owns, with the
+/// `#[row(...)]` keys and the `#[serde(rename)]` and `#[serde(rename_all)]`
+/// attributes that the foreign type's JSON has, and the derive writes
+/// `impl Row for TYPE` from it. A derive reads only the type that carries
+/// it, so the mirror stands in for fields that the derive cannot see, such as
+/// the fields of a type from another crate behind a local newtype like
+/// `Printed<RunReport>`. One mirror serves one instance of a generic type.
+///
+/// ```rust,ignore
+/// #[derive(Row)]
+/// #[row(remote = Printed<RunReport>)]
+/// #[serde(rename_all = "camelCase")]
+/// struct PrintedRunReport {
+///     #[row(column)]
+///     run_name: String,
+///     #[row(column, problem_by = |row: &Self| row.0.failed)]
+///     failed: bool,
+/// }
+/// ```
+///
+/// The mirror derives nothing else, so `serde` is a helper attribute of this
+/// derive. The derive reads the mirror's field names and attributes and
+/// never its field types, and it writes a constant function that builds the
+/// mirror from itself so the unread fields draw no `dead_code` warning. Nothing ties the
+/// mirror to the foreign type at compile time: crumbkit-test's `check_help`
+/// fails a column that is not a field of the leaf's schema, and only for a
+/// leaf that the tool record gives.
+///
 /// # Refused uses
 ///
 /// Each of these is a compile error that names the field or the type: an
 /// unknown key, a key given twice, `column` with `long`, `uncut` without
-/// either, `problem` or `warning` without `column`, `problem` or `warning` on a second field, `problem` and `warning` on one field, and any
-/// key on a field marked `#[serde(skip)]`, `#[serde(skip_serializing)]` or
-/// `#[serde(flatten)]`. The derive also refuses a type marked
-/// `#[serde(transparent)]`, an enum, a union, a tuple struct and a unit
-/// struct.
+/// either, `problem` or `warning` without `column`, `problem_by` or
+/// `warning_by` without `column`, `problem` with `problem_by` and `warning`
+/// with `warning_by` on one field, `problem` or `warning` on a second field,
+/// `problem` and `warning` on one field, `children` with `column`, `long`,
+/// `uncut`, `problem` or `warning` or on a second field, an unknown or
+/// repeated `children` option, `flatten` on a field without
+/// `#[serde(flatten)]` or with any other key, `flatten` or `remote` on a
+/// generic type, `whole`, `remote` or `crate` on a field, and a field key on
+/// the type. Any other key on a field marked `#[serde(skip)]`,
+/// `#[serde(skip_serializing)]` or `#[serde(flatten)]` is an error as well.
+/// The derive also refuses a type marked `#[serde(transparent)]` unless it
+/// gives `remote`, an enum, a union, a tuple struct and a unit struct.
 #[proc_macro_derive(Row, attributes(row, serde))]
 pub fn derive_row(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);

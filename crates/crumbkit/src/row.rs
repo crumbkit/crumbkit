@@ -67,9 +67,12 @@ pub(crate) use fields::{can_be_empty, properties};
 /// with `#[derive(Row)]` and marks each column with `#[row(column)]` or
 /// `#[row(long)]`. The derive writes each name as serde serializes the
 /// field, so a column always names a field. It writes `COLUMNS`,
-/// `LONG_COLUMNS`, `UNCUT_COLUMNS` and `PROBLEM`, and crumbkit-derive
-/// documents its keys. An enum and a row that sets any other item write the
-/// impl by hand.
+/// `LONG_COLUMNS`, `UNCUT_COLUMNS`, `PROBLEM` and `WARNING`, and
+/// `CHILDREN` and `WHOLE` when the type's keys set them. It takes the
+/// columns of a `#[serde(flatten)]` field's type, and writes the impl for a
+/// foreign type from a local mirror struct. crumbkit-derive documents its
+/// keys. A row that sets `LINE` or overrides `cell_style` or
+/// `in_default_text`, and an enum, write the impl by hand.
 pub trait Row: Serialize + JsonSchema {
     /// The columns that the compact output shows, in display order.
     ///
