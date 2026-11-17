@@ -13,6 +13,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/help/leaves]).
 - crumbkit-test: `check_help` fails a leaf note that is empty or holds a line
   break ([behaviour/help/leaves]).
+- crumbkit-derive: `#[derive(Row)]` takes `children`, `whole`, `problem_by`,
+  `warning_by`, `flatten` and `remote = TYPE`, which write `CHILDREN`,
+  `WHOLE`, `Problem::by`, `Warning::by`, a flattened field's columns and an
+  impl from a mirror struct ([behaviour/output/listings]).
+- crumbkit: the hidden `__row_columns` function joins the column lists that
+  the derive builds for a flattened field.
+
 - crumbkit-process: `RunOptions::overdue` calls a report once when a time
   passes while the child still runs, and the run goes on waiting without
   signalling the child. `ChildFinished::was_overdue` says whether it ran

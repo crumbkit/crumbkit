@@ -7,7 +7,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use crumbkit::{Document, Listing, Problem, Row};
+use crumbkit::{Document, Listing, Row};
 use crumbkit_durable::{Mode, write_atomically};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -81,20 +81,14 @@ pub(crate) enum Status {
 }
 
 /// One generated section of the skill file and what the draft did to it.
-#[derive(Debug, PartialEq, Eq, Serialize, JsonSchema)]
+#[derive(Debug, PartialEq, Eq, Serialize, JsonSchema, Row)]
 pub(crate) struct Drafted {
     /// The section's name: description, jobs or usage.
+    #[row(column)]
     section: Section,
     /// What the draft did: written, unchanged, would-change under --check, kept without usage, or unmarked when the file has no markers for the section.
+    #[row(column, problem_by = |row: &Self| row.status == Status::WouldChange)]
     status: Status,
-}
-
-impl Row for Drafted {
-    const COLUMNS: &'static [&'static str] = &["section", "status"];
-
-    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("status", |row| {
-        row.status == Status::WouldChange
-    }));
 }
 
 /// The figures of one draft: the file, the tool and the usage it read.
