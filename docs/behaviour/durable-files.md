@@ -99,7 +99,13 @@ the file stays, empty and unlocked, after the release.
 1. It opens `path` for writing, creating it with `0600` on Unix when it is
    absent. The open passes `O_NOFOLLOW`, so a symbolic link at `path` is
    refused, and `O_NONBLOCK`, so a FIFO at `path` that no program reads
-   is refused at once instead of blocking the open past the deadline.
+   is refused at once instead of blocking the open past the deadline. On
+   Unix it then compares the file's owner, from `fstat`, with the caller's
+   effective uid. When they differ it closes the file and returns `Io` at
+   `Open` with the kind `PermissionDenied` and a message naming the path
+   and the owner's uid, so a user who created the file first in a shared
+   directory cannot make the caller lock it. A process running as root gets
+   no exception. Windows does not check the owner.
 2. It calls `try_lock`, which is `flock` on Unix and `LockFileEx` on
    Windows. While another holder has the lock, it calls `give_up`, returns
    `Busy` when that returns true or the deadline has passed, and otherwise
@@ -141,7 +147,7 @@ converts to an `io::Error` of that error's kind.
 
 | Error | What fails | State left |
 | --- | --- | --- |
-| `Io` at `Open` | the directory is missing, permission is refused, a symbolic link is at the path (`ELOOP`, or `EMLINK` on FreeBSD), or a FIFO that no program reads is at the path (`ENXIO`) | nothing held |
+| `Io` at `Open` | the directory is missing, permission is refused, the file on Unix belongs to another user (`PermissionDenied`), a symbolic link is at the path (`ELOOP`, or `EMLINK` on FreeBSD), or a FIFO that no program reads is at the path (`ENXIO`) | nothing held |
 | `Io` at `Lock` | an error other than the lock being held | nothing held |
 | `Busy` | another holder kept the lock past the deadline, `give_up` returned true, or the file changed a fourth time | nothing held |
 | `Io` at `Identify` | `fstat` fails, or `lstat` fails other than with not found | the lock released |

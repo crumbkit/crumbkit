@@ -18,6 +18,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: open `interrupt` windows share one request, and the window closes
   when its last guard drops, so a Ctrl-C is no longer lost when one guard
   drops ([behaviour/interrupts]).
+- crumbkit-durable: on Unix, `PathLock::acquire` refuses a lock file that another
+  user owns with `Io` at `Open` and the kind `PermissionDenied`
+  ([behaviour/durable-files]).
 - crumbkit-aliases: a `Source::table` entry with no words no longer expands to
   nothing. `aliases list` shows it with a problem, as for a file entry, and the
   root help leaves it out ([behaviour/parsing/aliases]).
