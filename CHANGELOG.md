@@ -5,7 +5,7 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Added
+## [0.6.0](https://github.com/crumbkit/crumbkit/compare/v0.5.0...v0.6.0) - 2026-11-17### Added
 
 - crumbkit: `Code::from_spelling` is a `const fn` that builds a code from its
   full spelling, such as `"shelf::books::not_found"`, and `Code::as_str`
