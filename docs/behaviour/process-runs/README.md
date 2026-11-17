@@ -50,6 +50,8 @@ Invariants:
    the report.
 5. An overdue time at or after the deadline never calls `report`.
 
+Why: ADR-0237.
+
 ## A group whose child was reaped elsewhere
 
 A `Group` is unreaped, reaped or gone. It is gone when a wait fails with
@@ -72,7 +74,8 @@ that the child is gone only when its own wait fails.
 
 Invariants:
 
-1. No signal follows a wait that reported the child gone or reaped.
+1. No signal follows a `Group::reap` that reported the child gone or reaped.
 2. The drop sends SIGKILL only to an unreaped group.
-
-Why: ADR-0237.
+3. The run still reaps the child on every path where the child is still its
+   own, so a wait that fails with another error leaves the drop to kill and
+   reap.

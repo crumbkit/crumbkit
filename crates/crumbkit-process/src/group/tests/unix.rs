@@ -204,16 +204,23 @@ fn a_child_reaped_elsewhere_makes_the_reap_fail_and_the_group_refuse_every_later
 }
 
 #[test]
-fn a_group_whose_child_was_reaped_elsewhere_drops_without_the_kill_and_reap() {
-    let mut group = start("exit 0", Scope::Group);
+fn a_group_whose_child_was_reaped_elsewhere_sends_no_signal_from_a_signal_or_the_drop() {
+    // The background sleep keeps the group's id in use after its leader is
+    // reaped, so a SIGKILL sent to that id would end it.
+    let mut group = start("sleep 30 & echo $!", Scope::Group);
+    let sleeper = pid_in(&first_line(&mut group));
     reap_outside(&group);
     group.reap().unwrap_err();
 
-    let started = Instant::now();
+    assert!(group.signal(Signal::Kill).is_err());
     drop(group);
+    // A killed process answers signal 0 until its new parent reaps it.
+    std::thread::sleep(Duration::from_millis(500));
 
+    let alive = rustix::process::test_kill_process(Pid::from_raw(sleeper).unwrap()).is_ok();
+    kill(sleeper);
     assert!(
-        started.elapsed() < crate::REAP_GRACE / 2,
-        "the drop entered the kill and reap path"
+        alive,
+        "a signal or the drop killed the background sleep {sleeper}"
     );
 }

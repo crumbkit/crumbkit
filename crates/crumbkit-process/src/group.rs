@@ -181,8 +181,9 @@ impl Group {
     /// [`REAP_GRACE`](crate::REAP_GRACE) after the exit. A second call
     /// returns the same status. After a wait finds that the child is no
     /// longer this process's child, no later call signals or waits, and a
-    /// second call returns [`io::ErrorKind::NotFound`]. It waits as long as the child runs, so a
-    /// caller that wants the child gone first sends [`Signal::Kill`].
+    /// second call returns [`io::ErrorKind::NotFound`]. It waits as long
+    /// as the child runs, so a caller that wants the child gone first
+    /// sends [`Signal::Kill`].
     ///
     /// # Errors
     ///
@@ -213,8 +214,8 @@ impl Group {
 
 impl Drop for Group {
     /// Kills every process in the group's scope and reaps the child, unless
-    /// [`Group::reap`] already reaped it or found it gone. On Unix the drop can therefore
-    /// block for [`REAP_GRACE`](crate::REAP_GRACE).
+    /// [`Group::reap`] already reaped it or found it gone. On Unix the drop
+    /// can therefore block for [`REAP_GRACE`](crate::REAP_GRACE).
     fn drop(&mut self) {
         if matches!(self.state, State::Unreaped) {
             let _ = self.child.signal(Signal::Kill);
