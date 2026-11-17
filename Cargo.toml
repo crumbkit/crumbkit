@@ -124,10 +124,12 @@ siphasher = { version = "1.0.4", default-features = false }
 # features.
 etcetera = { version = "0.11.0", default-features = false }
 
-# humantime formats the time a run ended as RFC 3339 with milliseconds. Its
-# one feature, `mu`, prints microseconds with the Greek letter, which
-# crumbkit-usage does not use.
-humantime = { version = "2.4.0", default-features = false }
+# jiff writes and reads the RFC 3339 times of `Age` and the usage log, and
+# parses `self usage --since` as a friendly duration such as `1h 30m` that it
+# counts back from now in UTC. Only the `std` feature is on, which gives the
+# `SystemTime` conversions; the others load the system time zone database or
+# add serde, logging and a macro crate, and nothing here needs them.
+jiff = { version = "1.0.0", default-features = false, features = ["std"] }
 
 # signal-hook runs the thread that writes the usage log's line when a run ends
 # on SIGINT or SIGTERM, and installs the handlers that ignore SIGINT and

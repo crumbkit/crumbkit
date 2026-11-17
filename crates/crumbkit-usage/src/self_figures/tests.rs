@@ -1,5 +1,6 @@
 use std::io::Cursor;
-use std::time::Duration;
+
+use jiff::{Span, SpanFieldwise};
 
 use clap::Parser;
 use serde_json::{Value, json};
@@ -36,7 +37,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>) {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(86_400), now()),
+        &selection(Span::new().days(1), now()),
         limit,
     );
     let rows = listing
@@ -92,7 +93,7 @@ fn self_figures_list_takes_the_flags_of_self_usage_and_a_page() {
     let tool =
         Cli::try_parse_from(["tool", "--since", "1d", "--log", "copy.jsonl", "--all"]).unwrap();
 
-    assert_eq!(tool.args.usage.since, Duration::from_secs(86_400));
+    assert_eq!(tool.args.usage.since, SpanFieldwise(Span::new().days(1)));
     assert_eq!(tool.args.page.limit(), None);
 }
 
@@ -141,7 +142,7 @@ fn the_figures_leave_out_the_runs_of_an_excluded_program_and_keep_those_of_anoth
         [("books list".to_owned(), 1), ("books show".to_owned(), 1)]
     );
     assert_eq!(
-        command_runs(&selection(Duration::from_secs(86_400), now())),
+        command_runs(&selection(Span::new().days(1), now())),
         [("books list".to_owned(), 2), ("books show".to_owned(), 1)]
     );
 }
@@ -154,7 +155,7 @@ fn the_figures_keep_only_the_runs_of_the_named_contexts() {
         line(100, "books show", &json!({})),
     ]
     .concat();
-    let mut selection = selection(Duration::from_secs(86_400), now());
+    let mut selection = selection(Span::new().days(1), now());
     selection.context = vec!["member".to_owned()];
     let listing = figures_from(
         &tree(),
