@@ -102,7 +102,7 @@ fn names_a_command<K: AsRef<str>>(command: &Command, key: &[K]) -> bool {
     };
     if !command.has_subcommands() {
         return crumbkit::expanded_clone(command)
-            .is_some_and(|expanded| names_a_command(&expanded, key));
+            .is_some_and(|expanded| expanded.has_subcommands() && names_a_command(&expanded, key));
     }
     command
         .find_subcommand(word.as_ref())

@@ -157,3 +157,18 @@ fn names_leave_out_an_alias_that_a_command_of_an_unexpanded_lazy_group_shadows()
     assert_eq!(aliases.names(&command), ["skills nope"]);
     assert_eq!(aliases.shipped_names(&command), ["skills nope"]);
 }
+
+#[test]
+fn names_keep_an_alias_that_reaches_past_a_command_whose_expansion_adds_nothing() {
+    let aliases = Aliases::new().source(Source::table(
+        "shelf",
+        &[("empty more", &["books", "list"])],
+    ));
+    let command = tree().subcommand(
+        clap::Command::new("empty")
+            .subcommand_value_name("COMMAND")
+            .defer(|empty| empty),
+    );
+
+    assert_eq!(aliases.names(&command), ["empty more"]);
+}
