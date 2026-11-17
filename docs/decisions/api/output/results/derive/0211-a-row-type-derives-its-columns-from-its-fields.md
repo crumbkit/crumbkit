@@ -1,7 +1,7 @@
 # ADR-0211. A row type derives its columns from its fields
 
 - Date: 2026-11-12
-- Status: accepted
+- Status: amended by ADR-0247
 
 ## Context
 

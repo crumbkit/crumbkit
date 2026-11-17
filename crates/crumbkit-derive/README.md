@@ -134,6 +134,11 @@ impl std::error::Error for ReviewedError {}
 The check covers a type that derives `Failure`. A failure written by hand and
 a code from `Code::runtime` escape it.
 
+A struct that derives `Row` marks its column fields, and the same attribute
+can name the child lines, a problem decided by an expression, the columns of a
+flattened field and a mirror of a foreign type; the documentation of the
+derive lists them.
+
 The type still implements `Display` and `std::error::Error` itself, by hand
 or with another derive. The documentation of each derive in this crate
 lists its keys and shows the code that it writes.
