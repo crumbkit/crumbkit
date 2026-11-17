@@ -4,8 +4,7 @@ crumbkit-durable replaces a file atomically, and locks a lock file. A
 reader of a replaced file sees the old bytes or the new bytes, and after a
 crash or a power loss the file holds one or the other, never part of
 either. A lock is held by one holder at a time, on the file that is at the
-path. The crate depends on no other crumbkit crate, so a tool that does not
-use crumbkit can use it too.
+path. The crate depends on no other crumbkit crate.
 
 ## Adding it
 
@@ -63,19 +62,15 @@ refuses a symbolic link and a file that another user owns on Unix, and
 waits until the deadline while another holder has the lock. Once it holds
 the lock, it checks on Unix that the file it locked is still the file at
 the path, and opens the path again when another program replaced or removed
-it. While no other program replaces or removes the file, two holders
-therefore never both return holding different files. The crate never removes
-a lock file, and
+it. While no other program replaces or removes the file, two holders never
+both hold different files. The crate never removes a lock file, and
 [`PathLock::still_current`] tells a holder that another program did. A
 failure returns a [`LockError`], which is `Busy` when the wait ends. A
-lock that was taken reports the time its acquire took through
-[`PathLock::waited`].
+taken lock reports how long its acquire took through [`PathLock::waited`].
 
-The owner check refuses root too, so a tool run under `sudo` cannot lock a file
-that another user owns. It also fails every acquire on a mount that reports a
-fixed owner for each file, because the file the caller just created then shows
-another uid. Such mounts include NFS with `root_squash` or `all_squash` and CIFS
-or FUSE mounted with `uid=`. Keep lock files on a local file system.
+The owner check applies to root too. It fails every acquire on a mount that
+reports a fixed owner, such as NFS with `root_squash` or `all_squash` or CIFS
+or FUSE with `uid=`, so keep lock files on a local file system.
 
 ## Platforms
 
