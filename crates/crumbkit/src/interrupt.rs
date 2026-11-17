@@ -28,7 +28,7 @@
 //! Windows the process exits with `STATUS_CONTROL_C_EXIT`. A Ctrl-C outside
 //! a window, and every SIGTERM, run the clean-ups and end the process. A
 //! command that never calls `check` therefore ignores the first Ctrl-C until
-//! its window closes, and the window is closed by dropping the [`Interrupt`].
+//! its window closes, and the window is closed when the last [`Interrupt`] drops.
 //!
 //! While a child holds the terminal (ADR-0042), the owner drops SIGINT.
 //! [`events::handles_interrupt`](crate::events::handles_interrupt) answers
@@ -99,6 +99,11 @@ static PENDING: OnceLock<Arc<AtomicBool>> = OnceLock::new();
 /// The functions that the owner runs before the process ends.
 static CLEAN_UPS: Mutex<Vec<fn()>> = Mutex::new(Vec::new());
 
+/// Whether the owner's thread runs and so holds the signals. The owner's
+/// observer answers from it, so an `install` that failed after it took its
+/// observer slot does not tell other crates that the signals have an owner.
+static OWNING: AtomicBool = AtomicBool::new(false);
+
 /// What the first [`install`] decided.
 static INSTALLED: OnceLock<Result<(), InstallError>> = OnceLock::new();
 
@@ -138,12 +143,11 @@ impl std::error::Error for InstallError {}
 pub struct Interrupts(());
 
 /// An open window: a Ctrl-C inside it asks the command to stop instead of
-/// ending the process. Dropping it closes the window and forgets the
-/// request.
+/// ending the process.
 ///
 /// The guards share one window. A second [`Interrupts::cooperate`] while a
-/// window is open joins it and keeps a request that has not been read, and the
-/// window closes when its last guard drops.
+/// window is open joins it and keeps a request that has not been read. The
+/// window closes, and the request is forgotten, when its last guard drops.
 #[derive(Debug)]
 pub struct Interrupt(());
 
@@ -272,7 +276,7 @@ impl Observer for Owner {
     }
 
     fn handles_interrupt(&self) -> bool {
-        true
+        OWNING.load(Ordering::SeqCst)
     }
 }
 
@@ -301,7 +305,7 @@ fn start() -> Result<(), InstallError> {
                 }
             }
         })
-        .map(drop)
+        .map(|_| OWNING.store(true, Ordering::SeqCst))
         .map_err(|error| InstallError::Os(error.kind()))
 }
 

@@ -251,3 +251,21 @@ fn a_ctrl_c_after_the_last_guard_dropped_ends_the_process() {
     assert_eq!(out.status.signal(), Some(SIGINT), "{out:?}");
     assert!(String::from_utf8_lossy(&out.stdout).contains("clean-up ran"));
 }
+
+#[test]
+fn a_guard_that_unwinds_in_a_panic_still_leaves_the_other_guard_open() {
+    if is_child() {
+        let first = interrupt::install().unwrap().cooperate();
+        let unwound = std::panic::catch_unwind(|| {
+            let _second = interrupt::install().unwrap().cooperate();
+            panic!("a command failed inside its window");
+        });
+        assert!(unwound.is_err());
+        raise(SIGINT).unwrap();
+        wait_for("the request", || first.requested());
+        assert_eq!(first.check(), Err(interrupt::Interrupted));
+        return;
+    }
+    let out = run_child("a_guard_that_unwinds_in_a_panic_still_leaves_the_other_guard_open");
+    assert!(out.status.success(), "{out:?}");
+}
