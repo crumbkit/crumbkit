@@ -172,7 +172,7 @@ fn a_headed_row_has_the_headed_form_and_lists_its_json_fields_with_text_and_base
 /// so its schema has no properties.
 #[derive(serde::Serialize, schemars::JsonSchema)]
 #[serde(transparent)]
-struct BookReport(serde_json::Value);
+struct BookReport(Value);
 
 impl crate::Row for BookReport {
     const COLUMNS: &'static [&'static str] = &[];
