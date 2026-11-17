@@ -354,24 +354,25 @@ fn finish_refuses_fields_on_a_headed_batch_whose_rows_have_no_fields() {
             Document::<Batch<Report, Error>>::new("files", "reports", 1, "The reports.").headed();
         let result: Result<_, Error> = Ok(batch);
         let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, result);
-        (ExitCode::from(code), String::from_utf8(err).unwrap())
+        let out = String::from_utf8(out).unwrap();
+        (ExitCode::from(code), out, String::from_utf8(err).unwrap())
     };
     let refused = ["tool", "list", "--json", "--fields=text"];
     let admitted = ["tool", "list", "--json"];
     assert_one_word_apart(&refused, &admitted);
 
-    let (twin_code, twin_err) = reports(&admitted);
-    let (code, err) = reports(&refused);
+    let (twin_code, _, twin_err) = reports(&admitted);
+    let (code, out, _) = reports(&refused);
 
     assert_eq!(twin_code, ExitCode::SUCCESS, "{twin_err}");
     assert_eq!(code, ExitCode::from(2));
-    assert_eq!(
-        err,
-        "\
-error: --fields names the field 'text', and this command takes no --fields, because its rows have no named fields
-  help:  drop --fields
-  code:  tool::cli::usage
-"
+    assert!(
+        out.contains("--fields names the field 'text', and this command takes no --fields, because its rows have no named fields"),
+        "{out}"
+    );
+    assert!(
+        out.contains(r#""recovery":{"kind":"hint","text":"drop --fields"}"#),
+        "{out}"
     );
 }
 

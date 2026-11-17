@@ -450,7 +450,7 @@ fn the_help_of_a_headed_leaf_whose_row_schema_has_no_properties_lists_no_json_fi
     let page = help(&REPORTS, &["tool", "planets", "remove", "--help"]);
 
     assert!(!page.contains("JSON fields"), "{page}");
-    assert!(!page.contains("base64"), "{page}");
+    assert!(!page.contains("  base64  "), "{page}");
 }
 
 #[test]

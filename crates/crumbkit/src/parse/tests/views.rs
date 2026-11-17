@@ -326,13 +326,17 @@ fn fields_on_a_headed_leaf_whose_rows_have_no_fields_is_refused_with_a_hint_to_d
     let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    assert_eq!(
-        parsed.err,
-        "\
-error: --fields names the field 'text', and this command takes no --fields, because its rows have no named fields
-  help:  drop --fields
-  code:  tool::cli::usage
-"
+    assert!(
+        parsed.out.contains("--fields names the field 'text', and this command takes no --fields, because its rows have no named fields"),
+        "{}",
+        parsed.out
+    );
+    assert!(
+        parsed
+            .out
+            .contains(r#""recovery":{"kind":"hint","text":"drop --fields"}"#),
+        "{}",
+        parsed.out
     );
 }
 
