@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crumbkit::RowReports;
 use tempfile::TempDir;
 
 use super::{CheckRow, Checked, SKILLS_CHECK, SkillsCheck, check_in};
@@ -80,6 +81,18 @@ fn check_lists_a_missing_copy_before_a_current_one() {
 }
 
 #[test]
+fn rows_sorted_by_reports_problem_list_the_rows_that_report_one_first() {
+    let home = Home::new();
+    home.put(".claude", &SKILL.installed());
+
+    let rows = home.check();
+
+    assert_eq!(states(&rows), [Checked::Missing, Checked::Current]);
+    assert!(rows[0].reports_problem());
+    assert!(!rows[1].reports_problem());
+}
+
+#[test]
 fn a_copy_from_another_version_differs_and_names_that_version() {
     let home = Home::new();
     home.put(".claude", &SKILL.installed());
@@ -126,12 +139,7 @@ fn every_current_copy_reports_no_problem() {
     let listing = check_in(&[SKILL], home.agent_dirs.clone(), &SkillsCheck::default());
 
     assert_eq!(states(listing.rows()), [Checked::Current, Checked::Current]);
-    assert!(!listing.rows().iter().any(reports));
-}
-
-/// Reports whether `row` reports a problem, so check exits with 1.
-fn reports(row: &CheckRow) -> bool {
-    <CheckRow as crumbkit::Row>::PROBLEM.is_some_and(|problem| problem.reports(row))
+    assert!(!listing.rows().iter().any(RowReports::reports_problem));
 }
 
 #[test]
@@ -195,7 +203,7 @@ fn a_tool_folder_that_links_elsewhere_is_linked_and_no_problem() {
         rows[1].reason.as_deref(),
         Some(format!("linked to {}", real.display()).as_str())
     );
-    assert!(!rows.iter().any(reports));
+    assert!(!rows.iter().any(RowReports::reports_problem));
 }
 
 #[cfg(unix)]

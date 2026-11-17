@@ -205,6 +205,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `Capture::whole`, `tail`, `discard`, `OverLimit` | Reading into an unbounded buffer | `read_to_end` on a child pipe | `read_to_end` | 0.2.0 | `process-run` |
 | `Capture::lines`, `line_queue`, `Lines` | A reader thread and a channel | `BufReader::new(child.stdout` | `BufReader::new\(.*stdout` | 0.2.0 | `process-run` |
 | `RunOptions::deadline`, `Cancel`, `Outcome`, `StopReason` | `try_wait` polling and a timer | A loop around `try_wait` | `try_wait` | 0.2.0 | `process-run` |
+| `RunOptions::overdue`, `Overdue`, `ChildFinished::was_overdue` | A hand-written wait loop with `recv_timeout` | A loop that reports a child past a time and keeps waiting | `recv_timeout` | 0.6.0 | `process-run` |
 | `Escalation`, `Signal` | `kill` then sleep then `kill -9` | A hand-written stop sequence | `\.kill\(\)` `SIGKILL` | 0.2.0 | `process-run` |
 | `Scope`, process group or job object | `setsid` or `process_group` by hand | `process_group(0)`, `pre_exec` | `process_group\(` `pre_exec` | 0.2.0 | `process-run` |
 | `Status::shell_code`, `ChildFinished::status` | `128 + signal` by hand | Arithmetic on a signal number | `128 \+` `\+ 128` | 0.2.0 | `signals` |

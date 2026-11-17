@@ -79,7 +79,6 @@ impl Child {
     }
 
     /// Returns the child's process id.
-    #[cfg(test)]
     pub(crate) fn id(&self) -> u32 {
         self.process.id()
     }
