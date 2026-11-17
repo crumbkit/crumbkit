@@ -13,6 +13,9 @@ A run that succeeds exits with 0. A failure exits with 1, and a refused
 command line exits with 2. A run whose rows report a problem and that has no
 failure exits with 1
 ([rows that report a problem](../output/listings/README.md#rows-that-report-a-problem)).
+A command that stops on the first Ctrl-C under the `interrupt` feature fails with
+`crumbkit::run::interrupted` and exits with 130, unless the tool record lists
+another exit for that code ([interrupts](../interrupts/README.md)).
 A command that hands the terminal to a child returns the child's exit code
 ([child processes](../output/child-processes.md)).
 

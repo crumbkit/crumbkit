@@ -60,6 +60,11 @@ clap_complete = { workspace = true, optional = true, features = ["unstable-dynam
 # `completion install` writes the completion file through crumbkit-durable's
 # `write_atomically`, so only the `complete` feature builds it.
 crumbkit-durable = { workspace = true, optional = true }
+# The `interrupt` feature owns SIGINT and SIGTERM through signal-hook, whose
+# `iterator` feature gives `Signals` on Unix and builds nothing on Windows.
+# crumbkit-usage, crumbkit-child and crumbkit-process already build
+# signal-hook, so it adds no crate (ADR-0003, ADR-0240).
+signal-hook = { workspace = true, features = ["iterator"], optional = true }
 
 # `finish` reads the number of columns of the terminal that standard output
 # is with rustix's safe `tcgetwinsize`, so a text table fits the terminal
@@ -84,6 +89,10 @@ tracing = ["dep:tracing"]
 # unstable dynamic completion, so a crumbkit minor release may change it
 # (ADR-0002).
 complete = ["dep:clap_complete", "dep:crumbkit-durable"]
+# `interrupt` is off by default, so the default build installs no signal
+# handler and has no signal-hook (ADR-0003, ADR-0240). It adds the
+# `interrupt` module.
+interrupt = ["dep:signal-hook"]
 # `derive` is off by default, so a tool that writes its `Failure` and `Row`
 # impls by hand does not build crumbkit-derive. The feature adds no syn
 # build, because clap_derive, which crumbkit always enables, already builds

@@ -19,6 +19,7 @@ fn every_crumbkit_code_is_in_all_once_and_spells_with_its_own_component_area_and
         "crumbkit::shell::unset",
         "crumbkit::shell::unknown",
         "crumbkit::shell::no_directory",
+        "crumbkit::run::interrupted",
     ];
     assert_eq!(spelled, expected);
 }

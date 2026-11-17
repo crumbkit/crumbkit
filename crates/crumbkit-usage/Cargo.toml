@@ -57,6 +57,9 @@ getrandom = { workspace = true }
 # A path with no version, because `cargo publish` then leaves this out and
 # the crates need no publish order among their dev-dependencies (ADR-0012).
 crumbkit-child = { path = "../crumbkit-child" }
+# The signal tests run the log beside crumbkit's `interrupt` owner, and
+# enabling the feature here builds it in every workspace test and clippy run.
+crumbkit = { workspace = true, features = ["interrupt"] }
 # The report's property tests generate runs of the log (ADR-0006).
 proptest = { workspace = true, features = ["std"] }
 # The schema tests check a record's id against the pattern of the checked-in
