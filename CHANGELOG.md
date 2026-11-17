@@ -6,6 +6,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.1](https://github.com/crumbkit/crumbkit/compare/v0.6.0...v0.6.1) - 2026-11-17
+
 ### Fixed
 
 - crumbkit: the `runs_program` schema description and the effects page say it is
@@ -26,7 +28,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   drops ([behaviour/interrupts]).
 - crumbkit-durable: on Unix, `PathLock::acquire` refuses a lock file that another
   user owns, even for root, with `PermissionDenied`. Acquires fail on mounts
-  that report a fixed owner, such as NFS `all_squash`; use a local file system ([behaviour/durable-files]).
+  that report a fixed owner, such as NFS `all_squash`; use a local file system
+  ([behaviour/durable-files]).
 - crumbkit-aliases: a `Source::table` entry with no words no longer expands to
   nothing. `aliases list` shows it with a problem, as for a file entry, and the
   root help leaves it out ([behaviour/parsing/aliases]).
