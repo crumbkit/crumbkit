@@ -4,7 +4,7 @@ This page covers what a tool's help pages show when the tool parses with
 [`parse`](../../../crates/crumbkit/src/parse.rs): the lines crumbkit adds,
 goal headings, runtime leaves, the word `help` and help topics. The other
 pages in this directory cover [goal headings](headings/README.md),
-[leaf examples and columns](examples.md),
+[leaf examples and columns](examples.md), [leaf notes](leaves/README.md),
 [`commands list`](commands-list.md), the
 [command reference](reference.md), [help weight](weight.md), the
 [skill check](skill-check/README.md), the [skill draft](skill-draft/README.md)
@@ -20,8 +20,9 @@ gives an example of each line.
 
 The lines print in this order, on the pages named:
 
-1. `Examples:` and, in `--help`, `Columns:` on a leaf, which
-   [Leaf examples and columns](examples.md) describes.
+1. `Examples:`, then `Notes:`, and in `--help` `Columns:`, on a leaf, which
+   [Leaf examples and columns](examples.md) and [Leaf notes](leaves/README.md)
+   describe.
 2. `Effects:` on a leaf that declares its effects, then `Writes:` on a leaf
    that declares write guards ([write guards](../effects/write-guards.md)),
    then `Output:` on a leaf that prints a stream, bytes, a headed batch or

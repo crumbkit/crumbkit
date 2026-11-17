@@ -15,6 +15,7 @@ use crate::help::{Help, extend};
 use crate::{Document, Prose, Row, Sink, Tool};
 
 mod document;
+mod notes;
 
 /// Returns a tool record whose help declares `leaves`.
 const fn leaves(leaves: &'static [Leaf]) -> Tool {

@@ -76,7 +76,7 @@ impl Example {
 /// follows clap's layout of long options: each command line, its
 /// description on the next line at clap's indent of 10 spaces, and a blank
 /// line between examples.
-pub(crate) fn examples(
+pub(super) fn examples(
     leaf: &Leaf,
     text: &str,
     long: bool,

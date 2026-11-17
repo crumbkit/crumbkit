@@ -7,6 +7,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit: `Leaf::notes` sets notes that a leaf's `-h` and `--help` print
+  under `Notes:` right after its examples. A tool that wrote a `Notes:`
+  section in `after_help` moves it there
+  ([behaviour/help/leaves]).
+- crumbkit-test: `check_help` fails a leaf note that is empty or holds a line
+  break ([behaviour/help/leaves]).
 - crumbkit-process: `RunOptions::overdue` calls a report once when a time
   passes while the child still runs, and the run goes on waiting without
   signalling the child. `ChildFinished::was_overdue` says whether it ran
@@ -2055,6 +2061,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/help]: docs/behaviour/help/README.md
 [behaviour/help/built-in]: docs/behaviour/help/built-in/README.md
 [behaviour/help/checks]: docs/behaviour/help/checks.md
+[behaviour/help/leaves]: docs/behaviour/help/leaves/README.md
 [behaviour/help/commands-list]: docs/behaviour/help/commands-list.md
 [behaviour/help/examples]: docs/behaviour/help/examples.md
 [behaviour/help/headings]: docs/behaviour/help/headings/README.md

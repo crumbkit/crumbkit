@@ -165,6 +165,9 @@ pub fn parse_from<C: CommandFactory + FromArgMatches>(
 ///   POSIX shell would split or expand prints in single quotes. `--help`
 ///   prints each example's description on the next line, in the layout of
 ///   clap's long options.
+/// - `-h` and `--help` list the leaf's notes (`Leaf::notes`) under `Notes:`
+///   right after the examples, each on its own line indented as an example
+///   line is.
 /// - `--help` lists the row type's columns under `Columns:` and the columns
 ///   that `--long` adds under `Columns that --long adds:`, each with the
 ///   first paragraph of its field's doc comment, which crumbkit reads from

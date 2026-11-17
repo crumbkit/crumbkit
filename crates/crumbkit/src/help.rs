@@ -265,14 +265,15 @@ impl Default for Help {
 /// text differs between `-h` and `--help`, so a compact group's command
 /// loses its own `before_help` and `before_long_help`.
 ///
-/// Each leaf's help ends with its `Examples:` section after the options, in
-/// `-h` and in `--help`, as `parse` prints it, and the section replaces the
-/// command's own `after_help` and `after_long_help`. `extend` adds no
+/// Each leaf's help ends with its `Examples:` section and then its `Notes:`
+/// section (`Leaf::notes`) after the options, in `-h` and in `--help`, as
+/// `parse` prints them, and the two sections replace the command's own
+/// `after_help` and `after_long_help`. `extend` adds no
 /// `Columns:` sections and no `Next:` line, because describing the columns
 /// builds the row type's JSON Schema, and `extend` runs before parsing and
 /// cannot know whether help will print. `extend` adds no `Effects:` line
 /// either, because `parse` prints that line with crumbkit's other lines. A
-/// leaf without examples leaves its command unchanged, and of two leaves
+/// leaf without examples and notes leaves its command unchanged, and of two leaves
 /// with one path only the first applies, as in `parse`.
 ///
 /// `extend` skips a group whose path names no command or a command without
@@ -318,8 +319,8 @@ pub fn extend(mut command: Command, tool: &Tool) -> Command {
             .chain(leaf.path().iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
-        let short = leaf::examples(leaf, &text, false, header, literal);
-        let long = leaf::examples(leaf, &text, true, header, literal);
+        let short = leaf::leaf_text(leaf, &text, false, header, literal);
+        let long = leaf::leaf_text(leaf, &text, true, header, literal);
         if let (Some(short), Some(long)) = (short, long) {
             *node = std::mem::take(node).after_help(short).after_long_help(long);
         }

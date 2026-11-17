@@ -4,7 +4,7 @@ shelf books               594         -       1142        0     0
 shelf books list          504         522     2168        0     0
 shelf books show          534         111     1787        0     0
 shelf books summarize     477         101     1720        0     0
-shelf books remove        716         114     1972        0     0
+shelf books remove        776         114     2032        0     0
 shelf commands            367         -       915         0     0
 shelf commands list       702         3043    4660        0     0
 shelf schemas             424         -       972         0     0
