@@ -82,7 +82,8 @@ impl LibraryFailure {
     const CODES: &'static [Code<'static>] = &[LIB_TIMEOUT, LIB_REFUSED];
 }
 
-impl Failure for LibraryFailure {    fn code(&self) -> Code<'_> { /* by kind */ }
+impl Failure for LibraryFailure {
+    fn code(&self) -> Code<'_> { /* by kind */ }
     fn recovery(&self) -> Recovery { /* by kind */ }
 }
 
@@ -93,8 +94,11 @@ enum AppError {
 }
 ```
 
-The test `crates/crumbkit/tests/derive_forward.rs` compiles this pattern in
-full.
+`AppError::CODES` leaves out the newtype's codes, so a test of the twin and
+recovery checks passes `LibraryFailure::CODES` as well.
+
+The test `crates/crumbkit/tests/derive_forward.rs` holds this pattern in
+full, with a stand-in library error.
 
 Why: ADR-0255.
 

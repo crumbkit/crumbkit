@@ -284,7 +284,8 @@ impl Keys {
                 let content;
                 let value = meta.value()?;
                 syn::bracketed!(content in value);
-                let codes = content.parse_terminated(Path::parse_mod_style, syn::Token![,])?;
+                let codes =
+                    content.parse_terminated(<Path as syn::parse::Parse>::parse, syn::Token![,])?;
                 set(&mut self.codes, codes.into_iter().collect(), twice)?;
             }
             "recovery" => set(&mut self.recovery, meta.value()?.parse()?, twice)?,
@@ -401,9 +402,15 @@ impl Keys {
                 format!("{owner} needs `code = ...` or `forward` in #[failure(...)]"),
             ));
         };
-        let code = match (code, self.codes) {
-            (Expr::Path(path), None) if path.qself.is_none() => CodeKey::Path(path.path),
-            (Expr::Path(path), Some(_)) if path.qself.is_none() => {
+        let path = match &code {
+            Expr::Path(path) if path.qself.is_none() && !names_field(&path.path, shape) => {
+                Some(path.path.clone())
+            }
+            _ => None,
+        };
+        let code = match (path, self.codes) {
+            (Some(path), None) => CodeKey::Path(path),
+            (Some(_), Some(_)) => {
                 return Err(syn::Error::new(
                     span,
                     format!(
@@ -411,8 +418,8 @@ impl Keys {
                     ),
                 ));
             }
-            (expr, Some(codes)) => CodeKey::Expr { expr, codes },
-            (_, None) => {
+            (None, Some(codes)) => CodeKey::Expr { expr: code, codes },
+            (None, None) => {
                 return Err(syn::Error::new(
                     span,
                     format!(
@@ -461,6 +468,16 @@ impl Keys {
             diagnostic: self.diagnostic,
         })))
     }
+}
+
+/// Returns whether `path` is one identifier that names a field of the
+/// variant, so `code = code` reads the field and is no constant.
+fn names_field(path: &Path, shape: &Shape) -> bool {
+    let Shape::Named(fields) = shape else {
+        return false;
+    };
+    path.get_ident()
+        .is_some_and(|ident| fields.iter().any(|field| field == ident))
 }
 
 /// Refuses a sentence that is empty, has a line break or has a `{`, because

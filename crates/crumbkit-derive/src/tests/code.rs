@@ -111,3 +111,21 @@ fn a_codes_key_beside_forward_is_refused() {
         "{message}"
     );
 }
+
+#[test]
+fn a_code_that_names_a_field_is_an_expression_that_reads_it() {
+    let output = expanded(quote! {
+        enum JobError {
+            #[failure(code = *held, codes = [], hint = "retry")]
+            Starred { held: Code<'static> },
+            #[failure(code = { held }, codes = [], hint = "retry")]
+            Braced { held: Code<'static> },
+            #[failure(code = held, codes = [], hint = "retry")]
+            Bare { held: Code<'static> },
+        }
+    });
+    assert!(
+        output.contains("Self :: Bare { held } => held ,"),
+        "{output}"
+    );
+}

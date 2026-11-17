@@ -1,7 +1,7 @@
 //! `code = EXPR`, `codes` and the forwarding of a foreign error through a
-//! newtype, through crumbkit's `Failure` trait. The newtype test copies the
+//! newtype, through crumbkit's `Failure` trait. The newtype test follows the
 //! "Forwarding a foreign error" example of
-//! docs/behaviour/failures/derive.md, so the documented pattern compiles.
+//! docs/behaviour/failures/derive.md in full.
 
 use std::fmt;
 

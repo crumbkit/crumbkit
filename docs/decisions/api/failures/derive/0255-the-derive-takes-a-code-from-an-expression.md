@@ -38,6 +38,8 @@ impl takes the trait's defaults and every method that `Failure` gains later,
 so there is no mirror trait to keep in step, and a test can call the newtype
 on its own. The adopter writes the newtype with `Display`, `Error` and `From`,
 and a pattern on the variant has one more level.
+The wrapper's derived `CODES` leaves out the newtype's codes, so a test of
+the twin and recovery checks passes the newtype's own list too.
 A `codes` list that misses a code the expression returns compiles, and
 `check_recoveries` and `check_twins` report the undeclared code when a test
 provokes it.
