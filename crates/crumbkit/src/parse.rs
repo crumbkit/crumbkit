@@ -16,6 +16,7 @@ use self::lines::add_help_lines;
 use self::message::{command_line_refusal, names_group};
 use self::page::print_page;
 use self::pick::{Picking, Step};
+use self::reach::reach;
 use self::walk::{help_word, program_stem, walk};
 use crate::{Run, Sink, Spelling, Tool};
 
@@ -26,6 +27,7 @@ mod lines;
 mod message;
 pub(crate) mod page;
 mod pick;
+pub(crate) mod reach;
 mod refused;
 mod stop;
 pub(crate) mod suggestion;
@@ -429,11 +431,14 @@ where
     // The words that the getters read, which only a run that answers `help`
     // or picks copies (ADR-0136).
     let mut caller: Option<Vec<OsString>> = None;
-    crate::events::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.
     command = command.disable_help_subcommand(true);
+    // A lazy group builds its subcommands when the typed words name it, and
+    // before anything below reads them (ADR-0246).
+    reach(&mut command, args.get(1..).unwrap_or_default());
+    crate::events::typed(&command, &args, spelling);
     // The tool record's root, which is the clap root unless `Help::root` names
     // a subcommand, answers `help` with topics when it has subcommands or
     // the tool declares topics, and then it also has crumbkit's
@@ -450,6 +455,8 @@ where
         }
         typed.get_or_insert_with(|| args.get(1..).unwrap_or_default().to_vec());
         caller = Some(without_help(&args, help.position));
+        // The words after `help` can name a lazy group too.
+        reach(&mut command, caller.as_deref().unwrap_or_default());
         ask_for_help(&command, &mut args, help.position);
     }
     // A leaf's `--help` describes its columns from the row type's JSON

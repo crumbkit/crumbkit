@@ -13,6 +13,7 @@ use crate::failures;
 use crate::help::command_line;
 use crate::recoveries::Failing;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note};
+use crate::tree;
 
 mod coverage;
 mod words;
@@ -120,6 +121,8 @@ pub fn check_twin(
     refused: &Failing<'_>,
     admitted: &[&str],
 ) -> Output {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     match twin(command, tool, examples, refused, Admitted::Words(admitted)) {
         Ok(output) => output,
         Err(problem) => {

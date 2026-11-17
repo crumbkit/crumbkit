@@ -78,6 +78,8 @@ mod tests;
 /// message names each page by its command line, such as
 /// `shelf books list -h`.
 pub fn check_help_goldens(command: &Command, pages: Pages<'_>, dir: impl AsRef<Path>) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, pages, dir.as_ref(), &assert);
 }

@@ -67,6 +67,7 @@ pub mod files;
 pub mod help;
 #[cfg(feature = "interrupt")]
 pub mod interrupt;
+mod lazy;
 mod listing;
 mod output;
 mod page;
@@ -108,11 +109,16 @@ pub use crate::expect::Expect;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::fetch::fetch_each;
 pub use crate::field::{Field, FieldValue};
+pub use crate::lazy::Lazy;
 pub use crate::listing::{Listing, NoSummary, Total};
 pub use crate::output::{
     DryRun, JsonLayout, Room, Run, Streaming, ViewFlags, Yes, finish, finish_to, stream, stream_to,
 };
 pub use crate::page::Page;
+pub use crate::parse::reach::reach;
+// crumbkit-test walks a tool's tree with each lazy group expanded.
+#[doc(hidden)]
+pub use crate::parse::reach::expanded_clone;
 pub use crate::parse::walk::command_path;
 pub use crate::parse::{
     Printed, Refused, Stop, Unparsed, parse, parse_from, parse_to, try_parse_to,

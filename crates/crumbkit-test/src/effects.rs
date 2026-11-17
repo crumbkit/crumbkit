@@ -118,6 +118,8 @@ const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 /// [`Effects::all_or_none`]: crumbkit::help::Effects::all_or_none
 /// [`Effects::per_item`]: crumbkit::help::Effects::per_item
 pub fn check_effects(command: &Command, tool: &Tool, allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut allowances = Allowances::new(allow, &RULES);
     let mut problems = Vec::new();
     let mut asks = tool.get_picker().is_some();

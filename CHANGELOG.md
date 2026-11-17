@@ -13,6 +13,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/help/leaves]).
 - crumbkit-test: `check_help` fails a leaf note that is empty or holds a line
   break ([behaviour/help/leaves]).
+- crumbkit: `Lazy<S>` is the field type of a command group that builds its
+  arguments only when the caller types the group's word, and `reach`
+  expands the lazy groups that typed words pass through
+  ([behaviour/help/built-in]).
 - crumbkit-derive: `#[derive(Row)]` takes `children`, `whole`, `problem_by`,
   `warning_by`, `flatten` and `remote = TYPE`, which write `CHILDREN`,
   `WHOLE`, `Problem::by`, `Warning::by`, a flattened field's columns and an
@@ -100,6 +104,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-aliases: breaking: `Aliases::expand` takes `&mut Command`, so it
+  expands a lazy group that the typed words name
+  ([behaviour/parsing/aliases]).
+- crumbkit-test: the checks walk a clone of a tree that holds a lazy group
+  with each group expanded ([behaviour/help/built-in]).
+- Lower benchmark limits, because the built-in groups of shelf are lazy
+  ([behaviour/help/built-in]).
 - crumbkit: OUTPUT-3 lists rows that report a problem first, then rows that
   report a warning, then the rest. `Document::only_problems` also lists the
   rows that report a warning, and its `Rows:` help line says so

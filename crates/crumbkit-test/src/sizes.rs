@@ -269,6 +269,8 @@ impl Class {
 /// each problem on its own line and names each command by its path from
 /// `command`, such as `shelf books list`.
 pub fn check_help_sizes(command: &Command, pages: Pages<'_>, budgets: &Budgets) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut problems = Vec::new();
     let pages = crate::pages::pages(command, pages, "-h", &mut problems);
     // A command whose page failed to render has no entry in `pages`, so the

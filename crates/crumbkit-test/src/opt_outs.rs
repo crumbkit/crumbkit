@@ -128,6 +128,8 @@ pub fn check_opt_outs(
     paths: Option<&PathBudgets<'_>>,
     dir: impl AsRef<Path>,
 ) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let departures = Departures {
         allow,
         budgets,

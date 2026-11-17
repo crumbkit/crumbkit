@@ -269,32 +269,32 @@ pub(crate) enum Resource {
     Commands {
         /// What to do with the commands.
         #[command(subcommand)]
-        command: CommandsCommand,
+        command: crumbkit::Lazy<CommandsCommand>,
     },
     /// Explore the JSON documents that shelf prints.
     Schemas {
         /// What to do with the documents.
         #[command(subcommand)]
-        command: SchemasCommand,
+        command: crumbkit::Lazy<SchemasCommand>,
     },
     /// Review shelf's own use.
     #[command(name = "self")]
     SelfCommand {
         /// What to review.
         #[command(subcommand)]
-        command: SelfCommand,
+        command: crumbkit::Lazy<SelfCommand>,
     },
     /// Give coding agents shelf's skill.
     Skills {
         /// What to do with the skill.
         #[command(subcommand)]
-        command: SkillsCommand,
+        command: crumbkit::Lazy<SkillsCommand>,
     },
     /// Set up shelf's completion in a shell.
     Completion {
         /// What to do with the completion.
         #[command(subcommand)]
-        command: CompletionCommand,
+        command: crumbkit::Lazy<CompletionCommand>,
     },
     /// Work with a person's aliases for shelf's commands.
     // The group is hidden, because aliases are for people, and an agent
@@ -303,7 +303,7 @@ pub(crate) enum Resource {
     Aliases {
         /// What to do with the aliases.
         #[command(subcommand)]
-        command: AliasesCommand,
+        command: crumbkit::Lazy<AliasesCommand>,
     },
 }
 

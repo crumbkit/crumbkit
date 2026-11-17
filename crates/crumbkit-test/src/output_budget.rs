@@ -96,6 +96,8 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 /// on its own line under the line `these examples break the output budget's
 /// contract:`.
 pub fn check_output_budget(command: &Command, tool: &Tool, examples: &Examples<'_>) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let problems = check(command, tool, examples, TIMEOUT);
     tree::report(
         "these examples break the output budget's contract",

@@ -202,6 +202,8 @@ mod tests;
 /// split or expand between single quotes, such as
 /// `shelf books list --author 'Jane Austen'`.
 pub fn check_examples(command: &Command, tool: &Tool, examples: &Examples<'_>) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     let skipped = check(command, tool, examples, &assert, TIMEOUT);
     for note in skipped {

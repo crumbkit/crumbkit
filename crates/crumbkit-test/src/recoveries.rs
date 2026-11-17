@@ -16,6 +16,7 @@ use crate::examples::Examples;
 use crate::failures;
 use crate::goldens::compare;
 use crate::runs::{Dir, Location};
+use crate::tree;
 
 mod chain;
 mod runtime;
@@ -443,6 +444,8 @@ impl<'a> Recoveries<'a> {
 /// its own line under `the tool's recoveries break crumbkit's recovery
 /// rules:`.
 pub fn check_recoveries(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, tool, recoveries, dir, &assert);
 }

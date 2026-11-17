@@ -190,6 +190,8 @@ impl<'a> PathBudgets<'a> {
 /// message lists each problem on its own line and names each command by its
 /// path from `command`, such as `shelf books list`.
 pub fn check_path_weights(command: &Command, pages: Pages<'_>, budgets: &PathBudgets<'_>) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let tool = pages.tool();
     let mut problems = Vec::new();
     let pages = crate::pages::pages(command, pages, "-h", &mut problems);

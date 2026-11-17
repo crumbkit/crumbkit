@@ -391,6 +391,28 @@ fn extend_gives_each_leaf_its_examples_and_no_columns() {
 }
 
 #[test]
+fn help_extend_applies_the_examples_of_a_lazy_group_s_leaves() {
+    const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"]).examples(EXAMPLES)]);
+
+    let lazy = Command::new("tool").subcommand(
+        Command::new("planets")
+            .subcommand_value_name("COMMAND")
+            .defer(|group| group.subcommand(Command::new("list").about("List the planets"))),
+    );
+    let mut tree = extend(lazy, &TOOL);
+    let list = tree
+        .find_subcommand_mut("planets")
+        .and_then(|planets| planets.find_subcommand_mut("list"))
+        .unwrap();
+
+    let short = list.render_help().to_string();
+    assert!(
+        short.ends_with("\n\nExamples:\n  tool planets list\n  tool planets list --all\n"),
+        "{short}"
+    );
+}
+
+#[test]
 fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse() {
     const TOOL: Tool = leaves(&[Leaf::new(&["planets", "list"])
         .examples(EXAMPLES)

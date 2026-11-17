@@ -34,8 +34,8 @@ text. A `Topic` would have moved the notes off the command's page.
 
 ## Consequences
 
-A leaf's notes are part of the tool record, so they are checked and listed
-with the leaf. A long note does not wrap at the terminal width, as an
+A leaf's notes are part of the tool record, so crumbkit-test checks them
+with the leaf. `commands list` does not show them. A long note does not wrap at the terminal width, as an
 example does not. A `RuntimeLeaf` has no notes.
 `docs/behaviour/help/leaves/README.md` describes the current behaviour.
 

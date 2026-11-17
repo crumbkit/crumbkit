@@ -123,9 +123,8 @@ where
                 // `commands list` and `schemas` read the command tree
                 // through `&mut run`, so each runs before `finish`
                 // takes `run` in turn.
-                Resource::Commands {
-                    command: CommandsCommand::List(args),
-                } => {
+                Resource::Commands { command } => {
+                    let CommandsCommand::List(args) = command.into_inner();
                     let result = crumbkit::commands::list(&mut run, &tool, &args);
                     let document = crumbkit::commands::COMMANDS_LIST;
                     crumbkit::finish(run, document, result)
@@ -137,7 +136,7 @@ where
                     let result = Ok::<_, crumbkit::Error>(crumbkit::Prose::new(location));
                     crumbkit::finish(run, lists::WHERE, result)
                 }
-                Resource::Schemas { command } => match command {
+                Resource::Schemas { command } => match command.into_inner() {
                     SchemasCommand::List(args) => {
                         let result = crumbkit::schemas::list(&mut run, &tool, &args);
                         let document = crumbkit::schemas::SCHEMAS_LIST;

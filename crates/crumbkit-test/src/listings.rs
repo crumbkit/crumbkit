@@ -64,6 +64,8 @@ const MOST_IDS: usize = 100;
 /// on its own line and names each command by its path from `command`, such
 /// as `shelf books list`.
 pub fn check_listings(command: &Command, allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut allowances = Allowances::new(allow, &[Rule::ListPages, Rule::ShowIds]);
     let mut problems = Vec::new();
     for visit in tree::walk(command) {

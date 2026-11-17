@@ -64,6 +64,8 @@ mod tests;
 /// problem on its own line and names each command by its path from
 /// `command`, such as `shelf books list`.
 pub fn check_filters(command: &Command, allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     // RUST-10: an option that takes one value must refuse a second one, and
     // this check leaves that rule to review. clap 4 refuses a repeated
     // `ArgAction::Set` argument by default, and a tool turns that off only

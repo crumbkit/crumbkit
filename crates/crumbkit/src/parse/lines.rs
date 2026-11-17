@@ -118,6 +118,21 @@ pub(super) fn add_help_lines(
     }
 }
 
+/// Hides the visible global flags of `node` from `-h`. [`reach`] calls it
+/// before it builds a command, so the copies that the build gives the
+/// subcommands are hidden too.
+///
+/// [`reach`]: super::reach::reach
+pub(super) fn hide_global_flags(node: &mut Command) {
+    *node = std::mem::take(node).mut_args(|arg| {
+        if arg.is_global_set() && !arg.is_hide_set() {
+            arg.hide_short_help(true)
+        } else {
+            arg
+        }
+    });
+}
+
 /// Hides the visible global flags of `node` from `-h`, builds `node` alone,
 /// and adds to `flags` the id and the text of each visible global flag of
 /// `node` whose id `flags` does not hold yet, in definition order.
@@ -126,13 +141,7 @@ pub(super) fn add_help_lines(
 /// subcommands, so those copies are hidden too. A global flag of a command
 /// above `node` is already in `flags`, from that command.
 fn add_global_flags(node: &mut Command, flags: &mut Vec<(String, String)>) {
-    *node = std::mem::take(node).mut_args(|arg| {
-        if arg.is_global_set() && !arg.is_hide_set() {
-            arg.hide_short_help(true)
-        } else {
-            arg
-        }
-    });
+    hide_global_flags(node);
     let _ = node.render_usage();
     for arg in node.get_arguments() {
         let id = arg.get_id().as_str();
@@ -407,13 +416,14 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
 }
 
 /// Returns a copy of `own`, one of the command's own `after_help` texts, or
-/// `None` when it is unset or empty or equals `examples`, the first of the
-/// leaf's sections. [`help::extend`] writes a leaf's examples and notes block in
-/// place of the command's `after_help` and `after_long_help`, so that text
-/// is the section that `parse` adds, and it prints once.
-fn own_text(own: Option<&StyledStr>, examples: Option<&String>) -> Option<StyledStr> {
+/// `None` when it is unset or empty or equals `block`, the first of the
+/// leaf's sections, which holds its examples and notes.
+/// [`help::extend`] writes that block in place of the command's `after_help`
+/// and `after_long_help`, so that text is the section that `parse` adds, and
+/// it prints once.
+fn own_text(own: Option<&StyledStr>, block: Option<&String>) -> Option<StyledStr> {
     let own = own?;
-    let rewritten = examples.is_some_and(|examples| *own == StyledStr::from(examples));
+    let rewritten = block.is_some_and(|block| *own == StyledStr::from(block));
     if *own == StyledStr::new() || rewritten {
         None
     } else {

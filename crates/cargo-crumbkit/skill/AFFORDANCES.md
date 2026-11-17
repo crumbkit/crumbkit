@@ -66,6 +66,7 @@ and its help content: leaves, examples, goal headings and topics.
 | `Recovery::Hint`, `Recovery::hint` | Nothing: this is the free-text form, for a repair that is no command of the tool | A hint that names a tool command misuses it | as `typed-recovery` | variant 0.1, `hint` 0.2.0 | `typed-recovery` |
 | `Recovery::None`, `Recovery::none`, `#[failure(no_next_step)]` | A blank recovery | A repairable failure says there is no next step | `Recovery::None` `no_next_step` | variant 0.1, the others 0.2.0 | `declared-code` |
 | `Failure::alternatives`, `#[failure(alternative = ..)]` | One sentence with two repairs | A hint joins two repairs with "or" | `hint.*\bor\b` | 0.1 | `alternatives` |
+| `Lazy<S>`, `reach` | An eager group enum whose arguments clap builds and drops on every run | A built-in or large group is a plain `#[command(subcommand)]` field in a tool whose runs are counted | `#\[command\(subcommand\)\]\s+command: \w+Command,` | 0.6.0 | per feature |
 | `Failure::causes`, `#[failure(causes = ..)]` | A fake chain of error sources | A type links errors through `source()` so each reason prints on a line | `fn source\(` | 0.6.0 | `failure-fields` |
 | `Failure::fields`, `Field`, `Field::shown`, `FieldValue`, `field(..)` | Values only in the message | A variant holds an id or path and has no field | `#\[failure\(` | 0.1 | `failure-fields` |
 | `Failure::url`, `#[failure(url = ..)]` | A link inside the message | A failure message holds `https://` | `"[^"]*https://` | 0.1 | `failure-fields` |

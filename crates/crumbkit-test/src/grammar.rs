@@ -99,6 +99,8 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 /// on its own line and names each command by its path from `command`, such
 /// as `shelf books list`.
 pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut allowances = Allowances::new(allow, &RULES);
     let mut problems = Vec::new();
     for &verb in verbs {
