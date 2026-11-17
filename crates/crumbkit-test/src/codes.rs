@@ -14,7 +14,7 @@ pub(crate) enum CodeLists<'a> {
 
 /// Returns every code of `lists`, in order, with a code that two lists share
 /// once for each list.
-pub(crate) fn declared<'a>(lists: CodeLists<'a>) -> Vec<Code<'a>> {
+pub(crate) fn declared(lists: CodeLists<'_>) -> Vec<Code<'_>> {
     match lists {
         CodeLists::One(list) => list.to_vec(),
         CodeLists::Many(lists) => lists.iter().flat_map(|list| list.iter().copied()).collect(),
