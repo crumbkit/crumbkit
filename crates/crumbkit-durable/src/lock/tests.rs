@@ -114,10 +114,18 @@ fn an_acquire_with_a_passed_deadline_tries_once() {
     // be the old file and opened again, whatever the deadline.
     #[cfg(unix)]
     {
-        let old = super::open(&path).unwrap();
+        let old = super::open(&path, crate::platform::Caller::current()).unwrap();
         replace(dir.path(), &path);
         let now = Instant::now();
-        let lock = super::lock_opened(&path, old, now, now, &|| false).unwrap();
+        let lock = super::lock_opened(
+            &path,
+            old,
+            now,
+            now,
+            &|| false,
+            crate::platform::Caller::current(),
+        )
+        .unwrap();
         assert!(lock.still_current().unwrap());
     }
 }
@@ -296,4 +304,70 @@ fn a_lock_taken_after_another_holder_released_reports_the_time_it_waited() {
         "{:?}",
         second.waited()
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_lock_file_owned_by_another_user_is_refused_naming_the_path_and_the_owner() {
+    use crate::platform::Caller;
+    use std::os::unix::fs::MetadataExt as _;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.lock");
+    drop(PathLock::acquire(&path, later()).unwrap());
+    let owner = fs::metadata(&path).unwrap().uid();
+    let other = owner.wrapping_add(1);
+
+    let error =
+        PathLock::acquire_unless_as(&path, later(), &|| false, Caller::uid(other)).unwrap_err();
+
+    let LockError::Io { step, source, .. } = &error else {
+        panic!("{error:?}");
+    };
+    assert_eq!(*step, super::LockStep::Open, "{error:?}");
+    assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
+    let message = source.to_string();
+    assert!(message.contains(&path.display().to_string()), "{message}");
+    assert!(message.contains(&format!("user {owner}")), "{message}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_lock_file_the_caller_owns_locks() {
+    use crate::platform::Caller;
+    use std::os::unix::fs::MetadataExt as _;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.lock");
+    drop(PathLock::acquire(&path, later()).unwrap());
+    let owner = fs::metadata(&path).unwrap().uid();
+
+    let _lock = PathLock::acquire_unless_as(&path, later(), &|| false, Caller::uid(owner)).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_replacement_file_owned_by_another_user_is_refused_when_the_path_is_opened_again() {
+    use crate::platform::Caller;
+    use std::os::unix::fs::MetadataExt as _;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.lock");
+    let old = super::open(&path, Caller::current()).unwrap();
+    let owner = old.metadata().unwrap().uid();
+    replace(dir.path(), &path);
+    let now = Instant::now();
+
+    let error = super::lock_opened(
+        &path,
+        old,
+        now,
+        now,
+        &|| false,
+        Caller::uid(owner.wrapping_add(1)),
+    )
+    .unwrap_err();
+
+    assert!(matches!(error, LockError::Io { .. }), "{error:?}");
+    assert_eq!(io_kind(error), std::io::ErrorKind::PermissionDenied);
 }
