@@ -1,5 +1,5 @@
 //! `Lazy`, the field type of a command group that builds its subcommands
-//! only when the caller types the group's word (ADR-0245).
+//! only when the caller types the group's word (ADR-0247).
 
 use clap::{ArgMatches, Command, Error, FromArgMatches, Subcommand};
 

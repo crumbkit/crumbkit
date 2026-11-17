@@ -1,4 +1,4 @@
-# ADR-0246. A group builds its arguments only when its word is typed
+# ADR-0247. A group builds its arguments only when its word is typed
 
 - Date: 2026-11-17
 - Status: accepted

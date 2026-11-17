@@ -1,4 +1,4 @@
-# ADR-0245. Built-in groups
+# ADR-0246. Built-in groups
 
 - Date: 2026-11-17
 - Status: accepted
@@ -11,4 +11,4 @@ group's word.
 
 ## Children
 
-- [ADR-0246. A group builds its arguments only when its word is typed](0246-a-group-builds-its-arguments-only-when-its-word-is-typed.md)
+- [ADR-0247. A group builds its arguments only when its word is typed](0247-a-group-builds-its-arguments-only-when-its-word-is-typed.md)

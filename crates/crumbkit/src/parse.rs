@@ -433,7 +433,7 @@ where
     // `Command::build` copies no subtree into a generated help tree.
     command = command.disable_help_subcommand(true);
     // A lazy group builds its subcommands when the typed words name it, and
-    // before anything below reads them (ADR-0245).
+    // before anything below reads them (ADR-0247).
     reach(&mut command, args.get(1..).unwrap_or_default());
     crate::events::typed(&command, &args, spelling);
     // The tool record's root, which is the clap root unless `Help::root` names
