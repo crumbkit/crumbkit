@@ -561,7 +561,7 @@ pub(crate) fn schema() -> Value {
                 "type": "boolean",
             },
             "runs_program": {
-                "description": "Whether the command runs a program that the caller names, such as the program after `--`. It is true only when open_world is true.",
+                "description": "Whether the command runs a program that the caller names, such as the program after `--`. It is true only when open_world is true and read_only is false.",
                 "type": "boolean",
             },
         },

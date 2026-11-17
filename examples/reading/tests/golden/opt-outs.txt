@@ -1,4 +1,4 @@
-reading has 7 opt-outs from the conventions and sets 1 budget.
+reading has 9 opt-outs from the conventions and sets 1 budget.
 
 examples/run: reading finished edit
   Reason: edit hands the terminal to the caller's editor, which waits for a person and prints no output to compare
@@ -25,6 +25,14 @@ effects/expect: reading finished edit
 effects/expect: reading to-read edit
   Reason: the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it
   Cost: Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read.
+
+effects/items: reading finished edit
+  Reason: the words after `--` are the editor program and its arguments, not items that the command writes, and the editor saves one file
+  Cost: An agent that retries after a failure cannot tell which items the first run changed.
+
+effects/items: reading to-read edit
+  Reason: the words after `--` are the editor program and its arguments, not items that the command writes, and the editor saves one file
+  Cost: An agent that retries after a failure cannot tell which items the first run changed.
 
 suite/skip: Check::CommandReference
   Reason: reading's commands come from the lists in the caller's directory, so no checked-in reference holds for every caller.

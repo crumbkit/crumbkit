@@ -27,8 +27,8 @@ Help prints the effects on one line after the examples, such as
 `Effects: destructive, idempotent, closed-world.` A command that changes
 something names whether it is idempotent, so a missing word never stands for
 "no". `commands list` writes the effects as an object under `effects` in each
-row, with MCP's four properties as booleans, and writes `null` for a command
-without effects ([commands list](../help/commands-list.md)).
+row, with MCP's four properties and `runs_program` as booleans, and writes
+`null` for a command without effects ([commands list](../help/commands-list.md)).
 
 `Effects::runs_program` marks a command that runs a program the caller names,
 such as `starmap run -- cargo run`. It also sets open-world, so no command
@@ -36,6 +36,8 @@ runs a caller's program without it. Help adds `runs a program the caller
 names` to the effects line, and `commands list` writes `runs_program` as a
 fifth boolean under `effects`. A tool that confirms before it starts such a
 program keys on it, because open-world alone also marks read-only commands.
+`runs_program` on read-only effects fails to compile in a const, because a
+command that runs a caller's program is not read-only.
 
 A leaf without effects reads as unknown, and an agent must assume that it may
 destroy data. crumbkit-test's

@@ -58,6 +58,24 @@
       "budget": null
     },
     {
+      "rule": "effects/items",
+      "applies_to": "reading finished edit",
+      "reason": "the words after `--` are the editor program and its arguments, not items that the command writes, and the editor saves one file",
+      "costs": [
+        "An agent that retries after a failure cannot tell which items the first run changed."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "effects/items",
+      "applies_to": "reading to-read edit",
+      "reason": "the words after `--` are the editor program and its arguments, not items that the command writes, and the editor saves one file",
+      "costs": [
+        "An agent that retries after a failure cannot tell which items the first run changed."
+      ],
+      "budget": null
+    },
+    {
       "rule": "suite/skip",
       "applies_to": "Check::CommandReference",
       "reason": "reading's commands come from the lists in the caller's directory, so no checked-in reference holds for every caller.",

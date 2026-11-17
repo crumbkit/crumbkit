@@ -1,6 +1,10 @@
 Open this reading list in your editor: $VISUAL, $EDITOR or vi
 
-Usage: reading finished edit [OPTIONS]
+Usage: reading finished edit [OPTIONS] [-- <EDITOR>...]
+
+Arguments:
+  [EDITOR]...
+          The editor program and its arguments, in place of $VISUAL and $EDITOR
 
 Options:
       --json
@@ -25,6 +29,9 @@ Examples:
   reading finished edit
           Open the finished list in your editor
 
-Effects: destructive, not idempotent, closed-world.
+  reading finished edit -- nano
+          Open the finished list in nano
+
+Effects: destructive, not idempotent, open-world, runs a program the caller names.
 Writes: replaces existing data, without a version check.
 Exit code: the command passes on the exit code of the editor.

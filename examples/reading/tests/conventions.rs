@@ -31,6 +31,9 @@ const SAVE: &str = "the person in the editor chooses whether to save the list, s
 /// The reason that each list's `edit` has no `--expect`.
 const WHOLE_FILE: &str = "the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it";
 
+/// The reason that each list's `edit` has no `all_or_none` or `per_item`.
+const PROGRAM_WORDS: &str = "the words after `--` are the editor program and its arguments, not items that the command writes, and the editor saves one file";
+
 /// reading's opt-outs from crumbkit's conventions, which every check reads.
 /// They name the `edit` command of each fixture list.
 const ALLOW: &[Allow] = &[
@@ -40,6 +43,8 @@ const ALLOW: &[Allow] = &[
     Allow::new(Rule::Yes, "to-read edit", SAVE),
     Allow::new(Rule::Expect, "finished edit", WHOLE_FILE),
     Allow::new(Rule::Expect, "to-read edit", WHOLE_FILE),
+    Allow::new(Rule::Items, "finished edit", PROGRAM_WORDS),
+    Allow::new(Rule::Items, "to-read edit", PROGRAM_WORDS),
 ];
 
 /// The budgets of the paths through reading's help.

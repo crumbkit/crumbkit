@@ -145,6 +145,10 @@ pub const TOOL: Tool = Tool::new().help(Help::new().root_verbs(
                 &["to-read", "list", "--json", "--full"],
                 "Print the list command of the to-read list with its arguments and examples as JSON",
             ),
+            Example::new(
+                &["to-read", "edit", "--json", "--full"],
+                "Print the edit command of the to-read list, with the program it runs, as JSON",
+            ),
         ])
         .effects(Effects::read_only())
         .document(COMMANDS_LIST),
