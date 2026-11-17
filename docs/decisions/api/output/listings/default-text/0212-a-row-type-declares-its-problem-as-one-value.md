@@ -1,7 +1,7 @@
 # ADR-0212. A row type declares its problem as one value
 
 - Date: 2026-11-12
-- Status: accepted, amended by ADR-0242
+- Status: accepted, amended by ADR-0242 and ADR-0244
 - Supersedes: ADR-0096, which it amends
 
 ## Context

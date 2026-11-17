@@ -1,17 +1,20 @@
-//! The note of the rows that report a problem, as `Row::PROBLEM`
+//! The notes of the rows that report a problem, as `Row::PROBLEM`
 //! decides, which make a run without a failure exit with
 //! [`exit::problem_rows`](crate::exit::problem_rows) (ADR-0050), and the
 //! rows that the default text of a listing prints, which `Row::in_default_text`
-//! and `Document::only_problems` choose (ADR-0138, ADR-0157). The
-//! `row::problems` module counts which rows report one.
+//! and `Document::only_problems` choose (ADR-0138, ADR-0157), and the note
+//! of the rows that report a warning, as `Row::WARNING` decides, which
+//! leaves the exit code alone (ADR-0244). The `row::problems` module counts
+//! which rows report either.
 
+use crate::row::problems::Marks;
 use crate::view::{Table, View};
 use crate::{Document, Row, RowReports, Rows, Shape, exit};
 
 /// The rule that picks the rows that the default text of a listing lists
-/// (ADR-0138, ADR-0157): each row that reports a problem, and each other
-/// row whose `Row::in_default_text` is true unless the document lists only
-/// the rows that report a problem.
+/// (ADR-0138, ADR-0157, ADR-0244): each row that reports a problem or a
+/// warning, and each other row whose `Row::in_default_text` is true unless
+/// the document lists only the rows that report a problem or a warning.
 #[derive(Clone, Copy)]
 pub(super) struct DefaultText {
     /// Whether the document is marked with [`Document::only_problems`].
@@ -31,12 +34,13 @@ impl DefaultText {
 
     /// Reports whether the default text lists `row`. `Row::in_default_text`
     /// is asked first, because its default answers without the work that
-    /// `Row::PROBLEM` can do, such as serializing the problem field.
+    /// `Row::PROBLEM` and `Row::WARNING` can do, such as serializing the
+    /// problem field.
     fn lists<R: Row>(self, row: &R) -> bool {
         if self.only_problems {
-            row.reports_problem()
+            row.reports_problem() || row.reports_warning()
         } else {
-            row.in_default_text() || row.reports_problem()
+            row.in_default_text() || row.reports_problem() || row.reports_warning()
         }
     }
 }
@@ -69,4 +73,22 @@ pub(super) fn note(problems: usize, description: Option<&str>) -> String {
     format!(
         "note: {problems} of the {description} {verb} a problem, so the command exits with {exit}."
     )
+}
+
+/// Returns the note that says how many rows report a warning, such as
+/// `note: 2 of the aliases report a warning.`, with `rows` when there is no
+/// description. The text prints it on standard error when `warnings` is
+/// more than 0 and the run has no failure.
+pub(super) fn warning_note(warnings: usize, description: Option<&str>) -> String {
+    let description = description.unwrap_or("rows");
+    let verb = if warnings == 1 { "reports" } else { "report" };
+    format!("note: {warnings} of the {description} {verb} a warning.")
+}
+
+/// Returns the notes that name `marks`, in order: the problem note, then the
+/// warning note, each only when its count is more than 0.
+pub(super) fn notes(marks: Marks, description: Option<&str>) -> Vec<String> {
+    let problems = (marks.problems > 0).then(|| note(marks.problems, description));
+    let warnings = (marks.warnings > 0).then(|| warning_note(marks.warnings, description));
+    problems.into_iter().chain(warnings).collect()
 }

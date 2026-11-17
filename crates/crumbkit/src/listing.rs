@@ -6,6 +6,7 @@ use std::fmt;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Serialize, Serializer};
 
+use crate::row::problems::Marks;
 use crate::{Row, Shape, Step};
 
 #[cfg(test)]
@@ -76,11 +77,11 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The most rows that the command's `--limit` takes, which the footer
     /// names, or `None` when `--limit` has no upper bound.
     bound: Option<usize>,
-    /// The number of rows that report a problem ([`Row::PROBLEM`])
-    /// among every row that [`Listing::from_all`] was given, when its limit
-    /// cut some of them and at least one of them reports a problem, or
-    /// `None` when the listing counts the rows it holds.
-    problems: Option<usize>,
+    /// The numbers of rows that report a problem ([`Row::PROBLEM`]) and a
+    /// warning ([`Row::WARNING`]) among every row that [`Listing::from_all`]
+    /// was given, when its limit cut some of them and at least one of them
+    /// reports either, or `None` when the listing counts the rows it holds.
+    marks: Option<Marks>,
 }
 
 impl<R: Row> Listing<R> {
@@ -111,7 +112,7 @@ impl<R: Row> Listing<R> {
             long_note: None,
             steps: Vec::new(),
             bound: None,
-            problems: None,
+            marks: None,
         }
     }
 
@@ -144,21 +145,20 @@ impl<R: Row> Listing<R> {
     /// remote backend fetches one page and calls [`Listing::new`] instead.
     ///
     /// When the limit cuts rows, it counts the rows that report a problem
-    /// ([`Row::PROBLEM`]) among
+    /// ([`Row::PROBLEM`]) or a warning ([`Row::WARNING`]) among
     /// every row before it cuts them, so `crumbkit::finish` exits with the
-    /// problem exit and its note counts every such row although the page
+    /// problem exit and its notes count every such row although the page
     /// holds fewer. A listing from [`Listing::new`] or
     /// [`Listing::uncounted`] holds one page that the tool fetched, so
     /// crumbkit counts only the rows of that page.
     #[must_use]
     pub fn from_all(mut rows: Vec<R>, limit: Option<usize>) -> Self {
         let total = rows.len();
-        let problems = match limit {
-            // A count of 0 over every row is also the count of the rows the
-            // listing keeps, so it is stored as `None`, as for a listing that
-            // its limit did not cut.
+        let marks = match limit {
+            // No marked row is also what the listing keeps, so it is stored
+            // as `None`, as for a listing that its limit did not cut.
             Some(limit) if limit < total => {
-                Some(crate::row::problems::count(&rows)).filter(|&n| n > 0)
+                Some(crate::row::problems::count(&rows)).filter(|&marks| !marks.is_empty())
             }
             _ => None,
         };
@@ -166,7 +166,7 @@ impl<R: Row> Listing<R> {
             rows.truncate(limit);
         }
         let mut listing = Self::new(rows, total);
-        listing.problems = problems;
+        listing.marks = marks;
         listing
     }
 }
@@ -233,7 +233,7 @@ impl<R: Row, S> Listing<R, S> {
             long_note: self.long_note,
             steps: self.steps,
             bound: self.bound,
-            problems: self.problems,
+            marks: self.marks,
         }
     }
 
@@ -452,8 +452,8 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Li
         self.bound
     }
 
-    fn problems(&self) -> usize {
-        self.problems
+    fn marks(&self) -> Marks {
+        self.marks
             .unwrap_or_else(|| crate::row::problems::count(&self.rows))
     }
 }

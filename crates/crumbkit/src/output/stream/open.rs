@@ -8,6 +8,7 @@ use std::process::ExitCode;
 use super::{State, Streaming};
 use crate::help::view::{Kind, Printed};
 use crate::output::{Run, children, fields, lines, table};
+use crate::row::problems::Marks;
 use crate::{Document, Row, Sink, Stream};
 
 /// Opens the stream on `sink`, as [`stream_to`](super::stream_to)
@@ -58,7 +59,7 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         budget,
         sent: 0,
         items: 0,
-        problems: 0,
+        marks: Marks::default(),
         #[cfg(feature = "tracing")]
         span: crate::trace::spans::finish(),
     };

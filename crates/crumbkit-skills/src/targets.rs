@@ -61,8 +61,9 @@ pub(crate) fn agent_dirs(
 /// each target. The listing holds the rows of each skill of `skills` in
 /// turn. With no home directory, or when none of the agent skills
 /// directories exists, the listing is empty, and the document's empty note
-/// asks for `--dir`. The rows that report a problem come first (OUTPUT-3),
-/// and the other rows keep their order.
+/// asks for `--dir`. The rows that report a problem come first, then the
+/// rows that report a warning (OUTPUT-3), and the other rows keep their
+/// order.
 pub(crate) fn listing<R: Row>(
     skills: &[Skill],
     dir: Option<&Path>,
@@ -88,7 +89,7 @@ pub(crate) fn listing<R: Row>(
             Err((dir, reason)) => all.push(refused(skill, dir, reason)),
         }
     }
-    all.sort_by_key(|row| !row.reports_problem());
+    all.sort_by_key(|row| (!row.reports_problem(), !row.reports_warning()));
     Listing::from_all(all, None).described("skills directories")
 }
 

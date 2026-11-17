@@ -1,7 +1,7 @@
 # ADR-0157. A row type chooses which rows the default text lists
 
 - Date: 2026-10-25
-- Status: accepted
+- Status: accepted, amended by ADR-0244
 - Supersedes: ADR-0138 and ADR-0153, which it amends
 - Missed: ADR-0138 let only a document choose which rows the default text lists, and only by whether a row reports a problem, although a tool can also want to leave out rows that report none. ADR-0153 dropped the header only for a listing that holds no rows or lists only its problem rows, and had no case for a listing whose default text leaves out its rows for another reason.
 
@@ -67,6 +67,7 @@ each row. A handler that filtered its own rows would also filter the JSON.
 - [ADR-0140. The `Rows:` line names every view that lists every row](0140-the-rows-line-names-every-view-that-lists-every-row.md)
 - [ADR-0212. A row type declares its problem as one value](0212-a-row-type-declares-its-problem-as-one-value.md)
 - [ADR-0242. A row answers whether it reports a problem through RowReports](0242-a-row-answers-whether-it-reports-a-problem-through-rowreports.md)
+- [ADR-0244. A row can report a warning that does not change the exit code](0244-a-row-can-report-a-warning-that-does-not-change-the-exit-code.md)
 
 ## Consequences
 

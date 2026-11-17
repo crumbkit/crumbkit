@@ -34,21 +34,78 @@ fn the_expansion_of_the_sample_struct_matches_the_documented_expansion() {
             #[row(long)]
             page_count: u32,
             #[row(column, problem)]
-            warning: Option<String>,
+            damage: Option<String>,
+            #[row(column, warning)]
+            wear: Option<String>,
             isbn: String,
         }
     };
     let expected = quote! {
         #[automatically_derived]
         impl ::crumbkit::Row for Book {
-            const COLUMNS: &'static [&'static str] = &["id", "name", "warning"];
+            const COLUMNS: &'static [&'static str] = &["id", "name", "damage", "wear"];
             const LONG_COLUMNS: &'static [&'static str] = &["pageCount"];
             const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
             const PROBLEM: ::std::option::Option<::crumbkit::Problem<Self>> =
-                ::std::option::Option::Some(::crumbkit::Problem::field("warning"));
+                ::std::option::Option::Some(::crumbkit::Problem::field("damage"));
+            const WARNING: ::std::option::Option<::crumbkit::Warning<Self>> =
+                ::std::option::Option::Some(::crumbkit::Warning::field("wear"));
         }
     };
     assert_eq!(expanded(input), expected.to_string());
+}
+
+#[test]
+fn each_refused_warning_use_is_a_compile_error_that_names_the_field() {
+    let cases: Vec<(TokenStream, &str)> = vec![
+        (
+            quote! {
+                struct Check {
+                    #[row(column, warning)] wear: Option<String>,
+                    #[row(column, warning)] tear: Option<String>,
+                }
+            },
+            "the fields `wear` and `tear` both give `warning`, and a row has at most one warning field",
+        ),
+        (
+            quote! { struct Check { #[row(long, warning)] wear: Option<String> } },
+            "the field `wear` gives `warning` without `column`, and the warning field is one of the compact columns",
+        ),
+        (
+            quote! { struct Check { #[row(column, problem, warning)] wear: Option<String> } },
+            "the field `wear` gives both `problem` and `warning`, and a row that reports a problem counts only as a problem",
+        ),
+    ];
+    for (input, expected) in cases {
+        assert_eq!(refusal(input), expected);
+    }
+}
+
+#[test]
+fn the_derive_names_a_warning_field_in_warning() {
+    let output = expanded(quote! {
+        struct Book {
+            #[row(column)]
+            id: u32,
+            #[row(column, warning)]
+            wear: Option<String>,
+        }
+    });
+    assert!(output.contains(r#"Warning :: field ("wear")"#), "{output}");
+}
+
+#[test]
+fn the_derive_refuses_problem_and_warning_on_one_field() {
+    let message = refusal(quote! {
+        struct Book {
+            #[row(column, problem, warning)]
+            damage: Option<String>,
+        }
+    });
+    assert!(
+        message.contains("gives both `problem` and `warning`"),
+        "{message}"
+    );
 }
 
 #[test]
@@ -65,6 +122,8 @@ fn a_struct_without_row_keys_gets_empty_lists_and_no_problem_field() {
             const LONG_COLUMNS: &'static [&'static str] = &[];
             const UNCUT_COLUMNS: &'static [&'static str] = &[];
             const PROBLEM: ::std::option::Option<::crumbkit::Problem<Self>> =
+                ::std::option::Option::None;
+            const WARNING: ::std::option::Option<::crumbkit::Warning<Self>> =
                 ::std::option::Option::None;
         }
     };
@@ -178,10 +237,10 @@ fn each_refused_use_is_a_compile_error_that_names_the_field_or_the_type() {
             quote! {
                 struct Check {
                     #[row(column, problem)] error: Option<String>,
-                    #[row(column, problem)] warning: Option<String>,
+                    #[row(column, problem)] damage: Option<String>,
                 }
             },
-            "the fields `error` and `warning` both give `problem`, and a row has at most one problem field".to_owned(),
+            "the fields `error` and `damage` both give `problem`, and a row has at most one problem field".to_owned(),
         ),
         (
             quote! { #[row(column)] struct Book { id: u32 } },

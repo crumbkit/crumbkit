@@ -13,12 +13,12 @@ and the [help checks](checks.md).
 ## Lines crumbkit adds to a help page
 
 `parse` keeps clap's help template and adds crumbkit's lines after the
-command's own `after_help` and `after_long_help`. crumbkit changes only the
+command's `after_help` and `after_long_help`. crumbkit changes only the
 commands that the typed words pass through, and it never clones the command
 tree. The rustdoc of [`parse_to`](../../../crates/crumbkit/src/parse.rs)
 gives an example of each line.
 
-The lines print in this order, each only on the pages named:
+The lines print in this order, on the pages named:
 
 1. `Examples:` and, in `--help`, `Columns:` on a leaf, which
    [Leaf examples and columns](examples.md) describes.
@@ -37,6 +37,7 @@ The lines print in this order, each only on the pages named:
    `Children::help`
    ([rows with children](../output/shapes/README.md#rows-with-children)),
    then `Problems:` on a leaf whose row type names a problem field, then
+   `Warnings:` on a leaf whose row type names a warning field, then
    `Rows:` when the document [lists only problem rows](../output/listings/README.md#a-listing-that-lists-only-its-problem-rows),
    then `Long note:` for a declared [long note](../output/listings/README.md#a-note-for---long).
 3. In `-h`, one line that names the visible global flags of the root and of

@@ -14,9 +14,10 @@ use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
 use super::{JsonLayout, Run, fields, problems};
 use crate::help::view::{Kind, Printed};
+use crate::row::problems::Marks;
 use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
-use crate::{AsFailure, Document, Failure, Row, RowReports, Sink, Spelling, Stream, codes, exit};
+use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
 mod open;
 mod render;
@@ -226,8 +227,9 @@ pub struct Streaming<R, O, W> {
     sent: usize,
     /// The number of items printed.
     items: usize,
-    /// The number of printed items that report a problem (ADR-0050).
-    problems: usize,
+    /// The numbers of printed items that report a problem and a warning
+    /// (ADR-0050, ADR-0244).
+    marks: Marks,
     /// The `crumbkit.finish` span, which records the exit code (ADR-0030).
     #[cfg(feature = "tracing")]
     span: tracing::Span,
@@ -283,7 +285,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             return ControlFlow::Break(());
         }
         self.items += 1;
-        self.problems += usize::from(item.reports_problem());
+        self.marks.add(item);
         self.send()
     }
 
@@ -357,8 +359,10 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         if empty {
             self.note_empty();
         }
-        if !self.view.is_json() && !self.failed && self.state == State::Open && self.problems > 0 {
-            self.note(Message::Note, &problems::note(self.problems, None));
+        if !self.view.is_json() && !self.failed && self.state == State::Open {
+            for note in problems::notes(self.marks, None) {
+                self.note(Message::Note, &note);
+            }
         }
         // The note follows the lines that the stream printed, so a stream
         // that the output budget stopped prints it too, as a cut `finish`
@@ -379,7 +383,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             self.exit
         } else if self.state == State::Broken {
             1
-        } else if self.problems > 0 {
+        } else if self.marks.problems > 0 {
             exit::problem_rows()
         } else {
             0

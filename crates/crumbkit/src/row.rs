@@ -11,6 +11,8 @@ mod problem;
 pub(crate) mod problems;
 mod reports;
 mod rows;
+mod rule;
+mod warning;
 
 pub use children::Children;
 pub use line::Line;
@@ -19,6 +21,7 @@ pub use problem::Problem;
 pub use reports::RowReports;
 pub(crate) use rows::Sealed;
 pub use rows::{Rows, Shape};
+pub use warning::Warning;
 
 pub(crate) use fields::{can_be_empty, properties};
 
@@ -126,14 +129,20 @@ pub trait Row: Serialize + JsonSchema {
     /// exit code, the note and the help that follow.
     const PROBLEM: Option<Problem<Self>> = None;
 
+    /// Which rows report a warning, and the column that shows it, or `None`
+    /// when no row does (ADR-0244). A warning marks a row that deserves
+    /// attention and leaves the exit code at 0. [`Warning`] describes the
+    /// note and the help that follow.
+    const WARNING: Option<Warning<Self>> = None;
+
     /// Reports whether the default text of a listing lists the row, which
     /// is true for every row by default (ADR-0157).
     ///
     /// The default text is the text table, or the rows' own text lines,
     /// without `--json`, `--long` or `--fields`. It lists a row that
-    /// reports a problem, as [`Row::PROBLEM`] decides, whatever this
-    /// returns, so the note that counts those rows never counts a row that
-    /// the text leaves out. It lists each other row for which this returns
+    /// reports a problem or a warning, as [`Row::PROBLEM`] and
+    /// [`Row::WARNING`] decide, whatever this returns, so a note that counts
+    /// those rows never counts a row that the text leaves out. It lists each other row for which this returns
     /// true, and none of them when the listing's document is marked with
     /// [`Document::only_problems`](crate::Document::only_problems).
     /// `--long` and `--fields` print every row, and `--json` holds every

@@ -236,16 +236,45 @@ The [help pages](../../help/README.md) describe the `Problems:` line and what
 
 Why: ADR-0050, ADR-0212.
 
+## Rows that report a warning
+
+A row type says which rows deserve attention without failing the run with
+[`Row::WARNING`](../../../../crates/crumbkit/src/row.rs), which holds a
+[`Warning`](../../../../crates/crumbkit/src/row/warning.rs). `Warning::field`
+and `Warning::by` work as `Problem::field` and `Problem::by` do.
+[`RowReports::reports_warning`](../../../../crates/crumbkit/src/row/reports.rs)
+is true when `WARNING` marks the row and `PROBLEM` does not, so a row counts
+once, as its worse state.
+
+- A run whose rows report only warnings exits with 0. The exit depends on
+  problems alone.
+- In text, a note on standard error follows the problem note and precedes
+  the tool's note:
+  `note: 2 of the skills directories report a warning.` It prints in
+  `finish`, for a headed batch and for a stream, and not for a run with a
+  failure. `Listing::from_all` counts the warning rows that its limit cut.
+- With `--json`, each row's own column holds the state, so nothing new
+  prints.
+- The default text lists a row that reports a warning whatever
+  `in_default_text` returns, so the note never counts a row that the text
+  hides.
+- OUTPUT-3 puts the rows that report a problem first, then the rows that
+  report a warning, then the rest.
+- `Warning::field` adds a `Warnings:` line to the leaf's help after the
+  `Problems:` line.
+
+Why: ADR-0244.
+
 ## A listing that lists only its problem rows
 
 [`Document::only_problems`](../../../../crates/crumbkit/src/document.rs) on a
 listing's document makes the default text list only the rows that
-`Row::PROBLEM` marks, under the summary lines.
+`Row::PROBLEM` or `Row::WARNING` marks, under the summary lines.
 
 - Without `--json`, `--long` or `--fields`, the text prints the summary
-  lines, the header and the rows that report a problem with their child
-  lines. When no row reports a problem, standard output holds the summary
-  lines alone, with no header.
+  lines, the header and the rows that report a problem or a warning with
+  their child lines. When no row reports either, standard output holds the
+  summary lines alone, with no header.
 - `--long` and `--fields` print every row, and `--json` holds every row
   unchanged.
 - The exit, the problem note, the footer, the tool's note, the `Next:`
@@ -254,12 +283,12 @@ listing's document makes the default text list only the rows that
   the listing, and the output budget's cut line counts the printed rows
   against the listing's total.
 - The leaf offers `--long` even when its row type has no long columns.
-  Its `-h` and `--help` print a line after the `Problems:` line:
-  `Rows: the default text lists only the rows that report a problem, and
-  --long, --fields or --json lists every row.` The line leaves out a flag
+  Its `-h` and `--help` print a line after the `Problems:` and `Warnings:` lines:
+  `Rows: the default text lists only the rows that report a problem or a
+  warning, and --long, --fields or --json lists every row.` The line leaves out a flag
   that the leaf does not offer.
 
-Why: ADR-0138, ADR-0140.
+Why: ADR-0138, ADR-0140, ADR-0244.
 
 ## Rows that the default text lists
 
@@ -271,9 +300,9 @@ lists every item, and a real run lists only the items that need the
 caller's own step.
 
 - Without `--json`, `--long` or `--fields`, the text lists each row that
-  reports a problem and each other row whose `in_default_text` is true.
-  A row that reports a problem is always listed, so the problem note never
-  counts a row that the text leaves out (OUTPUT-3). On a
+  reports a problem or a warning and each other row whose `in_default_text`
+  is true. Such a row is always listed, so the notes never count a row that
+  the text leaves out (OUTPUT-3). On a
   [listing that lists only its problem rows](#a-listing-that-lists-only-its-problem-rows),
   the text leaves out every other row, whatever the method returns.
 - A tool puts the rows that the default text lists first, as it puts the

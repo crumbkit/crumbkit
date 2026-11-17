@@ -4,7 +4,8 @@
 use std::fmt;
 
 use serde::Serialize;
-use serde_json::Value;
+
+use super::rule::Rule;
 
 /// Which rows of the row type `R` report a problem, and the column that
 /// shows it (ADR-0096, ADR-0212).
@@ -59,20 +60,7 @@ use serde_json::Value;
 // `Clone`, `Copy` and `Debug` are written by hand, because their derives
 // would bound `R`, which a function pointer does not need. A function pointer
 // has no reliable equality, so `Problem` has no `PartialEq`.
-pub struct Problem<R: ?Sized> {
-    /// The column that shows the problem, as the type serializes it.
-    column: &'static str,
-    /// How a row is decided to report a problem.
-    rule: Rule<R>,
-}
-
-/// How [`Problem`] decides whether a row reports a problem.
-enum Rule<R: ?Sized> {
-    /// The value of the column's field decides.
-    Field,
-    /// The function decides.
-    By(fn(&R) -> bool),
-}
+pub struct Problem<R: ?Sized>(Rule<R>);
 
 impl<R: ?Sized> Problem<R> {
     /// Returns the problem of the field `field`, as the type serializes it,
@@ -86,10 +74,7 @@ impl<R: ?Sized> Problem<R> {
     /// can be null.
     #[must_use]
     pub const fn field(field: &'static str) -> Self {
-        Self {
-            column: field,
-            rule: Rule::Field,
-        }
+        Self(Rule::field(field))
     }
 
     /// Returns the problem that `decides` reports for each row, shown in the
@@ -100,26 +85,20 @@ impl<R: ?Sized> Problem<R> {
     /// shows the state that decides the exit.
     #[must_use]
     pub const fn by(column: &'static str, decides: fn(&R) -> bool) -> Self {
-        Self {
-            column,
-            rule: Rule::By(decides),
-        }
+        Self(Rule::by(column, decides))
     }
 
     /// Returns the column that shows the problem.
     #[must_use]
     pub const fn get_column(self) -> &'static str {
-        self.column
+        self.0.column()
     }
 
     /// Returns the field that [`Problem::field`] named, or `None` for
     /// [`Problem::by`].
     #[must_use]
     pub const fn get_field(self) -> Option<&'static str> {
-        match self.rule {
-            Rule::Field => Some(self.column),
-            Rule::By(_) => None,
-        }
+        self.0.named_field()
     }
 }
 
@@ -131,19 +110,7 @@ impl<R: Serialize + ?Sized> Problem<R> {
     /// reports the error and exits with 1.
     #[must_use]
     pub fn reports(self, row: &R) -> bool {
-        match self.rule {
-            Rule::By(decides) => decides(row),
-            Rule::Field => {
-                let Ok(value) = serde_json::to_value(row) else {
-                    return false;
-                };
-                match value.get(self.column) {
-                    None | Some(Value::Null | Value::Bool(false)) => false,
-                    Some(Value::String(text)) => !text.is_empty(),
-                    Some(_) => true,
-                }
-            }
-        }
+        self.0.reports(row)
     }
 }
 
@@ -155,24 +122,9 @@ impl<R: ?Sized> Clone for Problem<R> {
 
 impl<R: ?Sized> Copy for Problem<R> {}
 
-impl<R: ?Sized> Clone for Rule<R> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<R: ?Sized> Copy for Rule<R> {}
-
 impl<R: ?Sized> fmt::Debug for Problem<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rule = match self.rule {
-            Rule::Field => "Field",
-            Rule::By(_) => "By",
-        };
-        f.debug_struct("Problem")
-            .field("column", &self.column)
-            .field("rule", &format_args!("{rule}"))
-            .finish()
+        self.0.debug("Problem", f)
     }
 }
 
