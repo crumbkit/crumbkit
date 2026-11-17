@@ -7,7 +7,7 @@ use serde_json::Value;
 use super::Column;
 use crate::help::ViewFlag;
 use crate::help::view::{self, Kind, Printed};
-use crate::{Children, Document, Line, Problem, Row, Rows, Shape, Stream, row};
+use crate::{Children, Document, Line, Problem, Row, Rows, Shape, Stream, Warning, row};
 
 /// The document that a leaf's command prints and the columns of its row
 /// type, as [`Leaf::document`](super::Leaf::document) or
@@ -30,6 +30,11 @@ pub struct LeafDocument {
     problem: Option<&'static str>,
     /// The column of the row type's [`Row::PROBLEM`].
     problem_column: Option<&'static str>,
+    /// The field that the row type's [`Row::WARNING`] names with
+    /// [`Warning::field`].
+    warning: Option<&'static str>,
+    /// The column of the row type's [`Row::WARNING`].
+    warning_column: Option<&'static str>,
     /// The form of the row type's [`Row::LINE`].
     line: Option<&'static str>,
     /// The row type's [`Row::CHILDREN`], without its functions.
@@ -58,6 +63,8 @@ impl LeafDocument {
             uncut: <T::Row as Row>::UNCUT_COLUMNS,
             problem: problem_field(<T::Row as Row>::PROBLEM),
             problem_column: problem_column(<T::Row as Row>::PROBLEM),
+            warning: warning_field(<T::Row as Row>::WARNING),
+            warning_column: warning_column(<T::Row as Row>::WARNING),
             line: line_form(<T::Row as Row>::LINE),
             children: untyped_children(<T::Row as Row>::CHILDREN),
             schema: schema::<T::Row>,
@@ -77,6 +84,8 @@ impl LeafDocument {
             uncut: R::UNCUT_COLUMNS,
             problem: problem_field(R::PROBLEM),
             problem_column: problem_column(R::PROBLEM),
+            warning: warning_field(R::WARNING),
+            warning_column: warning_column(R::WARNING),
             line: line_form(R::LINE),
             children: untyped_children(R::CHILDREN),
             schema: schema::<R>,
@@ -175,6 +184,25 @@ impl LeafDocument {
     #[must_use]
     pub const fn problem_column(&self) -> Option<&'static str> {
         self.problem_column
+    }
+
+    /// Returns the field that marks a row as reporting a warning, which the
+    /// row type's [`Row::WARNING`] names with [`Warning::field`], or `None`
+    /// when the row type names no such field. The leaf's help prints a
+    /// `Warnings:` line only for this field.
+    #[must_use]
+    pub const fn warning(&self) -> Option<&'static str> {
+        self.warning
+    }
+
+    /// Returns the column that shows whether a row reports a warning, from
+    /// the row type's [`Row::WARNING`] of either kind, or `None` when the
+    /// row type names no warning.
+    // crumbkit-test's `check_help` reads this.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn warning_column(&self) -> Option<&'static str> {
+        self.warning_column
     }
 
     /// Returns the form of the text line that each row prints, from the row
@@ -377,6 +405,22 @@ const fn problem_field<R: ?Sized>(problem: Option<Problem<R>>) -> Option<&'stati
 const fn problem_column<R: ?Sized>(problem: Option<Problem<R>>) -> Option<&'static str> {
     match problem {
         Some(problem) => Some(problem.get_column()),
+        None => None,
+    }
+}
+
+/// Returns the field that `warning` names with [`Warning::field`].
+const fn warning_field<R: ?Sized>(warning: Option<Warning<R>>) -> Option<&'static str> {
+    match warning {
+        Some(warning) => warning.get_field(),
+        None => None,
+    }
+}
+
+/// Returns the column of `warning`.
+const fn warning_column<R: ?Sized>(warning: Option<Warning<R>>) -> Option<&'static str> {
+    match warning {
+        Some(warning) => Some(warning.get_column()),
         None => None,
     }
 }

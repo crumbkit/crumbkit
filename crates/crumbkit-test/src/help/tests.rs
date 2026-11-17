@@ -16,6 +16,7 @@ mod lines;
 mod problems;
 mod uncut;
 mod views;
+mod warnings;
 
 /// A tool with two resources, one of which has a hidden verb and one an
 /// alias.

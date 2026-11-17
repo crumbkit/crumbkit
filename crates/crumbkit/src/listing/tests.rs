@@ -217,28 +217,28 @@ fn from_all_counts_the_problem_rows_that_its_limit_cuts() {
     let listing = Listing::from_all(checks(&["", "missing", "broken"]), Some(1));
 
     assert_eq!(listing.rows().len(), 1);
-    assert_eq!(listing.problems(), 2);
+    assert_eq!(listing.marks().problems, 2);
 }
 
 #[test]
 fn from_all_without_a_limit_counts_the_problem_rows_it_holds() {
     let listing = Listing::from_all(checks(&["", "missing"]), None);
 
-    assert_eq!(listing.problems(), 1);
+    assert_eq!(listing.marks().problems, 1);
 }
 
 #[test]
 fn new_counts_only_the_problem_rows_it_holds() {
     let listing = Listing::new(checks(&["missing", ""]), 10);
 
-    assert_eq!(listing.problems(), 1);
+    assert_eq!(listing.marks().problems, 1);
 }
 
 #[test]
 fn a_summary_keeps_the_problem_count_of_the_rows_that_the_limit_cut() {
     let listing = Listing::from_all(checks(&["", "missing"]), Some(1)).summary(1);
 
-    assert_eq!(listing.problems(), 1);
+    assert_eq!(listing.marks().problems, 1);
 }
 
 /// A row whose type decides its problems from a count with `Problem::by`.
@@ -258,7 +258,7 @@ fn from_all_counts_the_rows_that_a_problem_by_a_function_marks_among_the_rows_it
 
     let listing = Listing::from_all(runs, Some(1));
 
-    assert_eq!(listing.problems(), 2);
+    assert_eq!(listing.marks().problems, 2);
 }
 
 #[test]

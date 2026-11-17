@@ -39,4 +39,4 @@ Columns:
 
 Text: one line per row, <FILE>:<LINE>: <SPAN>: <REASON>; --fields and --long print a table.
 Problems: a value in the reason column marks a row with a problem, and the command then exits with 1.
-Rows: the default text lists only the rows that report a problem, and --long, --fields or --json lists every row.
+Rows: the default text lists only the rows that report a problem or a warning, and --long, --fields or --json lists every row.

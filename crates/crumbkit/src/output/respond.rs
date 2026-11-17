@@ -71,7 +71,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
     // The exit reads every row that the result holds, including rows that
     // the output budget leaves unprinted, and a listing that
     // `Listing::from_all` cut to its limit also counts the rows it cut.
-    let problems = value.problems();
+    let marks = value.marks();
     let written = write_result(
         sink,
         output,
@@ -79,7 +79,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
         document,
         value,
         failures.as_deref(),
-        problems,
+        marks,
     );
     let (code, answer) = match written {
         Ok((answer, _bytes)) => (0, answer),
@@ -115,7 +115,7 @@ pub(super) fn respond<T: Rows, E: AsFailure>(
     let code = print_failures(sink, output, spelling, document, failures, left_out, code);
     // A failure decides the exit before a row that reports a problem, and a
     // reader that closed the pipe early still sees the problem's exit.
-    let code = if code == 0 && problems > 0 {
+    let code = if code == 0 && marks.problems > 0 {
         exit::problem_rows()
     } else {
         code

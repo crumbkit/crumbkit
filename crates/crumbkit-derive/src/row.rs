@@ -16,10 +16,11 @@ mod tests;
 
 /// The keys that `#[row(...)]` accepts, as the message about an unknown key
 /// lists them.
-const KEYS: &str = "`column`, `long`, `uncut` and `problem` on a field, and `crate` on the type";
+const KEYS: &str =
+    "`column`, `long`, `uncut`, `problem` and `warning` on a field, and `crate` on the type";
 
 /// The keys that `#[row(...)]` accepts on a field.
-const FIELD_KEYS: [&str; 4] = ["column", "long", "uncut", "problem"];
+const FIELD_KEYS: [&str; 5] = ["column", "long", "uncut", "problem", "warning"];
 
 /// Returns the code that `#[derive(Row)]` writes for `input`, or the compile
 /// error that names what the input gets wrong.
@@ -41,6 +42,8 @@ struct RowType {
     uncut: Vec<String>,
     /// The field that gives `problem` and its name, which `PROBLEM` holds.
     problem: Option<(Ident, String)>,
+    /// The field that gives `warning` and its name, which `WARNING` holds.
+    warning: Option<(Ident, String)>,
 }
 
 /// Reads `input` into a [`RowType`], or returns the compile error that
@@ -68,6 +71,7 @@ fn read(input: &DeriveInput) -> syn::Result<RowType> {
         long: Vec::new(),
         uncut: Vec::new(),
         problem: None,
+        warning: None,
     };
     let rule = rename_all(&input.attrs, name)?;
     // Every field of `Fields::Named` has a name.
@@ -166,7 +170,34 @@ fn read_field(row: &mut RowType, field: &Field, ident: &Ident, rule: RenameAll) 
                 ),
             ));
         }
-        row.problem = Some((ident.clone(), name));
+        if keys.warning.is_some() {
+            return Err(syn::Error::new(
+                problem,
+                format!(
+                    "the field `{ident}` gives both `problem` and `warning`, and a row that reports a problem counts only as a problem"
+                ),
+            ));
+        }
+        row.problem = Some((ident.clone(), name.clone()));
+    }
+    if let Some(warning) = keys.warning {
+        if keys.column.is_none() {
+            return Err(syn::Error::new(
+                warning,
+                format!(
+                    "the field `{ident}` gives `warning` without `column`, and the warning field is one of the compact columns"
+                ),
+            ));
+        }
+        if let Some((first, _)) = &row.warning {
+            return Err(syn::Error::new(
+                warning,
+                format!(
+                    "the fields `{first}` and `{ident}` both give `warning`, and a row has at most one warning field"
+                ),
+            ));
+        }
+        row.warning = Some((ident.clone(), name));
     }
     Ok(())
 }
@@ -179,6 +210,7 @@ struct Keys {
     long: Option<Span>,
     uncut: Option<Span>,
     problem: Option<Span>,
+    warning: Option<Span>,
 }
 
 impl Keys {
@@ -199,6 +231,7 @@ impl Keys {
             "long" => &mut self.long,
             "uncut" => &mut self.uncut,
             "problem" => &mut self.problem,
+            "warning" => &mut self.warning,
             "crate" => {
                 return Err(meta.error("`crate` goes in the #[row(...)] attribute of the type"));
             }
@@ -218,7 +251,11 @@ impl Keys {
     /// Returns the span of the first key the field gives, or `None` when it
     /// gives none.
     fn first(&self) -> Option<Span> {
-        self.column.or(self.long).or(self.uncut).or(self.problem)
+        self.column
+            .or(self.long)
+            .or(self.uncut)
+            .or(self.problem)
+            .or(self.warning)
     }
 }
 
@@ -423,10 +460,15 @@ fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
         long,
         uncut,
         problem,
+        warning,
     } = row;
     let problem = problem.as_ref().map_or_else(
         || quote!(::std::option::Option::None),
         |(_, field)| quote!(::std::option::Option::Some(#krate::Problem::field(#field))),
+    );
+    let warning = warning.as_ref().map_or_else(
+        || quote!(::std::option::Option::None),
+        |(_, field)| quote!(::std::option::Option::Some(#krate::Warning::field(#field))),
     );
     quote! {
         #[automatically_derived]
@@ -435,6 +477,7 @@ fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
             const LONG_COLUMNS: &'static [&'static str] = &[#(#long),*];
             const UNCUT_COLUMNS: &'static [&'static str] = &[#(#uncut),*];
             const PROBLEM: ::std::option::Option<#krate::Problem<Self>> = #problem;
+            const WARNING: ::std::option::Option<#krate::Warning<Self>> = #warning;
         }
     }
 }

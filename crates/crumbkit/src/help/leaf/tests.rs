@@ -592,3 +592,66 @@ fn column_descriptions_read_the_fields_of_each_variant_of_a_row_type() {
         ]
     );
 }
+
+/// A row whose `problem` field marks a problem and whose `wear` field marks
+/// a warning.
+#[derive(Serialize, JsonSchema)]
+struct Book {
+    /// The book's title.
+    title: String,
+    /// What is wrong with the book, or nothing.
+    problem: String,
+    /// How worn the book is, or nothing.
+    wear: String,
+}
+
+impl Row for Book {
+    const COLUMNS: &'static [&'static str] = &["title", "problem", "wear"];
+    const PROBLEM: Option<crate::Problem<Self>> = Some(crate::Problem::field("problem"));
+    const WARNING: Option<crate::Warning<Self>> = Some(crate::Warning::field("wear"));
+}
+
+/// A row whose warning column shows a state that a function decides.
+#[derive(Serialize, JsonSchema)]
+struct Loan {
+    /// The loan's id.
+    id: String,
+    /// Whether the loan is late.
+    late: bool,
+}
+
+impl Row for Loan {
+    const COLUMNS: &'static [&'static str] = &["id", "late"];
+    const WARNING: Option<crate::Warning<Self>> =
+        Some(crate::Warning::by("late", |loan| loan.late));
+}
+
+#[test]
+fn the_help_of_a_leaf_with_a_warning_field_prints_a_warnings_line_after_the_problems_line() {
+    const TOOL: Tool =
+        leaves(
+            &[Leaf::new(&["planets", "list"]).examples(EXAMPLES).document(
+                Document::<Vec<Book>>::new("tool", "books", 1, "The test rows."),
+            )],
+        );
+
+    let page = help(&TOOL, &["tool", "planets", "list", "-h"]);
+
+    let problems = "Problems: a value in the problem column marks a row with a problem, and the command then exits with 1.\n";
+    let warnings = "Warnings: a value in the wear column marks a row with a warning, and the exit code does not change.\n";
+    assert!(page.contains(&format!("{problems}{warnings}")), "{page}");
+}
+
+#[test]
+fn the_help_of_a_leaf_with_a_warning_by_a_function_prints_no_warnings_line() {
+    const TOOL: Tool =
+        leaves(
+            &[Leaf::new(&["planets", "list"]).examples(EXAMPLES).document(
+                Document::<Vec<Loan>>::new("tool", "loans", 1, "The test rows."),
+            )],
+        );
+
+    let page = help(&TOOL, &["tool", "planets", "list", "-h"]);
+
+    assert!(!page.contains("Warnings:"), "{page}");
+}

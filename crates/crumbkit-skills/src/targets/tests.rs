@@ -2,7 +2,12 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{Place, Target, agent_dirs, merge, named_dir, place};
+use crumbkit::{Problem, Row, Warning};
+use schemars::JsonSchema;
+use serde::Serialize;
+
+use super::{Place, Target, agent_dirs, listing, merge, named_dir, place};
+use crate::testing::LENDING;
 
 fn dirs(home: &str, codex: Option<&str>) -> Option<Vec<PathBuf>> {
     agent_dirs(Some(PathBuf::from(home)), codex.map(OsString::from))
@@ -219,4 +224,55 @@ fn merge_joins_a_dir_and_a_relative_link_to_it() {
 
     assert_eq!(targets.len(), 1);
     assert_eq!(targets[0].dirs.len(), 2);
+}
+
+/// A row that reports a problem, a warning or neither, by its state.
+#[derive(Serialize, JsonSchema)]
+struct Tested {
+    /// The state of the row: `problem`, `warning` or `fine`.
+    state: &'static str,
+    /// The order in which the test made the row.
+    n: usize,
+}
+
+impl Row for Tested {
+    const COLUMNS: &'static [&'static str] = &["state", "n"];
+    const PROBLEM: Option<Problem<Self>> = Some(Problem::by("state", |row| row.state == "problem"));
+    const WARNING: Option<Warning<Self>> = Some(Warning::by("state", |row| row.state == "warning"));
+}
+
+#[test]
+fn targets_list_problem_rows_then_warning_rows_then_the_rest() {
+    let dir = tempfile::tempdir().unwrap();
+    let make = |states: &[&'static str]| {
+        states
+            .iter()
+            .enumerate()
+            .map(|(n, state)| Tested { state, n })
+            .collect::<Vec<_>>()
+    };
+
+    let listed = listing(
+        &[LENDING],
+        Some(dir.path()),
+        None,
+        |_, _, _| Tested {
+            state: "problem",
+            n: 99,
+        },
+        |_, _| make(&["fine", "warning", "problem", "fine", "warning", "problem"]),
+    );
+
+    let order: Vec<(&str, usize)> = listed.rows().iter().map(|row| (row.state, row.n)).collect();
+    assert_eq!(
+        order,
+        [
+            ("problem", 2),
+            ("problem", 5),
+            ("warning", 1),
+            ("warning", 4),
+            ("fine", 0),
+            ("fine", 3),
+        ]
+    );
 }

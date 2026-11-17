@@ -120,6 +120,10 @@ mod tests;
 /// - a leaf whose `Problem::field` field's type is not a string, a boolean or a
 ///   value that can be null, because no value of it then means that the
 ///   row has no problem;
+/// - a leaf whose row type's `Row::WARNING` breaks the same two rules as its
+///   `Row::PROBLEM`, with `Warning::field` or `Warning::by`, and a leaf
+///   whose `Warning::field` names the field of its `Problem::field`, because
+///   a row that reports both counts only as a problem;
 /// - a topic whose name is the name or an alias of a command directly under
 ///   `command`, because `<tool> help <name>` prints that command's help;
 /// - a topic whose text is empty or only whitespace;
@@ -390,13 +394,29 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     };
     let columns = document.column_descriptions();
     if let Some(column) = document.problem_column() {
-        check_problem(
+        check_mark(
             text,
+            Mark::Problem,
             column,
             document.problem().is_some(),
             &columns,
             problems,
         );
+    }
+    if let Some(column) = document.warning_column() {
+        check_mark(
+            text,
+            Mark::Warning,
+            column,
+            document.warning().is_some(),
+            &columns,
+            problems,
+        );
+        if document.warning().is_some() && document.warning() == document.problem() {
+            problems.push(format!(
+                "{text}: the warning field `{column}` is also the problem field, so every row that reports a warning reports a problem and no row counts as a warning; name another field in `Warning::field`"
+            ));
+        }
     }
     if let Some(name) = document.unflattened_bytes_field() {
         problems.push(format!(
@@ -484,28 +504,59 @@ fn check_uncut(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     }
 }
 
+/// What a column of a row type marks: a row that decides the exit, or a row
+/// that deserves attention and leaves the exit alone.
+#[derive(Clone, Copy)]
+enum Mark {
+    /// `Row::PROBLEM`.
+    Problem,
+    /// `Row::WARNING`.
+    Warning,
+}
+
+impl Mark {
+    /// Returns the word that names the mark in a message.
+    const fn word(self) -> &'static str {
+        match self {
+            Self::Problem => "problem",
+            Self::Warning => "warning",
+        }
+    }
+
+    /// Returns what the compact table hides when it leaves the column out.
+    const fn hides(self) -> &'static str {
+        match self {
+            Self::Problem => "the problem that decides the exit",
+            Self::Warning => "the warning that the note counts",
+        }
+    }
+}
+
 /// Adds a problem to `problems` when `name`, the column that `Row::PROBLEM`
-/// names for the leaf at `text`, is not one of `columns` without `--long`.
-/// When the row type names the column with `Problem::field`, so `field` is
-/// true, it also adds one when the column's type has no value that means no
-/// problem.
-fn check_problem(
+/// or `Row::WARNING` names for the leaf at `text`, is not one of `columns`
+/// without `--long`. When the row type names the column with
+/// `Problem::field` or `Warning::field`, so `field` is true, it also adds
+/// one when the column's type has no value that means an unmarked row.
+fn check_mark(
     text: &str,
+    mark: Mark,
     name: &str,
     field: bool,
     columns: &[Column],
     problems: &mut Vec<String>,
 ) {
     let kind = if field { "field" } else { "column" };
+    let word = mark.word();
     let column = columns
         .iter()
         .find(|column| column.name() == name && !column.is_long());
     match column {
         None => problems.push(format!(
-            "{text}: the problem {kind} `{name}` is not one of the row type's COLUMNS, so the compact table hides the problem that decides the exit"
+            "{text}: the {word} {kind} `{name}` is not one of the row type's COLUMNS, so the compact table hides {}",
+            mark.hides()
         )),
         Some(column) if field && column.is_property() && !column.can_be_empty() => problems.push(format!(
-            "{text}: the problem field `{name}` is not a string, a boolean or a value that can be null, so no value of it means that the row has no problem"
+            "{text}: the {word} field `{name}` is not a string, a boolean or a value that can be null, so no value of it means that the row has no {word}"
         )),
         Some(_) => {}
     }

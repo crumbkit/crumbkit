@@ -32,6 +32,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   problem, as `Row::PROBLEM` decides. Every `Row` has it through a blanket
   impl, so a row type cannot override the answer
   ([behaviour/output/listings]).
+- crumbkit: `Row::WARNING` and `Warning` mark a row that deserves attention
+  and leaves the exit code at 0, and a note counts such rows.
+  `RowReports::reports_warning` asks one row
+  ([behaviour/output/listings]).
+- crumbkit-derive: `#[row(warning)]` on a column field writes `Warning::field`
+  ([behaviour/output/listings]).
+- crumbkit-test: `check_help` fails a warning column that is not one of
+  `COLUMNS`, a `Warning::field` field with no empty value, and a warning field
+  that is also the problem field ([behaviour/help/checks]).
 
 - crumbkit: each argument of a `commands list` row has `after_double_dash`,
   which is `true` for an argument that takes the values written after `--`
@@ -89,6 +98,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with each group expanded ([behaviour/help/built-in]).
 - Lower benchmark limits, because the built-in groups of shelf are lazy
   ([behaviour/help/built-in]).
+- crumbkit: OUTPUT-3 lists rows that report a problem first, then rows that
+  report a warning, then the rest. `Document::only_problems` also lists the
+  rows that report a warning, and its `Rows:` help line says so
+  ([behaviour/output/listings]).
 - crumbkit-usage: the docs of `start_under` name `interrupt::clean_up`
   ([behaviour/interrupts]).
 - crumbkit-test: breaking: `Recoveries::new` and `Twins::new` take one code

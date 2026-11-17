@@ -49,6 +49,7 @@ mod summary;
 mod unwrapped;
 mod variants;
 mod views;
+mod warnings;
 mod whole;
 
 /// A row with two compact columns, one long column and one field that only

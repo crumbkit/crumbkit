@@ -116,7 +116,7 @@ fn parse(args: &[&str]) -> Parsed {
     }
 }
 
-const ROWS_LINE: &str = "Rows: the default text lists only the rows that report a problem, and --long, --fields or --json lists every row.";
+const ROWS_LINE: &str = "Rows: the default text lists only the rows that report a problem or a warning, and --long, --fields or --json lists every row.";
 
 #[test]
 fn a_leaf_that_lists_only_problems_offers_long_although_its_rows_have_no_long_columns() {
@@ -154,7 +154,7 @@ fn the_rows_line_of_a_leaf_that_offers_neither_long_nor_fields_names_only_json()
     let short = parse(&["tool", "audits", "-h"]);
     let long = parse(&["tool", "audits", "--help"]);
 
-    let line = "\nRows: the default text lists only the rows that report a problem, and --json lists every row.\n";
+    let line = "\nRows: the default text lists only the rows that report a problem or a warning, and --json lists every row.\n";
     assert!(short.out.contains(line), "{}", short.out);
     assert!(long.out.contains(line), "{}", long.out);
 }

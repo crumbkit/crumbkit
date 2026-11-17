@@ -204,7 +204,8 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// | `long` | field | The field's name in `LONG_COLUMNS`. A field gives `column` or `long`, and never both. |
 /// | `uncut` | field that gives `column` or `long` | The field's name in `UNCUT_COLUMNS` as well. |
 /// | `problem` | field that gives `column` | The field's name in `PROBLEM`, as `Problem::field`. At most one field gives it. |
-/// | `crate = PATH` | type | The path of the crate that holds `Row` and `Problem`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
+/// | `warning` | field that gives `column` | The field's name in `WARNING`, as `Warning::field`. At most one field gives it, and never the field that gives `problem`. |
+/// | `crate = PATH` | type | The path of the crate that holds `Row`, `Problem` and `Warning`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each list keeps the order of the fields in the struct, so a type
 /// reorders its columns by reordering its fields. Each name is the field's
@@ -219,7 +220,7 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// impl, and `finish` and `stream` then fail to compile for it, as they do
 /// for a hand-written impl with an empty `COLUMNS`.
 ///
-/// The derive writes the four constants and leaves every other item of
+/// The derive writes the five constants and leaves every other item of
 /// `Row` to its default. A row that sets `LINE`, `CHILDREN` or `WHOLE`,
 /// sets `PROBLEM` with `Problem::by`, or overrides `cell_style` or
 /// `in_default_text`, writes `impl Row` by hand. So does an enum, and a row
@@ -245,7 +246,9 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 ///     #[row(long)]
 ///     page_count: u32,
 ///     #[row(column, problem)]
-///     warning: Option<String>,
+///     damage: Option<String>,
+///     #[row(column, warning)]
+///     wear: Option<String>,
 ///     isbn: String,
 /// }
 /// ```
@@ -256,11 +259,13 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// ```rust,ignore
 /// #[automatically_derived]
 /// impl ::crumbkit::Row for Book {
-///     const COLUMNS: &'static [&'static str] = &["id", "name", "warning"];
+///     const COLUMNS: &'static [&'static str] = &["id", "name", "damage", "wear"];
 ///     const LONG_COLUMNS: &'static [&'static str] = &["pageCount"];
 ///     const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
 ///     const PROBLEM: ::std::option::Option<::crumbkit::Problem<Self>> =
-///         ::std::option::Option::Some(::crumbkit::Problem::field("warning"));
+///         ::std::option::Option::Some(::crumbkit::Problem::field("damage"));
+///     const WARNING: ::std::option::Option<::crumbkit::Warning<Self>> =
+///         ::std::option::Option::Some(::crumbkit::Warning::field("wear"));
 /// }
 /// ```
 ///
@@ -268,7 +273,7 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 ///
 /// Each of these is a compile error that names the field or the type: an
 /// unknown key, a key given twice, `column` with `long`, `uncut` without
-/// either, `problem` without `column`, `problem` on a second field, and any
+/// either, `problem` or `warning` without `column`, `problem` or `warning` on a second field, `problem` and `warning` on one field, and any
 /// key on a field marked `#[serde(skip)]`, `#[serde(skip_serializing)]` or
 /// `#[serde(flatten)]`. The derive also refuses a type marked
 /// `#[serde(transparent)]`, an enum, a union, a tuple struct and a unit
