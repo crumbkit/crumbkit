@@ -314,7 +314,7 @@ fn a_lock_file_owned_by_another_user_is_refused_naming_the_path_and_the_owner() 
 
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.lock");
-    fs::write(&path, b"").unwrap();
+    drop(PathLock::acquire(&path, later()).unwrap());
     let owner = fs::metadata(&path).unwrap().uid();
     let other = owner.wrapping_add(1);
 
@@ -339,8 +339,8 @@ fn a_lock_file_the_caller_owns_locks() {
 
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.lock");
-    fs::write(&path, b"").unwrap();
+    drop(PathLock::acquire(&path, later()).unwrap());
     let owner = fs::metadata(&path).unwrap().uid();
 
-    PathLock::acquire_unless_as(&path, later(), &|| false, Caller::uid(owner)).unwrap();
+    let _lock = PathLock::acquire_unless_as(&path, later(), &|| false, Caller::uid(owner)).unwrap();
 }
