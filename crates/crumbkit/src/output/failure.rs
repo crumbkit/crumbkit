@@ -194,6 +194,9 @@ pub(crate) struct PreparedFailure<'a> {
     /// The `Display` of each error in the failure's `source()` chain, in
     /// order.
     causes: Vec<String>,
+    /// The reasons the failure lists side by side, from `Failure::causes`,
+    /// in order.
+    listed: Vec<String>,
     /// The labels of the failure's miette diagnostic, in the order it gives
     /// them. It is empty when the failure has no diagnostic.
     #[cfg(feature = "miette")]
@@ -251,6 +254,9 @@ impl<'a> PreparedFailure<'a> {
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
+        // A failure that lists no causes returns an empty `Vec`, which does
+        // not allocate.
+        let listed = failure.causes();
         let mut unrendered = Vec::new();
         let preferred = RecoveryStep::offered(failure.recovery(), &mut *command, &mut unrendered);
         // A failure without alternatives returns an empty `Vec`, and
@@ -289,6 +295,7 @@ impl<'a> PreparedFailure<'a> {
             code,
             message: failure.to_string(),
             causes,
+            listed,
             // A failure without a diagnostic costs one `None` check, and an
             // empty `Vec` does not allocate.
             #[cfg(feature = "miette")]
@@ -440,7 +447,8 @@ fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String
 /// [`books-show-no-ids.stderr`][books-show-no-ids] shows. A `key:` line
 /// follows when the failure belongs to a
 /// key of a batch, and gives the key and its index. A `cause:` line for
-/// each cause follows, a `help:` line
+/// each error of the `source()` chain follows, then one for each cause that
+/// `Failure::causes` lists, a `help:` line
 /// for each alternative follows the recovery's `help:` line, and a `url:`
 /// line follows the `code:` line when the failure has a url. With the
 /// `miette` feature, an `at:` line for each label of the failure's
@@ -465,7 +473,7 @@ pub(crate) fn write_crumbkit_text(
     if let Some((index, key)) = document.key {
         write_labelled(err, "key:", &format!("{key} (index {index})"))?;
     }
-    for cause in &document.causes {
+    for cause in document.causes.iter().chain(&document.listed) {
         write_labelled(err, "cause:", cause)?;
     }
     #[cfg(feature = "miette")]
@@ -502,7 +510,8 @@ pub(super) fn write_json(
 impl PreparedFailure<'_> {
     /// Writes every field of the document after `schema` into `map`: `key`
     /// and `index` when the failure belongs to a key of a batch, `code`,
-    /// `message`, `cause` when the failure has a source, `fields` when the
+    /// `message`, `cause` when the failure has a source, `causes` when the
+    /// failure lists at least one cause, `fields` when the
     /// failure names at least one value, `labels` when the
     /// failure has a diagnostic with at least one label, `related` when that
     /// diagnostic has related diagnostics, `recovery`,
@@ -522,6 +531,9 @@ impl PreparedFailure<'_> {
         map.serialize_entry("message", &self.message)?;
         if !self.causes.is_empty() {
             map.serialize_entry("cause", &self.causes.join(": "))?;
+        }
+        if !self.listed.is_empty() {
+            map.serialize_entry("causes", &self.listed)?;
         }
         if !self.fields.is_empty() {
             map.serialize_entry("fields", &Fields(&self.fields))?;

@@ -363,7 +363,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// shows, and nothing goes to the output writer.
 ///
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
-/// for each error in the failure's `source()` chain, and a `url:` line
+/// for each error in the failure's `source()` chain, then one for each cause
+/// that [`Failure::causes`](crate::Failure::causes) lists, and a `url:` line
 /// follows the `code:` line when the failure has a url. A
 /// [`Recovery::Run`](crate::Recovery::Run) or
 /// [`Recovery::Terminal`](crate::Recovery::Terminal) call is rendered against the

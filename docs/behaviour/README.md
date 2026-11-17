@@ -47,5 +47,7 @@ its reasons.
   overdue report that leaves the child running.
 - [Processes](processes.md): running another program whose output a tool
   reads, with crumbkit-process.
+- [Interrupts](interrupts/README.md): stopping a command over many items on
+  the first Ctrl-C, with crumbkit's `interrupt` feature.
 - [Durable files](durable-files.md): replacing a file atomically and
   locking a lock file, with crumbkit-durable.

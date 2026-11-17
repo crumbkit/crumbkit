@@ -94,6 +94,10 @@ mod tests;
 ///         self.book.code()
 ///     }
 ///
+///     fn causes(&self) -> Vec<String> {
+///         self.book.causes()
+///     }
+///
 ///     fn recovery(&self) -> Recovery {
 ///         self.book.recovery()
 ///     }
@@ -135,6 +139,49 @@ pub trait Failure: std::error::Error {
     /// returns a code that borrows from it. A caller that keeps the code
     /// after the failure is gone stores [`Code::to_buf`].
     fn code(&self) -> Code<'_>;
+
+    /// Returns the reasons the failure lists side by side, in order, one
+    /// sentence each, such as one finding for each invalid item. The default
+    /// is an empty list, which does not allocate.
+    ///
+    /// `crumbkit::finish` prints one `cause:` line for each listed cause,
+    /// after the `cause:` lines of the `source()` chain, and writes the list
+    /// under `causes` in JSON, after `cause`. `cause` keeps the joined
+    /// `source()` chain, which says that each error caused the one before it.
+    /// A tool whose reasons do not cause one another lists them here and does
+    /// not build a chain of error sources. A reason that has its own labels
+    /// belongs in a miette `related` diagnostic, and a reason that is a value
+    /// belongs in [`Failure::fields`].
+    ///
+    /// ```
+    /// # use std::fmt;
+    /// # use crumbkit::{Call, Code, Failure, Recovery};
+    /// # const INVALID: Code<'static> = Code::new("tool", "flows", "invalid");
+    /// # #[derive(Debug)]
+    /// # struct InvalidFlows(Vec<String>);
+    /// # impl fmt::Display for InvalidFlows {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "cannot publish {} flows", self.0.len())
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for InvalidFlows {}
+    /// impl Failure for InvalidFlows {
+    ///     fn code(&self) -> Code<'_> {
+    ///         INVALID
+    ///     }
+    ///
+    ///     fn recovery(&self) -> Recovery {
+    ///         Recovery::Run(Call::new(&["check"]))
+    ///     }
+    ///
+    ///     fn causes(&self) -> Vec<String> {
+    ///         self.0.clone()
+    ///     }
+    /// }
+    /// ```
+    fn causes(&self) -> Vec<String> {
+        Vec::new()
+    }
 
     /// Returns what the caller can do next, the preferred repair.
     fn recovery(&self) -> Recovery;

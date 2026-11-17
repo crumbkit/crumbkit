@@ -126,16 +126,15 @@ The [behaviour docs] describe each part.
 - Failures: [`Failure`], [`Recovery`], [`Code`], [`CodeBuf`],
   [`Spelling`] and [`Error`].
 - Parsing and help: [`parse`], [`help`] and [`Call`].
-- The listings for agents: [`commands`] and [`schemas`].
-- Per-id lookups: [`fetch_each`].
-- The `miette` feature: the `diagnostic` method of [`Failure`] and the
-  conversion of a `miette::Report` into [`Error`].
+- Listings for agents and lookups: [`commands`], [`schemas`], [`fetch_each`].
+- The `miette` feature: [`Failure`]'s `diagnostic` and `miette::Report` into [`Error`].
 - Run reports, usage log and tracing: [`events`], [crumbkit-usage], [`trace`].
 - Handing the terminal to another program: [crumbkit-child].
 - The `color` feature: help in clap's styles for a styled [`Sink`].
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change.
 - Tests that check a tool against these conventions: [crumbkit-test].
+- The `interrupt` feature: `crumbkit::interrupt`, which stops a batch on Ctrl-C.
 - The `derive` feature: `#[derive(Failure)]` and `#[derive(Row)]`
   ([crumbkit-derive]).
 

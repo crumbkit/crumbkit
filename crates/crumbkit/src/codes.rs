@@ -73,6 +73,12 @@ pub const SHELL_UNKNOWN: Code<'static> = Code::new("crumbkit", "shell", "unknown
 /// (ADR-0195).
 pub const SHELL_NO_DIRECTORY: Code<'static> = Code::new("crumbkit", "shell", "no_directory");
 
+/// The code of a command that stopped before its next item because the
+/// person pressed Ctrl-C once, under the `interrupt` feature. The run exits
+/// with 130 unless the tool record lists another exit for the code
+/// (ADR-0240).
+pub const RUN_INTERRUPTED: Code<'static> = Code::new("crumbkit", "run", "interrupted");
+
 /// The reason of the `Recovery::None` of an unclassified failure that gives
 /// no advice of its own, which `Recovery::no_advice` builds.
 pub(crate) const NO_ADVICE: &str = "the error gives no advice";
@@ -90,4 +96,5 @@ pub const ALL: &[Code<'static>] = &[
     SHELL_UNSET,
     SHELL_UNKNOWN,
     SHELL_NO_DIRECTORY,
+    RUN_INTERRUPTED,
 ];

@@ -53,6 +53,11 @@ impl JsonSchema for PreparedFailure<'_> {
                     "description": "The errors that led to the failure, joined with \": \". It is present only when the failure has a cause.",
                     "type": "string",
                 },
+                "causes": {
+                    "description": "The reasons the failure lists side by side, in order, one sentence each. It is present only when the failure lists at least one.",
+                    "type": "array",
+                    "items": { "type": "string" },
+                },
                 "fields": {
                     "description": "The values at fault, in the order the failure gives them, each under a name of one or more lowercase ASCII letters, digits and underscores. A value is a string, an integer, a boolean, null, or an array or object of such values, and an object holds each key once. It is present only when the failure names at least one.",
                     "type": "object",

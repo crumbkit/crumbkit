@@ -9,7 +9,7 @@ use syn::{Attribute, Data, DeriveInput, Expr, Fields, Ident, LitStr, Path, Visib
 
 /// The keys that `#[failure(...)]` accepts, as the message about an unknown
 /// key lists them.
-const KEYS: &str = "`code`, `recovery`, `hint`, `no_next_step`, `alternative`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type";
+const KEYS: &str = "`code`, `recovery`, `hint`, `no_next_step`, `alternative`, `causes`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type";
 
 /// A type that derives `Failure`, as its attributes describe it.
 pub(crate) struct FailureType {
@@ -69,6 +69,8 @@ pub(crate) struct Own {
     pub(crate) recovery: RecoveryKey,
     /// The variant's alternatives, in the written order.
     pub(crate) alternatives: Vec<Expr>,
+    /// The variant's `causes`, an expression of type `Vec<String>`.
+    pub(crate) causes: Option<Expr>,
     /// The variant's fields as names and values, in the written order.
     pub(crate) fields: Vec<(String, Expr)>,
     /// The variant's reviewed sentence.
@@ -218,6 +220,8 @@ struct Keys {
     no_next_step: Option<LitStr>,
     /// Each `alternative = EXPR`.
     alternatives: Vec<Expr>,
+    /// `causes = EXPR`.
+    causes: Option<Expr>,
     /// Each `field(NAME = EXPR)`.
     fields: Vec<(String, Expr)>,
     /// `url = EXPR`.
@@ -282,6 +286,7 @@ impl Keys {
                 self.reviewed = true;
             }
             "alternative" => self.alternatives.push(meta.value()?.parse()?),
+            "causes" => set(&mut self.causes, meta.value()?.parse()?, twice)?,
             "field" => meta.parse_nested_meta(|field| self.read_field(&field, owner))?,
             "diagnostic" => {
                 if self.diagnostic {
@@ -405,6 +410,7 @@ impl Keys {
             code,
             recovery,
             alternatives: self.alternatives,
+            causes: self.causes,
             fields: self.fields,
             sentence: self.sentence,
             url: self.url,

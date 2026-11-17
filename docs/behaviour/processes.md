@@ -268,6 +268,8 @@ hand-over ends the tool and leaves the child on the terminal. A second signal ha
 forwarder is handling the first, and the first signal decides how the tool
 ends.
 
+The forwarder and crumbkit's `interrupt` owner each end the tool on SIGINT, so a tool uses one of them ([interrupts](interrupts/README.md)).
+
 The forwarder must be the only handler that ends the tool on SIGINT,
 SIGTERM or SIGHUP. A tool that keeps crumbkit-usage's log beside the
 forwarder starts it with `start_under(forward::clean_up)`. The log then

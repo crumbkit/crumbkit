@@ -5,7 +5,37 @@ use miette::{LabeledSpan, NamedSource};
 
 use super::super::super::{PreparedFailure, write_crumbkit_text};
 use super::super::tests::{SHELF_TOML, UnknownKey, in_shelf_toml, on_colour};
-use crate::{Failure, Spelling};
+use crate::{Code, Failure, Recovery, Spelling};
+
+/// An unknown-key failure that lists two causes as well as its labels.
+#[derive(Debug)]
+struct Listing(UnknownKey<NamedSource<&'static str>>);
+
+impl std::fmt::Display for Listing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for Listing {}
+
+impl Failure for Listing {
+    fn code(&self) -> Code<'_> {
+        self.0.code()
+    }
+
+    fn recovery(&self) -> Recovery {
+        self.0.recovery()
+    }
+
+    fn causes(&self) -> Vec<String> {
+        vec!["first reason".to_owned(), "second reason".to_owned()]
+    }
+
+    fn diagnostic(&self) -> Option<&dyn miette::Diagnostic> {
+        self.0.diagnostic()
+    }
+}
 
 /// A source of 12 lines whose array opens on line 1 and whose last value is
 /// on line 11. The `[` is at byte 4, and line `n` from 2 to 11 starts at byte
@@ -319,4 +349,15 @@ fn a_control_character_in_the_source_line_or_the_label_prints_as_its_escape() {
        |   ^^^^^^
 ";
     assert!(text(&failure).contains(expected), "{}", text(&failure));
+}
+
+#[test]
+fn the_at_lines_of_a_diagnostic_print_after_the_listed_causes() {
+    let failure = Listing(in_shelf_toml(vec![on_colour()]));
+
+    let printed = text(&failure);
+
+    let cause = printed.find("  cause: second reason\n").unwrap();
+    let at = printed.find("  at:    ").unwrap();
+    assert!(cause < at, "{printed}");
 }

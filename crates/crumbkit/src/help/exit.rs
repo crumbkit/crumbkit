@@ -346,6 +346,9 @@ pub(crate) fn failure_exit(exits: &[Exit], code: Code<'_>) -> u8 {
     if code == crate::codes::CLI_USAGE {
         return 2;
     }
+    if code == crate::codes::RUN_INTERRUPTED {
+        return 130;
+    }
     1
 }
 

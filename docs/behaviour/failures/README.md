@@ -18,6 +18,16 @@ adds a stable code, a recovery and an optional url. The failure's `Display`
 and its `source()` chain give the message and the causes, and Debug
 formatting never reaches the output.
 
+A failure whose reasons sit side by side, such as one finding for each invalid
+item, returns them from `Failure::causes`, one sentence each, in order. The
+default is an empty list. Text prints one `cause:` line for each listed cause
+after the `cause:` lines of the `source()` chain, and the failure document
+holds them under `causes` ([the failure document](../schemas/README.md#the-failure-document)).
+A tool lists its reasons here and builds no chain of error sources to get one
+line each. A reason with its own labels is a miette `related` diagnostic, and
+a reason that is a value is a field. `miette::Report` lists no causes.
+`#[failure(causes = EXPR)]` derives the method ([deriving Failure](derive.md)).
+
 [`Error`](../../../crates/crumbkit/src/failure.rs) holds any failure, so
 `?` works across a tool's error types. It has no context methods. `finish`
 accepts a `Failure` or an `Error` through the sealed `AsFailure` trait,
@@ -27,7 +37,7 @@ by hand or [derives it](derive.md).
 A failure prints as text on standard error, or as one failure document with
 `--json` ([output](../output/README.md#standard-output-and-standard-error)).
 
-Why: ADR-0001.
+Why: ADR-0001, ADR-0244.
 
 ## Recoveries and alternatives
 

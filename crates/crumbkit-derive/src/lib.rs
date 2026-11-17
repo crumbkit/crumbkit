@@ -25,6 +25,7 @@ mod tests;
 /// | `hint = "..."` | variant or struct | A `Recovery::Hint` with this text, in place of `recovery`. Text that holds `{` goes through `format!`, so `{name}` reads the field `name` or any constant in scope. |
 /// | `no_next_step = "..."` | variant or struct | A `Recovery::None` with this reason, in place of `recovery`. Text that holds `{` goes through `format!`, as `hint` does. |
 /// | `alternative = EXPR` | variant or struct | One `Recovery` that `alternatives()` returns. The key can repeat, and the list keeps the written order. |
+/// | `causes = EXPR` | variant or struct | The `Vec<String>` that `causes()` returns, in order, one sentence each. The expression reads the variant's fields. A variant that forwards returns the causes of the failure it wraps. |
 /// | `field(NAME = EXPR, ...)` | variant or struct | One `Field` for each name, in the written order. Each name must be one or more lowercase ASCII letters, digits and underscores. |
 /// | `url = EXPR` | variant or struct | The `&str` that `url()` returns. |
 /// | `sentence = "..."` | variant or struct | The fixed sentence that `sentence()` returns. It is one line of text with no `{`, so no value from the run reaches it. |
@@ -89,6 +90,15 @@ mod tests;
 ///             Self::RemovedFile { .. } => REMOVED_FILE,
 ///             Self::NoStateDirectory => NO_STATE_DIRECTORY,
 ///             Self::Book(f0) => ::crumbkit::Failure::code(f0),
+///         }
+///     }
+///
+///     fn causes(&self) -> ::std::vec::Vec<::std::string::String> {
+///         match self {
+///             Self::NotFound { .. } => ::std::vec::Vec::new(),
+///             Self::RemovedFile { .. } => ::std::vec::Vec::new(),
+///             Self::NoStateDirectory => ::std::vec::Vec::new(),
+///             Self::Book(f0) => ::crumbkit::Failure::causes(f0),
 ///         }
 ///     }
 ///
@@ -163,7 +173,7 @@ mod tests;
 /// }
 /// ```
 ///
-/// The derive leaves out `alternatives`, `fields`, `url` and `sentence` when no variant
+/// The derive leaves out `causes`, `alternatives`, `fields`, `url` and `sentence` when no variant
 /// gives the key and no variant forwards, so the trait's default applies. It
 /// writes `diagnostic` only when a variant gives `diagnostic`, so a type that
 /// gives none builds without the `miette` feature. The generated
