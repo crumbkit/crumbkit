@@ -55,7 +55,7 @@ The owner moves between these states:
 | requested | SIGINT | ending | a shell reports 130 |
 | open, requested | guard dropped | idle | flag cleared |
 | any but ending | `handed_over` | held | SIGINT is dropped |
-| held | `taken_back`, Windows only | the earlier state | |
+| held | `taken_back`, Windows only | the earlier state | a Ctrl-C not yet read is discarded |
 | held | SIGTERM | ending | as from idle |
 
 Crash points:
@@ -66,13 +66,20 @@ Crash points:
   default action follows.
 - A clean-up that blocks delays the end. The usage line writer waits at most
   `LINE_WAIT`.
+- A request that arrives after the last `check` is lost, and the run ends
+  with its own result.
 - `install` that cannot take a signal returns `InstallError`, and the tool
-  keeps the default signals.
+  keeps the default signals. A thread that cannot start leaves SIGINT and
+  SIGTERM ignored, because signal-hook cannot restore a default action.
+- A run that answers a shell's completion request takes no signal, and
+  `install` still returns `Ok`.
 
 Invariants:
 
 1. While the owner is installed, it is the only handler that ends the
-   process on SIGINT or SIGTERM.
+   process on SIGINT or SIGTERM. A tool with the usage log starts the log
+   with `start_under(interrupt::clean_up)`, and a tool with `forward` does
+   not install the owner.
 2. The first SIGINT inside an open window never ends the process.
 3. A SIGINT outside a window, the second SIGINT inside one and every SIGTERM
    end the process only after every clean-up has run.

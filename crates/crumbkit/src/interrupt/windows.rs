@@ -27,7 +27,7 @@ pub(super) struct Listener(Arc<AtomicBool>);
 impl Listener {
     /// Takes SIGINT from now on.
     pub(super) fn listen() -> io::Result<Self> {
-        let raised = Arc::new(AtomicBool::new(false));
+        let raised = Arc::clone(super::PENDING.get_or_init(|| Arc::new(AtomicBool::new(false))));
         signal_hook::flag::register(SIGINT, Arc::clone(&raised))?;
         Ok(Self(raised))
     }

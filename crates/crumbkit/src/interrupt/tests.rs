@@ -40,3 +40,24 @@ fn clean_ups_are_kept_once_each() {
         .count();
     assert_eq!(count, 1);
 }
+
+#[test]
+fn a_completion_run_installs_without_taking_a_signal() {
+    assert_eq!(needs_listener(Observing::Installed), Ok(true));
+    assert_eq!(needs_listener(Observing::InstalledLate), Ok(true));
+    assert_eq!(needs_listener(Observing::Completing), Ok(false));
+    assert_eq!(
+        needs_listener(Observing::Full),
+        Err(InstallError::ObserversFull)
+    );
+}
+
+#[test]
+fn taking_the_terminal_back_discards_a_ctrl_c_that_was_meant_for_the_child() {
+    let pending = PENDING.get_or_init(|| Arc::new(AtomicBool::new(false)));
+    pending.store(true, Ordering::SeqCst);
+
+    Owner.taken_back();
+
+    assert!(!pending.load(Ordering::SeqCst));
+}

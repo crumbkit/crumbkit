@@ -116,7 +116,7 @@ fn an_interrupted_command_prints_the_interrupted_failure_and_exits_130() {
     assert_eq!(out.status.code(), Some(130), "{out:?}");
     let printed = String::from_utf8_lossy(&out.stderr);
     assert!(
-        printed.contains("tool::run::interrupted") || printed.contains("run::interrupted"),
+        printed.contains("code:  tool::run::interrupted"),
         "{printed}"
     );
 }

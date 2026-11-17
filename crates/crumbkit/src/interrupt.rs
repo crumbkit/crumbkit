@@ -44,6 +44,8 @@
 
 use std::fmt;
 use std::io;
+#[cfg(any(windows, test))]
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::thread::Builder;
@@ -73,6 +75,12 @@ static REQUESTED: AtomicBool = AtomicBool::new(false);
 /// and, on Windows, `events::taken_back` clears.
 static HELD: AtomicBool = AtomicBool::new(false);
 
+/// The flag that Windows' SIGINT handler sets and the owner's thread reads
+/// on its next poll. `taken_back` clears it, so a Ctrl-C meant for a child
+/// that exited is not read as the tool's own.
+#[cfg(any(windows, test))]
+static PENDING: OnceLock<Arc<AtomicBool>> = OnceLock::new();
+
 /// The functions that the owner runs before the process ends.
 static CLEAN_UPS: Mutex<Vec<fn()>> = Mutex::new(Vec::new());
 
@@ -86,8 +94,6 @@ pub enum InstallError {
     /// Four observers were already installed, so crumbkit could not learn
     /// when a child takes the terminal (see [`events::observe`](crate::events::observe)).
     ObserversFull,
-    /// The run answers a shell's completion request, which takes no signal.
-    Completing,
     /// The operating system refused a signal handler or the thread.
     Os(io::ErrorKind),
 }
@@ -98,7 +104,6 @@ impl fmt::Display for InstallError {
             Self::ObserversFull => f.write_str(
                 "four observers are installed already, so the interrupt owner has no slot",
             ),
-            Self::Completing => f.write_str("the run answers a completion request"),
             Self::Os(kind) => write!(f, "the operating system refused the signal handler: {kind}"),
         }
     }
@@ -156,9 +161,10 @@ impl Failure for Interrupted {
 ///
 /// # Errors
 ///
-/// Returns an [`InstallError`] when no observer slot is free, when the run
-/// answers a completion request, or when the operating system refuses. The
-/// tool then keeps the signals' default actions.
+/// Returns an [`InstallError`] when no observer slot is free, or when the
+/// operating system refuses a handler or the thread. A run that answers a
+/// shell's completion request returns `Ok` and takes no signal. After a
+/// refused handler the tool keeps the signals' default actions.
 pub fn install() -> Result<Interrupts, InstallError> {
     (*INSTALLED.get_or_init(start)).map(|()| Interrupts(()))
 }
@@ -224,6 +230,12 @@ impl Observer for Owner {
     }
 
     fn taken_back(&self) {
+        // The pending flag goes first, so the thread never reads a Ctrl-C
+        // meant for the child with the terminal back.
+        #[cfg(any(windows, test))]
+        if let Some(pending) = PENDING.get() {
+            pending.store(false, Ordering::SeqCst);
+        }
         HELD.store(false, Ordering::SeqCst);
     }
 
@@ -234,13 +246,15 @@ impl Observer for Owner {
 
 /// Installs the observer and starts the owner's thread.
 fn start() -> Result<(), InstallError> {
-    match observe(&Owner) {
-        Observing::Installed | Observing::InstalledLate => {}
-        Observing::Full => return Err(InstallError::ObserversFull),
-        Observing::Completing => return Err(InstallError::Completing),
+    if !needs_listener(observe(&Owner))? {
+        return Ok(());
     }
     let mut listener =
         platform::Listener::listen().map_err(|error| InstallError::Os(error.kind()))?;
+    // RUST-10: a thread that cannot start leaves SIGINT and SIGTERM ignored,
+    // because signal-hook does not restore a default action once a handler
+    // was installed. The error is returned, and the tool decides whether to
+    // go on.
     Builder::new()
         .name("crumbkit-interrupt".to_owned())
         .spawn(move || {
@@ -253,6 +267,17 @@ fn start() -> Result<(), InstallError> {
         })
         .map(drop)
         .map_err(|error| InstallError::Os(error.kind()))
+}
+
+/// Says whether the run takes the signals after `observe` answered
+/// `observing`. A completion run takes none and still succeeds, so a tool
+/// that writes `install()?` does not fail on a Tab press.
+fn needs_listener(observing: Observing) -> Result<bool, InstallError> {
+    match observing {
+        Observing::Installed | Observing::InstalledLate => Ok(true),
+        Observing::Completing => Ok(false),
+        Observing::Full => Err(InstallError::ObserversFull),
+    }
 }
 
 /// What the owner does with a signal.
