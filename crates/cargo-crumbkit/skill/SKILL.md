@@ -134,7 +134,7 @@ disagree with it:
 | `alternatives` | `Failure::alternatives` | One hint offers two different repairs. An "or" between two values of one repair is one repair. | `-U` `"[^"]*(, or \| or )[^"]*"` inside `recovery` and hints |
 | `failure-fields` | `Failure::fields` | A failure variant holds an id, path, name, status or number that only its message shows. | Read each `Failure` type's variants |
 | `derive-failure` | `#[derive(Failure)]` | An `impl Failure` is a `match` per method, or `CODES` is written by hand. | `impl.*Failure\s+for` `CODES:` |
-| `declared-code` | `Code::new`, `Spelling::COLONS` | An error reaches the caller with no declared code, a code is spelled by hand, or a repairable failure offers no step. | `Error::unclassified` `anyhow!` `Recovery::None` `component\(\)` |
+| `declared-code` | `Code::from_spelling`, `Spelling::COLONS` | An error reaches the caller with no declared code, a code is spelled by hand, or a repairable failure offers no step. | `Error::unclassified` `anyhow!` `Recovery::None` `component\(\)` |
 | `exit-codes` | `Exit` | A handler exits above 2 undeclared, or calls `process::exit`. | `ExitCode::from\(` `process::exit` `-> u8` `EXIT_` `\b130\b` |
 | `refusal-seams` | `refusal_hint`, `refusal_alternatives`, `try_parse_to` | Code rewords or matches clap's refusal. | `clap::error::ErrorKind` `ErrorKind::(Unknown\|Invalid\|Missing)` `\.exit\(\)` |
 | `finish-output` | `parse`, `finish`, `Run::fail` | A handler prints its result itself. | `println!` `print!` `Cli::parse\(\)` |

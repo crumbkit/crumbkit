@@ -93,8 +93,8 @@ const fn split_spelling(spelling: &str) -> Result<(usize, usize), SpellingError>
         return Err(SpellingError::Segment(Segment::Area));
     }
     if !is_code_segment(reason_text) {
-        // A fourth part leaves a `:` in the reason, which is no segment.
-        return if contains_colon(reason_text) {
+        // A fourth part leaves a `::` in the reason.
+        return if contains_separator(reason_text) {
             Err(SpellingError::Parts)
         } else {
             Err(SpellingError::Segment(Segment::Reason))
@@ -103,12 +103,12 @@ const fn split_spelling(spelling: &str) -> Result<(usize, usize), SpellingError>
     Ok((area, reason))
 }
 
-/// Returns whether `text` holds a `:`.
-const fn contains_colon(text: &str) -> bool {
+/// Returns whether `text` holds `::`.
+const fn contains_separator(text: &str) -> bool {
     let bytes = text.as_bytes();
     let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b':' {
+    while index + 1 < bytes.len() {
+        if bytes[index] == b':' && bytes[index + 1] == b':' {
             return true;
         }
         index += 1;

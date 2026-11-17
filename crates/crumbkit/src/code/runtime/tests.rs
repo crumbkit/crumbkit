@@ -175,3 +175,20 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn runtime_names_the_reason_when_a_single_colon_trails_or_leads_it() {
+    for (text, reason) in [
+        ("shelf::books::not_found:", "not_found:"),
+        ("shelf::books:::x", ":x"),
+    ] {
+        assert_eq!(
+            Code::runtime(text),
+            Err(RuntimeCodeError::Segment {
+                segment: Segment::Reason,
+                text: reason.to_owned(),
+            }),
+            "{text:?}"
+        );
+    }
+}
