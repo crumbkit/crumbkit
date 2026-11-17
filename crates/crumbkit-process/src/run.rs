@@ -4,6 +4,7 @@
 use std::fmt;
 use std::fs::File;
 use std::io;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::thread::{Builder, Scope as Threads, ScopedJoinHandle};
@@ -12,7 +13,8 @@ use std::time::{Duration, Instant};
 use zeroize::Zeroizing;
 
 use crate::notice::Notice;
-use crate::{Cancel, Escalation, Group, Outcome, Scope, Signal, Status, StopReason, sys};
+use crate::overdue::Report;
+use crate::{Cancel, Escalation, Group, Outcome, Overdue, Scope, Signal, Status, StopReason, sys};
 
 mod finished;
 mod output;
@@ -101,6 +103,7 @@ pub struct RunOptions {
     stdout: Capture,
     stderr: Capture,
     deadline: Option<Instant>,
+    overdue: Option<Report>,
     cancel: Option<Cancel>,
     escalation: Escalation,
     scope: Scope,
@@ -143,6 +146,34 @@ impl RunOptions {
     #[must_use]
     pub const fn deadline(mut self, deadline: Instant) -> Self {
         self.deadline = Some(deadline);
+        self
+    }
+
+    /// Makes the run call `report` once when `at` passes while the child
+    /// still runs, and then wait on as before. The run never signals the
+    /// child because `at` passed, so a tool that must not stop a child that
+    /// outlives a time limit reports it here and lets it go on.
+    ///
+    /// The run calls `report` on its own thread, and it does nothing else
+    /// while `report` runs: it does not act on a cancel, an over-limit
+    /// stream or the [`deadline`](Self::deadline) until `report` returns, so
+    /// `report` should return quickly. [`Overdue::id`] names the child,
+    /// which stays unreaped until the run ends. After `report` the run
+    /// still obeys its cancel, its limits and its deadline, and it ends
+    /// as it would have, with [`ChildFinished::was_overdue`] true. A child
+    /// that exits by itself then gives [`Outcome::Ended`].
+    ///
+    /// `report` never runs when the child has exited by `at`, when `at` is
+    /// at or after the deadline, or when the run stops the child first.
+    /// When `report` panics, the run kills the child's scope, reaps the
+    /// child and returns [`RunError::Run`].
+    #[must_use]
+    pub fn overdue(
+        mut self,
+        at: Instant,
+        report: impl Fn(Overdue) + Send + Sync + 'static,
+    ) -> Self {
+        self.overdue = Some(Report::new(at, report));
         self
     }
 
@@ -328,6 +359,7 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
             stderr: Captured::default(),
             first_stdout: None,
             survivors: false,
+            overdue: false,
         });
     }
     let input = match &options.stdin {
@@ -354,14 +386,22 @@ pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, 
             ends: &ends,
             options,
         };
-        follow(threads, &mut *unwind.group, &notice, &ends, options)
+        follow(
+            threads,
+            &mut *unwind.group,
+            &notice,
+            &ends,
+            options,
+            started,
+        )
     });
-    let (outcome, status, stdout, stderr, survivors) = followed.map_err(RunError::Run)?;
+    let (outcome, status, stdout, stderr, survivors, overdue) = followed.map_err(RunError::Run)?;
     Ok(ChildFinished {
         outcome,
         status: Some(status),
         first_stdout: stdout.first.map(|first| first - started),
         survivors,
+        overdue,
         stdout: stdout.captured,
         stderr: stderr.captured,
     })
@@ -426,7 +466,8 @@ fn follow<'scope>(
     notice: &'scope Notice,
     ends: &'scope Ends,
     options: &'scope RunOptions,
-) -> io::Result<(Outcome, Status, Kept, Kept, bool)> {
+    started_at: Instant,
+) -> io::Result<(Outcome, Status, Kept, Kept, bool, bool)> {
     let pipes = (group.take_stdin(), group.take_stdout(), group.take_stderr());
     let exit = group.waiter();
     let waiter = match Builder::new().spawn_scoped(threads, move || {
@@ -448,11 +489,21 @@ fn follow<'scope>(
         stdin: None,
     };
     let mut failure = start_pipes(threads, &mut started, pipes, notice, ends, options).err();
+    let mut overdue = false;
     let stopped = if failure.is_some() {
         stop(group, notice, &Escalation::default(), options);
         None
     } else {
-        control(group, notice, options)
+        match control(group, notice, options, started_at) {
+            Ok(controlled) => {
+                overdue = controlled.overdue;
+                controlled.stopped
+            }
+            Err(error) => {
+                failure = Some(error);
+                None
+            }
+        }
     };
     let survivors =
         options.report_survivors && failure.is_none() && stopped.is_none() && group.others_alive();
@@ -486,6 +537,7 @@ fn follow<'scope>(
         stdout.transpose()?.unwrap_or_else(unread),
         stderr.transpose()?.unwrap_or_else(unread),
         survivors,
+        overdue,
     ))
 }
 
@@ -525,29 +577,81 @@ fn start_pipes<'scope>(
     Ok(())
 }
 
+/// How [`control`] ended: the exit that a stop gave, or `None` when the
+/// child ended on its own, and whether the overdue report ran.
+struct Controlled {
+    stopped: Option<Outcome>,
+    overdue: bool,
+}
+
 /// Waits until the child exits or the run must stop it, stops it then, and
 /// returns the exit that the stop gives, or `None` when the child ended on
-/// its own. The child has exited when it returns, and is unreaped.
-fn control(group: &Group, notice: &Notice, options: &RunOptions) -> Option<Outcome> {
-    let flags = notice.wait(options.deadline, |flags| {
-        flags.exited || flags.cancelled || flags.over_limit
-    });
-    let exit = if flags.exited {
-        return None;
-    } else if flags.cancelled {
-        Outcome::Stopped(StopReason::Cancelled)
-    } else if flags.over_limit {
-        Outcome::Stopped(StopReason::OverLimit)
-    } else if group.has_exited().unwrap_or(false) {
-        // The deadline passed after the child exited and before the waiter
-        // said so, so the child's own exit stands.
-        notice.wait(None, |flags| flags.exited);
-        return None;
-    } else {
-        Outcome::TimedOut
-    };
-    stop(group, notice, &options.escalation, options);
-    Some(exit)
+/// its own. The child has exited when it returns, and is unreaped. On the
+/// way it calls the overdue report once, when its time passes while the
+/// child runs.
+///
+/// # Errors
+///
+/// Returns an error when the overdue report panicked. The child has been
+/// stopped then.
+fn control(
+    group: &Group,
+    notice: &Notice,
+    options: &RunOptions,
+    started: Instant,
+) -> io::Result<Controlled> {
+    // The overdue report waits for its time only while it comes before the
+    // deadline, and fires once.
+    let mut pending = options
+        .overdue
+        .as_ref()
+        .filter(|report| options.deadline.is_none_or(|deadline| report.at < deadline));
+    let mut reported = false;
+    loop {
+        let until = match (pending, options.deadline) {
+            (Some(report), Some(deadline)) => Some(report.at.min(deadline)),
+            (Some(report), None) => Some(report.at),
+            (None, deadline) => deadline,
+        };
+        let flags = notice.wait(until, |flags| {
+            flags.exited || flags.cancelled || flags.over_limit
+        });
+        let exit = if flags.exited {
+            return Ok(Controlled {
+                stopped: None,
+                overdue: reported,
+            });
+        } else if flags.cancelled {
+            Outcome::Stopped(StopReason::Cancelled)
+        } else if flags.over_limit {
+            Outcome::Stopped(StopReason::OverLimit)
+        } else if group.has_exited().unwrap_or(false) {
+            // The deadline or the overdue time passed after the child
+            // exited and before the waiter said so, so the child's own exit
+            // stands and the report does not run.
+            notice.wait(None, |flags| flags.exited);
+            return Ok(Controlled {
+                stopped: None,
+                overdue: reported,
+            });
+        } else if let Some(report) = pending.filter(|report| report.at <= Instant::now()) {
+            pending = None;
+            let overdue = Overdue::new(group.id(), started.elapsed());
+            if catch_unwind(AssertUnwindSafe(|| report.call(overdue))).is_err() {
+                stop(group, notice, &Escalation::default(), options);
+                return Err(io::Error::other("the overdue report panicked"));
+            }
+            reported = true;
+            continue;
+        } else {
+            Outcome::TimedOut
+        };
+        stop(group, notice, &options.escalation, options);
+        return Ok(Controlled {
+            stopped: Some(exit),
+            overdue: reported,
+        });
+    }
 }
 
 /// Stops the child with `escalation`, and returns once the child has exited.

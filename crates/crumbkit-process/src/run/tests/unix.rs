@@ -14,6 +14,7 @@ use crate::{Group, Scope, Signal};
 mod around_spawn;
 mod input_file;
 mod output_copy;
+mod overdue;
 mod reap;
 mod survivors;
 
@@ -164,10 +165,16 @@ fn a_deadline_that_passes_after_the_child_exited_gives_the_childs_exit() {
         }
     });
 
-    let stopped = control(&group, &notice, &RunOptions::new().deadline(Instant::now()));
+    let controlled = control(
+        &group,
+        &notice,
+        &RunOptions::new().deadline(Instant::now()),
+        Instant::now(),
+    )
+    .unwrap();
 
     waiter.join().unwrap();
-    assert_eq!(stopped, None);
+    assert_eq!(controlled.stopped, None);
     assert_eq!(group.reap().unwrap().code(), Some(3));
 }
 

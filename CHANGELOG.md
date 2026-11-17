@@ -7,6 +7,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit-process: `RunOptions::overdue` calls a report once when a time
+  passes while the child still runs, and the run goes on waiting without
+  signalling the child. `ChildFinished::was_overdue` says whether it ran
+  ([behaviour/process-runs]).
+
 - crumbkit: each argument of a `commands list` row has `after_double_dash`,
   which is `true` for an argument that takes the values written after `--`
   (clap's `last` setting) and `false` for every other argument
@@ -2022,6 +2027,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/output/streams]: docs/behaviour/output/streams.md
 [behaviour/output/terminal]: docs/behaviour/output/terminal.md
 [behaviour/parsing]: docs/behaviour/parsing/README.md
+[behaviour/process-runs]: docs/behaviour/process-runs/README.md
 [behaviour/parsing/aliases]: docs/behaviour/parsing/aliases.md
 [behaviour/parsing/completion]: docs/behaviour/parsing/completion.md
 [behaviour/processes]: docs/behaviour/processes.md

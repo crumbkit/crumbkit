@@ -59,6 +59,11 @@ impl Child {
         })
     }
 
+    /// Returns the child's process id.
+    pub(crate) fn id(&self) -> u32 {
+        locked(&self.wrapped).id()
+    }
+
     /// Returns false.
     ///
     /// RUST-10: Windows reports no survivors. A query of the job's process
