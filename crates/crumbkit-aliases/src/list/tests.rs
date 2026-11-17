@@ -494,3 +494,15 @@ fn a_subcommand_without_a_doc_comment_takes_no_description_from_the_list_argumen
 fn aliases_list_s_document_is_marked_as_crumbkit_s_own() {
     assert!(ALIASES_LIST.is_built_in());
 }
+
+#[test]
+fn a_table_entry_with_no_words_says_the_value_must_be_words() {
+    let aliases = Aliases::new().source(Source::table("shelf", &[("x", &[])]));
+
+    let rows = rows_of(&aliases);
+
+    assert_eq!(
+        row(&rows, "x")["problem"],
+        "the value must be a list of one or more words"
+    );
+}
