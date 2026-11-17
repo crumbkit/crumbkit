@@ -65,6 +65,8 @@ the forwarder alone ends the tool and the log's line is its first clean-up.
   gives the child's own status, which a stopped run has too.
 - [`Escalation`] lists the steps that stop the child, and [`forward`]
   forwards the tool's signals.
+- `RunOptions::overdue` reports a child that still runs at a time and keeps
+  waiting, so a tool that must never signal its child needs no wait loop.
 - The [processes docs] describe the current behaviour, and [ADR-0171],
   [ADR-0172] and [ADR-0174] record why.
 

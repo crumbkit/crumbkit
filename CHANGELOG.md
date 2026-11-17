@@ -7,6 +7,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit-process: `RunOptions::overdue` calls a report once when a time
+  passes while the child still runs, and the run goes on waiting without
+  signalling the child. `ChildFinished::was_overdue` says whether it ran
+  ([behaviour/process-runs]).
 - crumbkit-test: `Unprovoked::area` lists every declared code of one area
   under one reason for `check_recoveries` and `check_twins`, and the recovery
   report names each code it excuses.
@@ -2040,6 +2044,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/parsing]: docs/behaviour/parsing/README.md
 [behaviour/parsing/aliases]: docs/behaviour/parsing/aliases.md
 [behaviour/parsing/completion]: docs/behaviour/parsing/completion.md
+[behaviour/process-runs]: docs/behaviour/process-runs/README.md
 [behaviour/processes]: docs/behaviour/processes.md
 [behaviour/run-observer]: docs/behaviour/run-observer/README.md
 [behaviour/schemas]: docs/behaviour/schemas/README.md
