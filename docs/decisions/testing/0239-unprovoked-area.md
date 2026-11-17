@@ -1,4 +1,4 @@
-# ADR-0236. An unprovoked entry can list a whole area
+# ADR-0239. An unprovoked entry can list a whole area
 
 - Date: 2026-11-17
 - Status: accepted
