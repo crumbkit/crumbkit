@@ -1,6 +1,8 @@
-use super::known;
+use super::{Read, known, read};
 use crate::report::entry::Entry;
+use crate::testing::line;
 use crate::testing::tree;
+use serde_json::json;
 
 /// Returns a person's run of `command` that typed `flags`.
 fn run(command: &str, flags: &[&str]) -> Entry {
@@ -175,4 +177,18 @@ fn a_record_is_known_only_when_its_context_is_a_label_or_absent() {
     assert!(!context(Some("has space")));
     assert!(!context(Some("--password=hunter2")));
     assert!(!context(Some(&"a".repeat(65))));
+}
+
+#[test]
+fn reading_a_line_tells_a_half_line_from_an_edited_record_from_a_known_one() {
+    let tool = tree();
+    let whole = line(1, "books list", &json!({}));
+    let edited = line(1, "books delete", &json!({}));
+
+    assert!(matches!(read(&tool, whole.as_bytes()), Read::Known(_)));
+    assert!(matches!(read(&tool, edited.as_bytes()), Read::Unknown(_)));
+    assert!(matches!(
+        read(&tool, &whole.as_bytes()[..whole.len() / 2]),
+        Read::NotRecord
+    ));
 }

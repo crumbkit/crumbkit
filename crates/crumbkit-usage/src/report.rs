@@ -21,7 +21,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 pub(super) use self::entry::Entry;
-pub(super) use self::known::is_hex;
+pub(super) use self::known::{Known, Read, is_hex, read as read_known};
 pub(super) use self::tally::Tally;
 use super::program::Program;
 use super::record::MAX_LINE;
@@ -60,15 +60,20 @@ pub(super) fn read(
     mut each: impl FnMut(Entry),
 ) {
     lines(log, |line| {
-        let Some(entry) = Entry::parse(line) else {
-            return ControlFlow::Continue(());
+        let entry = match known::read(tool, line) {
+            Read::NotRecord => return ControlFlow::Continue(()),
+            Read::Unknown(at) => {
+                if at >= since {
+                    tally.skip();
+                }
+                return ControlFlow::Continue(());
+            }
+            Read::Known(known) => known.into_entry(),
         };
         if entry.at < since {
             return ControlFlow::Continue(());
         }
-        if !known::known(tool, &entry) {
-            tally.skip();
-        } else if !entry.marked_by(exclude) && entry.placed_in(contexts) {
+        if !entry.marked_by(exclude) && entry.placed_in(contexts) {
             tally.add(&entry);
             each(entry);
         }

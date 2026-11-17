@@ -5,7 +5,7 @@ use clap::Parser;
 use serde_json::{Value, json};
 
 use super::{RunLine, SelfRunsExport, each_line, span_id};
-use crate::testing::line;
+use crate::testing::{line, tree};
 use crumbkit::Row as _;
 
 /// Returns the line of a run of `command` with the span id `run` that ended
@@ -28,7 +28,7 @@ fn log() -> String {
 /// Returns the lines that an export of `log` prints after `after`.
 fn export(log: &str, after: Option<&str>) -> Vec<RunLine> {
     let mut lines = Vec::new();
-    each_line("shelf", Cursor::new(log), after, |line| {
+    each_line(&tree(), Cursor::new(log), after, |line| {
         lines.push(line);
         ControlFlow::Continue(())
     });
@@ -155,6 +155,38 @@ fn a_record_whose_span_id_is_not_16_lowercase_hex_digits_is_skipped() {
 }
 
 #[test]
+fn a_record_that_names_no_command_of_the_tool_is_skipped_in_text_and_in_json() {
+    let log = [run_line(400, "books delete", "000000000000000d"), log()].concat();
+
+    let lines = export(&log, None);
+    let json = json(&log, None);
+
+    let text = |run: &RunLine| RunLine::LINE.and_then(|line| line.text(run)).unwrap();
+    assert_eq!(lines.len(), 3);
+    assert!(lines.iter().all(|run| !text(run).contains("delete")));
+    assert!(
+        json.iter()
+            .all(|line| line["record"]["command"] != "books delete")
+    );
+}
+
+#[test]
+fn an_export_after_the_run_of_an_edited_record_prints_every_known_record_after_a_gap() {
+    let log = [run_line(400, "books delete", "000000000000000d"), log()].concat();
+
+    let runs = runs(&log, Some("000000000000000d"));
+
+    assert_eq!(
+        runs,
+        [
+            ("000000000000000a".to_owned(), true),
+            ("000000000000000b".to_owned(), false),
+            ("000000000000000c".to_owned(), false),
+        ]
+    );
+}
+
+#[test]
 fn a_line_that_is_not_a_usage_record_is_skipped() {
     let log = [
         "not json\n".to_owned(),
@@ -171,7 +203,7 @@ fn a_line_that_is_not_a_usage_record_is_skipped() {
 #[test]
 fn an_export_stops_reading_when_the_stream_stops() {
     let mut lines = 0;
-    each_line("shelf", Cursor::new(log()), None, |_| {
+    each_line(&tree(), Cursor::new(log()), None, |_| {
         lines += 1;
         ControlFlow::Break(())
     });

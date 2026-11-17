@@ -11,6 +11,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the `runs_program` schema description and the effects page say it is
   true only for a command that is open-world and not read-only
   ([behaviour/effects]).
+- crumbkit-usage: `self runs export` skips a usage log line that names a
+  command, flag or code the tool could not have written, as `self usage`
+  does ([behaviour/usage-log/export]).
 - crumbkit: `interrupt::install` returns `InstallError::Taken` when another
   handler, such as the signal thread of `crumbkit_usage::start`, already ends
   the process on SIGINT. Use `start_under(crumbkit::interrupt::clean_up)`

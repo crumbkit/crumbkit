@@ -24,6 +24,47 @@ const OTHER_CALLERS: [&str; 2] = ["person", "unknown"];
 /// characters. A longer code is skipped.
 const LONGEST_CODE: usize = 128;
 
+/// What one line of the usage log is, for a reader that holds a record only
+/// once the check has passed.
+pub(crate) enum Read {
+    /// The line is not a whole usage record, such as the last line of a run
+    /// that ended while it wrote.
+    NotRecord,
+    /// The line is a usage record that names something the writer could not
+    /// have produced, with the time it says the run ended, in milliseconds
+    /// since the Unix epoch.
+    Unknown(u64),
+    /// The line is a record that [`known`] accepts.
+    Known(Known),
+}
+
+/// An [`Entry`] that [`known`] accepted. Only [`read`] makes one, so a
+/// reader that holds a `Known` holds a record the writer could have
+/// produced.
+pub(crate) struct Known(Box<Entry>);
+
+impl Known {
+    /// Returns the checked record.
+    pub(crate) fn entry(&self) -> &Entry {
+        &self.0
+    }
+
+    /// Returns the checked record, which the caller then owns.
+    pub(crate) fn into_entry(self) -> Entry {
+        *self.0
+    }
+}
+
+/// Reads `line` and checks it against `tool`, a command that
+/// `Command::build` has prepared, as [`known`] describes.
+pub(crate) fn read(tool: &Command, line: &[u8]) -> Read {
+    match Entry::parse(line) {
+        None => Read::NotRecord,
+        Some(entry) if known(tool, &entry) => Read::Known(Known(Box::new(entry))),
+        Some(entry) => Read::Unknown(entry.at),
+    }
+}
+
 /// Returns whether every name in `entry` is one that the writer could have
 /// produced for `tool`, a command that `Command::build` has prepared:
 ///

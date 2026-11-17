@@ -68,8 +68,9 @@ A name that is not a program name is refused with `<tool>::cli::usage` and
 exit 2, and the message states the rule, before the report reads the log.
 The report checks each record's `program` against the same rule, as it
 checks callers and codes, and skips a record that fails it and counts it in
-the summary's `skipped`. `self runs export` prints every record with its
-`program` field as stored, and leaves no run out.
+the summary's `skipped`. `self runs export` applies the same check and
+leaves out a record whose `program` fails it, and prints every other record
+with its `program` field as stored.
 
 shelf's end-to-end test in
 [`tests/usage.rs`](../../../../examples/shelf/tests/usage.rs) plants a value
