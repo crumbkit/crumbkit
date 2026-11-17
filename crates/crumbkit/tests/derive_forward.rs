@@ -152,8 +152,8 @@ fn a_forwarded_newtype_gives_the_answers_of_its_failure_impl_and_the_defaults() 
         refused.recovery(),
         Recovery::hint("ask the service owner for access")
     );
-    assert!(timeout.alternatives().is_empty());
-    assert!(timeout.fields().is_empty());
-    assert!(timeout.causes().is_empty());
+    assert_eq!(timeout.alternatives(), Vec::new());
+    assert_eq!(timeout.fields(), Vec::new());
+    assert_eq!(timeout.causes(), Vec::<String>::new());
     assert_eq!(LibraryFailure::CODES, &[LIB_TIMEOUT, LIB_REFUSED]);
 }

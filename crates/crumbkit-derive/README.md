@@ -134,11 +134,9 @@ impl std::error::Error for ReviewedError {}
 The check covers a type that derives `Failure`. A failure written by hand and
 a code from `Code::runtime` escape it.
 
-A `code` can also be an expression that reads the variant's fields, as in
-`code = if *missing { NOT_FOUND } else { NOT_STARTED }`, and then
-`codes = [NOT_FOUND, NOT_STARTED]` names the codes it returns for `CODES`. A
-variant that wraps an error from a library with no crumbkit dependency holds
-a newtype that implements `Failure` and forwards to it with `forward`.
+A `code` can be an expression that reads the variant's fields, with
+`codes = [..]` naming what it returns. A foreign error is forwarded through
+a newtype that implements `Failure`.
 
 A struct that derives `Row` marks its column fields, and the same attribute
 can name the child lines, a problem decided by an expression, the columns of a
