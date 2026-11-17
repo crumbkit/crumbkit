@@ -2,6 +2,7 @@
 //! its command prints.
 
 use schemars::{JsonSchema, Schema};
+use serde_json::Value;
 
 use super::Column;
 use crate::help::ViewFlag;
@@ -124,11 +125,16 @@ impl LeafDocument {
     }
 
     /// Reports whether the row type has columns, which the leaf's `--help`
-    /// lists. A prose document has none. A headed document always has some,
-    /// because its `--help` lists `text` and `base64` among the JSON fields
-    /// also when its row type names no column.
-    pub(crate) const fn has_columns(&self) -> bool {
-        self.document.is_headed() || !self.compact.is_empty() || !self.long.is_empty()
+    /// lists. A prose document has none. A headed document has some when it
+    /// names a column or when its row schema has a `text` or `base64`
+    /// property, which `--help` lists among the JSON fields (ADR-0062). For
+    /// a headed document that names no column it builds the row schema, so
+    /// it is called only while help is rendered.
+    pub(crate) fn has_columns(&self) -> bool {
+        if !self.compact.is_empty() || !self.long.is_empty() {
+            return true;
+        }
+        self.document.is_headed() && !self.column_descriptions().is_empty()
     }
 
     /// Returns the document without its result type.
@@ -223,7 +229,7 @@ impl LeafDocument {
     /// [`Row::LONG_COLUMNS`], in declared order. A headed document's text
     /// has no columns, so its names are the JSON fields that `--fields`
     /// selects: the same names, none of them long, and then `text` and
-    /// `base64` (ADR-0062).
+    /// `base64` for each that is a property of the row schema (ADR-0062).
     ///
     /// It builds the row type's JSON Schema, so it costs a schema build on
     /// each call. A column's description is the first paragraph of the
@@ -246,7 +252,11 @@ impl LeafDocument {
         let schema = (self.schema)();
         let properties = row::properties(&schema);
         let headed = self.document.is_headed();
-        let bytes: &[&str] = if headed { &["text", "base64"] } else { &[] };
+        let has = |name: &str| properties.iter().any(|(field, _)| *field == name);
+        let bytes: Vec<&str> = BYTES_FIELDS
+            .into_iter()
+            .filter(|name| headed && has(name))
+            .collect();
         let compact = self.compact.iter().map(|name| (name, false));
         let long = self.long.iter().map(|name| (name, !headed));
         let bytes = bytes.iter().filter(|name| !self.compact.contains(name));
@@ -255,6 +265,45 @@ impl LeafDocument {
             .chain(bytes.map(|name| (name, false)))
             .map(|(&name, long)| Column::read(&properties, name, long))
             .collect()
+    }
+
+    /// Returns the name of the first field of the row type whose schema
+    /// holds both a `text` and a `base64` property, directly, through a
+    /// local `$ref` or inside an `anyOf`, `oneOf` or `allOf`, or `None` when
+    /// a headed document has no such field or the document is not headed.
+    /// Such a field is a `Bytes` or an `Option<Bytes>` that lacks
+    /// `#[serde(flatten)]`, so the JSON of the document holds the bytes under
+    /// that name. It builds the row type's JSON Schema on each call.
+    /// crumbkit-test's `check_help` reads it.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn unflattened_bytes_field(&self) -> Option<String> {
+        if !self.document.is_headed() {
+            return None;
+        }
+        let schema = (self.schema)();
+        let root = schema.as_value();
+        row::properties(&schema)
+            .into_iter()
+            .find(|(_, property)| holds_bytes_fields(root, property))
+            .map(|(name, _)| name.to_owned())
+    }
+
+    /// Reports whether the document is headed and its row schema has
+    /// properties but lacks a top-level `text` or `base64`, so its JSON does
+    /// not hold the bytes. A row schema with no properties is not reported.
+    /// It builds the row type's JSON Schema on each call. crumbkit-test's
+    /// `check_help` reads it.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn headed_row_lacks_bytes_fields(&self) -> bool {
+        if !self.document.is_headed() {
+            return false;
+        }
+        let schema = (self.schema)();
+        let properties = row::properties(&schema);
+        let has = |name: &str| properties.iter().any(|(field, _)| *field == name);
+        !properties.is_empty() && !BYTES_FIELDS.iter().all(|name| has(name))
     }
 
     /// Returns the settings of the row type's child lines, its
@@ -281,6 +330,32 @@ impl LeafDocument {
             false,
         ))
     }
+}
+
+/// The names of the fields that a headed document's JSON holds beside the
+/// row's own fields when the row flattens its `Bytes` (ADR-0062).
+const BYTES_FIELDS: [&str; 2] = ["text", "base64"];
+
+/// Reports whether `schema` has both bytes properties, directly, through a
+/// local `$ref` into `root`, or inside an `anyOf`, `oneOf` or `allOf`.
+fn holds_bytes_fields(root: &Value, schema: &Value) -> bool {
+    let target = schema
+        .get("$ref")
+        .and_then(Value::as_str)
+        .and_then(|reference| reference.strip_prefix('#'))
+        .and_then(|pointer| root.pointer(pointer))
+        .unwrap_or(schema);
+    let direct = target
+        .get("properties")
+        .and_then(Value::as_object)
+        .is_some_and(|fields| BYTES_FIELDS.iter().all(|name| fields.contains_key(*name)));
+    direct
+        || ["anyOf", "oneOf", "allOf"].iter().any(|key| {
+            target
+                .get(key)
+                .and_then(Value::as_array)
+                .is_some_and(|branches| branches.iter().any(|b| holds_bytes_fields(root, b)))
+        })
 }
 
 /// Returns the JSON Schema of `R`, as the document's schema describes it.

@@ -88,9 +88,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-aliases: breaking: the `codes` module and the code
   `<tool>::aliases::unreadable` are removed, because a source that cannot be
   read is one problem row of `aliases list` ([behaviour/parsing/aliases]).
+- crumbkit-test: `check_help` fails a headed leaf whose row type has a
+  `Bytes` field that is not marked `#[serde(flatten)]` and names the field,
+  and passes a headed row type whose schema has no properties
+  ([behaviour/help/examples]).
 
 ### Fixed
 
+- crumbkit: a headed leaf's help and `commands list` row name `text` and
+  `base64` only when its row type has them, and `--fields` on a row type with
+  no named fields is refused with the hint `drop --fields`
+  ([behaviour/help/examples]).
 - crumbkit-usage: usage logging now works on file systems without hard
   links, such as FAT, and two runs that find a damaged key at once end with
   the same key, because a run writes the key under the log's lock
