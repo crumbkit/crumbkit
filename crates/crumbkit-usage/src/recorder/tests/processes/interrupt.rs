@@ -10,7 +10,7 @@ use crumbkit::interrupt;
 use signal_hook::consts::SIGINT;
 
 use super::{is_child, log_lines, run_child, typed};
-use crate::recorder::start_under;
+use crate::recorder::{start, start_under};
 use crate::testing::TempDir;
 
 #[test]
@@ -49,4 +49,54 @@ fn the_usage_log_under_start_under_writes_one_interrupted_line_on_the_second_ctr
     let lines = log_lines(&state, "owned");
     assert_eq!(lines.len(), 1);
     assert_eq!(lines[0]["interrupted"], true);
+}
+
+#[test]
+fn installing_the_owner_after_a_plain_start_is_refused() {
+    if is_child() {
+        let _log = start();
+        assert_eq!(
+            interrupt::install().unwrap_err(),
+            interrupt::InstallError::Taken
+        );
+        return;
+    }
+    let state = TempDir::new("interrupt-taken");
+
+    let status = run_child(
+        "recorder::tests::processes::interrupt::installing_the_owner_after_a_plain_start_is_refused",
+        &state,
+    );
+
+    assert!(status.success(), "the tool ended with {status:?}");
+}
+
+#[test]
+fn a_plain_start_after_the_owner_leaves_the_first_ctrl_c_to_the_window() {
+    if is_child() {
+        let window = interrupt::install().unwrap().cooperate();
+        let _log = start();
+        typed(
+            &Command::new("shared".to_owned()),
+            &["shared".into()],
+            Spelling::COLONS,
+        );
+        signal_hook::low_level::raise(SIGINT).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !window.requested() {
+            assert!(Instant::now() < deadline, "the first Ctrl-C was not seen");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        // The usage log's thread did not end the tool on the first Ctrl-C.
+        assert_eq!(window.check(), Err(interrupt::Interrupted));
+        return;
+    }
+    let state = TempDir::new("interrupt-shared");
+
+    let status = run_child(
+        "recorder::tests::processes::interrupt::a_plain_start_after_the_owner_leaves_the_first_ctrl_c_to_the_window",
+        &state,
+    );
+
+    assert!(status.success(), "the tool ended with {status:?}");
 }

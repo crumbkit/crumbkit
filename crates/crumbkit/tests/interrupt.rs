@@ -205,3 +205,67 @@ fn the_owner_drops_sigint_while_a_child_holds_the_terminal() {
     let out = run_child("the_owner_drops_sigint_while_a_child_holds_the_terminal");
     assert!(out.status.success(), "{out:?}");
 }
+
+#[test]
+fn a_request_survives_the_drop_of_another_open_guard() {
+    if is_child() {
+        let first = interrupt::install().unwrap().cooperate();
+        let second = interrupt::install().unwrap().cooperate();
+        drop(first);
+        raise(SIGINT).unwrap();
+        wait_for("the request", || second.requested());
+        assert_eq!(second.check(), Err(interrupt::Interrupted));
+        return;
+    }
+    let out = run_child("a_request_survives_the_drop_of_another_open_guard");
+    assert!(out.status.success(), "{out:?}");
+}
+
+#[test]
+fn a_second_window_keeps_a_request_that_the_first_has_not_read() {
+    if is_child() {
+        let first = interrupt::install().unwrap().cooperate();
+        raise(SIGINT).unwrap();
+        wait_for("the request", || first.requested());
+        let second = interrupt::install().unwrap().cooperate();
+        assert_eq!(second.check(), Err(interrupt::Interrupted));
+        assert_eq!(first.check(), Err(interrupt::Interrupted));
+        return;
+    }
+    let out = run_child("a_second_window_keeps_a_request_that_the_first_has_not_read");
+    assert!(out.status.success(), "{out:?}");
+}
+
+#[test]
+fn a_ctrl_c_after_the_last_guard_dropped_ends_the_process() {
+    if is_child() {
+        interrupt::clean_up(say_clean_up_ran);
+        let first = interrupt::install().unwrap().cooperate();
+        let second = interrupt::install().unwrap().cooperate();
+        drop(first);
+        drop(second);
+        raise(SIGINT).unwrap();
+        wait_to_be_ended();
+    }
+    let out = run_child("a_ctrl_c_after_the_last_guard_dropped_ends_the_process");
+    assert_eq!(out.status.signal(), Some(SIGINT), "{out:?}");
+    assert!(String::from_utf8_lossy(&out.stdout).contains("clean-up ran"));
+}
+
+#[test]
+fn a_guard_that_unwinds_in_a_panic_still_leaves_the_other_guard_open() {
+    if is_child() {
+        let first = interrupt::install().unwrap().cooperate();
+        let unwound = std::panic::catch_unwind(|| {
+            let _second = interrupt::install().unwrap().cooperate();
+            panic!("a command failed inside its window");
+        });
+        assert!(unwound.is_err());
+        raise(SIGINT).unwrap();
+        wait_for("the request", || first.requested());
+        assert_eq!(first.check(), Err(interrupt::Interrupted));
+        return;
+    }
+    let out = run_child("a_guard_that_unwinds_in_a_panic_still_leaves_the_other_guard_open");
+    assert!(out.status.success(), "{out:?}");
+}

@@ -8,6 +8,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: `interrupt::install` returns `InstallError::Taken` when another
+  handler, such as the signal thread of `crumbkit_usage::start`, already ends
+  the process on SIGINT. Use `start_under(crumbkit::interrupt::clean_up)`
+  ([behaviour/interrupts]).
+- crumbkit-usage: `start` starts no signal thread when the interrupt owner is
+  installed, so the first Ctrl-C inside a window no longer ends the tool
+  ([behaviour/interrupts]).
+- crumbkit: open `interrupt` windows share one request, and the window closes
+  when its last guard drops, so a Ctrl-C is no longer lost when one guard
+  drops ([behaviour/interrupts]).
 - crumbkit-durable: on Unix, `PathLock::acquire` refuses a lock file that another
   user owns with `Io` at `Open` and the kind `PermissionDenied`
   ([behaviour/durable-files]).
