@@ -185,7 +185,7 @@ fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins()
         Exit::new(124, "Slow.").failures(&[TIMED_OUT]),
         Exit::new(3, "Gone.").failures(&[GONE]),
     ]));
-    const CODES: &[&[Code<'static>]] = &[&[TIMED_OUT]];
+    const CODES: &[Code<'static>] = &[TIMED_OUT];
     const PAIRS: &[Twin<'_>] = &[Twin::new(
         Failing::new(TIMED_OUT, &["books", "get", "1"]),
         &["books", "get", "3"],

@@ -63,12 +63,7 @@ const SHOW_4: Twin<'_> = Twin::new(
 
 /// Returns the panic message of `check_twins` on the tool with `codes`,
 /// `pairs`, `tool` and the opt-outs `allow`, or `None` when it passes.
-fn checked(
-    codes: &[&[Code<'_>]],
-    pairs: &[Twin<'_>],
-    tool: &Tool,
-    allow: &[Allow],
-) -> Option<String> {
+fn checked(codes: &[Code<'_>], pairs: &[Twin<'_>], tool: &Tool, allow: &[Allow]) -> Option<String> {
     let dir = TempDir::new("twins-trusted").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
@@ -79,19 +74,14 @@ fn checked(
 #[test]
 fn a_twin_of_a_child_code_needs_no_declaration() {
     assert_eq!(
-        checked(
-            &[&[NOT_FOUND]],
-            &[SHOW_7, SHOW_5, SHOW_4],
-            &Tool::new(),
-            &[]
-        ),
+        checked(&[NOT_FOUND], &[SHOW_7, SHOW_5, SHOW_4], &Tool::new(), &[]),
         None
     );
 }
 
 #[test]
 fn a_declared_child_code_needs_no_twin() {
-    let codes: &[&[Code<'_>]] = &[&[NOT_FOUND, crumbkit_child::codes::NOT_STARTED]];
+    let codes: &[Code<'_>] = &[NOT_FOUND, crumbkit_child::codes::NOT_STARTED];
 
     assert_eq!(checked(codes, &[SHOW_7], &Tool::new(), &[]), None);
 }
@@ -99,7 +89,7 @@ fn a_declared_child_code_needs_no_twin() {
 #[test]
 fn a_twin_that_refuses_a_crumbkit_component_code_on_neither_list_fails_as_not_declared() {
     assert_eq!(
-        checked(&[&[NOT_FOUND]], &[SHOW_7, SHOW_6], &Tool::new(), &[]).as_deref(),
+        checked(&[NOT_FOUND], &[SHOW_7, SHOW_6], &Tool::new(), &[]).as_deref(),
         Some(
             "the tool's twins break crumbkit's twin rule:\n\
              the refused line `tool books show 6` fails with tool::books::unlisted, which is not a declared code or a code of crumbkit or of one of its add-on crates"
@@ -110,7 +100,7 @@ fn a_twin_that_refuses_a_crumbkit_component_code_on_neither_list_fails_as_not_de
 #[test]
 fn a_declared_crumbkit_component_code_on_neither_list_needs_a_twin() {
     assert_eq!(
-        checked(&[&[NOT_FOUND, UNLISTED]], &[SHOW_7], &Tool::new(), &[]).as_deref(),
+        checked(&[NOT_FOUND, UNLISTED], &[SHOW_7], &Tool::new(), &[]).as_deref(),
         Some(
             "the tool's twins break crumbkit's twin rule:\n\
              tool::books::unlisted: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
@@ -124,7 +114,7 @@ fn an_exit_that_lists_a_crumbkit_component_code_on_neither_list_fails_the_twin_c
         .failures(Failures::new().exits(&[Exit::new(3, "Unlisted.").failures(&[UNLISTED])]));
 
     assert_eq!(
-        checked(&[&[NOT_FOUND]], &[SHOW_7], &TOOL, &[]).as_deref(),
+        checked(&[NOT_FOUND], &[SHOW_7], &TOOL, &[]).as_deref(),
         Some(
             "the tool's twins break crumbkit's twin rule:\n\
              tool::books::unlisted: the tool record's exit code 3 lists the failure code, and no CODES list holds it"
@@ -140,7 +130,7 @@ fn an_untwinned_opt_out_for_a_declared_crumbkit_component_code_on_neither_list_i
     )];
 
     assert_eq!(
-        checked(&[&[NOT_FOUND, UNLISTED]], &[SHOW_7], &Tool::new(), ALLOW),
+        checked(&[NOT_FOUND, UNLISTED], &[SHOW_7], &Tool::new(), ALLOW),
         None
     );
 }

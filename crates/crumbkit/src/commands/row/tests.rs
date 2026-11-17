@@ -168,6 +168,42 @@ fn a_headed_row_has_the_headed_form_and_lists_its_json_fields_with_text_and_base
     );
 }
 
+/// A removed book's report, whose row type is transparent over a JSON value,
+/// so its schema has no properties.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+#[serde(transparent)]
+struct BookReport(Value);
+
+impl crate::Row for BookReport {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl crate::Headed for BookReport {
+    fn bytes(&self) -> Option<&crate::Bytes> {
+        None
+    }
+}
+
+#[test]
+fn commands_list_gives_a_headed_leaf_without_bytes_fields_only_its_own_columns() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[Leaf::new(&["books", "remove"]).document(
+            crate::Document::<crate::Batch<BookReport, crate::Error>>::new(
+                "shelf",
+                "books-remove",
+                1,
+                "The removed books' reports.",
+            )
+            .headed(),
+        )]),
+    );
+
+    let row = row(&TOOL);
+
+    assert_eq!(row["form"], "headed");
+    assert_eq!(row["columns"], json!([]));
+}
+
 /// A removed book whose text is its own line.
 #[derive(serde::Serialize, schemars::JsonSchema)]
 struct Removed {
