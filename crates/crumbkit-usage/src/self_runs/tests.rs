@@ -1,5 +1,6 @@
 use std::io::Cursor;
-use std::time::Duration;
+
+use jiff::{Span, SpanFieldwise};
 
 use clap::Parser;
 use serde_json::{Value, json};
@@ -40,7 +41,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>, Value) {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(86_400), now()),
+        &selection(Span::new().days(1), now()),
         limit,
     );
     let rows = listing
@@ -142,7 +143,7 @@ fn self_runs_list_takes_the_flags_of_self_usage_and_a_page() {
     let tool =
         Cli::try_parse_from(["tool", "--since", "1d", "--log", "copy.jsonl", "--all"]).unwrap();
 
-    assert_eq!(tool.args.usage.since, Duration::from_secs(86_400));
+    assert_eq!(tool.args.usage.since, SpanFieldwise(Span::new().days(1)));
     assert_eq!(tool.args.page.limit(), None);
 }
 
@@ -190,7 +191,7 @@ fn the_runs_leave_out_those_of_an_excluded_program_and_keep_those_of_another() {
         ["books list", "books show"]
     );
     assert_eq!(
-        commands(&selection(Duration::from_secs(86_400), now())),
+        commands(&selection(Span::new().days(1), now())),
         ["books list", "books list", "books show"]
     );
 }
@@ -238,7 +239,7 @@ fn the_runs_keep_only_those_of_the_named_contexts() {
     ]
     .concat();
     let only = |names: &[&str]| {
-        let mut selection = selection(Duration::from_secs(86_400), now());
+        let mut selection = selection(Span::new().days(1), now());
         selection.context = names.iter().map(|name| (*name).to_owned()).collect();
         let listing = runs_from(
             &tree(),

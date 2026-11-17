@@ -177,7 +177,7 @@ impl Entry {
 /// milliseconds since the Unix epoch.
 fn millis<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
     let text = String::deserialize(deserializer)?;
-    let time = humantime::parse_rfc3339(&text).map_err(serde::de::Error::custom)?;
+    let time = crate::time::parse(&text).map_err(serde::de::Error::custom)?;
     let since_epoch = time
         .duration_since(UNIX_EPOCH)
         .map_err(serde::de::Error::custom)?;

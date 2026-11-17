@@ -64,6 +64,7 @@ mod self_usage;
 mod shape;
 #[cfg(test)]
 mod testing;
+mod time;
 
 pub use self::facts::{Extension, Facts, Key, Label, extend};
 // `log_path` exists for cargo-crumbkit's `weigh --usage`, which reads the

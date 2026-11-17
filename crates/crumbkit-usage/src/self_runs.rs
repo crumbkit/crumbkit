@@ -213,9 +213,7 @@ fn row(tool_name: &str, index: usize, place: usize, entry: Entry) -> RunRow {
     RunRow {
         session: index as u64 + 1,
         step: place as u64 + 1,
-        // The reader parsed the time from RFC 3339, so humantime formats it
-        // without a panic.
-        at: humantime::format_rfc3339_seconds(end).to_string(),
+        at: crate::time::seconds(end),
         caller: entry.caller,
         command: entry.command.unwrap_or_else(|| tool_name.to_owned()),
         flags: entry.flags,

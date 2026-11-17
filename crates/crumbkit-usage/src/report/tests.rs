@@ -13,11 +13,11 @@ use crate::testing::tree;
 /// Returns one line of the log for a run of `command` that ended `at`
 /// seconds after the Unix epoch.
 fn line(at: u64, command: &str) -> String {
-    let at = humantime::format_rfc3339_millis(UNIX_EPOCH + Duration::from_secs(at));
+    let at = crate::time::millis(UNIX_EPOCH + Duration::from_secs(at));
     let record = json!({
         "schema": "crumbkit/usage/v1",
         "tool": "shelf",
-        "at": at.to_string(),
+        "at": at,
         "ms": 10,
         "caller": "person",
         "session": "0123456789abcdef",
@@ -193,11 +193,11 @@ fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
 
 /// Returns `entry` as the line of the log that records it.
 fn line_of(entry: &Entry) -> String {
-    let at = humantime::format_rfc3339_millis(UNIX_EPOCH + Duration::from_millis(entry.at));
+    let at = crate::time::millis(UNIX_EPOCH + Duration::from_millis(entry.at));
     let mut record = json!({
         "schema": "crumbkit/usage/v1",
         "tool": "shelf",
-        "at": at.to_string(),
+        "at": at,
         "ms": entry.ms,
         "caller": entry.caller,
         "session": entry.session,

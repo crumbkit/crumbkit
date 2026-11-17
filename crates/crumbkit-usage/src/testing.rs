@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use clap::{Arg, ArgAction, Command};
+use jiff::Span;
 use serde_json::{Value, json};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -80,12 +81,12 @@ pub(super) fn tree() -> Command {
 
 /// The time that the tests report at: noon UTC on 11 October 2026.
 pub(super) fn now() -> SystemTime {
-    humantime::parse_rfc3339("2026-10-11T12:00:00Z").unwrap()
+    crate::time::parse("2026-10-11T12:00:00Z").unwrap()
 }
 
 /// Returns the selection of the runs that ended in the `since` duration before
 /// `now`, with no excluded program.
-pub(super) fn selection(since: Duration, now: SystemTime) -> Selection {
+pub(super) fn selection(since: Span, now: SystemTime) -> Selection {
     Selection {
         since,
         now,
@@ -97,11 +98,11 @@ pub(super) fn selection(since: Duration, now: SystemTime) -> Selection {
 /// Returns one line of the log for a person's run of `command` in session
 /// `s1` that ended `secs` seconds before [`now`], with `fields` added.
 pub(super) fn line(secs: u64, command: &str, fields: &Value) -> String {
-    let at = humantime::format_rfc3339_millis(now() - Duration::from_secs(secs));
+    let at = crate::time::millis(now() - Duration::from_secs(secs));
     let mut record = json!({
         "schema": "crumbkit/usage/v1",
         "tool": "shelf",
-        "at": at.to_string(),
+        "at": at,
         "ms": 10,
         "caller": "person",
         "session": "0123456789abcdef",
@@ -135,7 +136,7 @@ pub(super) fn marked_log() -> String {
 /// Returns the selection of the last day that leaves out flightdeck's runs.
 pub(super) fn without_flightdeck() -> Selection {
     Selection {
-        since: Duration::from_secs(86_400),
+        since: Span::new().days(1),
         now: now(),
         exclude: vec![Program::new("flightdeck").unwrap()],
         context: Vec::new(),

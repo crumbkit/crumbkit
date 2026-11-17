@@ -391,7 +391,7 @@ impl Recorder {
             schema,
             tool: self.tool?,
             version: self.version,
-            at: humantime::format_rfc3339_millis(now).to_string(),
+            at: super::time::millis(now),
             ms: u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX),
             caller: caller.name,
             program: self.program,

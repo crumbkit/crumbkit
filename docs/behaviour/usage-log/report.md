@@ -29,9 +29,10 @@ Why: ADR-0034, ADR-0033, ADR-0190.
 
 ## What the report reads
 
-`--since` takes a humantime duration, such as `12h`, `7d` or `2w`, and
-defaults to `7d`. The report reads the runs that ended in that duration
-before now, and the summary names the UTC day on which the duration starts.
+`--since` takes a jiff duration, such as `12h`, `7d` or `3mo`, and defaults to
+`7d`. The report reads the runs that ended that long before now on the UTC
+calendar, and the summary names the day it starts. `0`, `1M` and `1.5d` are
+refused.
 `--log <FILE>` reads that file in place of the tool's own log, such as a
 copy from another machine. `--exclude-program <NAME>` leaves out a
 [program's runs](program/README.md).

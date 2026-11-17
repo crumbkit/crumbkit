@@ -1,5 +1,7 @@
 use std::io::Cursor;
 use std::path::PathBuf;
+
+use jiff::{Span, SpanFieldwise};
 use std::time::{Duration, SystemTime};
 
 use clap::Parser;
@@ -105,7 +107,7 @@ fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(60), now()),
+        &selection(Span::new().seconds(60), now()),
     );
 
     let summary = serde_json::to_value(listing.get_summary()).unwrap();
@@ -141,7 +143,7 @@ fn rows(log: &str) -> Vec<(String, u64, String, String)> {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(7 * 86_400), now()),
+        &selection(Span::new().days(7), now()),
     );
     listing
         .rows()
@@ -222,7 +224,7 @@ fn a_finding_row_carries_the_figures_of_its_command() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(60), now()),
+        &selection(Span::new().seconds(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -266,7 +268,7 @@ fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_tool_declares
         &tree(),
         &TOOL,
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(60), now()),
+        &selection(Span::new().seconds(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -297,7 +299,7 @@ fn a_finding_row_gives_an_exit_inside_a_declared_range_the_meaning_of_the_range(
         &tree(),
         &TOOL,
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(60), now()),
+        &selection(Span::new().seconds(60), now()),
     );
 
     let row = serde_json::to_value(&listing.rows()[0]).unwrap();
@@ -323,7 +325,7 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(86_400), now()),
+        &selection(Span::new().days(1), now()),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -337,7 +339,7 @@ fn without_a_log_the_report_has_no_runs_and_no_findings() {
         &tree(),
         &Tool::new(),
         None::<Cursor<&str>>,
-        &selection(Duration::from_secs(60), now()),
+        &selection(Span::new().seconds(60), now()),
     );
 
     assert_eq!(listing.rows().len(), 0);
@@ -348,18 +350,18 @@ fn without_a_log_the_report_has_no_runs_and_no_findings() {
 }
 
 #[test]
-fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
+fn a_clock_past_the_year_9999_reports_the_last_day_that_jiff_has() {
     let far = SystemTime::UNIX_EPOCH + Duration::from_secs(300_000_000_000);
 
     let listing = report_from(
         &tree(),
         &Tool::new(),
         None::<Cursor<&str>>,
-        &selection(Duration::from_secs(60), far),
+        &selection(Span::new().seconds(60), far),
     );
     let summary = listing.get_summary().unwrap();
 
-    assert_eq!(summary.since, "9999-12-31");
+    assert_eq!(summary.since, "9999-12-30");
 }
 
 /// A tool whose only arguments are `self usage`'s.
@@ -370,14 +372,57 @@ struct Cli {
 }
 
 #[test]
-fn since_takes_a_humantime_duration_and_defaults_to_7_days() {
+fn since_defaults_to_7_days_and_takes_jiff_s_friendly_durations() {
+    let accepted = [
+        ("12h", Span::new().hours(12)),
+        ("7d", Span::new().days(7)),
+        ("2w", Span::new().weeks(2)),
+        ("1h 30m", Span::new().hours(1).minutes(30)),
+        ("1d12h", Span::new().days(1).hours(12)),
+        ("32ms", Span::new().milliseconds(32)),
+        ("1y", Span::new().years(1)),
+        ("3mo", Span::new().months(3)),
+        ("1 month", Span::new().months(1)),
+    ];
     let default = Cli::try_parse_from(["tool"]).unwrap();
-    let twelve_hours = Cli::try_parse_from(["tool", "--since", "12h"]).unwrap();
-    let refused = Cli::try_parse_from(["tool", "--since", "yesterday"]);
 
-    assert_eq!(default.args.since, Duration::from_secs(7 * 86_400));
-    assert_eq!(twelve_hours.args.since, Duration::from_secs(12 * 3_600));
-    assert!(refused.is_err());
+    assert_eq!(default.args.since, SpanFieldwise(Span::new().days(7)));
+    for (text, span) in accepted {
+        let parsed = Cli::try_parse_from(["tool", "--since", text]).unwrap();
+        assert_eq!(parsed.args.since, SpanFieldwise(span), "{text}");
+    }
+}
+
+#[test]
+fn since_refuses_what_jiff_s_friendly_format_does_not_read() {
+    for text in ["1M", "0", "1.5d", "yesterday", ""] {
+        let refused = Cli::try_parse_from(["tool", "--since", text]);
+        assert!(refused.is_err(), "{text:?} parsed");
+    }
+}
+
+#[test]
+fn a_since_of_months_counts_back_calendar_months_from_now() {
+    let listing = report_from(
+        &tree(),
+        &Tool::new(),
+        None::<Cursor<&str>>,
+        &selection(Span::new().months(1), now()),
+    );
+
+    assert_eq!(listing.get_summary().unwrap().since, "2026-09-11");
+}
+
+#[test]
+fn a_since_of_years_counts_back_calendar_years_from_now() {
+    let listing = report_from(
+        &tree(),
+        &Tool::new(),
+        None::<Cursor<&str>>,
+        &selection(Span::new().years(1), now()),
+    );
+
+    assert_eq!(listing.get_summary().unwrap().since, "2025-10-11");
 }
 
 #[test]
@@ -412,7 +457,7 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log)),
-        &selection(Duration::from_secs(100 * 365 * 86_400), now()),
+        &selection(Span::new().days(36_500), now()),
     );
     let summary = listing.get_summary().unwrap();
 
@@ -450,7 +495,7 @@ fn a_slow_command_that_mostly_waited_has_a_row_that_names_no_fact_of_the_tool() 
         &tree(),
         &Tool::new(),
         Some(Cursor::new(log.clone())),
-        &selection(Duration::from_secs(60), now()),
+        &selection(Span::new().seconds(60), now()),
     );
 
     assert_eq!(
@@ -487,7 +532,7 @@ fn exclude_program_leaves_out_that_program_s_runs_and_keeps_every_other_run() {
     };
 
     let excluded = summary(without_flightdeck());
-    let kept = summary(selection(Duration::from_secs(86_400), now()));
+    let kept = summary(selection(Span::new().days(1), now()));
 
     assert_eq!(excluded["runs"], 2);
     assert_eq!(excluded["skipped"], 0);

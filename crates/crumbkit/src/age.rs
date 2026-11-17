@@ -134,9 +134,8 @@ impl fmt::Display for Age {
 /// describes it as an inline string in the `date-time` format.
 impl Shown for Age {
     fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // humantime panics on a time before 1970 and returns `fmt::Error`
-        // from the year 10000 on, and serde_json panics on a `Display` that
-        // fails, so both are refused here first.
+        // A time before 1970 or from the year 10000 on has no RFC 3339 form
+        // in four digits, so both are refused here first.
         let since_1970 = self
             .at
             .duration_since(UNIX_EPOCH)
@@ -146,7 +145,9 @@ impl Shown for Age {
                 "an Age after the year 9999 has no RFC 3339 form",
             ));
         }
-        serializer.collect_str(&humantime::format_rfc3339_millis(self.at))
+        let time = jiff::Timestamp::try_from(self.at)
+            .map_err(|_| S::Error::custom("an Age after the year 9999 has no RFC 3339 form"))?;
+        serializer.collect_str(&format_args!("{time:.3}"))
     }
 
     fn schema(_: &mut SchemaGenerator) -> Schema {

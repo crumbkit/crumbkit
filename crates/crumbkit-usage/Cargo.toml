@@ -39,9 +39,9 @@ is-ai-agent = { workspace = true }
 siphasher = { workspace = true }
 # etcetera finds the XDG state directory that holds the log (ADR-0029).
 etcetera = { workspace = true }
-# humantime writes the record's time and parses `self usage --since`
+# jiff writes and reads the record's time and parses `self usage --since`
 # (ADR-0029, ADR-0034).
-humantime = { workspace = true }
+jiff = { workspace = true }
 # signal-hook runs the thread that writes the line when a run ends on a
 # signal (ADR-0029). `iterator` gives `Signals` on Unix and builds nothing
 # on Windows, where the log uses `flag`.

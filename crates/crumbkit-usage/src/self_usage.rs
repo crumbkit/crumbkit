@@ -33,9 +33,10 @@ use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::{Args, Command};
+use jiff::{Span, SpanFieldwise};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -69,8 +70,8 @@ pub const SELF_USAGE: Document<Listing<FindingRow, UsageSummary>> = Document::ne
 #[command(about = None, long_about = None)]
 pub struct SelfUsage {
     /// How far back to read the usage log, such as 12h, 7d or 2w
-    #[arg(long, value_name = "DURATION", default_value = "7d", value_parser = humantime::parse_duration)]
-    pub(super) since: Duration,
+    #[arg(long, value_name = "DURATION", default_value = "7d", value_parser = parse_since)]
+    pub(super) since: SpanFieldwise,
 
     /// Read this usage log instead of the tool's own
     #[arg(long, value_name = "FILE")]
@@ -286,7 +287,7 @@ fn context_label(text: &str) -> Result<String, String> {
 /// time, less those that an excluded program marked.
 pub(super) struct Selection {
     /// How far back from `now` the report reads.
-    pub(super) since: Duration,
+    pub(super) since: Span,
     /// The time that the report counts back from.
     pub(super) now: SystemTime,
     /// The programs whose runs the report leaves out.
@@ -299,7 +300,7 @@ impl SelfUsage {
     /// Returns the runs that the arguments select, counted back from `now`.
     pub(super) fn selection(&self, now: SystemTime) -> Selection {
         Selection {
-            since: self.since,
+            since: self.since.0,
             now,
             exclude: self.exclude_program.clone(),
             context: Vec::new(),
@@ -328,18 +329,10 @@ pub(super) fn open_log(tool: &Command, log: Option<&Path>) -> Option<BufReader<F
     File::open(path).ok().map(BufReader::new)
 }
 
-/// The last second that humantime formats, 9999-12-31T23:59:59Z, in
-/// seconds since the Unix epoch. humantime panics on a later time.
-const LAST_SECOND: u64 = 253_402_300_799;
-
-/// Returns the UTC day of `time` as `YYYY-MM-DD`, with a time after
-/// [`LAST_SECOND`] read as that second and a time before 1970 read as the
-/// epoch, so that a wrong clock cannot panic.
-fn day_of(time: SystemTime) -> String {
-    let time = time.clamp(UNIX_EPOCH, UNIX_EPOCH + Duration::from_secs(LAST_SECOND));
-    let stamp = humantime::format_rfc3339_seconds(time).to_string();
-    // The first 10 characters of an RFC 3339 time are its day.
-    stamp.get(..10).unwrap_or_default().to_owned()
+/// Reads a `--since` value in jiff's friendly duration form, such as `12h`,
+/// `7d`, `2w`, `3mo`, `1y` or `1h 30m`.
+fn parse_since(text: &str) -> Result<SpanFieldwise, jiff::Error> {
+    text.parse().map(SpanFieldwise)
 }
 
 /// Returns the findings in `log` for the runs in `selection`, checked against
@@ -381,13 +374,8 @@ pub(super) fn summarize(
     selection: &Selection,
     each: impl FnMut(Entry),
 ) -> (Report, UsageSummary) {
-    // A start before 1970 reads from 1970, because no record is older and
-    // humantime panics on a time before the epoch.
-    let start = selection
-        .now
-        .checked_sub(selection.since)
-        .unwrap_or(UNIX_EPOCH)
-        .max(UNIX_EPOCH);
+    // A start before 1970 reads from 1970, because no record is older.
+    let start = crate::time::before(selection.now, selection.since);
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
@@ -414,7 +402,7 @@ pub(super) fn summarize(
                 runs: count.runs,
             })
             .collect(),
-        since: day_of(start),
+        since: crate::time::day_of(start),
         skipped: report.skipped,
         tolerated: std::mem::take(&mut report.tolerated)
             .into_iter()
