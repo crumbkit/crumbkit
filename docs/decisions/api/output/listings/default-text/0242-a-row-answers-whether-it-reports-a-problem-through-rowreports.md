@@ -1,4 +1,4 @@
-# ADR-0237. A row answers whether it reports a problem through RowReports
+# ADR-0242. A row answers whether it reports a problem through RowReports
 
 - Date: 2026-11-17
 - Status: accepted
