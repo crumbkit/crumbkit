@@ -1,0 +1,137 @@
+use proc_macro2::TokenStream;
+use quote::quote;
+
+use super::refusal;
+
+#[test]
+fn each_refused_warning_use_is_a_compile_error_that_names_the_field() {
+    let cases: Vec<(TokenStream, &str)> = vec![
+        (
+            quote! {
+                struct Check {
+                    #[row(column, warning)] wear: Option<String>,
+                    #[row(column, warning)] tear: Option<String>,
+                }
+            },
+            "the fields `wear` and `tear` both give `warning`, and a row has at most one warning field",
+        ),
+        (
+            quote! { struct Check { #[row(long, warning)] wear: Option<String> } },
+            "the field `wear` gives `warning` without `column`, and the warning field is one of the compact columns",
+        ),
+        (
+            quote! { struct Check { #[row(column, problem, warning)] wear: Option<String> } },
+            "the field `wear` gives both `problem` and `warning`, and a row that reports a problem counts only as a problem",
+        ),
+    ];
+    for (input, expected) in cases {
+        assert_eq!(refusal(input), expected);
+    }
+}
+
+#[test]
+fn the_derive_refuses_problem_and_warning_on_one_field() {
+    let message = refusal(quote! {
+        struct Book {
+            #[row(column, problem, warning)]
+            damage: Option<String>,
+        }
+    });
+    assert!(
+        message.contains("gives both `problem` and `warning`"),
+        "{message}"
+    );
+}
+
+#[test]
+fn each_refused_use_is_a_compile_error_that_names_the_field_or_the_type() {
+    let dropped = |key: &str| {
+        format!(
+            "the field `notes` is marked #[serde({key})], so the JSON holds no field of that name, and it takes no #[row(...)] key"
+        )
+    };
+    let keys = "Its keys are `column`, `long`, `uncut`, `problem` and `warning` on a field, and `crate` on the type";
+    let refused = "#[derive(Row)] supports a struct with named fields, and";
+    let cases = [
+        (
+            quote! { struct Book { #[row(colum)] id: u32 } },
+            format!("the field `id` gives `colum`, and #[row(...)] has no such key. {keys}"),
+        ),
+        (
+            quote! { #[row(colum)] struct Book { id: u32 } },
+            format!("the type gives `colum`, and #[row(...)] has no such key. {keys}"),
+        ),
+        (
+            quote! { struct Book { #[row(column)] #[row(column)] id: u32 } },
+            "the field `id` gives `column` twice".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(column, long)] id: u32 } },
+            "the field `id` gives both `column` and `long`, and a field is in only one of the two lists".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(uncut)] id: u32 } },
+            "the field `id` gives `uncut` without `column` or `long`, and only a column can be uncut".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(long, problem)] error: Option<String> } },
+            "the field `error` gives `problem` without `column`, and the problem field is one of the compact columns".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[serde(skip)] #[row(long)] notes: String } },
+            dropped("skip"),
+        ),
+        (
+            quote! { struct Book { #[serde(skip_serializing)] #[row(long)] notes: String } },
+            dropped("skip_serializing"),
+        ),
+        (
+            quote! { struct Book { #[serde(flatten)] #[row(long)] notes: Notes } },
+            dropped("flatten"),
+        ),
+        (
+            quote! {
+                struct Check {
+                    #[row(column, problem)] error: Option<String>,
+                    #[row(column, problem)] damage: Option<String>,
+                }
+            },
+            "the fields `error` and `damage` both give `problem`, and a row has at most one problem field".to_owned(),
+        ),
+        (
+            quote! { #[row(column)] struct Book { id: u32 } },
+            "`column` goes in the #[row(...)] attribute of a field".to_owned(),
+        ),
+        (
+            quote! { struct Book { #[row(crate = ::crumbkit)] id: u32 } },
+            "`crate` goes in the #[row(...)] attribute of the type".to_owned(),
+        ),
+        (
+            quote! { #[serde(transparent)] struct Id { #[row(column)] id: u32 } },
+            "the type `Id` is marked #[serde(transparent)], so its JSON has no field names for #[derive(Row)] to list".to_owned(),
+        ),
+        (
+            quote! { enum State { Done } },
+            format!("{refused} `State` is an enum, so it writes `impl Row` by hand"),
+        ),
+        (
+            quote! { union Bits { whole: u32 } },
+            format!("{refused} `Bits` is a union"),
+        ),
+        (
+            quote! { struct Pair(u32, u32); },
+            format!("{refused} `Pair` is a tuple struct"),
+        ),
+        (
+            quote! { struct Nothing; },
+            format!("{refused} `Nothing` is a unit struct"),
+        ),
+        (
+            quote! { #[serde(rename_all = "Title Case")] struct Book { #[row(column)] id: u32 } },
+            "#[serde(rename_all)] has no rule \"Title Case\". Its rules are \"lowercase\", \"UPPERCASE\", \"PascalCase\", \"camelCase\", \"snake_case\", \"SCREAMING_SNAKE_CASE\", \"kebab-case\" and \"SCREAMING-KEBAB-CASE\"".to_owned(),
+        ),
+    ];
+    for (input, message) in cases {
+        assert_eq!(refusal(input.clone()), message, "{input}");
+    }
+}
