@@ -126,6 +126,22 @@ const NAMES: u32 = 16;
 /// sync that fails with `EINVAL`, `ENOTSUP` or `ENOSYS`, as on some SMB
 /// and FUSE mounts that cannot sync a directory, counts as done.
 pub fn write_atomically(path: &Path, bytes: &[u8], mode: Mode) -> Result<(), WriteError> {
+    replace(path, bytes, mode, |file, bytes| {
+        file.write_all(bytes)
+            .map_err(|e| (WriteStep::Write, e))
+            .and_then(|()| file.sync_all().map_err(|e| (WriteStep::Sync, e)))
+    })
+}
+
+/// Does what [`write_atomically`] does, with `populate` as the step that fills
+/// the temporary file with `bytes` and syncs it. The tests pass a `populate`
+/// that fails, to inject a fault at the write or the sync.
+pub(crate) fn replace(
+    path: &Path,
+    bytes: &[u8],
+    mode: Mode,
+    populate: impl FnOnce(&mut File, &[u8]) -> Result<(), (WriteStep, io::Error)>,
+) -> Result<(), WriteError> {
     let fail = |step, source| WriteError {
         step,
         path: path.to_path_buf(),
@@ -138,10 +154,7 @@ pub fn write_atomically(path: &Path, bytes: &[u8], mode: Mode) -> Result<(), Wri
         ));
     };
     let (temporary, mut file) = create(path, name, mode).map_err(|e| fail(WriteStep::Create, e))?;
-    let written = file
-        .write_all(bytes)
-        .map_err(|e| (WriteStep::Write, e))
-        .and_then(|()| file.sync_all().map_err(|e| (WriteStep::Sync, e)));
+    let written = populate(&mut file, bytes);
     drop(file);
     #[expect(
         clippy::disallowed_methods,

@@ -1,10 +1,10 @@
 use std::fs;
-use std::io;
+use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
-use super::{Mode, WriteStep, directory, write_atomically};
+use super::{Mode, WriteStep, directory, replace, write_atomically};
 
 /// Returns the names in `directory`, sorted.
 fn names(directory: &Path) -> Vec<String> {
@@ -247,4 +247,39 @@ fn a_directory_sync_that_fails_with_einval_or_enotsup_counts_as_done_and_one_wit
     assert!(sync(EINVAL).is_ok());
     assert!(sync(ENOTSUP).is_ok());
     assert_eq!(sync(EIO).unwrap_err().raw_os_error(), Some(EIO));
+}
+
+/// Calls `replace` on `target` with a populate step that writes `written` bytes of
+/// `bytes` and then fails at `step` with an injected error, and asserts
+/// that the failure leaves `target` as it was and no temporary file.
+fn assert_populate_failure_leaves_no_trace(step: WriteStep, written: usize) {
+    let dir = tempfile::tempdir().unwrap();
+    let old = dir.path().join("old");
+    let absent = dir.path().join("absent");
+    put(&old, "kept");
+    let bytes = b"new bytes";
+
+    for target in [&old, &absent] {
+        let error = replace(target, bytes, Mode::Umask, |file, bytes| {
+            file.write_all(&bytes[..written]).unwrap();
+            Err((step, io::Error::other("injected")))
+        })
+        .unwrap_err();
+
+        assert_eq!(error.step, step);
+        assert_eq!(error.path, *target);
+        assert_eq!(error.source.to_string(), "injected");
+    }
+    assert_eq!(fs::read(&old).unwrap(), b"kept");
+    assert_eq!(names(dir.path()), ["old"]);
+}
+
+#[test]
+fn a_failed_write_leaves_the_target_unchanged_and_removes_the_temporary_file() {
+    assert_populate_failure_leaves_no_trace(WriteStep::Write, 4);
+}
+
+#[test]
+fn a_failed_sync_leaves_the_target_unchanged_and_removes_the_temporary_file() {
+    assert_populate_failure_leaves_no_trace(WriteStep::Sync, 9);
 }
