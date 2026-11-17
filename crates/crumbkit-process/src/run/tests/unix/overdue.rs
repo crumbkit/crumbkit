@@ -107,7 +107,7 @@ fn an_overdue_report_before_the_deadline_still_lets_the_deadline_stop_the_run() 
 fn a_report_that_blocks_past_the_deadline_delays_the_stop_and_the_run_still_times_out() {
     let options = kept()
         .overdue(after(0.1), |_| {
-            std::thread::sleep(Duration::from_millis(600))
+            std::thread::sleep(Duration::from_millis(600));
         })
         .deadline(after(0.3));
     let started = Instant::now();
