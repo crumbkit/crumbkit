@@ -42,7 +42,7 @@ its reasons.
   [trace context](usage-log/trace-context.md) and the
   [usage report](usage-log/report.md).
 - [Checks](checks/README.md): what crumbkit-test's checks enforce on a
-  tool.
+  tool, and [code coverage](checks/coverage/README.md) for declared codes.
 - [Processes](processes.md): running another program whose output a tool
   reads, with crumbkit-process.
 - [Durable files](durable-files.md): replacing a file atomically and

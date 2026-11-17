@@ -7,6 +7,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit-test: `Unprovoked::area` lists every declared code of one area
+  under one reason for `check_recoveries` and `check_twins`, and the recovery
+  report names each code it excuses.
+
 - crumbkit: each argument of a `commands list` row has `after_double_dash`,
   which is `true` for an argument that takes the values written after `--`
   (clap's `last` setting) and `false` for every other argument

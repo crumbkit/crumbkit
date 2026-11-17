@@ -12,11 +12,11 @@ use crate::testing::panic_message;
 use crate::twins::{Twin, Twins, check_twins};
 
 /// The code of a book that does not exist.
-const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
+pub(super) const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
 /// The code of a list of ids that cannot be read.
-const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
+pub(super) const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
 /// The code of a book file that disappeared, which no command line provokes.
-const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
+pub(super) const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
 
 /// The tool's declared codes.
 const CODES: &[Code<'static>] = &[NOT_FOUND, UNREADABLE, REMOVED];
@@ -38,13 +38,13 @@ esac
 "#;
 
 /// The twin of `NOT_FOUND`: book 7 does not exist, and book 2 does.
-const SHOW_7: Twin<'_> = Twin::new(
+pub(super) const SHOW_7: Twin<'_> = Twin::new(
     Failing::new(NOT_FOUND, &["books", "show", "7"]),
     &["books", "show", "2"],
 );
 
 /// The twin of crumbkit's usage code, which needs no entry in `CODES`.
-const LIMIT_0: Twin<'_> = Twin::new(
+pub(super) const LIMIT_0: Twin<'_> = Twin::new(
     Failing::new(
         crumbkit::codes::CLI_USAGE,
         &["books", "list", "--limit", "0"],
@@ -54,14 +54,14 @@ const LIMIT_0: Twin<'_> = Twin::new(
 
 /// Returns the panic message of `check_twins` on the tool, with `pairs` and
 /// the listed codes `unprovoked`, or `None` when it passes.
-fn checked(pairs: &[Twin<'_>], unprovoked: &[Unprovoked<'_>]) -> Option<String> {
+pub(super) fn checked(pairs: &[Twin<'_>], unprovoked: &[Unprovoked<'_>]) -> Option<String> {
     checked_allowing(pairs, unprovoked, &[])
 }
 
 /// Returns the panic message of `check_twins` on the tool, with `pairs`,
 /// the listed codes `unprovoked` and the opt-outs `allow`, or `None` when
 /// it passes.
-fn checked_allowing(
+pub(super) fn checked_allowing(
     pairs: &[Twin<'_>],
     unprovoked: &[Unprovoked<'_>],
     allow: &[Allow],
@@ -186,7 +186,8 @@ esac
 const BROKEN_FILE: &str = "A broken file causes it, and no single word does.";
 
 /// The listed code that no command line provokes.
-const REMOVED_ENTRY: Unprovoked<'_> = Unprovoked::new(REMOVED, "Only a full disk provokes it.");
+pub(super) const REMOVED_ENTRY: Unprovoked<'_> =
+    Unprovoked::new(REMOVED, "Only a full disk provokes it.");
 
 #[test]
 fn a_declared_code_without_a_twin_passes_when_an_untwinned_opt_out_names_a_line_that_fails_with_it()
