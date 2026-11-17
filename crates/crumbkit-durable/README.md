@@ -33,8 +33,7 @@ assert_eq!(std::fs::read(&config).unwrap(), b"theme = \"dark\"\n");
 std::fs::remove_dir_all(&dir).unwrap();
 ```
 
-`Mode::Private` gives the file `0600` on Unix, for a file such as a key,
-and `Mode::Umask` gives it `0666` less the process's umask, as
+`Mode::Private` gives the file `0600` on Unix, and `Mode::Umask` gives it `0666` less the process's umask, as
 `File::create` does.
 
 ## What it promises
@@ -68,9 +67,10 @@ both hold different files. The crate never removes a lock file, and
 failure returns a [`LockError`], which is `Busy` when the wait ends. A
 taken lock reports how long its acquire took through [`PathLock::waited`].
 
-The owner check applies to root too. It fails every acquire on a mount that
-reports a fixed owner, such as NFS with `root_squash` or `all_squash` or CIFS
-or FUSE with `uid=`, so keep lock files on a local file system.
+The owner check applies to root too. Every acquire fails on a mount that
+reports one owner for every file, such as NFS with `all_squash`, or CIFS or
+FUSE with `uid=`, and for root on NFS with `root_squash`. Keep lock files on
+a local file system.
 
 ## Platforms
 

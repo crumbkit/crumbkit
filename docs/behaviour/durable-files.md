@@ -105,11 +105,11 @@ the file stays, empty and unlocked, after the release.
    `Open` with the kind `PermissionDenied` and a message naming the path
    and the owner's uid, so a user who created the file first in a shared
    directory cannot make the caller lock it. A process running as root gets
-   no exception. A mount that reports a fixed owner for every file, such as
-   NFS with `root_squash` or `all_squash` or a CIFS or FUSE mount with
-   `uid=`, shows a file the caller just created as owned by another uid, so
-   every acquire there fails with this error. Keep lock files on a local file
-   system. Windows does not check the owner.
+   no exception. A mount that reports one owner for every file, such as NFS
+   with `all_squash` or a CIFS or FUSE mount with `uid=`, shows a file the
+   caller just created as owned by another uid, so every acquire there fails
+   with this error. NFS with `root_squash` does the same for a root caller.
+   Keep lock files on a local file system. Windows does not check the owner.
 2. It calls `try_lock`, which is `flock` on Unix and `LockFileEx` on
    Windows. While another holder has the lock, it calls `give_up`, returns
    `Busy` when that returns true or the deadline has passed, and otherwise
