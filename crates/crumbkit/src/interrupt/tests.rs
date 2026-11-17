@@ -61,3 +61,10 @@ fn taking_the_terminal_back_discards_a_ctrl_c_that_was_meant_for_the_child() {
 
     assert!(!pending.load(Ordering::SeqCst));
 }
+
+#[test]
+fn a_taken_install_says_which_handler_to_start_under() {
+    let said = InstallError::Taken.to_string();
+    assert!(said.contains("another handler already ends the process on SIGINT"));
+    assert!(said.contains("start_under(crumbkit::interrupt::clean_up)"));
+}
