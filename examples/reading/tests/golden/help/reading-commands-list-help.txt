@@ -37,6 +37,9 @@ Examples:
   reading commands list to-read list --json --full
           Print the list command of the to-read list with its arguments and examples as JSON
 
+  reading commands list to-read edit --json --full
+          Print the edit command of the to-read list, with the program it runs, as JSON
+
 Columns:
   path   The command line that runs the command, such as `shelf books list`.
   about  The command's one-line description, or its full description when it has no one-line description.

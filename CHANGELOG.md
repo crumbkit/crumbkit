@@ -9,8 +9,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - crumbkit: the `runs_program` schema description and the effects page say it is
-  true only for a command that is open-world and not read-only. `reading`'s
-  `edit` takes the editor after `--` and declares it
+  true only for a command that is open-world and not read-only
   ([behaviour/effects]).
 - crumbkit-aliases: a `Source::table` entry with no words no longer expands to
   nothing. `aliases list` shows it with a problem, as for a file entry, and the

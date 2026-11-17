@@ -95,8 +95,8 @@ pub fn command(lists: &[List]) -> Command {
 /// Returns reading's tool record: [`TOOL`], with a leaf that lists two
 /// examples for the `list` command of each of `lists` and declares the document
 /// it prints, the one that `entries list` prints, and a leaf with two examples
-/// for its `edit` command, which runs a program and passes on the editor's exit code. With no
-/// lists it returns [`TOOL`] itself and allocates nothing.
+/// for its `edit` command, which runs a program and passes on the editor's
+/// exit code. With no lists it returns [`TOOL`] itself and allocates nothing.
 #[must_use]
 pub fn tool(lists: &[List]) -> Tool {
     if lists.is_empty() {
