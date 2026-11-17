@@ -1,7 +1,7 @@
 # ADR-0053. Recovery chains
 
 - Date: 2026-10-13
-- Status: accepted
+- Status: amended by ADR-0239
 
 ## Context
 

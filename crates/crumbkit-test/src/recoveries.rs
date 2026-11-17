@@ -19,7 +19,7 @@ use crate::runs::{Dir, Location};
 
 mod chain;
 mod runtime;
-mod unprovoked;
+pub(crate) mod unprovoked;
 mod words;
 
 pub(crate) use chain::known::library_codes;
@@ -524,31 +524,24 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
         skipped,
         ..
     } = walk;
-    for (text, _) in &declared {
-        let listed = recoveries
-            .unprovoked
-            .iter()
-            .any(|entry| spelling.spell(entry.code()) == *text);
-        if !listed && !provoked.contains(text) {
+    for (text, code) in &declared {
+        if !unprovoked::lists(recoveries.unprovoked, *code) && !provoked.contains(text) {
             problems.push(format!(
                 "{text}: no start provokes the declared code, and Recoveries::unprovoked does not list it"
             ));
         }
     }
     report.push_str("codes that no start provokes:\n");
-    for entry in recoveries.unprovoked {
-        let text = spelling.spell(entry.code());
-        if !declared.iter().any(|&(_, code)| code == entry.code()) {
-            problems.push(format!(
-                "{text}: Recoveries::unprovoked lists the code, and it is not a declared code"
-            ));
-        } else if provoked.contains(&text) {
-            problems.push(format!(
-                "{text}: Recoveries::unprovoked lists the code, and a start provokes it"
-            ));
-        }
-        let _ = writeln!(report, "  {text}: {}", entry.reason());
-    }
+    let codes: Vec<Code<'_>> = declared.iter().map(|&(_, code)| code).collect();
+    problems.extend(unprovoked::problems(
+        recoveries.unprovoked,
+        &codes,
+        spelling,
+        "Recoveries::unprovoked",
+        "a start provokes",
+        |code| provoked.contains(&spelling.spell(code)),
+        Some(&mut report),
+    ));
     let _ = writeln!(
         report,
         "\ncodes whose recoveries the check did not follow, because no declared code spells them: {skipped}"

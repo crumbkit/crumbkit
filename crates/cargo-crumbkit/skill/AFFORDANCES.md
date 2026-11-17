@@ -178,7 +178,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `check_opt_outs`, `Allow`, `Rule` | Lint suppressions with no reason | No test calls it | `check_opt_outs` | 0.1 | `convention-suite` |
 | `check_examples`, `Examples`, `example_golden_name`, `FailureReader` | `assert_cmd` tests of each example | Examples that no test runs | `check_examples` `assert_cmd` | 0.1 | `twins-examples` |
 | `check_output_budget` | No test of the cut result | No test calls it | `check_output_budget` | 0.1 | `convention-suite` |
-| `check_recoveries`, `Recoveries`, `Failing`, `Unprovoked`, `RuntimeFailing`, `RuntimePlace` | Tests of one recovery at a time | A declared code with no start | `check_recoveries` `Failing::new` `Unprovoked::` | 0.1 | `provoked-call` |
+| `check_recoveries`, `Recoveries`, `Failing`, `Unprovoked` (`Unprovoked::area` lists a whole area), `RuntimeFailing`, `RuntimePlace` | Tests of one recovery at a time | A declared code with no start | `check_recoveries` `Failing::new` `Unprovoked::` | 0.1 | `provoked-call` |
 | `check_codes` | A test that scans source for codes | A code test written by hand, or `check_codes` skipped | `check_codes` | 0.1 | `convention-suite` |
 | `check_twin`, `check_twins`, `Twin`, `Twins` | Tests that assert only a failure | A refusal test with no accepted line | `check_twins?\(` | 0.1 | `twins-examples` |
 

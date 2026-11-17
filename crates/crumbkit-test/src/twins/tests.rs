@@ -14,6 +14,7 @@ use crate::recoveries::Failing;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
+mod areas;
 mod coverage;
 mod exits;
 mod group;

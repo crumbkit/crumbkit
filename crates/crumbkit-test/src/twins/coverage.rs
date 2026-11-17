@@ -9,7 +9,7 @@ use crate::allow::{Allow, Rule};
 use crate::codes::{self, CodeLists};
 use crate::examples::Examples;
 use crate::help::command_line;
-use crate::recoveries::{Failing, Unprovoked, library_codes};
+use crate::recoveries::{Failing, Unprovoked, library_codes, unprovoked};
 use crate::runs::with_json;
 
 /// One twin of [`check_twins`]: a command line that the tool refuses, with
@@ -232,7 +232,7 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
         }
     }
     let refused = |code: Code<'_>| twins.pairs.iter().any(|pair| pair.refused.code() == code);
-    let listed = |code: Code<'_>| twins.unprovoked.iter().any(|entry| entry.code() == code);
+    let listed = |code: Code<'_>| unprovoked::lists(twins.unprovoked, code);
     let mut untwinned = Vec::new();
     for failing in twins
         .examples
@@ -283,18 +283,15 @@ pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
             ));
         }
     }
-    for entry in twins.unprovoked {
-        let text = spelling.spell(entry.code());
-        if !declared.contains(&entry.code()) {
-            problems.push(format!(
-                "{text}: Twins::unprovoked lists the code, and it is not a declared code"
-            ));
-        } else if refused(entry.code()) {
-            problems.push(format!(
-                "{text}: Twins::unprovoked lists the code, and a twin refuses it"
-            ));
-        }
-    }
+    problems.extend(unprovoked::problems(
+        twins.unprovoked,
+        &declared,
+        spelling,
+        "Twins::unprovoked",
+        "a twin refuses",
+        refused,
+        None,
+    ));
     unheld(tool, spelling, &declared, &mut problems);
     assert!(
         problems.is_empty(),
