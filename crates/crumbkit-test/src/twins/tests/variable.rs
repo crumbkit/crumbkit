@@ -47,7 +47,7 @@ fn checked(pairs: &[Twin<'_>]) -> Option<String> {
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
     let examples = Examples::new(&path, "").env(&[("BOOKS", "/b")]);
-    let twins = Twins::new(examples, &[&[TOO_DEEP, NO_SHELF]]).pairs(pairs);
+    let twins = Twins::new(examples, &[TOO_DEEP, NO_SHELF]).pairs(pairs);
     panic_message(|| check_twins(&tree(), &Tool::new(), &twins))
 }
 

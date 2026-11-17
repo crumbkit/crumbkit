@@ -6,7 +6,7 @@ use crumbkit::{Code, Spelling, Tool};
 
 use super::{Admitted, named, refuse, tool_name, twin};
 use crate::allow::{Allow, Rule};
-use crate::codes;
+use crate::codes::{self, CodeLists};
 use crate::examples::Examples;
 use crate::help::command_line;
 use crate::recoveries::{Failing, Unprovoked, library_codes};
@@ -94,7 +94,7 @@ impl<'a> Twin<'a> {
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
-/// const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[&[NOT_FOUND, GONE]])
+/// const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[NOT_FOUND, GONE])
 ///     .pairs(&[Twin::new(
 ///         Failing::new(NOT_FOUND, &["books", "show", "7"]),
 ///         &["books", "show", "2"],
@@ -105,8 +105,8 @@ impl<'a> Twin<'a> {
 pub struct Twins<'a> {
     /// The binary and its environment.
     examples: Examples<'a>,
-    /// The `CODES` list of each of the tool's error types.
-    codes: &'a [&'a [Code<'a>]],
+    /// The tool's declared codes.
+    codes: CodeLists<'a>,
     /// The twins.
     pairs: &'a [Twin<'a>],
     /// The declared codes that no command line provokes.
@@ -115,13 +115,26 @@ pub struct Twins<'a> {
 
 impl<'a> Twins<'a> {
     /// Returns the settings that run the binary of `examples` with its
-    /// environment and require a twin for each code of `codes`, the `CODES`
-    /// list of each of the tool's error types, with no twin and no
-    /// unprovoked code. [`check_twins`] spells the codes as the
-    /// tool record does. A test whose codes come from `Code::runtime`
-    /// writes `let lists = [codes.as_slice()];` and passes `&lists`.
+    /// environment and require a twin for each code of `codes`, with no twin
+    /// and no unprovoked code. `codes` can be a derived `CODES`, a literal
+    /// list, or `&codes` of a `Vec<Code>` that a test built at run time and
+    /// bound before the call. [`check_twins`] spells the codes as the tool
+    /// record does. A tool with several error types calls [`Twins::lists`].
     #[must_use]
-    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [Code<'a>]]) -> Self {
+    pub const fn new(examples: Examples<'a>, codes: &'a [Code<'a>]) -> Self {
+        Self::with(examples, CodeLists::One(codes))
+    }
+
+    /// Returns the settings of [`Twins::new`] for a tool with several error
+    /// types, from the `CODES` list of each one. A code that two lists share
+    /// counts once. It takes lists because a `const` cannot join slices.
+    #[must_use]
+    pub const fn lists(examples: Examples<'a>, lists: &'a [&'a [Code<'a>]]) -> Self {
+        Self::with(examples, CodeLists::Many(lists))
+    }
+
+    /// Returns the settings for `codes`.
+    const fn with(examples: Examples<'a>, codes: CodeLists<'a>) -> Self {
         Self {
             examples,
             codes,
@@ -201,7 +214,12 @@ impl<'a> Twins<'a> {
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, tool: &Tool, twins: &Twins<'_>) {
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
-    let declared: Vec<Code<'_>> = codes::declared(twins.codes);
+    let mut declared: Vec<Code<'_>> = Vec::new();
+    for code in codes::declared(twins.codes) {
+        if !declared.contains(&code) {
+            declared.push(code);
+        }
+    }
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();

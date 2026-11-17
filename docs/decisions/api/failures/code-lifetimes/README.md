@@ -12,3 +12,4 @@ value owns them.
 
 - [ADR-0205. A code borrows its segments](0205-a-code-borrows-its-segments.md)
 - [ADR-0217. A code list holds its codes by value](0217-a-code-list-holds-its-codes-by-value.md)
+- [ADR-0235. Recoveries and Twins take one flat code list](0235-recoveries-and-twins-take-one-flat-code-list.md)

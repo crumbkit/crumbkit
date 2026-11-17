@@ -2,9 +2,21 @@
 
 use crumbkit::Code;
 
-/// Returns every code of `lists`, the `CODES` list of each of the tool's
-/// error types, in order, with a code that two lists share once for each
-/// list.
-pub(crate) fn declared<'a>(lists: &[&[Code<'a>]]) -> Vec<Code<'a>> {
-    lists.iter().flat_map(|list| list.iter().copied()).collect()
+/// The codes that a check reads: one list, or one list for each of the
+/// tool's error types.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum CodeLists<'a> {
+    /// One flat list, such as a derived `CODES`.
+    One(&'a [Code<'a>]),
+    /// The `CODES` list of each error type.
+    Many(&'a [&'a [Code<'a>]]),
+}
+
+/// Returns every code of `lists`, in order, with a code that two lists share
+/// once for each list.
+pub(crate) fn declared<'a>(lists: CodeLists<'a>) -> Vec<Code<'a>> {
+    match lists {
+        CodeLists::One(list) => list.to_vec(),
+        CodeLists::Many(lists) => lists.iter().flat_map(|list| list.iter().copied()).collect(),
+    }
 }

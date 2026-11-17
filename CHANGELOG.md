@@ -56,6 +56,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-test: breaking: `Recoveries::new` and `Twins::new` take one code
+  list, such as `CODES` or `&codes` of a `Vec`. `Recoveries::lists` and
+  `Twins::lists` take one list for each error type
+  ([behaviour/failures]).
 - crumbkit-skills: `skills_command!` takes the tool's name and defines the
   `skills` enum, so the `skills` help names the tool. It removes
   `SkillsCommand`. `install_leaf`, `check_leaf` and `print_leaf` become the
