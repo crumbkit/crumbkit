@@ -271,7 +271,7 @@ fn parse(text: &str) -> Loaded {
 }
 
 /// Returns the words of an entry's value, or `None` when the value is not a
-/// list of one or more strings.
+/// list of strings.
 fn words(value: &DeValue<'_>) -> Option<Vec<String>> {
     value
         .as_array()?

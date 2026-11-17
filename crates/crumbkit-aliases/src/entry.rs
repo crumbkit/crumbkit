@@ -38,8 +38,8 @@ pub(crate) struct Item {
 
 impl Item {
     /// Returns the item for `key`, split into words, and `words`. Every
-    /// source builds its items here, so an empty list of words is `None`, a
-    /// value that is not a list of one or more words, for all of them.
+    /// source builds its items here. An empty list of words becomes `None`,
+    /// so every source treats it as a bad value.
     pub(crate) fn new(key: &str, words: Option<Vec<String>>) -> Self {
         Self {
             key: key.split_whitespace().map(str::to_owned).collect(),
