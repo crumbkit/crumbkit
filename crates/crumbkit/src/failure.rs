@@ -4,7 +4,7 @@
 use std::fmt;
 
 use crate::codes::NO_ADVICE;
-use crate::{Call, Code, Field};
+use crate::{Call, Code, Field, Program};
 
 pub(crate) mod declared;
 #[cfg(test)]
@@ -377,6 +377,22 @@ pub enum Recovery {
     /// does not resolve. `Call::value` gives an argument a concrete value,
     /// and `Call::flag` names a flag that takes no value as set.
     Terminal(Call),
+    /// Run this command of another program, such as `git status`.
+    /// `crumbkit::finish` prints it on the `help:` line as the program's
+    /// name followed by each argument, quoted as [`crate::Step::run`] quotes
+    /// them, and the JSON failure document holds it as a step of kind
+    /// `program`. An argument with a control character or a Unicode format
+    /// character makes the failure print as `None` with the reason `the
+    /// suggested command is not available`, because such a character would
+    /// reach the terminal unescaped. crumbkit does not check that the
+    /// program exists or accepts the arguments.
+    Program {
+        /// The program that runs the command.
+        program: Program,
+        /// The arguments, as the caller types them before a shell quotes
+        /// them.
+        args: Vec<String>,
+    },
     /// Run the same command again later, because the failure may pass.
     Retry,
     /// Follow this advice, such as `check the network connection`.
@@ -389,6 +405,19 @@ pub enum Recovery {
 }
 
 impl Recovery {
+    /// Returns [`Recovery::Program`] that runs `program` with `args`.
+    #[must_use]
+    pub fn program<I, A>(program: Program, args: I) -> Self
+    where
+        I: IntoIterator<Item = A>,
+        A: Into<String>,
+    {
+        Self::Program {
+            program,
+            args: args.into_iter().map(Into::into).collect(),
+        }
+    }
+
     /// Returns [`Recovery::Hint`] with `advice`.
     #[must_use]
     pub fn hint(advice: impl Into<String>) -> Self {

@@ -25,3 +25,4 @@ in place of crumbkit's failure document.
 - [ADR-0206. Code lifetimes](code-lifetimes/README.md)
 - [ADR-0227. Reviewed sentences](reviewed-sentences/README.md)
 - [ADR-0243. Failure causes](causes/README.md)
+- [ADR-0251. Typed recoveries](typed-recoveries/README.md)

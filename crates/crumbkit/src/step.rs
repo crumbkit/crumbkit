@@ -65,6 +65,11 @@ impl Program {
         }
         Self { name }
     }
+
+    /// Returns the word that runs the program.
+    pub(crate) const fn name(self) -> &'static str {
+        self.name
+    }
 }
 
 /// A next step: a sentence that says what to do, and the commands that do it,
@@ -260,8 +265,8 @@ impl Serialize for RenderedCommand {
 
 /// Returns the command line that runs `program` with `args`, or `None` when
 /// an argument holds a character that `escape_controls` replaces.
-fn program_line(program: Program, args: &[String]) -> Option<String> {
-    let mut line = program.name.to_owned();
+pub(crate) fn program_line(program: Program, args: &[String]) -> Option<String> {
+    let mut line = program.name().to_owned();
     for arg in args {
         if matches!(escape_controls(arg), Cow::Owned(_)) {
             return None;

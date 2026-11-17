@@ -27,6 +27,7 @@ mod env;
 mod exits;
 mod fresh;
 mod next_step;
+mod program;
 mod reading;
 mod terminal;
 mod values;

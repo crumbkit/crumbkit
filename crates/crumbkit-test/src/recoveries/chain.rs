@@ -207,6 +207,19 @@ impl Walk<'_> {
         self.report.push('\n');
     }
 
+    /// Writes the `program` step with the command line `run` to the report,
+    /// or adds a problem when `run` is empty. The check never runs it.
+    fn report_program(&mut self, chain: &Chain<'_>, indent: &str, run: &str) {
+        if run.is_empty() {
+            self.problems.push(format!(
+                "{}: a program step has no command line in `run`",
+                chain.start
+            ));
+        } else {
+            let _ = writeln!(self.report, "{indent}program {run}");
+        }
+    }
+
     /// Follows each of `steps`, which the failure `parent` offers, as the
     /// `depth`th step of `chain`, writing each to the report indented by
     /// `depth`.
@@ -244,6 +257,10 @@ impl Walk<'_> {
                         continue;
                     };
                     (call, Some(values.as_slice()))
+                }
+                RecoveryStep::Program { run, .. } => {
+                    self.report_program(chain, &indent, run);
+                    continue;
                 }
                 RecoveryStep::Retry => {
                     let _ = writeln!(self.report, "{indent}retry");
@@ -393,6 +410,7 @@ impl Walk<'_> {
                 RecoveryStep::Run(_)
                     | RecoveryStep::RunAll { .. }
                     | RecoveryStep::Terminal(_)
+                    | RecoveryStep::Program { .. }
                     | RecoveryStep::Retry
                     | RecoveryStep::Hint(_)
             )

@@ -154,6 +154,17 @@ fn step_schema(description: &str) -> Schema {
                 "required": ["kind", "call"],
             },
             {
+                "description": "Run this command of another program. `run` is the quoted command line that the text output prints.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "program" },
+                    "program": { "type": "string" },
+                    "args": { "type": "array", "items": { "type": "string" } },
+                    "run": { "type": "string" },
+                },
+                "required": ["kind", "program", "args", "run"],
+            },
+            {
                 "description": "Run the same command again later.",
                 "type": "object",
                 "properties": {

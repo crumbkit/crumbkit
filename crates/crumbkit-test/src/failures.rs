@@ -229,6 +229,7 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
                 (Some("run"), Some(call), None) => RecoveryStep::Run(call.to_owned()),
                 (Some("terminal"), Some(call), _) => RecoveryStep::Terminal(call.to_owned()),
                 (Some("run" | "terminal"), None, _) => RecoveryStep::None(String::new()),
+                (Some("program"), ..) => program_step(step),
                 (Some("retry"), ..) => RecoveryStep::Retry,
                 (Some("hint"), ..) => RecoveryStep::Hint(text(step, "text")),
                 _ => RecoveryStep::None(text(step, "reason")),
@@ -237,6 +238,29 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
         .collect();
     let fields = fields(document);
     Some(ReadFailure::new(code, steps).with_fields(fields))
+}
+
+/// Returns the `program` step `step` of a failure document, or
+/// `RecoveryStep::None` with no reason when it lacks its program or holds
+/// no command line.
+fn program_step(step: &Value) -> RecoveryStep {
+    let text = |key: &str| step.get(key).and_then(Value::as_str).map(str::to_owned);
+    let args = step
+        .get("args")
+        .and_then(Value::as_array)
+        .map(|args| {
+            args.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default();
+    match (text("program"), text("run")) {
+        (Some(program), Some(run)) if !run.is_empty() => {
+            RecoveryStep::Program { program, args, run }
+        }
+        _ => RecoveryStep::None(String::new()),
+    }
 }
 
 /// Returns the `fields` of the failure document `document`, each a name and
@@ -283,6 +307,9 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
                 format!("run `{call}` with every value of {field}")
             }
             RecoveryStep::Terminal(call) => format!("run `{call}` in a terminal"),
+            RecoveryStep::Program { run, .. } => {
+                format!("run `{run}`, a command of another program")
+            }
             RecoveryStep::Retry => "retry".to_owned(),
             RecoveryStep::Hint(text) => format!("hint: {text}"),
             RecoveryStep::None(reason) if reason.is_empty() => "no next step".to_owned(),

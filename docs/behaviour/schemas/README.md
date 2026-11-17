@@ -75,7 +75,11 @@ A failure prints with `--json` as the `<tool>/failure/v1` document.
   that field, each as its own word, in place of the argument's placeholder,
   such as `<ID>...` ([output budget](../output/budget/README.md#batches)).
 - A `terminal` step holds `call`, a command that a person must run in a
-  terminal ([failures](../failures/README.md#recoveries-and-alternatives)).
+  terminal ([failures](../failures/recoveries/README.md)).
+- A `program` step holds `program`, `args` and `run`, a command of another
+  program with its arguments and the quoted line that the text prints
+  ([failures](../failures/recoveries/README.md)). The id stays `v1`
+  (ADR-0252).
 - The document and each batch failure hold `fields` after `causes` when the
   failure names at least one field, as one object of names to values in the
   order the failure gave them. A value is a string, an integer, a boolean,
