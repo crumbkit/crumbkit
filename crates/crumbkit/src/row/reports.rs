@@ -1,5 +1,5 @@
 //! The one-call checks for whether a row reports a problem or a warning
-//! (ADR-0212, ADR-0244).
+//! (ADR-0212, ADR-0245).
 
 use crate::Row;
 

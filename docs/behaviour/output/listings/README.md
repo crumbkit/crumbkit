@@ -263,7 +263,7 @@ once, as its worse state.
 - `Warning::field` adds a `Warnings:` line to the leaf's help after the
   `Problems:` line.
 
-Why: ADR-0244.
+Why: ADR-0245.
 
 ## A listing that lists only its problem rows
 
@@ -288,7 +288,7 @@ listing's document makes the default text list only the rows that
   warning, and --long, --fields or --json lists every row.` The line leaves out a flag
   that the leaf does not offer.
 
-Why: ADR-0138, ADR-0140, ADR-0244.
+Why: ADR-0138, ADR-0140, ADR-0245.
 
 ## Rows that the default text lists
 

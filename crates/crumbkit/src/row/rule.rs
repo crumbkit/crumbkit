@@ -1,5 +1,5 @@
 //! How a row type decides which rows are marked, shared by [`Problem`] and
-//! [`Warning`] (ADR-0212, ADR-0244).
+//! [`Warning`] (ADR-0212, ADR-0245).
 //!
 //! [`Problem`]: crate::Problem
 //! [`Warning`]: crate::Warning

@@ -130,7 +130,7 @@ pub trait Row: Serialize + JsonSchema {
     const PROBLEM: Option<Problem<Self>> = None;
 
     /// Which rows report a warning, and the column that shows it, or `None`
-    /// when no row does (ADR-0244). A warning marks a row that deserves
+    /// when no row does (ADR-0245). A warning marks a row that deserves
     /// attention and leaves the exit code at 0. [`Warning`] describes the
     /// note and the help that follow.
     const WARNING: Option<Warning<Self>> = None;

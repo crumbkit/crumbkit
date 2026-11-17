@@ -4,7 +4,7 @@
 //! rows that the default text of a listing prints, which `Row::in_default_text`
 //! and `Document::only_problems` choose (ADR-0138, ADR-0157), and the note
 //! of the rows that report a warning, as `Row::WARNING` decides, which
-//! leaves the exit code alone (ADR-0244). The `row::problems` module counts
+//! leaves the exit code alone (ADR-0245). The `row::problems` module counts
 //! which rows report either.
 
 use crate::row::problems::Marks;
@@ -12,7 +12,7 @@ use crate::view::{Table, View};
 use crate::{Document, Row, RowReports, Rows, Shape, exit};
 
 /// The rule that picks the rows that the default text of a listing lists
-/// (ADR-0138, ADR-0157, ADR-0244): each row that reports a problem or a
+/// (ADR-0138, ADR-0157, ADR-0245): each row that reports a problem or a
 /// warning, and each other row whose `Row::in_default_text` is true unless
 /// the document lists only the rows that report a problem or a warning.
 #[derive(Clone, Copy)]

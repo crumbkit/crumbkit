@@ -43,7 +43,7 @@ impl Leaf {
     /// after the `Problems:` line when its row type names a warning field,
     /// such as `Warnings: a value in the wear column marks a row with a
     /// warning, and the exit code does not change.`, or `None` otherwise
-    /// (ADR-0244).
+    /// (ADR-0245).
     pub(crate) fn warnings_line(&self) -> Option<String> {
         let field = self.get_document()?.warning()?;
         Some(format!(
@@ -55,7 +55,7 @@ impl Leaf {
     /// after the `Warnings:` line when its document lists only the rows
     /// that report a problem or a warning, such as `Rows: the default text
     /// lists only the rows that report a problem or a warning, and --long,
-    /// --fields or --json lists every row.`, or `None` otherwise (ADR-0138, ADR-0140, ADR-0244). The line
+    /// --fields or --json lists every row.`, or `None` otherwise (ADR-0138, ADR-0140, ADR-0245). The line
     /// names `--long` and `--fields` only when the command offers them.
     pub(crate) fn rows_line(&self) -> Option<String> {
         if !self.get_document()?.document().lists_only_problems() {

@@ -1,5 +1,5 @@
 //! [`Warning`], the warning facet of a row type, which
-//! [`Row::WARNING`](crate::Row::WARNING) holds (ADR-0244).
+//! [`Row::WARNING`](crate::Row::WARNING) holds (ADR-0245).
 
 use std::fmt;
 
@@ -8,7 +8,7 @@ use serde::Serialize;
 use super::rule::Rule;
 
 /// Which rows of the row type `R` report a warning, and the column that
-/// shows it (ADR-0244).
+/// shows it (ADR-0245).
 ///
 /// A warning marks a row that deserves attention and does not change the
 /// exit code. A run whose rows report only warnings exits with 0, and its

@@ -1,4 +1,4 @@
-# ADR-0244. A row can report a warning that does not change the exit code
+# ADR-0245. A row can report a warning that does not change the exit code
 
 - Date: 2026-11-17
 - Status: accepted

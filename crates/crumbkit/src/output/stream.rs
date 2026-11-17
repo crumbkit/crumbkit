@@ -228,7 +228,7 @@ pub struct Streaming<R, O, W> {
     /// The number of items printed.
     items: usize,
     /// The numbers of printed items that report a problem and a warning
-    /// (ADR-0050, ADR-0244).
+    /// (ADR-0050, ADR-0245).
     marks: Marks,
     /// The `crumbkit.finish` span, which records the exit code (ADR-0030).
     #[cfg(feature = "tracing")]

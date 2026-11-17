@@ -75,7 +75,7 @@ pub(super) enum Answer {
 /// JSON document holds under `failures`, and is `None` for every other
 /// result. `marks` holds the numbers of rows that report a problem and a
 /// warning, which the text's notes count when there is no failure
-/// (ADR-0050, ADR-0244).
+/// (ADR-0050, ADR-0245).
 ///
 /// A result that fits prints whole. Otherwise a listing or a list prints the
 /// most rows that fit, marked as cut short. A batch prints the most rows

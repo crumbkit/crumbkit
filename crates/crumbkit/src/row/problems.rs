@@ -1,5 +1,5 @@
 //! Rows that report a problem or a warning, as `Row::PROBLEM` and
-//! `Row::WARNING` decide (ADR-0050, ADR-0096, ADR-0212, ADR-0244). `finish`
+//! `Row::WARNING` decide (ADR-0050, ADR-0096, ADR-0212, ADR-0245). `finish`
 //! and a stream read these counts to choose the exit code and word the
 //! notes.
 

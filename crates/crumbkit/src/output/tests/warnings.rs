@@ -1,5 +1,5 @@
 //! Tests for the exit code and the note of a result whose rows report a
-//! warning, as `Row::WARNING` decides (ADR-0244).
+//! warning, as `Row::WARNING` decides (ADR-0245).
 
 use std::process::ExitCode;
 
