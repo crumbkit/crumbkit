@@ -35,9 +35,11 @@ is one of three kinds:
   uses it for entries that live somewhere that costs time to read.
 
 A key is one or more words, such as `wt ls`, and its value is a list of one or
-more words. The first source that has a matching entry wins, so a tool lists
-the person's file first and its own sources after it. Within one source, the
-longest key that the leading words spell wins. Why: ADR-0228.
+more words, whatever kind of source holds the entry: an entry with no words is
+listed with a problem and never expands. The first source that has a matching
+entry wins, so a tool lists the person's file first and its own sources after
+it. Within one source, the longest key that the leading words spell wins. Why:
+ADR-0228.
 
 ## Expanding
 

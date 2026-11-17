@@ -44,9 +44,8 @@ impl Entry {
         W: Into<String>,
     {
         let words: Vec<String> = words.into_iter().map(Into::into).collect();
-        let words = (!words.is_empty()).then_some(words);
         Self {
-            item: Item::new(key, words),
+            item: Item::new(key, Some(words)),
         }
     }
 }
@@ -272,13 +271,11 @@ fn parse(text: &str) -> Loaded {
 }
 
 /// Returns the words of an entry's value, or `None` when the value is not a
-/// list of one or more strings.
+/// list of strings.
 fn words(value: &DeValue<'_>) -> Option<Vec<String>> {
-    let list = value.as_array()?;
-    if list.is_empty() {
-        return None;
-    }
-    list.iter()
+    value
+        .as_array()?
+        .iter()
         .map(|word| word.get_ref().as_str().map(str::to_owned))
         .collect()
 }

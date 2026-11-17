@@ -8,6 +8,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit-aliases: a `Source::table` entry with no words no longer expands to
+  nothing. `aliases list` shows it with a problem, as for a file entry, and the
+  root help leaves it out ([behaviour/parsing/aliases]).
 - crumbkit-process: a run whose wait for the child fails with `ECHILD` no
   longer sends SIGKILL to the child's process group on unwind or drop, because
   the id may name another group by then ([behaviour/processes]).
