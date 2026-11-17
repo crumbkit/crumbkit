@@ -134,8 +134,8 @@ pub fn write_atomically(path: &Path, bytes: &[u8], mode: Mode) -> Result<(), Wri
 }
 
 /// Does what [`write_atomically`] does, with `populate` as the step that fills
-/// the temporary file with `bytes` and syncs it. The tests pass a `populate`
-/// that fails, to inject a fault at the write or the sync.
+/// the temporary file with `bytes` and syncs it, and names the step that
+/// failed when it returns an error.
 pub(crate) fn replace(
     path: &Path,
     bytes: &[u8],

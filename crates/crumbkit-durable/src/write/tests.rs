@@ -249,9 +249,10 @@ fn a_directory_sync_that_fails_with_einval_or_enotsup_counts_as_done_and_one_wit
     assert_eq!(sync(EIO).unwrap_err().raw_os_error(), Some(EIO));
 }
 
-/// Calls `replace` on `target` with a populate step that writes `written` bytes of
-/// `bytes` and then fails at `step` with an injected error, and asserts
-/// that the failure leaves `target` as it was and no temporary file.
+/// Calls `replace` on an existing target and on an absent one, with a
+/// populate step that writes `written` bytes of the new bytes and then
+/// fails at `step` with an injected error. It asserts that the failure
+/// leaves each target as it was and leaves no temporary file.
 fn assert_populate_failure_leaves_no_trace(step: WriteStep, written: usize) {
     let dir = tempfile::tempdir().unwrap();
     let old = dir.path().join("old");
@@ -281,5 +282,5 @@ fn a_failed_write_leaves_the_target_unchanged_and_removes_the_temporary_file() {
 
 #[test]
 fn a_failed_sync_leaves_the_target_unchanged_and_removes_the_temporary_file() {
-    assert_populate_failure_leaves_no_trace(WriteStep::Sync, 9);
+    assert_populate_failure_leaves_no_trace(WriteStep::Sync, b"new bytes".len());
 }
