@@ -91,10 +91,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- crumbkit: the `--help`, the `commands list` row and the reference of a
-  headed leaf name `text` and `base64` only when its row type has them. A
-  headed row type with no named fields prints no `JSON fields` section and no
-  `Next:` line, and `--fields` on it is refused with the hint `drop --fields`
+- crumbkit: a headed leaf's help and `commands list` row name `text` and
+  `base64` only when its row type has them, and `--fields` on a row type with
+  no named fields is refused with the hint `drop --fields`
   ([behaviour/help/examples]).
 - crumbkit-usage: usage logging now works on file systems without hard
   links, such as FAT, and two runs that find a damaged key at once end with
