@@ -10,6 +10,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Unprovoked::area` lists every declared code of one area
   under one reason for `check_recoveries` and `check_twins`, and the recovery
   report names each code it excuses.
+- crumbkit: `RowReports::reports_problem` asks a row whether it reports a
+  problem, as `Row::PROBLEM` decides. Every `Row` has it through a blanket
+  impl, so a row type cannot override the answer
+  ([behaviour/output/listings]).
 
 - crumbkit: each argument of a `commands list` row has `after_double_dash`,
   which is `true` for an argument that takes the values written after `--`

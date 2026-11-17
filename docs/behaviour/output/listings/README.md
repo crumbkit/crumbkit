@@ -207,7 +207,9 @@ column, so `aliases list` exits with 1 while an entry of a source does not
 work. A row type whose problem status is computed, such as a
 status enum, uses `Problem::by` instead, with the function that decides and
 the column that shows the status. crumbkit counts the rows that `PROBLEM`
-marks.
+marks. A caller asks one row with
+[`RowReports::reports_problem`](../../../../crates/crumbkit/src/row/reports.rs),
+which answers as `PROBLEM` decides.
 
 - A run whose rows report a problem and that has no failure exits with 1, in
   `finish` for every result with rows and in a stream for the items it

@@ -70,7 +70,10 @@ fn state(listing: &Listing<CheckRow>) -> Checked {
 /// Reports whether `finish` exits with 1 for the listing: whether a row
 /// reports a problem.
 fn fails(listing: &Listing<CheckRow>) -> bool {
-    listing.rows().iter().any(crate::row::problems::reports)
+    listing
+        .rows()
+        .iter()
+        .any(crate::RowReports::reports_problem)
 }
 
 #[test]
