@@ -179,6 +179,34 @@ fn a_deadline_that_passes_after_the_child_exited_gives_the_childs_exit() {
 }
 
 #[test]
+fn an_overdue_time_that_passes_after_the_child_exited_never_reports_and_gives_the_childs_exit() {
+    let mut command = sh("exit 3");
+    command.stdout(Stdio::null());
+    let mut group = Group::start(command, Scope::Group).unwrap();
+    group.wait_exit().unwrap();
+    // No waiter has said that the child exited, as when the overdue time
+    // wins the race with the waiter. The waiter of this test says so later.
+    let notice = Arc::new(Notice::default());
+    let waiter = std::thread::spawn({
+        let notice = Arc::clone(&notice);
+        move || {
+            std::thread::sleep(Duration::from_millis(100));
+            notice.set(|flags| flags.exited = true);
+        }
+    });
+    let options = RunOptions::new().overdue(Instant::now(), |_| {
+        panic!("the report ran for an exited child")
+    });
+
+    let controlled = control(&group, &notice, &options, Instant::now()).unwrap();
+
+    waiter.join().unwrap();
+    assert_eq!(controlled.stopped, None);
+    assert!(!controlled.overdue);
+    assert_eq!(group.reap().unwrap().code(), Some(3));
+}
+
+#[test]
 fn a_background_process_that_holds_standard_output_is_killed_when_the_child_exits() {
     let started = Instant::now();
 

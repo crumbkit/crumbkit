@@ -326,7 +326,8 @@ impl RunOptions {
 /// time to its deadline, plus the graces of its escalation, plus
 /// [`REAP_GRACE`], plus [`DRAIN_GRACE`], plus the time that a hook of
 /// [`RunOptions::around_spawn`] takes, plus the time that a function of
-/// [`RunOptions::stdout_copy`] or [`RunOptions::stderr_copy`] blocks. Every
+/// [`RunOptions::stdout_copy`] or [`RunOptions::stderr_copy`] blocks, plus
+/// the time that the report of [`RunOptions::overdue`] takes. Every
 /// thread that it starts is joined before it returns. On Windows a stop ends the job at once, and a reader waits for
 /// its pipe to close, which ending the job causes for every process in the
 /// job, so a process outside the job that holds a pipe holds the run.
@@ -347,7 +348,7 @@ impl RunOptions {
 /// of [`RunOptions::around_spawn`] fails, or an [`Input::File`] cannot be
 /// duplicated, and
 /// [`RunError::Run`] when waiting for, reaping or reading the child fails
-/// or a copy function panics.
+/// a copy function panics, or the report of [`RunOptions::overdue`] panics.
 /// The child is stopped and reaped on every path.
 pub fn run(mut command: Command, options: &RunOptions) -> Result<ChildFinished, RunError> {
     let _end = EndLines(options);

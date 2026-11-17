@@ -2039,9 +2039,9 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/output/streams]: docs/behaviour/output/streams.md
 [behaviour/output/terminal]: docs/behaviour/output/terminal.md
 [behaviour/parsing]: docs/behaviour/parsing/README.md
-[behaviour/process-runs]: docs/behaviour/process-runs/README.md
 [behaviour/parsing/aliases]: docs/behaviour/parsing/aliases.md
 [behaviour/parsing/completion]: docs/behaviour/parsing/completion.md
+[behaviour/process-runs]: docs/behaviour/process-runs/README.md
 [behaviour/processes]: docs/behaviour/processes.md
 [behaviour/run-observer]: docs/behaviour/run-observer/README.md
 [behaviour/schemas]: docs/behaviour/schemas/README.md

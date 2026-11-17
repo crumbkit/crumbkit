@@ -104,6 +104,23 @@ fn an_overdue_report_before_the_deadline_still_lets_the_deadline_stop_the_run() 
 }
 
 #[test]
+fn a_report_that_blocks_past_the_deadline_delays_the_stop_and_the_run_still_times_out() {
+    let options = kept()
+        .overdue(after(0.1), |_| {
+            std::thread::sleep(Duration::from_millis(600))
+        })
+        .deadline(after(0.3));
+    let started = Instant::now();
+
+    let finished = run_sh("sleep 30", &options);
+
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
+    assert!(finished.was_overdue());
+    assert!(started.elapsed() >= Duration::from_millis(700));
+    assert!(started.elapsed() < Duration::from_secs(10));
+}
+
+#[test]
 fn a_report_that_panics_stops_and_reaps_the_child_and_returns_an_error() {
     let path = std::env::temp_dir().join(format!("crumbkit-overdue-panic-{}", std::process::id()));
     let options = RunOptions::new().overdue(after(0.2), |_| panic!("the report failed"));

@@ -36,8 +36,9 @@ Crash points:
 - The child exits as `at` passes: the run checks the exit first. If the child
   exits between that check and the call, `report` receives the id of an
   exited, unreaped child, and the id stays reserved until the reap.
-- The tool is killed while the run is overdue: the child keeps running, as it
-  does for a run with no overdue time.
+- The tool is killed while the run is overdue: on Unix the processes of the
+  group keep running, and on Windows the processes of the job keep running, as
+  they do for a run with no overdue time.
 
 Invariants:
 
