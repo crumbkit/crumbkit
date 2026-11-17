@@ -9,7 +9,7 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::{DeriveInput, Ident, Path};
 
-use crate::parse::{self, Answers, Arm, FailureType, Own, RecoveryKey, Shape};
+use crate::parse::{self, Answers, Arm, CodeKey, FailureType, Own, RecoveryKey, Shape};
 
 /// Returns the code that `#[derive(Failure)]` writes for `input`, or the
 /// compile error that names what the input gets wrong.
@@ -62,11 +62,16 @@ fn write(failure: &FailureType) -> TokenStream {
 /// Writes `code()`.
 fn code(krate: &Path, arms: &[Arm]) -> TokenStream {
     let arms = arms.iter().map(|arm| match &arm.answers {
-        Answers::Own(own) => {
-            let pattern = unbound(arm);
-            let code = &own.code;
-            quote!(#pattern => #code,)
-        }
+        Answers::Own(own) => match &own.code {
+            CodeKey::Path(code) => {
+                let pattern = unbound(arm);
+                quote!(#pattern => #code,)
+            }
+            CodeKey::Expr { expr, .. } => {
+                let pattern = bound(arm);
+                quote!(#pattern => #expr,)
+            }
+        },
         Answers::Forward { field, .. } => forward(krate, arm, field, "code"),
     });
     quote! {
@@ -279,18 +284,26 @@ fn diagnostic(krate: &Path, arms: &[Arm]) -> TokenStream {
     }
 }
 
-/// Returns each arm's own code once, in arm order. Two codes are the same
-/// when their paths are written the same.
+/// Returns each code that an arm lists once, in arm order: its `code` path,
+/// or the paths of its `codes`. Two codes are the same when their paths are
+/// written the same.
 fn codes(arms: &[Arm]) -> Vec<&Path> {
     let mut codes: Vec<&Path> = Vec::new();
     for arm in arms {
-        if let Answers::Own(own) = &arm.answers {
-            let text = own.code.to_token_stream().to_string();
+        let Answers::Own(own) = &arm.answers else {
+            continue;
+        };
+        let listed: &[Path] = match &own.code {
+            CodeKey::Path(path) => std::slice::from_ref(path),
+            CodeKey::Expr { codes, .. } => codes,
+        };
+        for path in listed {
+            let text = path.to_token_stream().to_string();
             if !codes
                 .iter()
                 .any(|seen| seen.to_token_stream().to_string() == text)
             {
-                codes.push(&own.code);
+                codes.push(path);
             }
         }
     }

@@ -29,6 +29,14 @@ A hand-written impl repeats one `match` per method, and a hand-written
 - `code` takes a path to a constant, so `Code::new` still checks the
   segments at compile time. The derive checks each field name by the same
   rule.
+- `code = EXPR` takes any expression of type `Code<'_>` that reads the
+  variant's fields, and `codes = [PATH, ...]` names the codes it returns, so
+  `CODES` lists them. `codes = []` says the variant's codes are in no
+  declared list. An expression `code` without `codes`, and `codes` beside a
+  path `code` or `forward`, are compile errors that name the variant. The
+  derive does not check that `codes` matches what the expression returns;
+  `check_recoveries` and `check_twins` report an undeclared code when a test
+  provokes it.
 - `hint` text with braces goes through `format!`.
 - `no_next_step` gives the reason of a `Recovery::None`, and its text with
   braces goes through `format!` too.
@@ -52,9 +60,47 @@ A hand-written impl repeats one `match` per method, and a hand-written
 - The derive writes no `Display`, so the message stays with the tool or
   another derive.
 
+## Forwarding a foreign error
+
+`forward` needs the wrapped type to implement `Failure`, and an adopter
+cannot implement it for a library's error. The variant holds a newtype that
+implements `Failure`, and `forward` returns its answers. The newtype owns
+the mapping from the library's error to the failure's answers, takes
+`Failure`'s defaults for the rest and follows every method `Failure` gains
+later. A test can call it on its own.
+
+```rust,ignore
+// The newtype owns the mapping from the library's error to crumbkit's answers.
+#[derive(Debug)]
+struct LibraryFailure(LibError);
+
+impl fmt::Display for LibraryFailure { /* delegate to self.0 */ }
+impl std::error::Error for LibraryFailure {}
+impl From<LibError> for LibraryFailure { /* wrap it */ }
+
+impl LibraryFailure {
+    const CODES: &'static [Code<'static>] = &[LIB_TIMEOUT, LIB_REFUSED];
+}
+
+impl Failure for LibraryFailure {    fn code(&self) -> Code<'_> { /* by kind */ }
+    fn recovery(&self) -> Recovery { /* by kind */ }
+}
+
+#[derive(Debug, Failure)]
+enum AppError {
+    #[failure(forward)]
+    Library(LibraryFailure),
+}
+```
+
+The test `crates/crumbkit/tests/derive_forward.rs` compiles this pattern in
+full.
+
+Why: ADR-0255.
+
 The keys and the code that the derive writes for them are public API.
 Removing or renaming a key, or changing what a key returns, is a breaking
 change. A new key is a minor change, and so is a new trait method that the
 derive starts to write.
 
-Why: ADR-0001, ADR-0002, ADR-0226, ADR-0244.
+Why: ADR-0001, ADR-0002, ADR-0226, ADR-0244, ADR-0255.

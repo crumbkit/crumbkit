@@ -21,6 +21,8 @@ mod tests;
 /// | Key | Where | What it gives |
 /// | --- | --- | --- |
 /// | `code = PATH` | variant or struct | The code that `code()` returns, as a path to a `Code` constant. Every variant that does not forward needs it. |
+/// | `code = EXPR` | variant or struct | In place of a path, any expression of type `Code<'_>` that reads the variant's fields, as `recovery` does. It needs `codes`. |
+/// | `codes = [PATH, ...]` | variant or struct | The codes that a `code = EXPR` returns, which `CODES` lists. The list may be empty. It is a compile error beside a path `code` or `forward`. |
 /// | `recovery = EXPR` | variant or struct | The `Recovery` that `recovery()` returns. |
 /// | `hint = "..."` | variant or struct | A `Recovery::Hint` with this text, in place of `recovery`. Text that holds `{` goes through `format!`, so `{name}` reads the field `name` or any constant in scope. |
 /// | `no_next_step = "..."` | variant or struct | A `Recovery::None` with this reason, in place of `recovery`. Text that holds `{` goes through `format!`, as `hint` does. |
@@ -34,6 +36,10 @@ mod tests;
 /// | `forward = FIELD` | variant or struct with named fields | Every method except `diagnostic()` calls the same method on the named field, as `forward` does. |
 /// | `reviewed` | type | Every variant that does not forward, or the struct, needs `sentence`, and a missing one is a compile error that names the variant. |
 /// | `crate = PATH` | type | The path of the crate that holds `Failure`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
+///
+/// An error from a library that does not depend on crumbkit goes through a
+/// newtype that implements `Failure`, which a variant forwards to with
+/// `forward`; docs/behaviour/failures/derive.md shows the pattern.
 ///
 /// Each variant that does not forward needs `code` and exactly one of
 /// `recovery`, `hint` and `no_next_step`. A type marked `reviewed` also needs

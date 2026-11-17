@@ -56,6 +56,8 @@ and its help content: leaves, examples, goal headings and topics.
 | --- | --- | --- | --- | --- | --- |
 | `Failure` trait | Error enums with only `Display` | A tool's error reaches the caller with no code | `impl.*Failure\s+for` | 0.1 | `declared-code` |
 | `#[derive(Failure)]`, `CODES` | A hand-written `match` per method and a hand-kept code list | `fn code` beside `match self`, a written `CODES` | `fn code\(&self\)` `CODES:` | 0.1 | `derive-failure` |
+| `code = EXPR, codes = [..]` | A hand-written `Failure` impl whose code is chosen at run time | `fn code` with a `match` that computes a code, beside a written `CODES` | `fn code\(&self\)` `CODES:` | 0.6.0 | `derive-failure` |
+| A newtype that implements `Failure`, forwarded with `#[failure(forward)]` | A hand-written `match` that maps a library's error | `impl.*Failure for` a type that wraps a foreign error in every variant | `impl.*Failure\s+for` | 0.6.0 | `derive-failure` |
 | `Code::new` | Error-code strings | A string constant such as `"not_found"` is matched | `code:\s*&'static str` | 0.1 | `declared-code` |
 | `Code::runtime`, `Spelling::COLONS.split` | Reusing a plugin's error text | Code passes a plugin's code through as text | `split\("::"\)` | 0.1 | `declared-code` |
 | `Recovery::Run(Call::new(..))` | A sentence naming a command | A hint names a command of this tool | `Recovery::[Hh]int` `\bhint\s*[=(]` `"[^"]*\b<bin> [a-z-]+` | 0.1 | `typed-recovery` |

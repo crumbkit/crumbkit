@@ -163,7 +163,7 @@ fn the_affordances_and_the_skill_name_the_same_criteria() {
     let named = named_criteria(affordances);
 
     assert_eq!(criteria.len(), 37, "{criteria:?}");
-    assert_eq!(named.len(), 141, "the affordance rows");
+    assert_eq!(named.len(), 143, "the affordance rows");
     for criterion in named.iter().flatten() {
         assert!(
             criteria.contains(&criterion.as_str()),
