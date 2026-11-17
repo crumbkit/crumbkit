@@ -47,7 +47,7 @@ use std::io;
 #[cfg(any(windows, test))]
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, OnceLock, PoisonError};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
 use std::thread::Builder;
 
 use signal_hook::consts::SIGINT;
@@ -64,12 +64,27 @@ mod platform;
 #[cfg(test)]
 mod tests;
 
-/// Whether a window is open, which [`Interrupts::cooperate`] sets and
-/// dropping the [`Interrupt`] clears.
-static OPEN: AtomicBool = AtomicBool::new(false);
+/// The one shared window: how many [`Interrupt`] guards are open, and whether
+/// one Ctrl-C arrived while any was. It is read on ordinary threads only,
+/// never in a signal handler, so a lock is safe.
+struct Window {
+    /// The guards that [`Interrupts::cooperate`] opened and that have not
+    /// dropped.
+    open: usize,
+    /// Whether one Ctrl-C arrived inside the open window.
+    requested: bool,
+}
 
-/// Whether one Ctrl-C arrived inside the open window.
-static REQUESTED: AtomicBool = AtomicBool::new(false);
+/// The window of this process.
+static WINDOW: Mutex<Window> = Mutex::new(Window {
+    open: 0,
+    requested: false,
+});
+
+/// Locks the window. A panic while it was held leaves its data readable.
+fn window() -> MutexGuard<'static, Window> {
+    WINDOW.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// Whether a child holds the terminal, which `events::handed_over` records
 /// and, on Windows, `events::taken_back` clears.
@@ -96,6 +111,9 @@ pub enum InstallError {
     ObserversFull,
     /// The operating system refused a signal handler or the thread.
     Os(io::ErrorKind),
+    /// Another handler already ends the process on SIGINT, such as the usage
+    /// log's signal thread that `crumbkit_usage::start` starts.
+    Taken,
 }
 
 impl fmt::Display for InstallError {
@@ -103,6 +121,10 @@ impl fmt::Display for InstallError {
         match self {
             Self::ObserversFull => f.write_str(
                 "four observers are installed already, so the interrupt owner has no slot",
+            ),
+            Self::Taken => f.write_str(
+                "another handler already ends the process on SIGINT; start the usage log with \
+                 `start_under(crumbkit::interrupt::clean_up)` before installing the interrupt owner",
             ),
             Self::Os(kind) => write!(f, "the operating system refused the signal handler: {kind}"),
         }
@@ -119,8 +141,9 @@ pub struct Interrupts(());
 /// ending the process. Dropping it closes the window and forgets the
 /// request.
 ///
-/// One window is open at a time. A second [`Interrupts::cooperate`] while a
-/// window is open shares the flag, and dropping either closes the window.
+/// The guards share one window. A second [`Interrupts::cooperate`] while a
+/// window is open joins it and keeps a request that has not been read, and the
+/// window closes when its last guard drops.
 #[derive(Debug)]
 pub struct Interrupt(());
 
@@ -161,8 +184,10 @@ impl Failure for Interrupted {
 ///
 /// # Errors
 ///
-/// Returns an [`InstallError`] when no observer slot is free, or when the
-/// operating system refuses a handler or the thread. A run that answers a
+/// Returns an [`InstallError`] when no observer slot is free, when another
+/// handler such as the usage log's signal thread already ends the process on
+/// SIGINT ([`InstallError::Taken`]), or when the operating system refuses a
+/// handler or the thread. A run that answers a
 /// shell's completion request returns `Ok` and takes no signal. After a
 /// refused handler the tool keeps the signals' default actions.
 pub fn install() -> Result<Interrupts, InstallError> {
@@ -183,11 +208,15 @@ pub fn clean_up(clean_up: fn()) {
 }
 
 impl Interrupts {
-    /// Opens a window, with the flag clear.
+    /// Opens a window, with the flag clear, or joins the open one and keeps
+    /// its flag.
     #[must_use]
     pub fn cooperate(self) -> Interrupt {
-        REQUESTED.store(false, Ordering::SeqCst);
-        OPEN.store(true, Ordering::SeqCst);
+        let mut window = window();
+        if window.open == 0 {
+            window.requested = false;
+        }
+        window.open += 1;
         Interrupt(())
     }
 }
@@ -209,14 +238,17 @@ impl Interrupt {
     /// Reports whether a Ctrl-C arrived in this window.
     #[must_use]
     pub fn requested(&self) -> bool {
-        REQUESTED.load(Ordering::SeqCst)
+        window().requested
     }
 }
 
 impl Drop for Interrupt {
     fn drop(&mut self) {
-        OPEN.store(false, Ordering::SeqCst);
-        REQUESTED.store(false, Ordering::SeqCst);
+        let mut window = window();
+        window.open = window.open.saturating_sub(1);
+        if window.open == 0 {
+            window.requested = false;
+        }
     }
 }
 
@@ -244,8 +276,12 @@ impl Observer for Owner {
     }
 }
 
-/// Installs the observer and starts the owner's thread.
+/// Installs the observer and starts the owner's thread, unless another
+/// handler already ends the process on SIGINT.
 fn start() -> Result<(), InstallError> {
+    if crate::events::handles_interrupt() {
+        return Err(InstallError::Taken);
+    }
     if !needs_listener(observe(&Owner))? {
         return Ok(());
     }
@@ -298,7 +334,9 @@ fn decide(signal: i32) -> Decision {
     if HELD.load(Ordering::SeqCst) {
         return Decision::Keep;
     }
-    if OPEN.load(Ordering::SeqCst) && !REQUESTED.swap(true, Ordering::SeqCst) {
+    let mut window = window();
+    if window.open > 0 && !window.requested {
+        window.requested = true;
         return Decision::Keep;
     }
     Decision::End
