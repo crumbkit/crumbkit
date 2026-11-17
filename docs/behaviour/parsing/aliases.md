@@ -108,4 +108,4 @@ Why: ADR-0027, ADR-0228, ADR-0230.
 
 `Aliases::expand` takes the tree as `&mut Command`, because it calls
 `crumbkit::reach` with the typed words, so a key that names a command of a
-lazy group is a real command and no alias (ADR-0247).
+lazy group is a real command and no alias (ADR-0246).

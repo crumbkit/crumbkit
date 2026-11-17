@@ -49,4 +49,4 @@ the same as with an eager group.
 A tool's own code that reads `Cli::command()` without building it sees a
 lazy group with no subcommands until it calls `reach` or `Command::build`.
 
-Why: ADR-0247.
+Why: ADR-0246.

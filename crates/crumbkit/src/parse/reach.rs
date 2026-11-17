@@ -1,5 +1,5 @@
 //! `reach`, which expands the lazy groups that the typed words pass through
-//! before anything reads the tree (ADR-0247).
+//! before anything reads the tree (ADR-0246).
 
 use std::ffi::OsStr;
 
