@@ -21,6 +21,7 @@ use crate::testing::panic_message;
 
 mod add_ons;
 mod all;
+mod areas;
 mod chains;
 mod env;
 mod exits;

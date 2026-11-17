@@ -42,7 +42,7 @@ its reasons.
   [trace context](usage-log/trace-context.md) and the
   [usage report](usage-log/report.md).
 - [Checks](checks/README.md): what crumbkit-test's checks enforce on a
-  tool.
+  tool, and [code coverage](checks/coverage/README.md) for declared codes.
 - [Process runs](process-runs/README.md): the states of a run, including the
   overdue report that leaves the child running.
 - [Processes](processes.md): running another program whose output a tool

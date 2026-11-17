@@ -61,9 +61,8 @@ area. For each component of a declared code, it takes the component followed by
 `::`, such as `shelf::`. A printed code that begins with that text, and has more
 text after it, is in that component.
 
-Every declared code is provoked by a chain or listed in `Unprovoked` with
-the reason no test can provoke it. A tool passes the same list to
-[`check_twins`](end-to-end.md#twins).
+Every declared code is provoked by a chain or listed in `Unprovoked`; see
+[Code coverage](coverage/README.md).
 
 Why: ADR-0053, ADR-0001, ADR-0079, ADR-0177.
 

@@ -158,7 +158,8 @@ checks](end-to-end.md) describes how each run is isolated and timed.
 | [`check_recoveries`](../../../crates/crumbkit-test/src/recoveries.rs) | Every recovery that a failure prints parses, leads somewhere new, and every declared failure offers a next step. |
 
 [Twins](end-to-end.md#twins) and [Recovery chains](recovery-chains.md)
-describe the last three in more detail. [Golden files](golden-files.md) lists
+describe the last three in more detail, and [Code coverage](coverage/README.md)
+says how the last two require each declared code to be covered. [Golden files](golden-files.md) lists
 the golden files that the checks keep.
 
 Why: ADR-0005, ADR-0053.
