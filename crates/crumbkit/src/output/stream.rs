@@ -16,7 +16,7 @@ use super::{JsonLayout, Run, fields, problems};
 use crate::help::view::{Kind, Printed};
 use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
-use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
+use crate::{AsFailure, Document, Failure, Row, RowReports, Sink, Spelling, Stream, codes, exit};
 
 mod open;
 mod render;
@@ -283,7 +283,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             return ControlFlow::Break(());
         }
         self.items += 1;
-        self.problems += usize::from(crate::row::problems::reports(item));
+        self.problems += usize::from(item.reports_problem());
         self.send()
     }
 

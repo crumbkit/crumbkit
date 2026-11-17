@@ -1,6 +1,6 @@
 //! Tests for drafting the generated sections of a skill file.
 
-use crumbkit::Row as _;
+use crumbkit::RowReports as _;
 
 use super::usage::{Run, Usage};
 use super::{Drafted, Section, Status, Summary, TOOL_SKILL_DRAFT, drafted};
@@ -96,9 +96,8 @@ fn a_check_puts_the_sections_that_would_change_first() {
             (Section::Usage, Status::Kept),
         ]
     );
-    let reports = |row: &Drafted| Drafted::PROBLEM.is_some_and(|problem| problem.reports(row));
-    assert!(reports(&draft.rows[0]));
-    assert!(!reports(&draft.rows[1]));
+    assert!(draft.rows[0].reports_problem());
+    assert!(!draft.rows[1].reports_problem());
 }
 
 #[test]
