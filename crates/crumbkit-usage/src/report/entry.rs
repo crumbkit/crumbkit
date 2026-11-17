@@ -109,7 +109,7 @@ impl Entry {
     /// a usage record, such as `shelf/usage/v1`, with every field that each
     /// record has, such as a line that a run cut short. The id's component
     /// is the name of the tool that wrote the log, so any component counts.
-    pub(crate) fn parse(line: &[u8]) -> Option<Self> {
+    pub(super) fn parse(line: &[u8]) -> Option<Self> {
         let entry: Self = serde_json::from_slice(line).ok()?;
         let suffix = SCHEMA.split_once('/').map(|(_, suffix)| suffix);
         let read = entry.schema.split_once('/').map(|(_, suffix)| suffix);

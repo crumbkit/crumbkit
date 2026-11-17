@@ -1,5 +1,6 @@
 //! The `self runs export` command, which prints the records of a tool's
 //! usage log after a run, oldest first, as the log stores them (ADR-0191).
+//! It leaves out a line that the report's check refuses.
 //!
 //! The tool owns the command. It adds an `export` verb that takes
 //! [`SelfRunsExport`] to the `runs` resource of its `self` group, and its
@@ -32,13 +33,13 @@ use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use clap::Args;
+use clap::{Args, Command};
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::Serialize;
 use serde_json::Value;
 
 use super::record::Record;
-use super::report::{Entry, is_hex, lines};
+use super::report::{Known, Read, is_hex, lines, read_known};
 use super::self_usage::open_log;
 use crumbkit::{Document, Run, Stream};
 
@@ -158,8 +159,9 @@ impl JsonSchema for StoredRecord {
 /// It reads the file that `--log` names, or else `usage.jsonl` in the
 /// tool's directory under the directory where [`start`](super::start)
 /// writes it, oldest line first. It prints each line that is a whole
-/// `<tool>/usage/v1` record with a span id of 16 lowercase hex digits and
-/// ends with a newline. A last line without a newline is a run's write in
+/// `<tool>/usage/v1` record that names only what the tool and the usage log
+/// can write, as the report checks, and ends with a newline. A line that an
+/// edit made to name anything else is skipped. A last line without a newline is a run's write in
 /// progress, which the next export prints, so no half line prints. It
 /// takes no lock, so a run that appends while the export reads never waits
 /// for it.
@@ -178,15 +180,14 @@ impl JsonSchema for StoredRecord {
 /// and the stream holds the lines read before it.
 #[must_use]
 pub fn export(mut run: Run, args: &SelfRunsExport) -> ExitCode {
-    let tool = run.command();
-    let name = tool.get_name().to_owned();
-    let log = open_log(tool, args.log.as_deref());
+    let tool = run.command().clone();
+    let log = open_log(&tool, args.log.as_deref());
     let mut streaming = match crumbkit::stream(run, SELF_RUNS_EXPORT) {
         Ok(streaming) => streaming,
         Err(code) => return code,
     };
     if let Some(log) = log {
-        each_line(&name, log, args.after.as_deref(), |line| {
+        each_line(&tool, log, args.after.as_deref(), |line| {
             streaming.item(&line)
         });
     }
@@ -202,7 +203,7 @@ pub fn export(mut run: Run, args: &SelfRunsExport) -> ExitCode {
 /// start through the same handle, which a trim's rename leaves on the file
 /// that it read the first time.
 fn each_line<L: BufRead + Seek>(
-    tool: &str,
+    tool: &Command,
     mut log: L,
     after: Option<&str>,
     mut item: impl FnMut(RunLine) -> ControlFlow<()>,
@@ -214,7 +215,7 @@ fn each_line<L: BufRead + Seek>(
             if found {
                 return print(tool, line, &mut gap, &mut item);
             }
-            found = whole(line).is_some_and(|(entry, _)| entry.run == after);
+            found = whole(tool, line).is_some_and(|(known, _)| known.entry().run == after);
             ControlFlow::Continue(())
         });
         if found || log.seek(SeekFrom::Start(0)).is_err() {
@@ -230,12 +231,13 @@ fn each_line<L: BufRead + Seek>(
 /// `gap` is true, which it then clears. It returns what `item` returns, or
 /// `ControlFlow::Continue` for any other line.
 fn print(
-    tool: &str,
+    tool: &Command,
     line: &[u8],
     gap: &mut bool,
     item: &mut impl FnMut(RunLine) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let Some(row) = whole(line).and_then(|(entry, text)| RunLine::of(tool, entry, text, *gap))
+    let Some(row) =
+        whole(tool, line).and_then(|(known, text)| RunLine::of(tool.get_name(), known, text, *gap))
     else {
         return ControlFlow::Continue(());
     };
@@ -245,19 +247,22 @@ fn print(
 
 /// Returns the record that `line` holds and its text without the newline,
 /// or `None` when the line has no newline, because a run is still writing
-/// it, is not a whole usage record, or names a span id that is not 16
-/// lowercase hex digits, which `--after` would refuse.
-fn whole(line: &[u8]) -> Option<(Entry, &str)> {
+/// it, is not a whole usage record, or names something that the writer of
+/// `tool`'s log could not have produced, which the report skips too.
+fn whole<'a>(tool: &Command, line: &'a [u8]) -> Option<(Known, &'a str)> {
     let text = std::str::from_utf8(line.strip_suffix(b"\n")?).ok()?;
-    let entry = Entry::parse(text.as_bytes()).filter(|entry| is_hex(&entry.run, 16))?;
-    Some((entry, text))
+    match read_known(tool, text.as_bytes()) {
+        Read::Known(known) => Some((known, text)),
+        Read::NotRecord | Read::Unknown(_) => None,
+    }
 }
 
 impl RunLine {
-    /// Returns the line that prints `entry`, whose text in the log is
+    /// Returns the line that prints `known`, whose text in the log is
     /// `text`, for the tool named `tool`, marked as after a gap when `gap`
     /// is true, or `None` when `text` is not JSON.
-    fn of(tool: &str, entry: Entry, text: &str, gap: bool) -> Option<Self> {
+    fn of(tool: &str, known: Known, text: &str, gap: bool) -> Option<Self> {
+        let entry = known.into_entry();
         let record = serde_json::from_str(text).ok()?;
         Some(Self {
             gap,
