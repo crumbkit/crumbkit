@@ -7,6 +7,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit: `Code::from_spelling` is a `const fn` that builds a code from its
+  full spelling, such as `"shelf::books::not_found"`, and `Code::as_str`
+  returns that spelling as a `&'static str` for a declared code
+  ([behaviour/failures]).
+- crumbkit: `ToolName::code_component` names the component that a code prints
+  with ([behaviour/failures]).
 - crumbkit-derive: `#[derive(Failure)]` takes `code = EXPR` with `codes = [..]`
   naming the codes it returns. A foreign error is forwarded through a newtype
   that implements `Failure` ([behaviour/failures/derive]).
@@ -115,6 +121,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: `Code::runtime` takes one spelled text in place of three
+  segments, and returns `RuntimeCodeError::Parts` for text that does not split
+  into three. `CodeBuf` holds one text ([behaviour/failures]).
 - crumbkit: breaking: the failure document's steps gain the kind `after`, and
   its id stays `failure/v1`. Every schema that embeds the failure schema
   gains the member ([behaviour/failures/recoveries]).
@@ -155,6 +164,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit: breaking: `Code::new` is removed. A tool calls
+  `Code::from_spelling("shelf::books::not_found")` ([behaviour/failures]).
+- crumbkit: breaking: `Spelling::split` is removed. A tool calls
+  `Code::runtime(text)` ([behaviour/failures]).
+- crumbkit: breaking: `ToolName::code` is removed. A tool calls
+  `ToolName::code_component` ([behaviour/failures]).
 - crumbkit: breaking: `Help::personal_aliases`, `without_personal_aliases` and
   `get_personal_aliases` are removed. A tool calls `Help::aliases` and
   `Help::alias_scope` ([behaviour/parsing/aliases]).

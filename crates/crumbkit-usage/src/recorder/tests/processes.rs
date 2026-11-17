@@ -120,7 +120,7 @@ fn a_stream_that_ends_with_a_mapped_failure_records_the_declared_exit_and_its_by
 
 /// The code of the failure that the stream-exit test's child ends with,
 /// which its tool record maps to 124.
-const TIMED_OUT: Code<'static> = Code::new("watching", "watch", "timed_out");
+const TIMED_OUT: Code<'static> = Code::from_spelling("watching::watch::timed_out");
 
 /// A row of the stream-exit test's child.
 #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -215,7 +215,7 @@ fn a_start_after_the_tool_installed_its_own_observer_writes_the_line_and_both_he
 }
 
 /// The code that the own-observer test's child tolerates.
-const STALE: Code<'static> = Code::new("owned", "cache", "stale");
+const STALE: Code<'static> = Code::from_spelling("owned::cache::stale");
 
 /// An observer of the tool's own, which notes that it heard a tolerated
 /// code.

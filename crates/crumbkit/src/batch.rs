@@ -47,7 +47,7 @@ mod tests;
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// # const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
 /// # impl fmt::Display for NoSuchBook {

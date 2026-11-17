@@ -23,7 +23,7 @@ const FULL_NOTE: &str =
 
 const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.\n";
 
-const GONE: Code<'static> = Code::new("solar", "planets", "gone");
+const GONE: Code<'static> = Code::from_spelling("solar::planets::gone");
 
 /// A failure of a planet that is gone.
 #[derive(Debug)]

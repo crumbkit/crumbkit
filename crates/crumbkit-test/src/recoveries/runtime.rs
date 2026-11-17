@@ -43,8 +43,8 @@ mod tests;
 /// use crumbkit::Code;
 /// use crumbkit_test::{Allow, Failing, RuntimeFailing, Twin};
 ///
-/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
-/// const UNREADABLE: Code<'static> = Code::new("shelf", "books", "unreadable");
+/// const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
+/// const UNREADABLE: Code<'static> = Code::from_spelling("shelf::books::unreadable");
 ///
 /// let id = 7.to_string();
 /// let place = RuntimeFailing::at("tests/fixtures/shelf").env("SHELF_DEPTH", "1");

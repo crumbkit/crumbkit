@@ -10,7 +10,7 @@ use crate::Rows;
 use crate::row::Sealed;
 use crate::{Call, Code, Failure, Listing, Recovery, Row, Shape};
 
-const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("solar::planets::not_found");
 
 #[derive(Serialize, JsonSchema)]
 struct Planet {

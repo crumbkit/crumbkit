@@ -9,10 +9,10 @@ use std::fmt;
 
 use crumbkit::{Call, Code, Failure, Field, FieldValue, Recovery, Then};
 
-const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
-const REMOVED_FILE: Code<'static> = Code::new("shelf", "books", "removed_file");
-const NO_STATE_DIRECTORY: Code<'static> = Code::new("shelf", "books", "no_state_directory");
-const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
+const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
+const REMOVED_FILE: Code<'static> = Code::from_spelling("shelf::books::removed_file");
+const NO_STATE_DIRECTORY: Code<'static> = Code::from_spelling("shelf::books::no_state_directory");
+const TIMED_OUT: Code<'static> = Code::from_spelling("shelf::network::timed_out");
 
 /// The most ids a file may hold, which a hint names through an inline format
 /// argument.
@@ -249,8 +249,8 @@ mod diagnostic {
     use crumbkit::{Code, Failure};
     use miette::{Diagnostic, LabeledSpan, SourceCode};
 
-    const UNKNOWN_KEY: Code<'static> = Code::new("shelf", "config", "unknown_key");
-    const NO_CONFIG: Code<'static> = Code::new("shelf", "config", "missing");
+    const UNKNOWN_KEY: Code<'static> = Code::from_spelling("shelf::config::unknown_key");
+    const NO_CONFIG: Code<'static> = Code::from_spelling("shelf::config::missing");
 
     /// A key that the settings file does not know, with a label on it.
     #[derive(Debug, crumbkit_derive::Failure)]

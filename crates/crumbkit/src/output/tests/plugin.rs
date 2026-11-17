@@ -8,12 +8,10 @@ use std::fmt;
 use clap::{Parser, Subcommand};
 
 use super::{PLANETS, Planet};
-use crate::{
-    Code, CodeBuf, Failure, Recovery, Sink, Spelling, Tool, ViewFlags, finish_to, parse_to,
-};
+use crate::{Code, CodeBuf, Failure, Recovery, Sink, Tool, ViewFlags, finish_to, parse_to};
 
 /// The tool's own code for a plugin answer whose code the tool cannot read.
-const PLUGIN_FAILED: Code<'static> = Code::new("tool", "plugin", "failed");
+const PLUGIN_FAILED: Code<'static> = Code::from_spelling("tool::plugin::failed");
 
 /// The tool record.
 const TOOL: Tool = Tool::new();
@@ -30,16 +28,11 @@ struct PluginFailure {
 
 impl PluginFailure {
     /// Returns the failure of a plugin's answer, whose code is the text
-    /// `code` in crumbkit's spelling and whose message is `message`. The
-    /// failure has the plugin's code when the spelling splits the text into
-    /// three segments that [`Code::runtime`] accepts, and [`PLUGIN_FAILED`]
+    /// `code` and whose message is `message`. The failure has the plugin's
+    /// code when [`Code::runtime`] accepts the text, and [`PLUGIN_FAILED`]
     /// otherwise.
     fn from_answer(code: &str, message: &str) -> Self {
-        let code = Spelling::COLONS
-            .split(code)
-            .and_then(|(component, area, reason)| Code::runtime(component, area, reason).ok())
-            .unwrap_or(PLUGIN_FAILED)
-            .to_buf();
+        let code = Code::runtime(code).unwrap_or(PLUGIN_FAILED).to_buf();
         Self {
             code,
             message: message.to_owned(),

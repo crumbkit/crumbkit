@@ -481,7 +481,7 @@ pub fn aliased() {
 /// ```
 /// use crumbkit::Code;
 ///
-/// static LOCKED: Code<'static> = Code::new("shelf", "catalogue", "locked");
+/// static LOCKED: Code<'static> = Code::from_spelling("shelf::catalogue::locked");
 ///
 /// // The tool waited for the lock and then read the catalogue.
 /// crumbkit::events::tolerated(LOCKED);

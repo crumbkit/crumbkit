@@ -87,20 +87,28 @@ Why: ADR-0001.
 
 ## Codes and their spelling
 
-A `Code` has three segments: the owning component, the area and the reason. Each
+A `Code` is its spelling, one text such as `shelf::books::not_found`, and its
+three segments are slices of that text: the owning component, the area and the
+reason. `Code::as_str` returns the spelling as the tool declared it, a
+`&'static str` for a declared code, which a tool hands to a library that takes
+its codes as text. Each
 segment is one or more words joined by single hyphens, where each word is
 lowercase ASCII letters, digits and underscores, such as `not_found` or
 `book-club`. A hyphen never leads, trails or follows another hyphen, so a code
-never starts like a flag. `Code::new` checks the segments at compile time, and
-`Code::runtime` applies the same rule to a code learnt at run time, such as a
-plugin's. The area is a noun from the tool's domain, such as `books`, so moving
+never starts like a flag. A tool declares a code with
+`Code::from_spelling("shelf::books::not_found")` in a `const`, which refuses
+text that is not three segments joined by `::` as a compile error naming the
+broken part, and `Code::runtime` applies the same rule to a code learnt at run
+time, such as a plugin's. The area is a noun from the tool's domain, such as `books`, so moving
 code does not change a code (OUTPUT-2). Each error type lists its codes in a
 `CODES` list, which crumbkit-test's `check_twins` and `check_recoveries` read.
 
 Every code prints in [`Spelling::COLONS`](../../../crates/crumbkit/src/code.rs),
 which joins the segments with `::`. `parse` and `Run::new` carry the spelling in
 the `Run`, so `finish`, `stream` and `hand_over` print in it. `Code` has no
-`Display`, so every printed code goes through the spelling. `Code::new` refuses
+`Display`, so every printed code goes through the spelling, which writes the
+tool's name in place of `crumbkit` in crumbkit's own codes, while `as_str` of
+such a code keeps `crumbkit`. `Code::from_spelling` refuses
 characters that let two different codes look the same, because callers match a
 code exactly.
 
@@ -157,15 +165,15 @@ Why: ADR-0079.
 
 A tool that learns a code only at run time, such as from a plugin's answer, gets
 it from [`Code::runtime`](../../../crates/crumbkit/src/code/runtime.rs), which
-checks the segments by the same rule and returns a `Code<'a>` that borrows
-them. crumbkit keeps no copy of a run-time code, so a tool makes any number of
-them. A segment that breaks the rule returns `RuntimeCodeError::Segment`, and the
-tool reports the failure under a code of its own.
-`Spelling::COLONS.split(text)` reads a printed code back into its segments, so a
-tool passes the segments to `Code::runtime`.
+takes the one spelled text, checks its segments by the same rule and returns a
+`Code<'a>` that borrows the text. crumbkit keeps no copy of a run-time code, so a
+tool makes any number of them. Text that does not split into three segments
+returns `RuntimeCodeError::Parts`, a segment that breaks the rule returns
+`RuntimeCodeError::Segment`, and the tool reports the failure under a code of
+its own.
 
 A failure that keeps a run-time code stores the `CodeBuf` that `Code::to_buf`
-returns, which owns the three segments, and answers `Failure::code` with
+returns, which owns the spelling, and answers `Failure::code` with
 `CodeBuf::as_code`. An observer that keeps a tolerated code stores a `CodeBuf`
 in the same way.
 

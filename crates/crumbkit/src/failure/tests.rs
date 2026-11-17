@@ -6,8 +6,8 @@ use std::fmt;
 use super::{AsFailure as _, Error, Failure, Recovery};
 use crate::{Code, CodeBuf};
 
-const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
-const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
+const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
+const TIMED_OUT: Code<'static> = Code::from_spelling("shelf::network::timed_out");
 
 /// A failure for a missing book.
 #[derive(Debug)]
@@ -159,14 +159,12 @@ fn question_mark_converts_two_different_failure_types_into_an_error() {
 #[test]
 fn a_failure_that_owns_its_code_answers_with_a_code_that_borrows_from_it() {
     let failure = PluginFailed {
-        code: Code::runtime("lending", "loans", "overdue")
-            .unwrap()
-            .to_buf(),
+        code: Code::runtime("lending::loans::overdue").unwrap().to_buf(),
     };
 
     let code = failure.code();
 
-    assert_eq!(code, Code::new("lending", "loans", "overdue"));
+    assert_eq!(code, Code::from_spelling("lending::loans::overdue"));
     assert!(std::ptr::eq(code.reason(), failure.code.as_code().reason()));
 }
 

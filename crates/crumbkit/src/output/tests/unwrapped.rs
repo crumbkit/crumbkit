@@ -19,7 +19,7 @@ use crate::{
     Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, finish_to,
 };
 
-const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("solar::planets::not_found");
 
 /// A failure that names a planet the solar system lacks.
 #[derive(Debug)]

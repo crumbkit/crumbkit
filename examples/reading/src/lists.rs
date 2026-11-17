@@ -342,14 +342,14 @@ fn file(dir: Option<&Path>, name: &str) -> Result<PathBuf, EntriesError> {
 }
 
 /// The code of a failure whose list does not exist.
-pub const NOT_FOUND: Code<'static> = Code::new("reading", "entries", "not_found");
+pub const NOT_FOUND: Code<'static> = Code::from_spelling("reading::entries::not_found");
 
 /// The code of a failure whose list's file cannot be read.
-pub const UNREADABLE: Code<'static> = Code::new("reading", "entries", "unreadable");
+pub const UNREADABLE: Code<'static> = Code::from_spelling("reading::entries::unreadable");
 
 /// The code of a failure whose `--position` is more than one past the last
 /// entry of its list.
-pub const OUT_OF_RANGE: Code<'static> = Code::new("reading", "entries", "out_of_range");
+pub const OUT_OF_RANGE: Code<'static> = Code::from_spelling("reading::entries::out_of_range");
 
 /// A failure of a command that prints a list's entries.
 #[derive(Debug)]

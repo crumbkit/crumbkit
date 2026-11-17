@@ -34,7 +34,7 @@ const STAR_BATCH: Document<Batch<Star, Error>> =
     Document::new("sky", "star-batch", 1, "The test rows.");
 const CHART: Document<Prose<String, Error>> = Document::new("sky", "chart", 1, "The test text.");
 
-const TOO_MUCH: Code<'static> = Code::new("sky", "stars", "too_much");
+const TOO_MUCH: Code<'static> = Code::from_spelling("sky::stars::too_much");
 
 /// A tool record with the budget of [`BUDGET`] that lists crumbkit's
 /// over-budget code under 9.

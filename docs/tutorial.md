@@ -132,7 +132,7 @@ its `Recovery` names the command to run next:
 
 ```rust
 /// The code of a shelf that holds no jar.
-const SHELF_NOT_FOUND: Code<'static> = Code::new("pantry", "shelves", "not_found");
+const SHELF_NOT_FOUND: Code<'static> = Code::from_spelling("pantry::shelves::not_found");
 
 /// No jar stands on the shelf that the caller named.
 #[derive(Debug)]

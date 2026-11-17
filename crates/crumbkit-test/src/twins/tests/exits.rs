@@ -14,12 +14,12 @@ use crate::twins::{Twin, Twins, check_twin, check_twins};
 use crumbkit::tool::Failures;
 
 /// The code of a download that ran out of time.
-const TIMED_OUT: Code<'static> = Code::new("tool", "books", "timed_out");
+const TIMED_OUT: Code<'static> = Code::from_spelling("tool::books::timed_out");
 /// The code of a book that does not exist.
-const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("tool::books::not_found");
 
 /// The tool's code of a downloader that it ran and that failed.
-const DOWNLOAD_FAILED: Code<'static> = Code::new("tool", "books", "download_failed");
+const DOWNLOAD_FAILED: Code<'static> = Code::from_spelling("tool::books::download_failed");
 
 /// The exit code 124, which `TIMED_OUT` ends a run with.
 const EXITS: &[Exit] = &[Exit::new(124, "The download ran out of time.").failures(&[TIMED_OUT])];
@@ -180,7 +180,7 @@ fn a_refused_line_whose_failure_no_exit_lists_fails_the_check_when_it_exits_with
 
 #[test]
 fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins() {
-    const GONE: Code<'static> = Code::new("tool", "books", "gone");
+    const GONE: Code<'static> = Code::from_spelling("tool::books::gone");
     const LISTING: Tool = Tool::new().failures(Failures::new().exits(&[
         Exit::new(124, "Slow.").failures(&[TIMED_OUT]),
         Exit::new(3, "Gone.").failures(&[GONE]),

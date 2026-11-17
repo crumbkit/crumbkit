@@ -12,11 +12,11 @@ use crate::testing::panic_message;
 use crate::twins::{Twin, Twins, check_twins};
 
 /// The code of a book that does not exist.
-pub(super) const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
+pub(super) const NOT_FOUND: Code<'static> = Code::from_spelling("tool::books::not_found");
 /// The code of a list of ids that cannot be read.
-pub(super) const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
+pub(super) const UNREADABLE: Code<'static> = Code::from_spelling("tool::books::unreadable");
 /// The code of a book file that disappeared, which no command line provokes.
-pub(super) const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
+pub(super) const REMOVED: Code<'static> = Code::from_spelling("tool::books::removed_file");
 
 /// The tool's declared codes.
 const CODES: &[Code<'static>] = &[NOT_FOUND, UNREADABLE, REMOVED];
@@ -90,7 +90,7 @@ fn a_declared_code_without_a_twin_or_an_unprovoked_entry_fails_the_twin_check() 
 
 #[test]
 fn an_unprovoked_entry_for_a_code_with_a_twin_or_an_undeclared_code_fails_the_twin_check() {
-    const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
+    const STRAY: Code<'static> = Code::from_spelling("tool::stray::gone");
     let unprovoked = [
         Unprovoked::new(NOT_FOUND, "A missing book needs a full disk."),
         Unprovoked::new(UNREADABLE, "Only a broken file provokes it."),
@@ -110,7 +110,7 @@ fn an_unprovoked_entry_for_a_code_with_a_twin_or_an_undeclared_code_fails_the_tw
 
 #[test]
 fn every_broken_pair_is_reported_and_the_check_does_not_stop_at_the_first() {
-    const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
+    const STRAY: Code<'static> = Code::from_spelling("tool::stray::gone");
     let pairs = [
         Twin::new(
             Failing::new(NOT_FOUND, &["books", "show", "7"]),

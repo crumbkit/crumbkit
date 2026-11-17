@@ -10,8 +10,8 @@ use crate::answered::answered;
 use crate::tool::{Exit, Failures};
 use crate::{Batch, Code, Document, Failure, Prose, Recovery, Run, Sink, Tool, finish_to};
 
-const TIMED_OUT: Code<'static> = Code::new("solar", "charts", "timed_out");
-const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const TIMED_OUT: Code<'static> = Code::from_spelling("solar::charts::timed_out");
+const NOT_FOUND: Code<'static> = Code::from_spelling("solar::planets::not_found");
 
 /// A tool record that maps `TIMED_OUT` to 124 and leaves `NOT_FOUND` unmapped.
 const TOOL: Tool = Tool::new().failures(

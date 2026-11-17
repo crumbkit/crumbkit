@@ -53,7 +53,7 @@ fn a_refused_line_that_prints_a_group_s_help_page_passes_with_the_code_of_its_js
 
 #[test]
 fn a_refused_line_that_prints_a_group_s_help_page_fails_when_its_json_run_prints_another_code() {
-    const OTHER: Code<'static> = Code::new("tool", "books", "other");
+    const OTHER: Code<'static> = Code::from_spelling("tool::books::other");
     let (_dir, path) = tool("twins-group-other");
     let examples = Examples::new(&path, "");
 

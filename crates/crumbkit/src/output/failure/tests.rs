@@ -21,7 +21,7 @@ mod roles;
 mod terminal;
 mod usage;
 
-const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("solar::planets::not_found");
 
 /// A row type for the result that the failing command would have printed.
 #[derive(Serialize, JsonSchema)]

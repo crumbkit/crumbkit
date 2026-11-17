@@ -24,7 +24,7 @@ const CHECK_LIST: Document<Vec<Check>> = Document::new("lint", "check-list", 1, 
 const CHECK_BATCH: Document<Batch<Check, Unreadable>> =
     Document::new("lint", "check-batch", 1, "The test rows.");
 
-const UNREADABLE: Code<'static> = Code::new("lint", "checks", "unreadable");
+const UNREADABLE: Code<'static> = Code::from_spelling("lint::checks::unreadable");
 
 /// A row whose `problem` field marks a problem when it holds a value.
 #[derive(Serialize, JsonSchema)]

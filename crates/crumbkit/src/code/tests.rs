@@ -4,11 +4,11 @@ use std::panic;
 
 use proptest::prelude::*;
 
-use super::{Code, Spelling};
+use super::{Code, Segment, Spelling};
 use crate::segment::is_code_segment;
 use crate::{Error, ToolName};
 
-const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
 
 #[test]
 fn spell_takes_the_code_a_failure_returns_and_writes_the_tool_s_name_in_crumbkit_s_codes() {
@@ -31,7 +31,7 @@ fn a_code_keeps_its_component_area_and_reason() {
 
 #[test]
 fn a_segment_may_hold_lowercase_letters_digits_and_underscores() {
-    let code = Code::new("shelf_2", "books_v2", "not_found_3");
+    let code = Code::from_spelling("shelf_2::books_v2::not_found_3");
 
     assert_eq!(
         Spelling::COLONS.spell(code),
@@ -42,24 +42,24 @@ fn a_segment_may_hold_lowercase_letters_digits_and_underscores() {
 #[test]
 #[should_panic(expected = "component")]
 fn an_empty_component_is_rejected() {
-    let _ = Code::new("", "books", "not_found");
+    let _ = Code::from_spelling("::books::not_found");
 }
 
 #[test]
 #[should_panic(expected = "component")]
 fn a_component_with_an_uppercase_letter_is_rejected() {
-    let _ = Code::new("Shelf", "books", "not_found");
+    let _ = Code::from_spelling("Shelf::books::not_found");
 }
 
 #[test]
 #[should_panic(expected = "area")]
 fn an_empty_area_is_rejected() {
-    let _ = Code::new("shelf", "", "not_found");
+    let _ = Code::from_spelling("shelf::::not_found");
 }
 
 #[test]
 fn a_segment_may_hold_hyphens_between_words() {
-    let code = Code::new("book-club", "reading-list", "not-found");
+    let code = Code::from_spelling("book-club::reading-list::not-found");
 
     assert_eq!(
         Spelling::COLONS.spell(code),
@@ -70,37 +70,37 @@ fn a_segment_may_hold_hyphens_between_words() {
 #[test]
 #[should_panic(expected = "component")]
 fn a_component_with_a_leading_hyphen_is_rejected() {
-    let _ = Code::new("-shelf", "books", "not_found");
+    let _ = Code::from_spelling("-shelf::books::not_found");
 }
 
 #[test]
 #[should_panic(expected = "area")]
 fn an_area_with_a_trailing_hyphen_is_rejected() {
-    let _ = Code::new("shelf", "books-", "not_found");
+    let _ = Code::from_spelling("shelf::books-::not_found");
 }
 
 #[test]
 #[should_panic(expected = "reason")]
 fn a_reason_with_two_hyphens_in_a_row_is_rejected() {
-    let _ = Code::new("shelf", "books", "not--found");
+    let _ = Code::from_spelling("shelf::books::not--found");
 }
 
 #[test]
 #[should_panic(expected = "reason")]
 fn an_empty_reason_is_rejected() {
-    let _ = Code::new("shelf", "books", "");
+    let _ = Code::from_spelling("shelf::books::");
 }
 
 #[test]
 #[should_panic(expected = "reason")]
 fn a_reason_with_a_space_is_rejected() {
-    let _ = Code::new("shelf", "books", "not found");
+    let _ = Code::from_spelling("shelf::books::not found");
 }
 
 #[test]
 #[should_panic(expected = "reason")]
 fn a_reason_with_a_letter_outside_ascii_is_rejected() {
-    let _ = Code::new("shelf", "books", "introuvé");
+    let _ = Code::from_spelling("shelf::books::introuvé");
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn colons_spells_the_segments_joined_by_two_colons() {
     assert_eq!(Spelling::COLONS.spell(NOT_FOUND), "shelf::books::not_found");
 }
 
-/// Generates a segment that `Code::new` accepts.
+/// Generates a segment that `Code::from_spelling` accepts.
 const SEGMENT: &str = "[a-z0-9_]{1,4}(-[a-z0-9_]{1,4}){0,2}";
 
 /// Generates strings of up to six characters drawn from the characters that a
@@ -118,32 +118,33 @@ const SEGMENT: &str = "[a-z0-9_]{1,4}(-[a-z0-9_]{1,4}){0,2}";
 /// that are not segments.
 const NEAR_SEGMENTS: &str = r"[a-z0-9_A\-/.: é]{0,6}";
 
-/// The name of each segment of a code, in the order `Code::new` takes them.
+/// The name of each segment of a code, in the order of its spelling.
 const SEGMENT_NAMES: [&str; 3] = ["component", "area", "reason"];
 
-/// Returns `text` as a `&'static str`, which `Code::new` requires. Each case
-/// leaks a few short strings, which the test process frees when it exits.
+/// Returns `text` as a `&'static str`, which a `const` spelling requires.
+/// Each case leaks a few short strings, which the test process frees when it
+/// exits.
 fn leak(text: String) -> &'static str {
     text.leak()
 }
 
 proptest! {
     #[test]
-    fn new_panics_on_a_segment_that_breaks_the_rule_and_names_that_segment(
+    fn from_spelling_panics_on_a_segment_that_breaks_the_rule_and_names_that_segment(
         mut segments in prop::array::uniform3(SEGMENT),
         position in 0..3_usize,
         invalid in NEAR_SEGMENTS.prop_filter("the string is a segment", |text| {
-            !is_code_segment(text)
+            !is_code_segment(text) && !text.contains(':')
         }),
     ) {
         segments[position] = invalid;
-        let [component, area, reason] = segments.map(leak);
+        let spelling = leak(segments.join("::"));
 
-        let outcome = panic::catch_unwind(|| Code::new(component, area, reason));
+        let outcome = panic::catch_unwind(|| Code::from_spelling(spelling));
 
         let payload =
-            outcome.expect_err("Code::new accepted a segment that breaks the rule");
-        // `assert!` with a literal message panics with a `&str`.
+            outcome.expect_err("Code::from_spelling accepted a segment that breaks the rule");
+        // `panic!` with a literal message panics with a `&str`.
         let message = payload.downcast_ref::<&str>().copied().unwrap_or_default();
         let expected = format!("a code {} is ", SEGMENT_NAMES[position]);
         prop_assert!(message.starts_with(&expected), "{message}");
@@ -152,14 +153,14 @@ proptest! {
     /// Splitting the text at `::` gives the segments back, so the text is
     /// the segments joined by `::`, and two different codes never spell the
     /// same: equal texts split into equal segments. The test builds every
-    /// code from three generated segments, so it also shows that `Code::new`
-    /// accepts any three segments that follow the rule.
+    /// code from three generated segments, so it also shows that
+    /// `Code::from_spelling` accepts any three segments that follow the rule.
     #[test]
     fn the_colon_spelling_is_printable_ascii_that_splits_back_into_the_segments(
         segments in prop::array::uniform3(SEGMENT),
     ) {
-        let [component, area, reason] = segments.map(leak);
-        let code = Code::new(component, area, reason);
+        let [component, area, reason] = segments.clone();
+        let code = Code::from_spelling(leak(segments.join("::")));
 
         let text = Spelling::COLONS.spell(code);
 
@@ -169,45 +170,74 @@ proptest! {
         );
         prop_assert_eq!(
             text.split("::").collect::<Vec<_>>(),
-            [component, area, reason]
+            [component.as_str(), area.as_str(), reason.as_str()]
         );
+        prop_assert_eq!(code.component(), component);
+        prop_assert_eq!(code.area(), area);
+        prop_assert_eq!(code.reason(), reason);
     }
 }
 
 #[test]
-fn the_colon_spelling_splits_a_spelled_code_into_its_segments() {
-    let text = Spelling::COLONS.spell(NOT_FOUND);
+fn from_spelling_splits_a_spelling_into_its_component_area_and_reason() {
+    let code = Code::from_spelling("shelf::books::not_found");
 
     assert_eq!(
-        Spelling::COLONS.split(&text),
-        Some(("shelf", "books", "not_found"))
+        (code.component(), code.area(), code.reason()),
+        ("shelf", "books", "not_found")
     );
 }
 
 #[test]
-fn split_returns_none_for_text_that_is_not_three_parts() {
-    assert_eq!(Spelling::COLONS.split("shelf::books"), None);
-    assert_eq!(Spelling::COLONS.split("shelf::books::not::found"), None);
-    assert_eq!(Spelling::COLONS.split("shelf.books.not_found"), None);
+#[should_panic(expected = "three segments")]
+fn a_spelling_with_two_parts_is_rejected() {
+    let _ = Code::from_spelling("shelf::not_found");
 }
 
 #[test]
-fn a_spelling_for_a_tool_splits_as_the_spelling_it_names() {
-    let spelling = Spelling::COLONS.for_tool(ToolName::new("shelf"));
-
-    assert_eq!(
-        spelling.split("lending::loans::overdue"),
-        Some(("lending", "loans", "overdue"))
-    );
+#[should_panic(expected = "three segments")]
+fn a_spelling_with_four_parts_is_rejected() {
+    let _ = Code::from_spelling("shelf::books::not::found");
 }
 
 #[test]
-fn the_colon_spelling_splits_the_text_it_writes() {
-    let text = Spelling::COLONS.spell(NOT_FOUND);
+#[should_panic(expected = "three segments")]
+fn a_spelling_with_a_single_colon_in_place_of_a_separator_is_rejected() {
+    let _ = Code::from_spelling("shelf:books::not_found");
+}
+
+#[test]
+fn as_str_returns_the_declared_spelling_with_a_static_lifetime() {
+    let text: &'static str = NOT_FOUND.as_str();
 
     assert_eq!(text, "shelf::books::not_found");
-    assert_eq!(
-        Spelling::COLONS.split(&text),
-        Some(("shelf", "books", "not_found"))
-    );
+}
+
+#[test]
+fn two_codes_with_the_same_spelling_are_equal_and_hash_the_same() {
+    use std::hash::BuildHasher;
+
+    let borrowed = String::from("shelf::books::not_found");
+    let runtime = Code::runtime(&borrowed).unwrap();
+    let hasher = std::collections::hash_map::RandomState::new();
+
+    assert_eq!(runtime, NOT_FOUND);
+    assert_eq!(hasher.hash_one(runtime), hasher.hash_one(NOT_FOUND));
+    assert_ne!(NOT_FOUND, Code::from_spelling("shelf::books::gone"));
+}
+
+#[test]
+fn a_crumbkit_code_prints_with_the_tool_s_component_and_as_str_keeps_crumbkit() {
+    const USAGE: Code<'static> = Code::from_spelling("crumbkit::cli::usage");
+    let spelling = Spelling::COLONS.for_tool(ToolName::new("shelf"));
+
+    assert_eq!(spelling.spell(USAGE), "shelf::cli::usage");
+    assert_eq!(USAGE.as_str(), "crumbkit::cli::usage");
+}
+
+#[test]
+fn the_three_segments_display_as_component_area_and_reason() {
+    assert_eq!(Segment::Component.to_string(), "component");
+    assert_eq!(Segment::Area.to_string(), "area");
+    assert_eq!(Segment::Reason.to_string(), "reason");
 }

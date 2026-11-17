@@ -36,11 +36,11 @@ mod words;
 mod xdg;
 
 /// The code of a book that does not exist.
-const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("tool::books::not_found");
 /// The code of a list of ids that cannot be read.
-const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
+const UNREADABLE: Code<'static> = Code::from_spelling("tool::books::unreadable");
 /// The code of a book file that disappeared, which no command line provokes.
-const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
+const REMOVED: Code<'static> = Code::from_spelling("tool::books::removed_file");
 
 /// The tool's declared codes.
 const CODES: &[Code<'static>] = &[NOT_FOUND, UNREADABLE, REMOVED];
@@ -446,7 +446,7 @@ fn an_undeclared_code_from_a_declared_component_fails_the_check() {
 
 #[test]
 fn every_declared_code_is_provoked_or_listed_and_each_listed_code_is_declared_and_unprovoked() {
-    const STRAY: Code<'static> = Code::new("tool", "stray", "gone");
+    const STRAY: Code<'static> = Code::from_spelling("tool::stray::gone");
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let setup = Setup::new(
         "recoveries-codes",

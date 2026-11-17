@@ -44,7 +44,7 @@ impl<'a> Unprovoked<'a> {
     /// use crumbkit::Code;
     /// use crumbkit_test::Unprovoked;
     ///
-    /// const GONE: Code<'static> = Code::new("shelf", "books", "removed_file");
+    /// const GONE: Code<'static> = Code::from_spelling("shelf::books::removed_file");
     /// const BAD: Unprovoked<'_> = Unprovoked::new(GONE, "");
     /// ```
     #[must_use]
@@ -114,7 +114,9 @@ impl<'a> Unprovoked<'a> {
         match self.listed {
             Listed::Code(code) => spelling.spell(code),
             Listed::Area { component, area } => {
-                let text = spelling.spell(Code::new(component, area, "x"));
+                let text = format!("{component}::{area}::x");
+                let text =
+                    Code::runtime(&text).map_or_else(|_| text.clone(), |code| spelling.spell(code));
                 format!("{}*", text.strip_suffix('x').unwrap_or(&text))
             }
         }

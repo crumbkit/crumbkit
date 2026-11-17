@@ -12,8 +12,8 @@ use super::{Cli, SIGHTINGS, Writer, kingfisher, robin};
 use crate::tool::{Exit, Failures};
 use crate::{Code, Failure, Recovery, Run, Sink, Tool, stream_to};
 
-const TIMED_OUT: Code<'static> = Code::new("birds", "watch", "timed_out");
-const UNREADABLE: Code<'static> = Code::new("birds", "sightings", "unreadable");
+const TIMED_OUT: Code<'static> = Code::from_spelling("birds::watch::timed_out");
+const UNREADABLE: Code<'static> = Code::from_spelling("birds::sightings::unreadable");
 
 /// A tool record that maps `TIMED_OUT` to 124 and leaves `UNREADABLE` unmapped.
 const TOOL: Tool = Tool::new().failures(

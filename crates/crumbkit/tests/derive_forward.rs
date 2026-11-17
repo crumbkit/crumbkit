@@ -7,10 +7,10 @@ use std::fmt;
 
 use crumbkit::{Code, CodeBuf, Failure, Recovery, Spelling};
 
-const JOB_NOT_FOUND: Code<'static> = Code::new("tool", "job", "not-found");
-const JOB_NOT_STARTED: Code<'static> = Code::new("tool", "job", "not-started");
-const LIB_TIMEOUT: Code<'static> = Code::new("tool", "lib", "timeout");
-const LIB_REFUSED: Code<'static> = Code::new("tool", "lib", "refused");
+const JOB_NOT_FOUND: Code<'static> = Code::from_spelling("tool::job::not-found");
+const JOB_NOT_STARTED: Code<'static> = Code::from_spelling("tool::job::not-started");
+const LIB_TIMEOUT: Code<'static> = Code::from_spelling("tool::lib::timeout");
+const LIB_REFUSED: Code<'static> = Code::from_spelling("tool::lib::refused");
 
 /// A failure whose codes come from expressions.
 #[derive(Debug, crumbkit_derive::Failure)]
@@ -51,7 +51,7 @@ fn a_code_expression_chooses_the_code_from_the_fields() {
 
 #[test]
 fn a_code_expression_can_return_a_code_that_borrows_from_a_field() {
-    let spelled = Code::new("tool", "job", "made-up").to_buf();
+    let spelled = Code::from_spelling("tool::job::made-up").to_buf();
     let error = JobError::Spelled { spelled };
     assert_eq!(Spelling::COLONS.spell(error.code()), "tool::job::made-up");
 }

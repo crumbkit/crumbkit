@@ -15,7 +15,7 @@ use crate::help::{Help, Leaf};
 use crate::{Code, Document, Failure, Prose, Recovery, Row, Rows, Sink, Tool, ViewFlags};
 use crate::{finish_to, parse_to};
 
-const NO_CONFIG: Code<'static> = Code::new("solar", "config", "not_found");
+const NO_CONFIG: Code<'static> = Code::from_spelling("solar::config::not_found");
 
 /// The document that the tool's early failures finish with, before the
 /// command knows which result it prints.

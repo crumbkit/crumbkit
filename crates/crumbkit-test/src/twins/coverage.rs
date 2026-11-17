@@ -20,7 +20,7 @@ use crate::runs::with_json;
 /// use crumbkit::Code;
 /// use crumbkit_test::{Failing, Twin};
 ///
-/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
 ///
 /// const SHOW_7: Twin<'_> = Twin::new(
 ///     Failing::new(NOT_FOUND, &["books", "show", "7"]),
@@ -63,7 +63,7 @@ impl<'a> Twin<'a> {
     /// use crumbkit::Code;
     /// use crumbkit_test::{Failing, Twin};
     ///
-    /// const TOO_DEEP: Code<'static> = Code::new("shelf", "books", "too_deep");
+    /// const TOO_DEEP: Code<'static> = Code::from_spelling("shelf::books::too_deep");
     ///
     /// const DEPTH_1: Twin<'_> = Twin::variable(
     ///     Failing::new(TOO_DEEP, &["books", "list"]).env(&[("SHELF_DEPTH", Some("1"))]),
@@ -88,8 +88,8 @@ impl<'a> Twin<'a> {
 /// use crumbkit::Code;
 /// use crumbkit_test::{Examples, Failing, Twin, Twins, Unprovoked};
 ///
-/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
-/// const GONE: Code<'static> = Code::new("shelf", "books", "removed_file");
+/// const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
+/// const GONE: Code<'static> = Code::from_spelling("shelf::books::removed_file");
 ///
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
