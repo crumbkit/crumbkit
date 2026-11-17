@@ -25,8 +25,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   when its last guard drops, so a Ctrl-C is no longer lost when one guard
   drops ([behaviour/interrupts]).
 - crumbkit-durable: on Unix, `PathLock::acquire` refuses a lock file that another
-  user owns with `Io` at `Open` and the kind `PermissionDenied`
-  ([behaviour/durable-files]).
+  user owns, even for root, with `PermissionDenied`. Acquires fail on mounts
+  that report a fixed owner, such as NFS `all_squash`; use a local file system ([behaviour/durable-files]).
 - crumbkit-aliases: a `Source::table` entry with no words no longer expands to
   nothing. `aliases list` shows it with a problem, as for a file entry, and the
   root help leaves it out ([behaviour/parsing/aliases]).

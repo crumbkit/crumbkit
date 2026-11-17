@@ -4,8 +4,7 @@ crumbkit-durable replaces a file atomically, and locks a lock file. A
 reader of a replaced file sees the old bytes or the new bytes, and after a
 crash or a power loss the file holds one or the other, never part of
 either. A lock is held by one holder at a time, on the file that is at the
-path. The crate depends on no other crumbkit crate, so a tool that does not
-use crumbkit can use it too.
+path. The crate depends on no other crumbkit crate.
 
 ## Adding it
 
@@ -34,8 +33,7 @@ assert_eq!(std::fs::read(&config).unwrap(), b"theme = \"dark\"\n");
 std::fs::remove_dir_all(&dir).unwrap();
 ```
 
-`Mode::Private` gives the file `0600` on Unix, for a file such as a key,
-and `Mode::Umask` gives it `0666` less the process's umask, as
+`Mode::Private` gives the file `0600` on Unix, and `Mode::Umask` gives it `0666` less the process's umask, as
 `File::create` does.
 
 ## What it promises
@@ -63,12 +61,16 @@ refuses a symbolic link and a file that another user owns on Unix, and
 waits until the deadline while another holder has the lock. Once it holds
 the lock, it checks on Unix that the file it locked is still the file at
 the path, and opens the path again when another program replaced or removed
-it. While no other program replaces or removes the file, two holders therefore never both return holding
-different files. The crate never removes a lock file, and
+it. While no other program replaces or removes the file, two holders never
+both hold different files. The crate never removes a lock file, and
 [`PathLock::still_current`] tells a holder that another program did. A
 failure returns a [`LockError`], which is `Busy` when the wait ends. A
-lock that was taken reports the time its acquire took through
-[`PathLock::waited`].
+taken lock reports how long its acquire took through [`PathLock::waited`].
+
+The owner check applies to root too. Every acquire fails on a mount that
+reports one owner for every file, such as NFS with `all_squash`, or CIFS or
+FUSE with `uid=`, and for root on NFS with `root_squash`. Keep lock files on
+a local file system.
 
 ## Platforms
 
