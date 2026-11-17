@@ -136,6 +136,7 @@ pub const TOOL: Tool = Tool::new()
                         ),
                         Example::new(&["2", "--yes"], "Remove book 2 without asking"),
                     ])
+                    .notes(&["A removed book no longer appears in list or show."])
                     .effects(Effects::destructive().idempotent().all_or_none())
                     .document(BOOKS_REMOVE),
                 Leaf::new(&["commands", "list"])

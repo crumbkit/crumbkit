@@ -42,6 +42,7 @@ Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041, ADR-0080.
   its `-h` ends with a `Next:` line that says `--help` explains each JSON
   field, when it lists one. crumbkit-test's `check_help` fails a headed
   leaf with a `Bytes` field that is not marked `#[serde(flatten)]`.
+- A leaf's `Notes:` section follows its examples ([leaf notes](leaves/README.md)).
 - `parse` applies a leaf only to the deepest command on the walked path.
   `help::extend` adds every leaf's examples and no columns.
 
@@ -57,15 +58,6 @@ page prints. `parse` builds the schema only when the typed words ask for
 `--help`, so a run that prints no long help never builds it.
 
 Why: ADR-0024.
-
-## Quoting of command lines
-
-crumbkit prints each command line with
-[`help::quote`](../../../crates/crumbkit/src/help/words.rs), which quotes a
-word for a POSIX shell. On Windows, help prints the same POSIX quoting, so a
-line pasted into PowerShell or `cmd` may need other quoting.
-
-Why: ADR-0024, ADR-0003.
 
 ## Checks of leaves
 

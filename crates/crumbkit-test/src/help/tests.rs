@@ -13,6 +13,7 @@ mod children;
 mod documents;
 mod examples;
 mod lines;
+mod notes;
 mod problems;
 mod uncut;
 mod views;

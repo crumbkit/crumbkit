@@ -11,6 +11,7 @@ use crate::tree::{self, DASHED_NAME, is_dashed};
 
 mod children;
 mod document;
+mod notes;
 #[cfg(test)]
 mod tests;
 
@@ -77,6 +78,8 @@ mod tests;
 /// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
+/// - a leaf note (`Leaf::notes`) that is empty or holds a line break,
+///   because help prints each note on one indented line;
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   no row has a value for it and the table leaves it out;
@@ -365,6 +368,7 @@ fn check_leaves(
         check_columns(&text, leaf, problems);
         check_line(&text, leaf, problems);
         children::check_children(&text, leaf, problems);
+        notes::check_notes(&text, leaf, problems);
         check_uncut(&text, leaf, problems);
     }
     for visit in tree::walk_visible(command) {

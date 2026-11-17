@@ -15,6 +15,7 @@ mod document;
 mod example;
 mod lines;
 mod no_result;
+mod notes;
 mod passes;
 mod refusal;
 #[cfg(test)]
@@ -25,8 +26,8 @@ pub use children::children_line;
 pub use column::Column;
 pub use document::LeafDocument;
 pub use example::Example;
-pub(crate) use example::examples;
 pub use lines::{BYTES_LINE, HEADED_LINE, STREAM_LINE};
+pub(crate) use notes::leaf_text;
 pub use refusal::RefusalContext;
 pub use text::text_line;
 
@@ -60,6 +61,8 @@ pub struct Leaf {
     path: &'static [&'static str],
     /// The examples, in the order the help page lists them.
     examples: &'static [Example],
+    /// The notes that the help prints after the examples, one per line.
+    notes: &'static [&'static str],
     /// The document that the command prints and the columns of its rows,
     /// or `None` when the leaf has no document.
     document: Option<LeafDocument>,
@@ -91,6 +94,7 @@ impl Leaf {
         Self {
             path,
             examples: &[],
+            notes: &[],
             document: None,
             effects: None,
             choices: &[],
@@ -119,6 +123,26 @@ impl Leaf {
     #[must_use]
     pub const fn get_examples(&self) -> &'static [Example] {
         self.examples
+    }
+
+    /// Sets the notes that the command's `-h` and `--help` print in a
+    /// `Notes:` section right after `Examples:`, one per line, indented
+    /// as an example line is. A note states a rule of the command's output
+    /// that its columns do not, such as which rows it leaves out. A note
+    /// is one non-empty line, and crumbkit-test's `check_help` fails one
+    /// that is empty or holds a line break. `commands list` and the
+    /// command reference do not show notes.
+    #[must_use]
+    pub const fn notes(mut self, notes: &'static [&'static str]) -> Self {
+        self.notes = notes;
+        self
+    }
+
+    /// Returns the notes that [`Leaf::notes`] set. The name has clap's
+    /// `get_` prefix, because `notes` is the builder method.
+    #[must_use]
+    pub const fn get_notes(&self) -> &'static [&'static str] {
+        self.notes
     }
 
     /// Sets the command's effects. Its `-h` and `--help` then print them on

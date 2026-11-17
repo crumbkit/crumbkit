@@ -144,6 +144,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | Affordance | Replaces | Smell | Search | Since | Criterion |
 | --- | --- | --- | --- | --- | --- |
 | `Leaf::new`, `Leaf::examples`, `Example`, `Example::needs` | Examples in `after_help` text | An `after_help` holding command lines | `after_help` `after_long_help` | 0.1 | `tool-record` |
+| `Leaf::notes` | Notes in `after_help` | An `after_help` holding a `Notes:` section | `Notes:` | 0.6.0 | `tool-record` |
 | Doc comments on row fields as column descriptions | A column table in help text | `after_help` listing columns | `after_long_help` | 0.1 | `tool-record` |
 | `Group`, `Goal`, `Group::compact` | Hand-arranged help headings | `help_heading` or `help_template` on a group | `help_template` `next_help_heading` | 0.1 | `tool-record` |
 | `Topic`, `help exit-codes` | Long concept text on a command | `after_help` that explains a concept, a `docs` command | `after_help` `include_str!` | 0.1 | `tool-record` |

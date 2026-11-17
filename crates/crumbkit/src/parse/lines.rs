@@ -247,7 +247,7 @@ struct Sections {
 
 /// Returns the sections of `leaf`, whose command is `node` and whose
 /// command line starts with `text`:
-/// its examples in `-h` and `--help`, and in `--help` the sections that
+/// its examples and notes in `-h` and `--help`, and in `--help` the sections that
 /// describe its columns when `long_help` is set.
 fn leaf_sections(
     leaf: &Leaf,
@@ -257,8 +257,8 @@ fn leaf_sections(
     header: Style,
     literal: Style,
 ) -> Sections {
-    let short = leaf::examples(leaf, text, false, header, literal);
-    let mut long: Vec<String> = leaf::examples(leaf, text, true, header, literal)
+    let short = leaf::leaf_text(leaf, text, false, header, literal);
+    let mut long: Vec<String> = leaf::leaf_text(leaf, text, true, header, literal)
         .into_iter()
         .collect();
     if long_help {
@@ -416,13 +416,14 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
 }
 
 /// Returns a copy of `own`, one of the command's own `after_help` texts, or
-/// `None` when it is unset or empty or equals `examples`, the first of the
-/// leaf's sections. [`help::extend`] writes a leaf's examples section in
-/// place of the command's `after_help` and `after_long_help`, so that text
-/// is the section that `parse` adds, and it prints once.
-fn own_text(own: Option<&StyledStr>, examples: Option<&String>) -> Option<StyledStr> {
+/// `None` when it is unset or empty or equals `block`, the first of the
+/// leaf's sections, which holds its examples and notes.
+/// [`help::extend`] writes that block in place of the command's `after_help`
+/// and `after_long_help`, so that text is the section that `parse` adds, and
+/// it prints once.
+fn own_text(own: Option<&StyledStr>, block: Option<&String>) -> Option<StyledStr> {
     let own = own?;
-    let rewritten = examples.is_some_and(|examples| *own == StyledStr::from(examples));
+    let rewritten = block.is_some_and(|block| *own == StyledStr::from(block));
     if *own == StyledStr::new() || rewritten {
         None
     } else {

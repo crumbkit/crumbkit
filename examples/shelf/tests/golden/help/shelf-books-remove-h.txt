@@ -14,6 +14,9 @@ Examples:
   shelf books remove 2 --dry-run
   shelf books remove 2 --yes
 
+Notes:
+  A removed book no longer appears in list or show.
+
 Effects: destructive, idempotent, closed-world.
 Writes: applies all items or none.
 Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `shelf books remove --help` describes them.
