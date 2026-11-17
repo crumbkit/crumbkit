@@ -210,6 +210,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 | `Scope`, process group or job object | `setsid` or `process_group` by hand | `process_group(0)`, `pre_exec` | `process_group\(` `pre_exec` | 0.2.0 | `process-run` |
 | `Status::shell_code`, `ChildFinished::status` | `128 + signal` by hand | Arithmetic on a signal number | `128 \+` `\+ 128` | 0.2.0 | `signals` |
 | `forward` feature, `forward::install`, `forward::clean_up`, `forward::handed_over` | Own handler that signals children | `signal_hook` or `ctrlc` around children | `ctrlc` `signal_hook` `SIGINT` | 0.2.0 | `signals` |
+| `interrupt` feature, `interrupt::install`, `Interrupt::check`, `interrupt::clean_up` | Own SIGINT handler that stops a batch | `signal_hook` or `ctrlc` that sets a flag for a loop | `ctrlc` `signal_hook` `SIGINT` | 0.6.0 | `signals` |
 | `RunOptions::around_spawn`, `Spawn`, `Spawned` | A lock held around `spawn` by hand | A lock guards a spawn | `\.spawn\(\)` | 0.3.0 | `process-run` |
 | `RunOptions::stdout_copy`, `stderr_copy` | A tee thread | Output shown and captured by hand | `\.spawn\(\)` | 0.3.0 | `process-run` |
 | `Capture::inherit` | Leaving the crate for one interactive step | `Stdio::inherit` in a child that returns | `Stdio::inherit` | 0.3.0 | `process-run` |

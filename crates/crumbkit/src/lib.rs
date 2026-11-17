@@ -65,6 +65,8 @@ mod fetch;
 mod field;
 pub mod files;
 pub mod help;
+#[cfg(feature = "interrupt")]
+pub mod interrupt;
 mod listing;
 mod output;
 mod page;

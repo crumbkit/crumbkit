@@ -25,6 +25,8 @@ mod forward;
 #[cfg(unix)]
 mod forward_hand_over;
 #[cfg(unix)]
+mod interrupt;
+#[cfg(unix)]
 mod unix;
 #[cfg(windows)]
 mod windows;

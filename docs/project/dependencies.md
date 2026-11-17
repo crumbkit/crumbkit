@@ -43,13 +43,14 @@ Why: ADR-0003, ADR-0001, ADR-0097, ADR-0043.
 | Feature or crate | Adds |
 | --- | --- |
 | `derive` | crumbkit-derive, a procedural macro built on syn 3, quote and proc-macro2, which clap_derive already brings into the lock file with the same syn features. The feature is off by default, so a tool that depends on crumbkit alone and writes its `Failure` impls by hand does not build crumbkit-derive, and builds syn either way because clap_derive needs it. crumbkit-child and crumbkit-aliases turn the feature on for their own failures, so a tool that uses either builds crumbkit-derive. |
-| `miette` | miette with no features, because crumbkit draws the source line and its underline itself, and unicode-width, which miette already depends on, so carets line up after wide characters. The width tables added 16,976 bytes to shelf's stripped release binary on aarch64 macOS. |
+| `miette` | miette with no features, because crumbkit draws the source line and its underline itself, and unicode-width, which miette already depends on, so carets line up after wide characters. The width tables added 16,976 bytes to shelf's stripped release binary. |
 | `tracing` | The tracing crate with no features. It has no build script, compiles in about 0.3 s and added about 18 KB to shelf's stripped release binary. |
 | `color` | clap's `color` feature, which adds anstream and lets `parse_to` write help with clap's styles to a styled sink. The feature is off by default, so a binary chooses clap's colour. shelf already enables clap's `color`, and crumbkit's feature added 16 bytes to its stripped release binary on aarch64 macOS: 3,265,728 bytes with it and 3,265,712 without. |
-| `complete` | clap_complete with its `unstable-dynamic` feature, which brings shlex and is_executable and turns on clap's `unstable-ext`. It added 102,192 bytes to shelf's stripped release binary on aarch64 macOS. |
+| `complete` | clap_complete with its `unstable-dynamic` feature, which brings shlex and is_executable and turns on clap's `unstable-ext`. It added 102,192 bytes to shelf's stripped release binary. |
+| `interrupt` | signal-hook with its `iterator` feature, which crumbkit-usage already builds, so the lock file gains no crate. |
 | crumbkit-aliases | toml. The crate is separate, so only a tool with personal aliases builds toml. |
 | crumbkit-child | signal-hook with no features, which crumbkit-usage also uses, so a tool can hand the terminal to a child while it ignores Ctrl-C. The crate is separate, so only a tool that hands the terminal over builds it. |
-| crumbkit-process | rustix's `process` and `event` features on Unix, beside the `pty` and `termios` features that crumbkit and shelf's tests already use. On Windows it adds process-wrap with only its `std` and `job-object` features, which brings indexmap and the `windows` 0.62 crates, 19 crates in all, with syn 2 for windows-implement. A cold release build of process-wrap with those features took 5 to 9 s for `x86_64-pc-windows-gnu` on aarch64 macOS. process-wrap's Unix dependency nix appears in the lock file and never builds, because crumbkit-process depends on process-wrap on Windows alone. zeroize, with only its `alloc` feature, clears `Input::Bytes` when it drops. It has no dependency of its own, and a cold release build took 0.36 s on aarch64 macOS. The off-by-default `forward` feature adds signal-hook with its `iterator` feature on Unix, which crumbkit-usage already builds. The crate is separate, so only a tool that runs a child and reads its output builds it. |
+| crumbkit-process | rustix's `process` and `event` features on Unix, beside the `pty` and `termios` features that crumbkit and shelf's tests already use. On Windows it adds process-wrap with only its `std` and `job-object` features, which brings indexmap and the `windows` 0.62 crates, 19 crates in all, with syn 2 for windows-implement. A cold release build of process-wrap with those features took 5 to 9 s for `x86_64-pc-windows-gnu` on aarch64 macOS. process-wrap's Unix dependency nix appears in the lock file and never builds, because crumbkit-process depends on process-wrap on Windows alone. zeroize, with only its `alloc` feature, clears `Input::Bytes` when it drops. The off-by-default `forward` feature adds signal-hook with its `iterator` feature on Unix, which crumbkit-usage already builds. The crate is separate, so only a tool that runs a child and reads its output builds it. |
 | crumbkit-usage | The usage log's dependencies: siphasher, etcetera, humantime and signal-hook, and getrandom on Windows, which proptest already brings into the lock file, because Windows has no `/dev/urandom`. The crate is separate, so only a tool that keeps the log builds them. |
 | crumbkit-durable | rustix's `fs` feature on Unix, for `O_NOFOLLOW` and `O_NONBLOCK`, new outside the workspace. |
 | crumbkit-skills | No new dependency. The crate is separate, so only a tool with an agent skill builds its commands. |
@@ -57,7 +58,7 @@ Why: ADR-0003, ADR-0001, ADR-0097, ADR-0043.
 
 Why: ADR-0003, ADR-0001, ADR-0016, ADR-0027, ADR-0029, ADR-0030, ADR-0033,
 ADR-0042, ADR-0043, ADR-0048, ADR-0102, ADR-0171, ADR-0172,
-ADR-0192.
+ADR-0192, ADR-0240.
 
 ## MSRV and toolchain
 

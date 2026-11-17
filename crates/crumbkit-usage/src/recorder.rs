@@ -221,6 +221,10 @@ pub fn start() -> Log {
 /// clean-ups, so an [`Extension`](crate::Extension)'s `write` must not start
 /// a run with `Scope::Group` under this setup.
 ///
+/// A tool that uses crumbkit's `interrupt` feature passes
+/// `crumbkit::interrupt::clean_up` in the same way, and calls
+/// `crumbkit::interrupt::install` after `start_under`.
+///
 /// A tool that calls plain `start` beside `forward::install` has two handlers
 /// that each end it on the same signal, and neither crate can see the
 /// other. The tool can then end before its child groups have stopped, or

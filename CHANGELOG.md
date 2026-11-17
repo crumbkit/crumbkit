@@ -14,6 +14,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Unprovoked::area` lists every declared code of one area
   under one reason for `check_recoveries` and `check_twins`, and the recovery
   report names each code it excuses.
+- crumbkit: the `interrupt` feature adds `interrupt::install`. The first
+  Ctrl-C inside a window makes `Interrupt::check` return `Interrupted`
+  (exit 130) and the process keeps running. A second Ctrl-C runs the
+  `interrupt::clean_up` functions and ends it
+  ([behaviour/interrupts]).
 - crumbkit: `RowReports::reports_problem` asks a row whether it reports a
   problem, as `Row::PROBLEM` decides. Every `Row` has it through a blanket
   impl, so a row type cannot override the answer
@@ -68,6 +73,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-usage: the docs of `start_under` name `interrupt::clean_up`
+  ([behaviour/interrupts]).
 - crumbkit-test: breaking: `Recoveries::new` and `Twins::new` take one code
   list, such as `CODES` or `&codes` of a `Vec`. `Recoveries::lists` and
   `Twins::lists` take one list for each error type. The twin check reports a
@@ -2019,6 +2026,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/checks/recovery-chains]: docs/behaviour/checks/recovery-chains.md
 [behaviour/durable-files]: docs/behaviour/durable-files.md
 [behaviour/effects]: docs/behaviour/effects/README.md
+[behaviour/interrupts]: docs/behaviour/interrupts/README.md
 [behaviour/effects/pickers]: docs/behaviour/effects/pickers.md
 [behaviour/effects/write-guards]: docs/behaviour/effects/write-guards.md
 [behaviour/failures]: docs/behaviour/failures/README.md
