@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::platform::{self, Identity};
+use crate::platform::{self, Caller, Identity};
 
 #[cfg(test)]
 mod tests;
@@ -172,14 +172,31 @@ impl PathLock {
     /// a FIFO there that no program reads,
     /// when the lock fails other than by being held, or when reading the
     /// identity of either file fails other than by the path being gone.
+    /// On Unix the open also fails, with the kind `PermissionDenied` and a
+    /// message naming the path and the owner's uid, when the lock file is
+    /// owned by a user other than the caller's effective user, because
+    /// another user who created the file in a shared directory could hold
+    /// or replace it. The file is left as it is. Windows does not check
+    /// the owner.
     pub fn acquire_unless(
         path: &Path,
         deadline: Instant,
         give_up: &dyn Fn() -> bool,
     ) -> Result<Self, LockError> {
+        Self::acquire_unless_as(path, deadline, give_up, Caller::current())
+    }
+
+    /// [`PathLock::acquire_unless`] for a `caller` the test names, so a test
+    /// can act as another user without root.
+    pub(crate) fn acquire_unless_as(
+        path: &Path,
+        deadline: Instant,
+        give_up: &dyn Fn() -> bool,
+        caller: Caller,
+    ) -> Result<Self, LockError> {
         let started = Instant::now();
-        let file = open(path)?;
-        lock_opened(path, file, started, deadline, give_up)
+        let file = open(path, caller)?;
+        lock_opened(path, file, started, deadline, give_up, caller)
     }
 
     /// Returns whether the locked file is still the file at its path, which
@@ -207,13 +224,16 @@ impl PathLock {
     }
 }
 
-/// Opens the lock file at `path`, creating it when it is absent.
-fn open(path: &Path) -> Result<File, LockError> {
-    platform::open_lock(path).map_err(|source| LockError::Io {
-        path: path.to_path_buf(),
-        step: LockStep::Open,
-        source,
-    })
+/// Opens the lock file at `path`, creating it when it is absent, and on
+/// Unix refuses a file that a user other than `caller` owns.
+fn open(path: &Path, caller: Caller) -> Result<File, LockError> {
+    platform::open_lock(path)
+        .and_then(|file| platform::check_owner(&file, path, caller).map(|()| file))
+        .map_err(|source| LockError::Io {
+            path: path.to_path_buf(),
+            step: LockStep::Open,
+            source,
+        })
 }
 
 /// Locks `file`, which was opened at `path` after `started`, waits as
@@ -226,6 +246,7 @@ fn lock_opened(
     started: Instant,
     deadline: Instant,
     give_up: &dyn Fn() -> bool,
+    caller: Caller,
 ) -> Result<PathLock, LockError> {
     let fail = |step, source| LockError::Io {
         path: path.to_path_buf(),
@@ -274,6 +295,6 @@ fn lock_opened(
         }
         reopens += 1;
         drop(file);
-        file = open(path)?;
+        file = open(path, caller)?;
     }
 }

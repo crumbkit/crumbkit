@@ -62,6 +62,41 @@ pub(crate) fn open_lock(path: &Path) -> io::Result<File> {
         .open(path)
 }
 
+/// The user a lock file's owner is compared with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Caller(u32);
+
+impl Caller {
+    /// The calling process's effective user.
+    pub(crate) fn current() -> Self {
+        Self(rustix::process::geteuid().as_raw())
+    }
+
+    /// A caller that acts as user `uid`, which lets a test stand in for
+    /// another user without root.
+    #[cfg(test)]
+    pub(crate) fn uid(uid: u32) -> Self {
+        Self(uid)
+    }
+}
+
+/// Fails with `PermissionDenied` when the open lock file belongs to a user
+/// other than `caller`, naming `path` and the owner's uid.
+pub(crate) fn check_owner(file: &File, path: &Path, caller: Caller) -> io::Result<()> {
+    let owner = file.metadata()?.uid();
+    if owner == caller.0 {
+        return Ok(());
+    }
+    Err(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        format!(
+            "{} is owned by user {owner}, not user {}",
+            path.display(),
+            caller.0
+        ),
+    ))
+}
+
 /// The device and inode of a file, which name it whatever path reaches it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Identity {
