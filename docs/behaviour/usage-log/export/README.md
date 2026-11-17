@@ -66,7 +66,8 @@ trimmed run. Another checks that an export of shelf's own log prints its
 stored records, and that the next export after the last run prints only the
 newer line. Others check that an export skips a record whose command is no
 command of the tool, in text and in JSON, and that `--after` naming such a
-record prints every known record after a gap. Another lowers the output budget, checks that the export stops
-with the over-budget failure, and resumes after the last run it printed.
+record prints every known record after a gap. Another lowers the output
+budget, checks that the export stops with the over-budget failure, and
+resumes after the last run it printed.
 
 Why: ADR-0191.
