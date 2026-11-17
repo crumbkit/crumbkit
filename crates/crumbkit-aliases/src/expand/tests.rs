@@ -347,3 +347,13 @@ fn an_alias_whose_words_name_a_lazy_group_expands() {
     assert_eq!(real, os(&["shelf", "skills", "install"]));
     assert_eq!(alias, os(&["shelf", "books", "show"]));
 }
+
+#[test]
+fn a_table_entry_with_no_words_leaves_the_typed_words_alone() {
+    let aliases = Aliases::new().source(Source::table("shelf", &[("x", &[])]));
+
+    assert_eq!(
+        aliases.expand(&mut tree(), ["shelf", "x", "--limit", "1"]),
+        os(&["shelf", "x", "--limit", "1"])
+    );
+}

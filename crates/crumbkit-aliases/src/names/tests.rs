@@ -172,3 +172,13 @@ fn names_keep_an_alias_that_reaches_past_a_command_whose_expansion_adds_nothing(
 
     assert_eq!(aliases.names(&command), ["empty more"]);
 }
+
+#[test]
+fn a_table_entry_with_no_words_is_left_off_the_names() {
+    let aliases = Aliases::new().source(Source::table(
+        "shelf",
+        &[("x", &[]), ("wt", &["books", "list"])],
+    ));
+
+    assert_eq!(aliases.names(&tree()), ["wt"]);
+}

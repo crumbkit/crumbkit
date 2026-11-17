@@ -6,6 +6,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- crumbkit-aliases: an entry of a `Source::table` with no words is refused
+  like the same entry in an aliases file. `aliases list` shows it with the
+  problem "the value must be a list of one or more words", `expand` leaves the
+  typed words alone and the root help no longer names it. It used to expand to
+  nothing ([behaviour/parsing/aliases]).
+
 ## [0.6.0](https://github.com/crumbkit/crumbkit/compare/v0.5.0...v0.6.0) - 2026-11-17
 
 ### Added

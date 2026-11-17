@@ -37,11 +37,13 @@ pub(crate) struct Item {
 }
 
 impl Item {
-    /// Returns the item for `key`, split into words, and `words`.
+    /// Returns the item for `key`, split into words, and `words`. Every
+    /// source builds its items here, so an empty list of words is `None`, a
+    /// value that is not a list of one or more words, for all of them.
     pub(crate) fn new(key: &str, words: Option<Vec<String>>) -> Self {
         Self {
             key: key.split_whitespace().map(str::to_owned).collect(),
-            words,
+            words: words.filter(|words| !words.is_empty()),
         }
     }
 
@@ -154,7 +156,7 @@ pub(crate) fn longest_in(
             let key: Vec<&str> = key.split_whitespace().collect();
             (key.len() <= typed.len()
                 && key.iter().zip(typed).all(|(key, word)| key == word)
-                && problem_of(&key, true, command, false).is_none())
+                && problem_of(&key, !words.is_empty(), command, false).is_none())
             .then_some((key.len(), words))
         })
         .max_by_key(|(len, _)| *len)
