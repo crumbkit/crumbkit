@@ -194,9 +194,10 @@ pub trait Failure: std::error::Error {
     /// `crumbkit::finish` prints each alternative on its own `help:` line
     /// after the recovery's, and under `alternatives` in JSON. It leaves out
     /// an alternative that offers no step: a `Recovery::Run` or
-    /// `Recovery::Terminal` whose call does not resolve, and a
-    /// `Recovery::None`. When the recovery itself offers
-    /// no step, the first alternative that offers one prints in its place.
+    /// `Recovery::Terminal` whose call does not resolve, a `Recovery::After`
+    /// whose `then` call does not resolve, and a `Recovery::None`. When the
+    /// recovery itself offers no step, the first alternative that offers one
+    /// prints in its place.
     ///
     /// ```
     /// # use std::fmt;

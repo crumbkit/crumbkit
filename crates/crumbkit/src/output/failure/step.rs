@@ -62,7 +62,8 @@ impl RecoveryStep {
     /// `Recovery::Terminal` call against `command`. It returns `Err` with a
     /// `RecoveryStep::None` when the recovery offers no step: a
     /// `Recovery::None`, a call that cannot be rendered because it does not
-    /// resolve, or a `Recovery::Terminal` call that holds a placeholder. It
+    /// resolve, a `Recovery::Terminal` call that holds a placeholder, or a
+    /// `Recovery::After` whose `then` is one of those. It
     /// adds the reason that such a call offers no step to `unrendered`.
     pub(super) fn offered(
         recovery: Recovery,

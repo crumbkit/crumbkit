@@ -143,3 +143,22 @@ fn the_failure_schema_rejects_an_after_step_whose_then_is_a_hint() {
     assert!(!kinds.contains(r#""none""#), "{kinds}");
     assert!(!kinds.contains(r#""after""#), "{kinds}");
 }
+
+#[test]
+fn a_repair_before_a_terminal_call_prints_the_call_in_a_terminal() {
+    let finished = fail_with(
+        &[],
+        missing(Recovery::after(
+            "move the file away",
+            Then::Terminal(Call::new(&["list"])),
+        )),
+    );
+
+    assert!(
+        finished
+            .err
+            .contains("\n  help:  move the file away, then run `tool list` in a terminal\n"),
+        "{}",
+        finished.err
+    );
+}
