@@ -1,7 +1,7 @@
 # ADR-0217. A code list holds its codes by value
 
 - Date: 2026-11-13
-- Status: accepted
+- Status: amended by ADR-0235
 - Supersedes: ADR-0089 and ADR-0205, which it amends
 - Missed: ADR-0205 kept `Exit::failures` and `CODES` lists as references so that the lists an author writes would not change, although 0.5.0 already makes every author rewrite each code constant and each `fn code`, and the reference lists made crumbkit-test keep a second constructor for codes held by value.
 

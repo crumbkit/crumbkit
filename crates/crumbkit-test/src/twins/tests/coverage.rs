@@ -19,7 +19,7 @@ const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
 const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
 
 /// The tool's declared codes.
-const CODES: &[&[Code<'static>]] = &[&[NOT_FOUND, UNREADABLE, REMOVED]];
+const CODES: &[Code<'static>] = &[NOT_FOUND, UNREADABLE, REMOVED];
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books
 /// list --limit 0` fails with crumbkit's usage code, `books show 8` fails
@@ -145,7 +145,7 @@ fn checked_with(script: &str, pairs: &[Twin<'_>]) -> Option<String> {
     let dir = TempDir::new("twins-json").unwrap();
     dir.write_script("tool", script);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), &[&[NOT_FOUND]]).pairs(pairs);
+    let twins = Twins::new(Examples::new(&path, ""), &[NOT_FOUND]).pairs(pairs);
     panic_message(|| check_twins(&tree(), &Tool::new(), &twins))
 }
 
@@ -255,19 +255,56 @@ fn an_untwinned_opt_out_whose_line_succeeds_or_fails_with_another_code_fails_the
     );
 }
 #[test]
-fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() {
+fn twins_new_takes_a_code_list_built_at_run_time_and_bound_before_the_check() {
     let dir = TempDir::new("twins-owned-codes").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
     let codes: Vec<Code<'_>> = vec![NOT_FOUND, UNREADABLE, REMOVED];
-    let lists = [codes.as_slice()];
     let unprovoked = [Unprovoked::new(
         codes[2],
         "Only a book file that disappears provokes it.",
     )];
-    let twins = Twins::new(Examples::new(&path, ""), &lists)
+    let twins = Twins::new(Examples::new(&path, ""), &codes)
         .pairs(&[SHOW_7])
         .unprovoked(&unprovoked);
+
+    let problems = panic_message(|| check_twins(&tree(), &Tool::new(), &twins));
+
+    assert_eq!(
+        problems.as_deref(),
+        Some(
+            "the tool's twins break crumbkit's twin rule:\n\
+             tool::books::unreadable: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
+        )
+    );
+}
+
+#[test]
+fn twins_lists_needs_a_twin_for_a_code_of_the_second_list() {
+    let dir = TempDir::new("twins-lists-second").unwrap();
+    dir.write_script("tool", SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let lists: [&[Code<'_>]; 2] = [&[NOT_FOUND], &[UNREADABLE]];
+    let twins = Twins::lists(Examples::new(&path, ""), &lists).pairs(&[SHOW_7]);
+
+    let problems = panic_message(|| check_twins(&tree(), &Tool::new(), &twins));
+
+    assert_eq!(
+        problems.as_deref(),
+        Some(
+            "the tool's twins break crumbkit's twin rule:\n\
+             tool::books::unreadable: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
+        )
+    );
+}
+
+#[test]
+fn a_code_that_two_lists_share_is_checked_once() {
+    let dir = TempDir::new("twins-lists-shared").unwrap();
+    dir.write_script("tool", SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let lists: [&[Code<'_>]; 2] = [&[NOT_FOUND, UNREADABLE], &[UNREADABLE]];
+    let twins = Twins::lists(Examples::new(&path, ""), &lists).pairs(&[SHOW_7]);
 
     let problems = panic_message(|| check_twins(&tree(), &Tool::new(), &twins));
 

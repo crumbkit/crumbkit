@@ -11,7 +11,7 @@ use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
 use crate::allow::{Allowances, Rule};
-use crate::codes;
+use crate::codes::{self, CodeLists};
 use crate::examples::Examples;
 use crate::failures;
 use crate::goldens::compare;
@@ -232,7 +232,7 @@ impl<'a> Failing<'a> {
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// const RECOVERIES: Recoveries<'_> =
-///     Recoveries::new(EXAMPLES, &[&[NOT_FOUND, GONE]])
+///     Recoveries::new(EXAMPLES, &[NOT_FOUND, GONE])
 ///         .starts(&[Failing::new(NOT_FOUND, &["books", "show", "7"])])
 ///         .unprovoked(&[Unprovoked::new(GONE, "Only a book file that disappears provokes it.")])
 ///         .values(&[("ID", "2")]);
@@ -241,8 +241,8 @@ impl<'a> Failing<'a> {
 pub struct Recoveries<'a> {
     /// The binary, its environment and the tool's opt-outs.
     examples: Examples<'a>,
-    /// The `CODES` list of each of the tool's error types.
-    codes: &'a [&'a [Code<'a>]],
+    /// The tool's declared codes.
+    codes: CodeLists<'a>,
     /// The command lines that start the chains.
     starts: &'a [Failing<'a>],
     /// The declared codes that no command line provokes.
@@ -256,14 +256,28 @@ pub struct Recoveries<'a> {
 
 impl<'a> Recoveries<'a> {
     /// Returns the settings that run the binary of `examples` with its
-    /// environment and opt-outs and check the codes of `codes`, the `CODES`
-    /// list of each of the tool's error types, with no start, no unprovoked
-    /// code, no value and at most 3 steps in a chain. [`check_recoveries`]
-    /// spells the codes as the tool record does. A test whose codes come
-    /// from `Code::runtime` writes `let lists = [codes.as_slice()];` and
-    /// passes `&lists`.
+    /// environment and opt-outs and check the codes of `codes`, with no
+    /// start, no unprovoked code, no value and at most 3 steps in a chain.
+    /// `codes` can be a derived `CODES`, a literal list, or `&codes` of a
+    /// `Vec<Code>` that a test built at run time and bound before the call.
+    /// [`check_recoveries`] spells the codes as the tool record does. A tool
+    /// with several error types calls [`Recoveries::lists`].
     #[must_use]
-    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [Code<'a>]]) -> Self {
+    pub const fn new(examples: Examples<'a>, codes: &'a [Code<'a>]) -> Self {
+        Self::with(examples, CodeLists::One(codes))
+    }
+
+    /// Returns the settings of [`Recoveries::new`] for a tool with several
+    /// error types, from the `CODES` list of each one. A code that two lists
+    /// share counts once. It takes lists because a `const` cannot join
+    /// slices.
+    #[must_use]
+    pub const fn lists(examples: Examples<'a>, lists: &'a [&'a [Code<'a>]]) -> Self {
+        Self::with(examples, CodeLists::Many(lists))
+    }
+
+    /// Returns the settings for `codes`.
+    const fn with(examples: Examples<'a>, codes: CodeLists<'a>) -> Self {
         Self {
             examples,
             codes,
@@ -453,9 +467,7 @@ fn check(command: &Command, tool: &Tool, recoveries: &Recoveries<'_>, dir: &str,
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));
     let mut declared: Vec<(String, Code<'_>)> = Vec::new();
     for code in codes::declared(recoveries.codes) {
-        if !declared.iter().any(|&(_, seen)| seen == code) {
-            declared.push((spelling.spell(code), code));
-        }
+        declared.push((spelling.spell(code), code));
     }
     let known = known_codes(&declared, spelling);
     // crumbkit's add-on crates, such as crumbkit-child, own codes in the
