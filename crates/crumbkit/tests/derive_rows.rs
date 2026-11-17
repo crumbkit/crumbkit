@@ -464,3 +464,74 @@ fn a_derived_problem_by_row_exits_with_1_as_a_hand_written_row_does() {
     );
     assert_eq!(healthy.map(|(code, _)| code), Some(0));
 }
+
+/// A file whose size and line count come from a flattened field.
+mod flattened {
+    use schemars::JsonSchema;
+    use serde::Serialize;
+
+    /// The measures of a file.
+    #[derive(Serialize, JsonSchema, crumbkit_derive::Row)]
+    #[row(crate = ::crumbkit)]
+    pub(super) struct Stats {
+        /// The file's size in bytes.
+        #[row(column)]
+        pub(super) size: u64,
+        /// The file's line count.
+        #[row(long)]
+        pub(super) lines: u64,
+    }
+
+    /// A file and its measures.
+    #[derive(Serialize, JsonSchema, crumbkit_derive::Row)]
+    #[row(crate = ::crumbkit)]
+    pub(super) struct File {
+        /// The file's path.
+        #[row(column, uncut)]
+        pub(super) path: &'static str,
+        /// The file's measures.
+        #[serde(flatten)]
+        #[row(flatten)]
+        pub(super) stats: Stats,
+        /// The file's owner.
+        #[row(long)]
+        pub(super) owner: &'static str,
+        /// The file's mode.
+        #[row(column)]
+        pub(super) mode: &'static str,
+    }
+}
+
+const FILES: Document<Listing<flattened::File>> = Document::new("shelf", "files", 1, "The files.");
+
+#[test]
+fn flattened_columns_print_in_field_order_and_their_long_columns_follow_long() {
+    assert_eq!(flattened::File::COLUMNS, &["path", "size", "mode"]);
+    assert_eq!(flattened::File::LONG_COLUMNS, &["lines", "owner"]);
+    assert_eq!(flattened::File::UNCUT_COLUMNS, &["path"]);
+    let files = || {
+        vec![flattened::File {
+            path: "a.txt",
+            stats: flattened::Stats { size: 12, lines: 3 },
+            owner: "root",
+            mode: "644",
+        }]
+    };
+    assert_eq!(
+        print(FILES, files(), &[]),
+        Some((0, "PATH   SIZE  MODE\na.txt  12    644\n".to_owned()))
+    );
+    assert_eq!(
+        print(FILES, files(), &["--long"]),
+        Some((
+            0,
+            "PATH   SIZE  MODE  LINES  OWNER\na.txt  12    644   3      root\n".to_owned()
+        ))
+    );
+}
+
+#[test]
+fn the_columns_helper_concatenates_lists_in_order() {
+    const JOINED: [&str; 3] = crumbkit::__row_columns(&[&["a"], &["b", "c"], &[]]);
+    assert_eq!(JOINED, ["a", "b", "c"]);
+}

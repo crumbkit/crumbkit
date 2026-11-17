@@ -87,3 +87,80 @@ fn a_warning_by_key_writes_warning_by_with_the_fields_serialized_name() {
     };
     assert!(output.contains(&expected.to_string()), "{output}");
 }
+
+#[test]
+fn a_flatten_key_splices_the_field_types_columns_at_the_fields_position() {
+    let output = expanded(quote! {
+        struct File {
+            #[row(column)]
+            path: String,
+            #[serde(flatten)]
+            #[row(flatten)]
+            stats: Stats,
+            #[row(column, uncut)]
+            id: u32,
+            #[row(long)]
+            owner: String,
+        }
+    });
+    let columns = quote! {
+        const __COLUMNS: [&'static str; 2 + <Stats as ::crumbkit::Row>::COLUMNS.len()] =
+            ::crumbkit::__row_columns(&[
+                &["path"],
+                <Stats as ::crumbkit::Row>::COLUMNS,
+                &["id"]
+            ]);
+    };
+    let long = quote! {
+        const __LONG_COLUMNS: [&'static str; 1 + <Stats as ::crumbkit::Row>::LONG_COLUMNS.len()] =
+            ::crumbkit::__row_columns(&[
+                <Stats as ::crumbkit::Row>::LONG_COLUMNS,
+                &["owner"]
+            ]);
+    };
+    let uncut = quote! {
+        const __UNCUT_COLUMNS: [&'static str; 1 + <Stats as ::crumbkit::Row>::UNCUT_COLUMNS.len()] =
+            ::crumbkit::__row_columns(&[
+                <Stats as ::crumbkit::Row>::UNCUT_COLUMNS,
+                &["id"]
+            ]);
+    };
+    for expected in [columns, long, uncut] {
+        assert!(output.contains(&expected.to_string()), "{output}");
+    }
+    let uses = quote! {
+        const COLUMNS: &'static [&'static str] = &__COLUMNS;
+        const LONG_COLUMNS: &'static [&'static str] = &__LONG_COLUMNS;
+        const UNCUT_COLUMNS: &'static [&'static str] = &__UNCUT_COLUMNS;
+    };
+    assert!(output.contains(&uses.to_string()), "{output}");
+    assert!(output.starts_with("const _ : () = {"), "{output}");
+}
+
+#[test]
+fn a_flatten_key_asserts_that_the_field_type_sets_no_problem_warning_or_children() {
+    let output = expanded(quote! {
+        struct File {
+            #[serde(flatten)]
+            #[row(flatten)]
+            stats: Stats,
+        }
+    });
+    for item in ["PROBLEM", "WARNING", "CHILDREN"] {
+        let text = format!("< Stats as :: crumbkit :: Row > :: {item} . is_none ()");
+        assert!(output.contains(&text), "{item}: {output}");
+        assert!(
+            output.contains(&format!(
+                "the flattened type `Stats` sets {item}, and the row"
+            )),
+            "{item}: {output}"
+        );
+    }
+}
+
+#[test]
+fn a_row_without_flatten_writes_no_helper_constants() {
+    let output = expanded(quote! { struct File { #[row(column)] path: String } });
+    assert!(!output.contains("__row_columns"), "{output}");
+    assert!(!output.contains("const _"), "{output}");
+}

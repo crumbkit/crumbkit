@@ -8,10 +8,10 @@ use syn::{Attribute, Expr, Ident, LitInt, LitStr, Path};
 
 /// The keys that `#[row(...)]` accepts, as the message about an unknown key
 /// lists them.
-const KEYS: &str = "`column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by` and `children` on a field, and `crate` and `whole` on the type";
+const KEYS: &str = "`column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by`, `children` and `flatten` on a field, and `crate` and `whole` on the type";
 
 /// The keys that `#[row(...)]` accepts on a field.
-const FIELD_KEYS: [&str; 8] = [
+const FIELD_KEYS: [&str; 9] = [
     "column",
     "long",
     "uncut",
@@ -20,6 +20,7 @@ const FIELD_KEYS: [&str; 8] = [
     "warning",
     "warning_by",
     "children",
+    "flatten",
 ];
 
 /// The keys that `#[row(...)]` accepts on the type.
@@ -150,6 +151,8 @@ pub(super) struct Keys {
     pub(super) warning_by: Option<(Span, Expr)>,
     /// `children` or `children(...)`, with its options.
     pub(super) children: Option<(Span, ChildrenKey)>,
+    /// `flatten`, which splices in the columns of the field's type.
+    pub(super) flatten: Option<Span>,
 }
 
 impl Keys {
@@ -168,12 +171,13 @@ impl Keys {
         let span = meta.path.span();
         let twice = || meta.error(format!("the field `{ident}` gives `{key}` twice"));
         match key.as_str() {
-            "column" | "long" | "uncut" | "problem" | "warning" => {
+            "column" | "long" | "uncut" | "problem" | "warning" | "flatten" => {
                 let slot = match key.as_str() {
                     "column" => &mut self.column,
                     "long" => &mut self.long,
                     "uncut" => &mut self.uncut,
                     "problem" => &mut self.problem,
+                    "flatten" => &mut self.flatten,
                     _ => &mut self.warning,
                 };
                 if slot.is_some() {
@@ -223,5 +227,6 @@ impl Keys {
             .or(self.warning)
             .or(self.warning_by.as_ref().map(|(span, _)| *span))
             .or(self.children.as_ref().map(|(span, _)| *span))
+            .or(self.flatten)
     }
 }

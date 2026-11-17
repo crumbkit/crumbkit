@@ -4,6 +4,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 mod children;
+mod columns;
 mod fields;
 mod line;
 mod no_row;
@@ -15,6 +16,8 @@ mod rule;
 mod warning;
 
 pub use children::Children;
+#[doc(hidden)]
+pub use columns::__row_columns;
 pub use line::Line;
 pub use no_row::NoRow;
 pub use problem::Problem;

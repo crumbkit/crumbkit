@@ -13,6 +13,9 @@ pub(super) struct SerdeField {
     /// `skip`, `skip_serializing` or `flatten`, the first of these keys that
     /// the field gives, any of which leaves no field of its name in the JSON.
     pub(super) dropped: Option<&'static str>,
+    /// Whether the field gives `flatten`, which a `#[row(flatten)]` key
+    /// needs.
+    pub(super) flatten: bool,
 }
 
 impl SerdeField {
@@ -28,6 +31,7 @@ impl SerdeField {
                     }
                     return Ok(());
                 }
+                field.flatten |= meta.path.is_ident("flatten");
                 for dropped in ["skip", "skip_serializing", "flatten"] {
                     if meta.path.is_ident(dropped) {
                         field.dropped = field.dropped.or(Some(dropped));

@@ -46,11 +46,16 @@ fn the_derive_refuses_problem_and_warning_on_one_field() {
 #[test]
 fn each_refused_use_is_a_compile_error_that_names_the_field_or_the_type() {
     let dropped = |key: &str| {
+        let except = if key == "flatten" {
+            " but `flatten`"
+        } else {
+            ""
+        };
         format!(
-            "the field `notes` is marked #[serde({key})], so the JSON holds no field of that name, and it takes no #[row(...)] key"
+            "the field `notes` is marked #[serde({key})], so the JSON holds no field of that name, and it takes no #[row(...)] key{except}"
         )
     };
-    let keys = "Its keys are `column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by` and `children` on a field, and `crate` and `whole` on the type";
+    let keys = "Its keys are `column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by`, `children` and `flatten` on a field, and `crate` and `whole` on the type";
     let refused = "#[derive(Row)] supports a struct with named fields, and";
     let cases = [
         (
@@ -221,6 +226,35 @@ fn each_new_refused_use_is_a_compile_error_that_names_the_field_or_the_type() {
         (
             quote! { #[row(children)] struct Book { id: u32 } },
             "`children` goes in the #[row(...)] attribute of a field",
+        ),
+    ];
+    for (input, message) in cases {
+        assert_eq!(refusal(input.clone()), message, "{input}");
+    }
+}
+
+#[test]
+fn each_refused_flatten_use_is_a_compile_error_that_names_the_field() {
+    let cases = [
+        (
+            quote! { struct File { #[row(flatten)] stats: Stats } },
+            "the field `stats` gives `flatten` without #[serde(flatten)], and the columns of its type are columns of the row only when serde flattens the field",
+        ),
+        (
+            quote! { struct File { #[serde(flatten)] #[row(flatten, column)] stats: Stats } },
+            "the field `stats` gives `flatten` and `column`, and a flattened field takes the columns of its type and no other key",
+        ),
+        (
+            quote! { struct File { #[serde(flatten)] #[row(flatten, children)] stats: Stats } },
+            "the field `stats` gives `flatten` and `children`, and a flattened field takes the columns of its type and no other key",
+        ),
+        (
+            quote! { struct File<T> { #[serde(flatten)] #[row(flatten)] stats: T } },
+            "the field `stats` gives `flatten` on a generic type, and the columns of a flattened type cannot depend on the type's parameters",
+        ),
+        (
+            quote! { struct File { #[row(flatten)] #[row(flatten)] stats: Stats } },
+            "the field `stats` gives `flatten` twice",
         ),
     ];
     for (input, message) in cases {

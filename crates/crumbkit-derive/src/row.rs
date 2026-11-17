@@ -6,7 +6,7 @@
 
 use proc_macro2::{Span, TokenStream};
 use syn::ext::IdentExt;
-use syn::{Data, DeriveInput, Expr, Field, Fields, Ident, Path};
+use syn::{Data, DeriveInput, Expr, Field, Fields, Ident, Path, Type};
 
 mod keys;
 mod serde;
@@ -32,18 +32,32 @@ struct RowType {
     krate: Path,
     /// Whether the type gives `whole`, which sets `WHOLE`.
     whole: bool,
+    /// Whether the type has generic parameters, which a flattened field
+    /// cannot have.
+    generic: bool,
     /// The names in `COLUMNS`, in field order.
-    columns: Vec<String>,
+    columns: Vec<Piece>,
     /// The names in `LONG_COLUMNS`, in field order.
-    long: Vec<String>,
+    long: Vec<Piece>,
     /// The names in `UNCUT_COLUMNS`, in field order.
-    uncut: Vec<String>,
+    uncut: Vec<Piece>,
+    /// The types of the flattened fields, in field order.
+    flattened: Vec<Type>,
     /// The field that decides `problem`, which `PROBLEM` holds.
     problem: Option<Decision>,
     /// The field that decides `warning`, which `WARNING` holds.
     warning: Option<Decision>,
     /// The field that holds the child lines, which `CHILDREN` holds.
     children: Option<ChildLines>,
+}
+
+/// One piece of a column list: the name of a field, or the list that a
+/// flattened field's type gives in that place.
+enum Piece {
+    /// The field's name as serde serializes it.
+    Name(String),
+    /// The same list of the flattened field's type, spliced in.
+    Splice(Type),
 }
 
 /// The field that decides which rows report a problem or a warning.
@@ -92,6 +106,8 @@ fn read(input: &DeriveInput) -> syn::Result<RowType> {
     let mut row = RowType {
         krate: type_keys.krate,
         whole: type_keys.whole,
+        generic: !input.generics.params.is_empty(),
+        flattened: Vec::new(),
         columns: Vec::new(),
         long: Vec::new(),
         uncut: Vec::new(),
@@ -140,11 +156,19 @@ fn read_field(row: &mut RowType, field: &Field, ident: &Ident, rule: RenameAll) 
         return Ok(());
     };
     let serde = SerdeField::read(&field.attrs)?;
+    if keys.flatten.is_some() {
+        return read_flatten(row, &keys, field, ident, &serde);
+    }
     if let Some(dropped) = serde.dropped {
+        let except = if dropped == "flatten" {
+            " but `flatten`"
+        } else {
+            ""
+        };
         return Err(syn::Error::new(
             span,
             format!(
-                "the field `{ident}` is marked #[serde({dropped})], so the JSON holds no field of that name, and it takes no #[row(...)] key"
+                "the field `{ident}` is marked #[serde({dropped})], so the JSON holds no field of that name, and it takes no #[row(...)] key{except}"
             ),
         ));
     }
@@ -163,8 +187,8 @@ fn read_field(row: &mut RowType, field: &Field, ident: &Ident, rule: RenameAll) 
                 ),
             ));
         }
-        (Some(_), None) => row.columns.push(name.clone()),
-        (None, Some(_)) => row.long.push(name.clone()),
+        (Some(_), None) => row.columns.push(Piece::Name(name.clone())),
+        (None, Some(_)) => row.long.push(Piece::Name(name.clone())),
         (None, None) => {
             if let Some(uncut) = keys.uncut {
                 return Err(syn::Error::new(
@@ -177,7 +201,7 @@ fn read_field(row: &mut RowType, field: &Field, ident: &Ident, rule: RenameAll) 
         }
     }
     if keys.uncut.is_some() {
-        row.uncut.push(name.clone());
+        row.uncut.push(Piece::Name(name.clone()));
     }
     let problem = decision_key(
         keys.problem.map(|span| ("problem", span)),
@@ -259,6 +283,69 @@ fn second_decision(
             "the fields `{first_field}` and `{ident}` {gives}, and a row has at most one {noun} field"
         ),
     )
+}
+
+/// Splices the columns of the type of the field `ident`, which gives
+/// `flatten`, into the row's lists, or returns the error for a field that
+/// gives `flatten` where it cannot hold.
+fn read_flatten(
+    row: &mut RowType,
+    keys: &Keys,
+    field: &Field,
+    ident: &Ident,
+    serde: &SerdeField,
+) -> syn::Result<()> {
+    let Some(span) = keys.flatten else {
+        return Ok(());
+    };
+    if !serde.flatten {
+        return Err(syn::Error::new(
+            span,
+            format!(
+                "the field `{ident}` gives `flatten` without #[serde(flatten)], and the columns of its type are columns of the row only when serde flattens the field"
+            ),
+        ));
+    }
+    let others = [
+        ("column", keys.column),
+        ("long", keys.long),
+        ("uncut", keys.uncut),
+        ("problem", keys.problem),
+        (
+            "problem_by",
+            keys.problem_by.as_ref().map(|(span, _)| *span),
+        ),
+        ("warning", keys.warning),
+        (
+            "warning_by",
+            keys.warning_by.as_ref().map(|(span, _)| *span),
+        ),
+        ("children", keys.children.as_ref().map(|(span, _)| *span)),
+    ];
+    if let Some((key, other)) = others
+        .into_iter()
+        .find_map(|(key, span)| Some((key, span?)))
+    {
+        return Err(syn::Error::new(
+            other,
+            format!(
+                "the field `{ident}` gives `flatten` and `{key}`, and a flattened field takes the columns of its type and no other key"
+            ),
+        ));
+    }
+    if row.generic {
+        return Err(syn::Error::new(
+            span,
+            format!(
+                "the field `{ident}` gives `flatten` on a generic type, and the columns of a flattened type cannot depend on the type's parameters"
+            ),
+        ));
+    }
+    for list in [&mut row.columns, &mut row.long, &mut row.uncut] {
+        list.push(Piece::Splice(field.ty.clone()));
+    }
+    row.flattened.push(field.ty.clone());
+    Ok(())
 }
 
 /// Records the field `ident` as the row's child lines, or returns the error

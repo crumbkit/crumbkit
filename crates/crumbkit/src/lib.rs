@@ -125,6 +125,9 @@ pub use crate::prose::Prose;
 pub use crate::row::{
     Children, Headed, Line, NoRow, Problem, Row, RowReports, Rows, Shape, Warning,
 };
+// The code of `#[derive(Row)]` calls this to splice a flattened field's columns.
+#[doc(hidden)]
+pub use crate::row::__row_columns;
 pub use crate::shown::Shown;
 pub use crate::sink::Sink;
 pub use crate::step::{Program, Step};
