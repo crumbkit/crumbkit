@@ -62,7 +62,8 @@ and its help content: leaves, examples, goal headings and topics.
 | `Call::arg`, `Call::value`, `Call::all`, `Call::flag` | Formatting values into a command sentence | `format!` builds a recovery's command | `format!\("[^"]*\b<bin> ` | 0.1, `flag` 0.5.0 | `typed-recovery` |
 | `Call::typed` | Re-joining the caller's argv | A recovery repeats `std::env::args` | `env::args` | 0.1 | `typed-recovery` |
 | `Call::help` | A sentence saying to read help | A hint says "see --help" | `see .*--help` `run .* -h` | 0.1 | `typed-recovery` |
-| `Recovery::Retry` | A sentence saying to try again | A hint says to try or run the command again | `(try\|run .*) again` | 0.1 | `typed-recovery` |
+| `Recovery::Retry` | A sentence saying to try again | A hint says to try or run the command again. A tool offers `Retry` only when the next run starts clean (since 0.6.0) | `(try\|run .*) again` | 0.1 | `typed-recovery` |
+| `Recovery::after`, `Then` | A hint that says to make a repair and then run a command or the same command again | A hint says "do X, then run `<bin> ..`" or "do X, then run it again" | `Recovery::[Hh]int\(.*, then (run\|try)` `hint\s*=\s*"[^"]*, then (run\|try)` | 0.6.0 | `typed-recovery` |
 | `Recovery::program` | A hint that holds another program's command line | A hint names a command of another program | `Recovery::[Hh]int\(.*\b(git\|cargo\|docker) [a-z-]+` | 0.6.0 | `typed-recovery` |
 | `Recovery::Hint`, `Recovery::hint` | Nothing: this is the free-text form, for a repair that is no command of the tool | A hint that names a tool command misuses it | as `typed-recovery` | variant 0.1, `hint` 0.2.0 | `typed-recovery` |
 | `Recovery::None`, `Recovery::none`, `#[failure(no_next_step)]` | A blank recovery | A repairable failure says there is no next step | `Recovery::None` `no_next_step` | variant 0.1, the others 0.2.0 | `declared-code` |

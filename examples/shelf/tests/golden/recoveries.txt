@@ -11,7 +11,7 @@ shelf books show --from tests/fixtures/ids/missing.txt
 
 shelf books show --from tests/fixtures/ids/bad-line.txt
   fails with shelf::books::bad_ids_file
-  hint
+  after a repair, retry
   run shelf books show <ID>... as shelf books show 2
     exits 0
 

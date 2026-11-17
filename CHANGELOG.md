@@ -7,6 +7,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit: `Recovery::after` puts a repair before a `Then::Retry`,
+  `Then::Run` or `Then::Terminal`. It prints the repair then the step, and
+  JSON gives it the step kind `after` with `repair` and `then`
+  ([behaviour/failures/recoveries]).
 - crumbkit: `Recovery::program` names another program's command. It prints
   ``run `git status` `` and, in JSON, a step of kind `program`.
   `check_recoveries` reports it and ends the branch
@@ -108,6 +112,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: the failure document's steps gain the kind `after`, and
+  its id stays `failure/v1`. Every schema that embeds the failure schema
+  gains the member ([behaviour/failures/recoveries]).
+- crumbkit: `Recovery::Retry` promises that the next run starts clean
+  ([behaviour/failures/recoveries]).
 - crumbkit: breaking: the failure document's steps gain the kind `program`,
   and its id stays `failure/v1`. Every schema that embeds the failure schema
   gains the member ([behaviour/failures/recoveries]).

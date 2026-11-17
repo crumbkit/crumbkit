@@ -9,7 +9,7 @@ use serde::ser::{SerializeMap, Serializer};
 
 use super::UNAVAILABLE;
 use crate::help::quote;
-use crate::{CallArg, CallTarget, FieldValue, Recovery};
+use crate::{CallArg, CallTarget, FieldValue, Recovery, Then};
 
 /// A [`Recovery`] ready to print: a `Recovery::Run` or `Recovery::Terminal`
 /// call is rendered against the tool's command, and a call that cannot be rendered becomes `None` with
@@ -43,6 +43,14 @@ pub enum RecoveryStep {
     },
     /// Run the same command again later.
     Retry,
+    /// Make this repair, then take the step `then`, which is a `Run`,
+    /// `RunAll`, `Terminal` or `Retry` step.
+    After {
+        /// What the caller repairs first.
+        repair: String,
+        /// The step that follows the repair.
+        then: Box<RecoveryStep>,
+    },
     /// Follow this advice.
     Hint(String),
     /// There is no next step, for this reason.
@@ -54,7 +62,8 @@ impl RecoveryStep {
     /// `Recovery::Terminal` call against `command`. It returns `Err` with a
     /// `RecoveryStep::None` when the recovery offers no step: a
     /// `Recovery::None`, a call that cannot be rendered because it does not
-    /// resolve, or a `Recovery::Terminal` call that holds a placeholder. It
+    /// resolve, a `Recovery::Terminal` call that holds a placeholder, or a
+    /// `Recovery::After` whose `then` is one of those. It
     /// adds the reason that such a call offers no step to `unrendered`.
     pub(super) fn offered(
         recovery: Recovery,
@@ -99,6 +108,17 @@ impl RecoveryStep {
                 })
             }
             Recovery::Retry => Ok(Self::Retry),
+            Recovery::After { repair, then } => {
+                let then = match then {
+                    Then::Run(call) => Recovery::Run(call),
+                    Then::Terminal(call) => Recovery::Terminal(call),
+                    Then::Retry => Recovery::Retry,
+                };
+                Self::offered(then, command, unrendered).map(|then| Self::After {
+                    repair,
+                    then: Box::new(then),
+                })
+            }
             Recovery::Hint(text) => Ok(Self::Hint(text)),
             Recovery::None { reason } => Err(Self::None(reason)),
         }
@@ -145,6 +165,13 @@ impl RecoveryStep {
             Self::Terminal(call) => Cow::Owned(format!("run `{call}` in a terminal")),
             Self::Program { run, .. } => Cow::Owned(format!("run `{run}`")),
             Self::Retry => Cow::Borrowed("run the same command again later"),
+            Self::After { repair, then } => {
+                let then = match **then {
+                    Self::Retry => Cow::Borrowed("run the same command again"),
+                    _ => then.help(fields),
+                };
+                Cow::Owned(format!("{repair}, then {then}"))
+            }
             Self::Hint(text) => Cow::Borrowed(text),
             Self::None(reason) => Cow::Owned(format!("no next step: {reason}")),
         }
@@ -253,6 +280,13 @@ impl Serialize for RecoveryStep {
                 map.serialize_entry("program", program)?;
                 map.serialize_entry("args", args)?;
                 map.serialize_entry("run", run)?;
+                return map.end();
+            }
+            Self::After { repair, then } => {
+                let mut map = serializer.serialize_map(Some(3))?;
+                map.serialize_entry("kind", "after")?;
+                map.serialize_entry("repair", repair)?;
+                map.serialize_entry("then", then)?;
                 return map.end();
             }
             Self::Retry => ("retry", None, None),

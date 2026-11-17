@@ -127,7 +127,7 @@ disagree with it:
 
 | Id | Affordance | A finding is a place where this holds | Search |
 | --- | --- | --- | --- |
-| `typed-recovery` | `Recovery::Run` with `Call`, `Recovery::Retry` | A hint, `no_next_step` reason or failure message names a command of this tool in prose, or says to run the same command again. | `-U` `hint\s*[=(]\s*"[^"]*\b<bin> [a-z-]+` `help\("[^"]*\b<bin> [a-z-]+` `(try\|run .*) again`; Read each `recovery` function |
+| `typed-recovery` | `Recovery::Run` with `Call`, `Recovery::Retry`, `Recovery::after` | A hint, `no_next_step` reason or failure message names a command of this tool in prose, says to run the same command again, or says to make a repair and then run a command. | `-U` `hint\s*[=(]\s*"[^"]*\b<bin> [a-z-]+` `help\("[^"]*\b<bin> [a-z-]+` `(try\|run .*) again`; Read each `recovery` function |
 | `provoked-call` | `check_recoveries` | A `Call` omits a required argument, or a declared code is neither a `Failing` start nor `Unprovoked`. | `Recovery::Run` `Call::new` `Failing::new` |
 | `row-command` | `Listing::step`, `Step::call`, `RenderCall::render` | A row field, note, summary or `Prose` text names a command of this tool. | `\.note\(` `Listing::step`; Read row fields that are `String` |
 | `program-step` | `Step::run`, `Program` | A listing's note or row names a command of another program. | `\.note\(` |

@@ -210,34 +210,63 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
         .get("alternatives")
         .and_then(Value::as_array)
         .map_or(&[][..], Vec::as_slice);
-    let text = |step: &Value, key: &str| {
+    let steps: Vec<RecoveryStep> = std::iter::once(document.get("recovery")?)
+        .chain(alternatives)
+        .map(read_step)
+        .collect();
+    let fields = fields(document);
+    Some(ReadFailure::new(code, steps).with_fields(fields))
+}
+
+/// Returns the step of the failure document that `step` holds, or
+/// `RecoveryStep::None` when it is a step the check cannot read.
+fn read_step(step: &Value) -> RecoveryStep {
+    let text = |key: &str| {
         step.get(key)
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_owned()
     };
-    let steps: Vec<RecoveryStep> = std::iter::once(document.get("recovery")?)
-        .chain(alternatives)
-        .map(|step| {
-            let call = step.get("call").and_then(Value::as_str);
-            let all = step.get("all").and_then(Value::as_str);
-            match (step.get("kind").and_then(Value::as_str), call, all) {
-                (Some("run"), Some(call), Some(field)) => RecoveryStep::RunAll {
-                    call: call.to_owned(),
-                    field: field.to_owned(),
-                },
-                (Some("run"), Some(call), None) => RecoveryStep::Run(call.to_owned()),
-                (Some("terminal"), Some(call), _) => RecoveryStep::Terminal(call.to_owned()),
-                (Some("run" | "terminal"), None, _) => RecoveryStep::None(String::new()),
-                (Some("program"), ..) => program_step(step),
-                (Some("retry"), ..) => RecoveryStep::Retry,
-                (Some("hint"), ..) => RecoveryStep::Hint(text(step, "text")),
-                _ => RecoveryStep::None(text(step, "reason")),
-            }
-        })
-        .collect();
-    let fields = fields(document);
-    Some(ReadFailure::new(code, steps).with_fields(fields))
+    let call = step.get("call").and_then(Value::as_str);
+    let all = step.get("all").and_then(Value::as_str);
+    match (step.get("kind").and_then(Value::as_str), call, all) {
+        (Some("run"), Some(call), Some(field)) => RecoveryStep::RunAll {
+            call: call.to_owned(),
+            field: field.to_owned(),
+        },
+        (Some("run"), Some(call), None) => RecoveryStep::Run(call.to_owned()),
+        (Some("terminal"), Some(call), _) => RecoveryStep::Terminal(call.to_owned()),
+        (Some("run" | "terminal"), None, _) => RecoveryStep::None(String::new()),
+        (Some("program"), ..) => program_step(step),
+        (Some("retry"), ..) => RecoveryStep::Retry,
+        (Some("after"), ..) => after_step(step),
+        (Some("hint"), ..) => RecoveryStep::Hint(text("text")),
+        _ => RecoveryStep::None(text("reason")),
+    }
+}
+
+/// Returns the `after` step `step` of a failure document, or
+/// `RecoveryStep::None` with no reason when its `then` is not a `run`,
+/// `terminal` or `retry` step the check can read.
+fn after_step(step: &Value) -> RecoveryStep {
+    let repair = step
+        .get("repair")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    let then = step.get("then").map(read_step);
+    match then {
+        Some(
+            then @ (RecoveryStep::Run(_)
+            | RecoveryStep::RunAll { .. }
+            | RecoveryStep::Terminal(_)
+            | RecoveryStep::Retry),
+        ) => RecoveryStep::After {
+            repair,
+            then: Box::new(then),
+        },
+        _ => RecoveryStep::None(String::new()),
+    }
 }
 
 /// Returns the `program` step `step` of a failure document, or
@@ -298,29 +327,33 @@ pub(crate) fn placeholder_text(value: &FieldValue<'_>) -> Option<String> {
 /// Returns the code of `failure` and its steps as one phrase, such as
 /// `tool::books::not_found, whose steps are: run `tool books list`; retry`.
 pub(crate) fn describe(failure: &ReadFailure) -> String {
-    let steps: Vec<String> = failure
-        .steps()
-        .iter()
-        .map(|step| match step {
-            RecoveryStep::Run(call) => format!("run `{call}`"),
-            RecoveryStep::RunAll { call, field } => {
-                format!("run `{call}` with every value of {field}")
-            }
-            RecoveryStep::Terminal(call) => format!("run `{call}` in a terminal"),
-            RecoveryStep::Program { run, .. } => {
-                format!("run `{run}`, a command of another program")
-            }
-            RecoveryStep::Retry => "retry".to_owned(),
-            RecoveryStep::Hint(text) => format!("hint: {text}"),
-            RecoveryStep::None(reason) if reason.is_empty() => "no next step".to_owned(),
-            RecoveryStep::None(reason) => format!("no next step: {reason}"),
-            _ => "a step that crumbkit-test cannot name".to_owned(),
-        })
-        .collect();
+    let steps: Vec<String> = failure.steps().iter().map(describe_step).collect();
     if steps.is_empty() {
         failure.code().to_owned()
     } else {
         format!("{}, whose steps are: {}", failure.code(), steps.join("; "))
+    }
+}
+
+/// Returns `step` as a phrase, such as ``run `tool books list` ``.
+fn describe_step(step: &RecoveryStep) -> String {
+    match step {
+        RecoveryStep::Run(call) => format!("run `{call}`"),
+        RecoveryStep::RunAll { call, field } => {
+            format!("run `{call}` with every value of {field}")
+        }
+        RecoveryStep::Terminal(call) => format!("run `{call}` in a terminal"),
+        RecoveryStep::Program { run, .. } => {
+            format!("run `{run}`, a command of another program")
+        }
+        RecoveryStep::Retry => "retry".to_owned(),
+        RecoveryStep::After { repair, then } => {
+            format!("{repair}, then {}", describe_step(then))
+        }
+        RecoveryStep::Hint(text) => format!("hint: {text}"),
+        RecoveryStep::None(reason) if reason.is_empty() => "no next step".to_owned(),
+        RecoveryStep::None(reason) => format!("no next step: {reason}"),
+        _ => "a step that crumbkit-test cannot name".to_owned(),
     }
 }
 

@@ -251,3 +251,42 @@ fn a_program_step_with_an_empty_run_line_reads_as_no_next_step() {
         )]
     );
 }
+
+#[test]
+fn an_after_step_reads_as_an_after_recovery_step() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"after","repair":"move the file away","then":{"kind":"run","call":"tool books list"}},"alternatives":[{"kind":"after","repair":"fix it","then":{"kind":"retry"}}]}"#;
+
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "a".to_owned(),
+            vec![
+                RecoveryStep::After {
+                    repair: "move the file away".to_owned(),
+                    then: Box::new(RecoveryStep::Run("tool books list".to_owned())),
+                },
+                RecoveryStep::After {
+                    repair: "fix it".to_owned(),
+                    then: Box::new(RecoveryStep::Retry),
+                },
+            ],
+        )]
+    );
+}
+
+#[test]
+fn an_after_step_whose_then_is_a_hint_is_a_step_the_check_cannot_read() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"after","repair":"fix it","then":{"kind":"hint","text":"x"}}}"#;
+
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "a".to_owned(),
+            vec![RecoveryStep::None(String::new())],
+        )]
+    );
+}
