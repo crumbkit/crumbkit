@@ -204,7 +204,7 @@ impl crumbkit::Headed for NestedFile {
 }
 
 #[test]
-fn check_tool_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
+fn check_help_fails_a_headed_row_whose_bytes_field_is_not_flattened_and_names_the_field() {
     const TOOL: Tool = Tool::new().help(
         Help::new().leaves(&[
             leaf(&["books", "list"]).document(
@@ -224,9 +224,45 @@ fn check_tool_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
     assert_eq!(
         panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
         "the command tree breaks crumbkit's help rules:\n\
-         shelf books list: the field `text` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`\n\
-         shelf books list: the field `base64` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`"
+         shelf books list: the field `content` holds the bytes as `text` and `base64` beside the row's other fields, so the JSON of the headed document does not hold them at the top level; mark the `Bytes` field `#[serde(flatten)]`"
     );
+}
+
+/// A row type that is transparent over a JSON value, so its schema has no
+/// properties.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+#[serde(transparent)]
+struct Report(serde_json::Value);
+
+impl crumbkit::Row for Report {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl crumbkit::Headed for Report {
+    fn bytes(&self) -> Option<&crumbkit::Bytes> {
+        None
+    }
+}
+
+#[test]
+fn check_help_accepts_a_headed_row_type_whose_schema_has_no_properties() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"]).document(
+                Document::<Batch<Report, crumbkit::Error>>::new(
+                    "shelf",
+                    "books-reports",
+                    1,
+                    "The books' reports.",
+                )
+                .headed(),
+            ),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
+
+    check_help(&shelf(), &TOOL, &[]);
 }
 
 /// A book's file whose row type names no columns, because the text of a

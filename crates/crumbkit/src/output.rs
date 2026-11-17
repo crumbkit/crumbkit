@@ -403,6 +403,10 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `--fields names an unknown field 'radius'`, the code `<tool>::cli::usage`
 /// and the hint `use the valid fields: a, b`.
 ///
+/// When the row type has no fields at all, such as one that is transparent
+/// over a JSON value, any `--fields` name is refused with the hint
+/// `drop --fields`.
+///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. When the result is a failure, or a batch or prose
 /// result with at least one failure, the exit code belongs to the run's first

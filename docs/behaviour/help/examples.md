@@ -37,13 +37,11 @@ Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041, ADR-0080.
 - A prose document has no columns, so its leaf has neither the `Next:` line
   nor the column sections, and `schemas show` describes its fields.
 - A [headed](../output/shapes/README.md#headed-bytes) document's text has no
-  columns. Its `--help` lists the row's columns, then `text` and `base64`,
-  under `JSON fields that --fields selects:`, and its `-h` ends with a
-  `Next:` line that says `--help` explains each JSON field, also when its
-  row type names no column. crumbkit-test's
-  `check_help` fails a headed leaf whose row has no top-level `text` or
-  `base64` field, because its `Bytes` field is not marked
-  `#[serde(flatten)]`.
+  columns. Its `--help` lists the row's columns, then `text` and `base64`
+  when the row has them, under `JSON fields that --fields selects:`, and
+  its `-h` ends with a `Next:` line that says `--help` explains each JSON
+  field, when it lists one. crumbkit-test's `check_help` fails a headed
+  leaf with a `Bytes` field that is not marked `#[serde(flatten)]`.
 - `parse` applies a leaf only to the deepest command on the walked path.
   `help::extend` adds every leaf's examples and no columns.
 

@@ -101,6 +101,25 @@ impl Row for Answer {
 const SHELVES: Document<Vec<Shelf>> = Document::new("tool", "shelves", 1, "The shelves.");
 const QUERY: Document<Vec<Answer>> = Document::new("tool", "query", 1, "The answers.");
 
+/// A row type that is transparent over a JSON value, so its schema has no
+/// properties.
+#[derive(Serialize, JsonSchema)]
+#[serde(transparent)]
+struct Report(serde_json::Value);
+
+impl Row for Report {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl Headed for Report {
+    fn bytes(&self) -> Option<&Bytes> {
+        None
+    }
+}
+
+const REPORTS: Document<Batch<Report, Error>> =
+    Document::new("tool", "reports", 1, "The reports.").headed();
+
 const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "list"]).document(BOOKS),
     Leaf::new(&["books", "ids"]).document(IDS),
@@ -113,6 +132,7 @@ const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
     Leaf::new(&["books", "own"]).document(COUNT),
     Leaf::new(&["books", "shelves"]).document(SHELVES),
     Leaf::new(&["books", "query"]).document(QUERY),
+    Leaf::new(&["books", "report"]).document(REPORTS),
 ]));
 
 /// A tool with crumbkit's output flags on its root and one group of leaves.
@@ -121,6 +141,7 @@ const TOOL: Tool = Tool::new().help(Help::new().leaves(&[
 fn tree() -> Command {
     let leaves = [
         "list", "ids", "count", "export", "dump", "watch", "read", "plain", "shelves", "query",
+        "report",
     ]
     .map(|name| Command::new(name).about("A leaf"));
     let own = Command::new("own")
@@ -292,6 +313,30 @@ fn fields_without_json_on_a_headed_leaf_is_refused_before_the_handler_runs() {
         ),
         "{}",
         parsed.err
+    );
+}
+
+#[test]
+fn fields_on_a_headed_leaf_whose_rows_have_no_fields_is_refused_with_a_hint_to_drop_fields() {
+    let refused = ["tool", "books", "report", "--json", "--fields=text"];
+    let admitted = ["tool", "books", "report", "--json"];
+    assert_one_word_apart(&refused, &admitted);
+    assert_eq!(parse(&admitted).code, None, "{}", parse(&admitted).err);
+
+    let parsed = parse(&refused);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert!(
+        parsed.out.contains("--fields names the field 'text', and this command takes no --fields, because its rows have no named fields"),
+        "{}",
+        parsed.out
+    );
+    assert!(
+        parsed
+            .out
+            .contains(r#""recovery":{"kind":"hint","text":"drop --fields"}"#),
+        "{}",
+        parsed.out
     );
 }
 

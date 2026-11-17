@@ -413,6 +413,63 @@ fn short_help_of_a_headed_leaf_whose_row_type_has_no_columns_points_at_its_json_
     );
 }
 
+/// A removed planet's report, whose row type is transparent over a JSON
+/// value, so its schema has no properties.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+#[serde(transparent)]
+struct Report(serde_json::Value);
+
+impl crate::Row for Report {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl crate::Headed for Report {
+    fn bytes(&self) -> Option<&crate::Bytes> {
+        None
+    }
+}
+
+/// The tool record of `tree()`, whose leaf prints a headed batch of rows
+/// that have no named fields.
+const REPORTS: Tool = Tool::new().help(
+    Help::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .document(
+            crate::Document::<crate::Batch<Report, crate::Error>>::new(
+                "tool",
+                "planets-remove",
+                1,
+                "The removed planets' reports.",
+            )
+            .headed(),
+        )]),
+);
+
+#[test]
+fn the_help_of_a_headed_leaf_whose_row_schema_has_no_properties_lists_no_json_fields() {
+    let page = help(&REPORTS, &["tool", "planets", "remove", "--help"]);
+
+    assert!(!page.contains("JSON fields"), "{page}");
+    assert!(!page.contains("  base64  "), "{page}");
+}
+
+#[test]
+fn the_short_help_of_a_headed_leaf_whose_rows_have_no_fields_has_no_next_line_for_json_fields() {
+    let page = help(&REPORTS, &["tool", "planets", "remove", "-h"]);
+
+    assert!(!page.contains("explains each JSON field"), "{page}");
+}
+
+#[test]
+fn the_help_of_a_headed_leaf_with_flattened_bytes_still_lists_text_and_base64() {
+    let long = help(&HEADED, &["tool", "planets", "remove", "--help"]);
+    let short = help(&HEADED, &["tool", "planets", "remove", "-h"]);
+
+    assert!(long.contains("  text    The bytes"), "{long}");
+    assert!(long.contains("  base64  The bytes"), "{long}");
+    assert!(short.contains("explains each JSON field"), "{short}");
+}
+
 #[test]
 fn a_leaf_that_prints_one_document_prints_no_output_line() {
     let page = help(&TOOL, &["tool", "planets", "remove", "--help"]);
