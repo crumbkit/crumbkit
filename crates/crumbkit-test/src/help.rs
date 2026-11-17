@@ -80,9 +80,9 @@ mod tests;
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   no row has a value for it and the table leaves it out;
-/// - a headed leaf (`Document::headed`) whose row type has no top-level
-///   `text` or `base64` field, because its JSON then holds the bytes
-///   under another field; the row marks its `Bytes` field
+/// - a headed leaf (`Document::headed`) whose row type has a field with
+///   both a `text` and a `base64` property, because its JSON then holds the
+///   bytes under that field; the row marks its `Bytes` field
 ///   `#[serde(flatten)]` (ADR-0062);
 /// - a leaf whose document holds rows and is not headed, and whose row
 ///   type has no `Row::COLUMNS`, because its table and its JSON without
@@ -377,8 +377,8 @@ fn check_leaves(
 
 /// Adds a problem to `problems` for each column of the leaf at `text` that
 /// is not a field of its row type or has no description, for the problem
-/// column that `check_problem` refuses, for a headed leaf's `text` or
-/// `base64` that is not at the top level of the row type, and for rows
+/// column that `check_problem` refuses, for a headed leaf's `Bytes` field
+/// that is not flattened, and for rows
 /// whose row type has no compact column.
 fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     let Some(document) = leaf.get_document() else {
@@ -393,6 +393,11 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
             &columns,
             problems,
         );
+    }
+    if let Some(name) = document.unflattened_bytes_field() {
+        problems.push(format!(
+            "{text}: the field `{name}` holds the bytes as `text` and `base64` beside the row's other fields, so the JSON of the headed document does not hold them at the top level; mark the `Bytes` field `#[serde(flatten)]`"
+        ));
     }
     let headed = document.document().is_headed();
     // Prose and bytes have no rows, a headed batch prints each row's bytes
@@ -419,11 +424,7 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     }
     for column in columns {
         let name = column.name();
-        if headed && !column.is_property() && ["text", "base64"].contains(&name) {
-            problems.push(format!(
-                "{text}: the field `{name}` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`"
-            ));
-        } else if !column.is_property() {
+        if !column.is_property() {
             problems.push(format!(
                 "{text}: the column `{name}` is not a field of the row type, so no row has a value for it and the table leaves it out"
             ));
