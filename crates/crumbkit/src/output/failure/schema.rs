@@ -134,25 +134,8 @@ fn step_schema(description: &str) -> Schema {
     json_schema!({
         "description": description,
         "oneOf": [
-            {
-                "description": "Run this command. With `all`, run it once with every value of the failure's field that `all` names in place of the argument's placeholder, such as `<ID>...`.",
-                "type": "object",
-                "properties": {
-                    "kind": { "const": "run" },
-                    "call": { "type": "string" },
-                    "all": { "type": "string" },
-                },
-                "required": ["kind", "call"],
-            },
-            {
-                "description": "A person must run this command in a terminal, so a program should hand the step to a person.",
-                "type": "object",
-                "properties": {
-                    "kind": { "const": "terminal" },
-                    "call": { "type": "string" },
-                },
-                "required": ["kind", "call"],
-            },
+            run_step(),
+            terminal_step(),
             {
                 "description": "Run this command of another program. `run` is the quoted command line that the text output prints.",
                 "type": "object",
@@ -164,13 +147,19 @@ fn step_schema(description: &str) -> Schema {
                 },
                 "required": ["kind", "program", "args", "run"],
             },
+            retry_step(),
             {
-                "description": "Run the same command again later.",
+                "description": "Make this repair, then take the step `then`.",
                 "type": "object",
                 "properties": {
-                    "kind": { "const": "retry" },
+                    "kind": { "const": "after" },
+                    "repair": { "type": "string" },
+                    "then": {
+                        "description": "The step that follows the repair.",
+                        "oneOf": [run_step(), terminal_step(), retry_step()],
+                    },
                 },
-                "required": ["kind"],
+                "required": ["kind", "repair", "then"],
             },
             {
                 "description": "Follow this advice.",
@@ -191,6 +180,48 @@ fn step_schema(description: &str) -> Schema {
                 "required": ["kind", "reason"],
             },
         ],
+    })
+}
+
+/// Describes the `run` step, which a step and the `then` of an `after` step
+/// share.
+fn run_step() -> serde_json::Value {
+    serde_json::json!({
+        "description": "Run this command. With `all`, run it once with every value of the failure's field that `all` names in place of the argument's placeholder, such as `<ID>...`.",
+        "type": "object",
+        "properties": {
+            "kind": { "const": "run" },
+            "call": { "type": "string" },
+            "all": { "type": "string" },
+        },
+        "required": ["kind", "call"],
+    })
+}
+
+/// Describes the `terminal` step, which a step and the `then` of an `after`
+/// step share.
+fn terminal_step() -> serde_json::Value {
+    serde_json::json!({
+        "description": "A person must run this command in a terminal, so a program should hand the step to a person.",
+        "type": "object",
+        "properties": {
+            "kind": { "const": "terminal" },
+            "call": { "type": "string" },
+        },
+        "required": ["kind", "call"],
+    })
+}
+
+/// Describes the `retry` step, which a step and the `then` of an `after`
+/// step share.
+fn retry_step() -> serde_json::Value {
+    serde_json::json!({
+        "description": "Run the same command again later.",
+        "type": "object",
+        "properties": {
+            "kind": { "const": "retry" },
+        },
+        "required": ["kind"],
     })
 }
 

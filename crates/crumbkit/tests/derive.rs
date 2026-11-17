@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crumbkit::{Call, Code, Failure, Field, FieldValue, Recovery};
+use crumbkit::{Call, Code, Failure, Field, FieldValue, Recovery, Then};
 
 const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
 const REMOVED_FILE: Code<'static> = Code::new("shelf", "books", "removed_file");
@@ -364,5 +364,36 @@ fn a_recovery_attribute_takes_a_terminal_call() {
     assert_eq!(
         NeedsTerminal.recovery(),
         Recovery::Terminal(Call::new(&["books", "list"]))
+    );
+}
+
+/// A failure whose repair is built from a field and then retried.
+#[derive(Debug, crumbkit_derive::Failure)]
+#[failure(
+    crate = ::crumbkit,
+    code = TIMED_OUT,
+    recovery = Recovery::after(format!("move {} away", self.path), Then::Retry),
+)]
+struct Blocked {
+    path: String,
+}
+
+impl fmt::Display for Blocked {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("blocked")
+    }
+}
+
+impl std::error::Error for Blocked {}
+
+#[test]
+fn a_derived_recovery_can_put_a_repair_built_from_a_field_before_a_retry() {
+    let blocked = Blocked {
+        path: "ids.txt".to_owned(),
+    };
+
+    assert_eq!(
+        blocked.recovery(),
+        Recovery::after("move ids.txt away", Then::Retry)
     );
 }

@@ -11,3 +11,4 @@ state as a typed value in place of free text.
 ## Children
 
 - [ADR-0252. A recovery names another program's command](0252-a-recovery-names-another-programs-command.md)
+- [ADR-0253. A recovery puts a repair before its next step](0253-a-recovery-puts-a-repair-before-its-next-step.md)

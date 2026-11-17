@@ -79,9 +79,22 @@ struct Parent<'p> {
     /// is a `RunAll` step. A failure of that run with the same code and
     /// fewer values left is progress.
     ran_all: Option<usize>,
+    /// Whether the step being followed came after a repair, so a failure of
+    /// that run with the code of the failure that offered the step is no
+    /// problem: the check cannot make the repair.
+    repaired: bool,
     /// The path below the root of the command that failed, which an
     /// opt-out from `recoveries/field-value` names.
     path: &'p str,
+}
+
+/// Returns whether `step` follows a repair, and the step to follow: the
+/// `then` of an `after` step, or `step` itself.
+fn after_repair(step: &RecoveryStep) -> (bool, &RecoveryStep) {
+    match step {
+        RecoveryStep::After { then, .. } => (true, then),
+        step => (false, step),
+    }
 }
 
 /// The words of a filled call after the tool's name, and the name of each
@@ -235,6 +248,8 @@ impl Walk<'_> {
             if self.stopped.is_some() {
                 return;
             }
+            let (repaired, step) = after_repair(step);
+            let lead = if repaired { "after a repair, " } else { "" };
             let (call, values) = match step {
                 RecoveryStep::Run(call) => (call, None),
                 RecoveryStep::Terminal(call) => {
@@ -263,7 +278,7 @@ impl Walk<'_> {
                     continue;
                 }
                 RecoveryStep::Retry => {
-                    let _ = writeln!(self.report, "{indent}retry");
+                    let _ = writeln!(self.report, "{indent}{lead}retry");
                     continue;
                 }
                 RecoveryStep::Hint(_) => {
@@ -282,9 +297,9 @@ impl Walk<'_> {
             let refs: Vec<&str> = words.iter().map(String::as_str).collect();
             let filled = command_line(self.command.get_name(), &refs);
             if filled == *call {
-                let _ = writeln!(self.report, "{indent}run {call}");
+                let _ = writeln!(self.report, "{indent}{lead}run {call}");
             } else {
-                let _ = writeln!(self.report, "{indent}run {call} as {filled}");
+                let _ = writeln!(self.report, "{indent}{lead}run {call} as {filled}");
             }
             self.report_fields(chain, parent, call, &used, &indent);
             let path = path_below(self.command, &refs);
@@ -320,6 +335,7 @@ impl Walk<'_> {
                         }
                         let ran = Parent {
                             ran_all: values.map(<[String]>::len),
+                            repaired,
                             ..*parent
                         };
                         self.branch(chain, Some(&ran), &label, &path, failure, depth);
@@ -363,6 +379,17 @@ impl Walk<'_> {
             return;
         }
         let earlier = parent.map_or(&[][..], |parent| parent.codes);
+        // The check cannot make the repair, so a run after one that fails
+        // as the repaired failure did is no problem, and its branch ends.
+        if parent.is_some_and(|parent| parent.repaired)
+            && earlier.last().map(String::as_str) == Some(code)
+        {
+            let _ = writeln!(
+                self.report,
+                "{indent}fails with {code}, as before the repair"
+            );
+            return;
+        }
         // A run with every value of a list field that leaves fewer values
         // out makes progress, because a batch always answers its first key.
         let progress = parent
@@ -391,6 +418,7 @@ impl Walk<'_> {
             fields: &fields,
             lists: &lists,
             ran_all: None,
+            repaired: false,
             path,
         };
         self.follow(chain, &next, failure.steps(), depth + 1);
@@ -412,6 +440,7 @@ impl Walk<'_> {
                     | RecoveryStep::Terminal(_)
                     | RecoveryStep::Program { .. }
                     | RecoveryStep::Retry
+                    | RecoveryStep::After { .. }
                     | RecoveryStep::Hint(_)
             )
         });

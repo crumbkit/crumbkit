@@ -80,6 +80,10 @@ A failure prints with `--json` as the `<tool>/failure/v1` document.
   program with its arguments and the quoted line that the text prints
   ([failures](../failures/recoveries/README.md)). The id stays `v1`
   (ADR-0252).
+- An `after` step holds `repair`, advice to follow first, and `then`, a `run`,
+  `terminal` or `retry` step to take after it
+  ([failures](../failures/recoveries/README.md)). The id stays `v1`
+  (ADR-0253).
 - The document and each batch failure hold `fields` after `causes` when the
   failure names at least one field, as one object of names to values in the
   order the failure gave them. A value is a string, an integer, a boolean,

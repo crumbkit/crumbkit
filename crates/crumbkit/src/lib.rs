@@ -106,7 +106,7 @@ pub use crate::complete::{
 pub use crate::document::{Document, Envelope};
 pub use crate::elapsed::Elapsed;
 pub use crate::expect::Expect;
-pub use crate::failure::{AsFailure, Error, Failure, Recovery};
+pub use crate::failure::{AsFailure, Error, Failure, Recovery, Then};
 pub use crate::fetch::fetch_each;
 pub use crate::field::{Field, FieldValue};
 pub use crate::lazy::Lazy;

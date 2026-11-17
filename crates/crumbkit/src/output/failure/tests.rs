@@ -12,6 +12,7 @@ use crate::{
     Call, Code, Document, Error, Failure, Field, FieldValue, Recovery, Row, Run, Sink, finish_to,
 };
 
+mod after;
 mod alternatives;
 mod causes;
 mod fields;
@@ -708,7 +709,9 @@ fn the_failure_schema_still_admits_every_earlier_step_kind() {
         .iter()
         .map(|step| step["properties"]["kind"]["const"].as_str().unwrap())
         .collect();
-    for earlier in ["run", "terminal", "retry", "hint", "none"] {
+    for earlier in [
+        "run", "terminal", "program", "retry", "after", "hint", "none",
+    ] {
         assert!(kinds.contains(&earlier), "{earlier} missing from {kinds:?}");
     }
 }

@@ -9,7 +9,7 @@ use std::path::Path;
 use crumbkit::pick::Choice;
 use crumbkit::{
     Batch, Call, Code, Document, Elapsed, Failure, FieldValue, Listing, Program, Recovery, Room,
-    Row, Step, Style,
+    Row, Step, Style, Then,
 };
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
@@ -427,7 +427,7 @@ pub(crate) enum BooksError {
     /// is its own diagnostic, so crumbkit prints the line with a label.
     #[failure(
         code = BAD_IDS_FILE,
-        hint = "each line of the ids file holds one book id",
+        recovery = Recovery::after("make each line of the ids file one book id", Then::Retry),
         alternative = Recovery::Run(show_call()),
         diagnostic,
     )]

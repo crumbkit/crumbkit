@@ -394,7 +394,28 @@ pub enum Recovery {
         args: Vec<String>,
     },
     /// Run the same command again later, because the failure may pass.
+    ///
+    /// A tool offers `Retry` only when the next run starts clean: the
+    /// command removes or reuses what the failed run left, such as a partial
+    /// file or a stale lock, so running it again needs no repair first.
+    /// When the caller must repair something before the next run, the tool
+    /// offers [`Recovery::after`] with [`Then::Retry`]. crumbkit does not
+    /// check that a tool keeps this contract.
     Retry,
+    /// Make this repair, then take the step `then`, such as `move the file
+    /// away` and then run the same command again. The text output prints
+    /// the repair and the step on one `help:` line, and the JSON failure
+    /// document holds a step of kind `after` with `repair` and `then`. When
+    /// `then` holds a call that does not resolve, or a `Then::Terminal` call
+    /// that holds a placeholder, the whole recovery prints as `None` with
+    /// the reason that the call gives. Build it with [`Recovery::after`].
+    After {
+        /// What the caller repairs first, written as advice such as `move
+        /// the file away`.
+        repair: String,
+        /// The step that follows the repair.
+        then: Then,
+    },
     /// Follow this advice, such as `check the network connection`.
     Hint(String),
     /// The caller has no next step, for the reason given.
@@ -404,7 +425,32 @@ pub enum Recovery {
     },
 }
 
+/// The step that follows the repair of a [`Recovery::After`]. It holds only
+/// the steps that can follow a repair, so a repair before a hint, a none, or
+/// another repair does not compile.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Then {
+    /// Run this command after the repair, as [`Recovery::Run`] runs it.
+    Run(Call),
+    /// A person runs this command in a terminal after the repair, as
+    /// [`Recovery::Terminal`] says.
+    Terminal(Call),
+    /// Run the same command again after the repair.
+    Retry,
+}
+
 impl Recovery {
+    /// Returns [`Recovery::After`] that makes `repair` and then takes the
+    /// step `then`.
+    #[must_use]
+    pub fn after(repair: impl Into<String>, then: Then) -> Self {
+        Self::After {
+            repair: repair.into(),
+            then,
+        }
+    }
+
     /// Returns [`Recovery::Program`] that runs `program` with `args`.
     #[must_use]
     pub fn program<I, A>(program: Program, args: I) -> Self

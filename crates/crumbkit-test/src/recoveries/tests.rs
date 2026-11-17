@@ -20,6 +20,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod add_ons;
+mod after;
 mod all;
 mod areas;
 mod chains;

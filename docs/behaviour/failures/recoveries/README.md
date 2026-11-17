@@ -47,4 +47,31 @@ build warns. crumbkit does not check that the program exists or accepts the
 arguments, and `check_recoveries` reports the step without running it
 ([recovery chains](../../checks/recovery-chains.md)).
 
-Why: ADR-0001, ADR-0252.
+`Recovery::Retry` promises that the next run starts clean: the command removes
+or reuses what a failed run left, such as a partial file or a stale lock. When
+the caller must repair something first, the tool offers `Recovery::after` with
+`Then::Retry`. crumbkit does not check that a tool keeps the promise.
+
+`Recovery::after` puts a repair before the step that follows it. The repair is
+advice, and `then` is one of `Then::Run(call)`, `Then::Terminal(call)` and
+`Then::Retry`, so a repair before a hint, a none or another repair does not
+compile. ``Recovery::after("move the file away", Then::Retry)`` prints
+``help:  move the file away, then run the same command again``, and with
+``Then::Run(Call::new(&["books", "list"]))`` it prints ``help:  move the file
+away, then run `shelf books list` ``. JSON holds
+`{"kind":"after","repair":"move the file away","then":{"kind":"retry"}}`, and
+`then` holds the `run`, `terminal` or `retry` step as it appears alone. A call
+in `then` that does not render makes the whole recovery print as `None` with
+crumbkit's reason, and a debug build warns. A `Then::Terminal` call with a
+placeholder prints the same way. A derived failure writes it as
+``recovery = Recovery::after(format!(..), Then::Retry)``. `check_recoveries`
+follows the step after the repair ([recovery chains](../../checks/recovery-chains.md)).
+With a `retry`, the check writes `after a repair, retry` and ends the branch.
+With a call, it runs the call as it runs a `run` step and writes `after a
+repair, run <call>`. The parser refusing the call is a problem. The call
+failing with the code of the failure that offered the step is no problem,
+because the check cannot make the repair, so the report writes `fails with
+<code>, as before the repair` and the branch ends. Any other code continues the
+chain.
+
+Why: ADR-0001, ADR-0252, ADR-0253.
