@@ -193,8 +193,7 @@ fn each_refused_use_is_a_compile_error_that_names_the_field_or_the_type() {
             "the field `notes` is marked #[serde({key})], so the JSON holds no field of that name, and it takes no #[row(...)] key"
         )
     };
-    let keys =
-        "Its keys are `column`, `long`, `uncut` and `problem` on a field, and `crate` on the type";
+    let keys = "Its keys are `column`, `long`, `uncut`, `problem` and `warning` on a field, and `crate` on the type";
     let refused = "#[derive(Row)] supports a struct with named fields, and";
     let cases = [
         (
