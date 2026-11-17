@@ -46,7 +46,7 @@ struct Book {
 
 const BOOKS_LIST: Document<Listing<Book>> =
     Document::new("shelf", "books-list", 1, "One page of the books.");
-const UNKNOWN_AUTHOR: Code<'static> = Code::new("shelf", "books", "unknown_author");
+const UNKNOWN_AUTHOR: Code<'static> = Code::from_spelling("shelf::books::unknown_author");
 
 /// The catalogue has no book by the author the caller named.
 #[derive(Debug)]

@@ -8,7 +8,7 @@ use crate::help::{Help, Leaf};
 use crate::tool::Failures;
 use crate::{Code, Tool};
 
-const LOCKED: Code<'static> = Code::new("ledger", "rows", "locked");
+const LOCKED: Code<'static> = Code::from_spelling("ledger::rows::locked");
 
 /// A code that every command returns.
 const BUSY: Exit = Exit::new(3, "The catalogue was locked by another run.");
@@ -205,7 +205,8 @@ fn a_failure_exits_with_the_number_that_the_tool_lists_for_its_code() {
 #[test]
 fn a_runtime_code_with_the_segments_of_a_listed_code_exits_with_that_code_s_number() {
     let reason = String::from("locked");
-    let code = Code::runtime("ledger", "rows", &reason).unwrap();
+    let text = format!("ledger::rows::{reason}");
+    let code = Code::runtime(&text).unwrap();
 
     assert_eq!(USAGE_EXIT.failure_exit(code), 3);
 }

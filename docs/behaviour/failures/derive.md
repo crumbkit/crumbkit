@@ -26,7 +26,7 @@ Why: ADR-0001, ADR-0097, ADR-0003.
 A hand-written impl repeats one `match` per method, and a hand-written
 `CODES` list drifts from the variants, so the derive writes both.
 
-- `code` takes a path to a constant, so `Code::new` still checks the
+- `code` takes a path to a constant, so `Code::from_spelling` still checks the
   segments at compile time. The derive checks each field name by the same
   rule.
 - `code = EXPR` takes any expression of type `Code<'_>` that reads the

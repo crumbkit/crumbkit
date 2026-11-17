@@ -137,7 +137,7 @@ impl std::fmt::Display for Offline {
 
 impl std::error::Error for Offline {}
 
-static OFFLINE: crate::Code<'static> = crate::Code::new("tool", "catalogue", "offline");
+static OFFLINE: crate::Code<'static> = crate::Code::from_spelling("tool::catalogue::offline");
 
 impl crate::Failure for Offline {
     fn code(&self) -> crate::Code<'_> {

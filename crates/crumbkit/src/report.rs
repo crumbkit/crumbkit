@@ -29,7 +29,7 @@ use crate::{Code, Error, Failure, Recovery};
 /// ```
 /// # use std::fmt;
 /// # use crumbkit::{Code, Failure, Recovery};
-/// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// # const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
 /// # impl fmt::Display for NoSuchBook {

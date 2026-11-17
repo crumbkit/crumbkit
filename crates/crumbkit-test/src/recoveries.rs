@@ -43,7 +43,7 @@ mod tests;
 /// use crumbkit::Code;
 /// use crumbkit_test::Failing;
 ///
-/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
 ///
 /// const SHOW_7: Failing<'_> = Failing::new(NOT_FOUND, &["books", "show", "7"]);
 /// ```
@@ -226,8 +226,8 @@ impl<'a> Failing<'a> {
 /// use crumbkit::Code;
 /// use crumbkit_test::{Examples, Failing, Recoveries, Unprovoked};
 ///
-/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
-/// const GONE: Code<'static> = Code::new("shelf", "books", "removed_file");
+/// const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
+/// const GONE: Code<'static> = Code::from_spelling("shelf::books::removed_file");
 ///
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");

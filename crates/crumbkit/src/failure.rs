@@ -24,7 +24,7 @@ mod tests;
 ///
 /// use crumbkit::{Call, Code, Failure, Recovery};
 ///
-/// const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
 ///
 /// #[derive(Debug)]
 /// struct NoSuchBook(u32);
@@ -57,7 +57,7 @@ mod tests;
 /// ```
 /// # use std::fmt;
 /// # use crumbkit::{Call, Code, Failure, Field, Recovery};
-/// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+/// # const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
 /// # impl fmt::Display for NoSuchBook {
@@ -156,7 +156,7 @@ pub trait Failure: std::error::Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Call, Code, Failure, Recovery};
-    /// # const INVALID: Code<'static> = Code::new("tool", "flows", "invalid");
+    /// # const INVALID: Code<'static> = Code::from_spelling("tool::flows::invalid");
     /// # #[derive(Debug)]
     /// # struct InvalidFlows(Vec<String>);
     /// # impl fmt::Display for InvalidFlows {
@@ -202,7 +202,7 @@ pub trait Failure: std::error::Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Call, Code, Failure, Recovery};
-    /// # const NO_LOGIN: Code<'static> = Code::new("shelf", "auth", "no_login");
+    /// # const NO_LOGIN: Code<'static> = Code::from_spelling("shelf::auth::no_login");
     /// # #[derive(Debug)]
     /// # struct NoLogin;
     /// # impl fmt::Display for NoLogin {
@@ -245,7 +245,7 @@ pub trait Failure: std::error::Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Call, Code, Failure, Field, Recovery};
-    /// # const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+    /// # const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
     /// # #[derive(Debug)]
     /// # struct NoSuchBook(u32);
     /// # impl fmt::Display for NoSuchBook {
@@ -313,7 +313,7 @@ pub trait Failure: std::error::Error {
     /// ```
     /// # use std::fmt;
     /// # use crumbkit::{Code, Failure, Recovery};
-    /// # const UNKNOWN_KEY: Code<'static> = Code::new("shelf", "config", "unknown_key");
+    /// # const UNKNOWN_KEY: Code<'static> = Code::from_spelling("shelf::config::unknown_key");
     /// # #[derive(Debug)]
     /// # struct UnknownKey { source: String, at: usize }
     /// # impl fmt::Display for UnknownKey {
@@ -510,7 +510,7 @@ impl Recovery {
 /// ```
 /// # use std::fmt;
 /// # use crumbkit::{Code, Failure, Recovery, Spelling};
-/// # const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
+/// # const TIMED_OUT: Code<'static> = Code::from_spelling("shelf::network::timed_out");
 /// # #[derive(Debug)]
 /// # struct Timeout;
 /// # impl fmt::Display for Timeout {

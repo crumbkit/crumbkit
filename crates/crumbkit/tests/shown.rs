@@ -86,7 +86,7 @@ impl Row for Loan {
 
 const LOANS: Document<Vec<Loan>> = Document::new("loans", "loans", 1, "The loans.");
 
-const OVERDUE: Code<'static> = Code::new("loans", "loans", "overdue");
+const OVERDUE: Code<'static> = Code::from_spelling("loans::loans::overdue");
 
 /// A loan kept past its term.
 #[derive(Debug)]

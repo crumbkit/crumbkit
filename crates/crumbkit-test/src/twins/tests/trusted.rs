@@ -15,9 +15,9 @@ use crate::twins::{Twin, Twins, check_twins};
 use crumbkit::tool::Failures;
 
 /// The code of a book that does not exist.
-const NOT_FOUND: Code<'static> = Code::new("tool", "books", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("tool::books::not_found");
 /// A code in the `crumbkit` component that no crumbkit crate lists.
-const UNLISTED: Code<'static> = Code::new("crumbkit", "books", "unlisted");
+const UNLISTED: Code<'static> = Code::from_spelling("crumbkit::books::unlisted");
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books show
 /// 5` fails with crumbkit-child's code `tool::child::not_found`, `books

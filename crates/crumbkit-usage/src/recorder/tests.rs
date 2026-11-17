@@ -290,8 +290,11 @@ fn help_records_the_commands_of_its_path_that_the_tool_defines_and_short_or_long
 fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
     let mut recorder = parsed();
 
-    recorder.failed(Spelling::COLONS, Code::new("shelf", "books", "not_found"));
-    recorder.failed(Spelling::COLONS, Code::new("shelf", "books", "gone"));
+    recorder.failed(
+        Spelling::COLONS,
+        Code::from_spelling("shelf::books::not_found"),
+    );
+    recorder.failed(Spelling::COLONS, Code::from_spelling("shelf::books::gone"));
 
     assert_eq!(
         recorder.run.code.unwrap().as_str(),
@@ -301,16 +304,16 @@ fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
 
 /// Ten distinct codes, which a run can report as tolerated.
 static CODES: [Code<'static>; 10] = [
-    Code::new("shelf", "books", "locked"),
-    Code::new("shelf", "network", "timed_out"),
-    Code::new("shelf", "cache", "stale"),
-    Code::new("shelf", "cache", "missing"),
-    Code::new("shelf", "books", "gone"),
-    Code::new("shelf", "books", "moved"),
-    Code::new("shelf", "network", "refused"),
-    Code::new("shelf", "network", "reset"),
-    Code::new("shelf", "config", "unread"),
-    Code::new("shelf", "config", "old"),
+    Code::from_spelling("shelf::books::locked"),
+    Code::from_spelling("shelf::network::timed_out"),
+    Code::from_spelling("shelf::cache::stale"),
+    Code::from_spelling("shelf::cache::missing"),
+    Code::from_spelling("shelf::books::gone"),
+    Code::from_spelling("shelf::books::moved"),
+    Code::from_spelling("shelf::network::refused"),
+    Code::from_spelling("shelf::network::reset"),
+    Code::from_spelling("shelf::config::unread"),
+    Code::from_spelling("shelf::config::old"),
 ];
 
 #[test]
@@ -335,8 +338,7 @@ fn a_tolerated_runtime_code_is_on_the_line_after_the_text_it_borrowed_is_dropped
 
     {
         let answer = String::from("lending::loans::overdue");
-        let (component, area, reason) = Spelling::COLONS.split(&answer).unwrap();
-        recorder.tolerated(Code::runtime(component, area, reason).unwrap());
+        recorder.tolerated(Code::runtime(&answer).unwrap());
     }
 
     assert_eq!(
@@ -351,8 +353,8 @@ fn a_tolerated_code_reported_twice_is_on_the_line_once() {
     let mut recorder = parsed();
     let reason = String::from("overdue");
 
-    recorder.tolerated(Code::runtime("lending", "loans", &reason).unwrap());
-    recorder.tolerated(Code::new("lending", "loans", "overdue"));
+    recorder.tolerated(Code::runtime(&format!("lending::loans::{reason}")).unwrap());
+    recorder.tolerated(Code::from_spelling("lending::loans::overdue"));
 
     assert_eq!(
         saved(&state, recorder, false)[0]["tolerated"],

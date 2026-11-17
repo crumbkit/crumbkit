@@ -12,7 +12,7 @@ use crate::Rows;
 use crate::row::Sealed;
 use crate::{Batch, Call, Code, Failure, Listing, NoRow, Recovery, Row, Shape};
 
-const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("solar::planets::not_found");
 
 /// The answer of a command that counts planets.
 #[derive(Serialize, JsonSchema)]

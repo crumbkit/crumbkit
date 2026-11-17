@@ -23,9 +23,9 @@ use crate::testing::panic_message;
 use crate::twins::{Twins, check_twins};
 
 /// The code of a list that does not exist.
-const NOT_FOUND: Code<'static> = Code::new("tool", "lists", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("tool::lists::not_found");
 /// The code of a list file that holds no list.
-const UNREADABLE: Code<'static> = Code::new("tool", "lists", "unreadable");
+const UNREADABLE: Code<'static> = Code::from_spelling("tool::lists::unreadable");
 
 /// The tool's declared codes.
 const CODES: &[Code<'static>] = &[NOT_FOUND, UNREADABLE];
@@ -190,7 +190,7 @@ fn an_untwinned_opt_out_keeps_a_constant_reason_without_copying_it() {
 
 #[test]
 fn a_runtime_failing_takes_its_code_by_value() {
-    let code = Code::new("tool", "lists", "not_found");
+    let code = Code::from_spelling("tool::lists::not_found");
 
     let failing = RuntimeFailing::new(code, ["lists", "check"]).into_failing();
 
@@ -203,7 +203,7 @@ fn a_runtime_failing_keeps_a_runtime_code_after_the_text_it_was_made_from_is_dro
     let runtime = {
         let reason = String::from("not_found");
         RuntimeFailing::new(
-            Code::runtime("tool", "lists", &reason).unwrap(),
+            Code::runtime(&format!("tool::lists::{reason}")).unwrap(),
             ["lists", "check"],
         )
     };

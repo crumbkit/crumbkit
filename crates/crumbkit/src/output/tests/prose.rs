@@ -11,7 +11,7 @@ use serde::Serialize;
 use crate::twins::assert_one_word_apart;
 use crate::{Call, Code, Document, Error, Failure, Prose, Recovery, Sink, finish_to};
 
-const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("solar::planets::not_found");
 
 /// The answer of a command that counts planets. Its `Display` prints `text`.
 #[derive(Serialize, JsonSchema)]

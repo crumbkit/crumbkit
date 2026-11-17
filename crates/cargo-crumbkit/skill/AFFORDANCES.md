@@ -58,8 +58,8 @@ and its help content: leaves, examples, goal headings and topics.
 | `#[derive(Failure)]`, `CODES` | A hand-written `match` per method and a hand-kept code list | `fn code` beside `match self`, a written `CODES` | `fn code\(&self\)` `CODES:` | 0.1 | `derive-failure` |
 | `code = EXPR, codes = [..]` | A hand-written `Failure` impl whose code is chosen at run time | `fn code` with a `match` that computes a code, beside a written `CODES` | `fn code\(&self\)` `CODES:` | 0.6.0 | `derive-failure` |
 | A newtype that implements `Failure`, forwarded with `#[failure(forward)]` | A hand-written `match` that maps a library's error | `impl.*Failure for` a type that wraps a foreign error in every variant | `impl.*Failure\s+for` | 0.6.0 | `derive-failure` |
-| `Code::new` | Error-code strings | A string constant such as `"not_found"` is matched | `code:\s*&'static str` | 0.1 | `declared-code` |
-| `Code::runtime`, `Spelling::COLONS.split` | Reusing a plugin's error text | Code passes a plugin's code through as text | `split\("::"\)` | 0.1 | `declared-code` |
+| `Code::from_spelling`, `Code::as_str` | Error-code strings, and a second table of codes as text | A string constant such as `"not_found"` is matched | `code:\s*&'static str` | 0.1 | `declared-code` |
+| `Code::runtime` | Reusing a plugin's error text | Code passes a plugin's code through as text | `split\("::"\)` | 0.1 | `declared-code` |
 | `Recovery::Run(Call::new(..))` | A sentence naming a command | A hint names a command of this tool | `Recovery::[Hh]int` `\bhint\s*[=(]` `"[^"]*\b<bin> [a-z-]+` | 0.1 | `typed-recovery` |
 | `Call::arg`, `Call::value`, `Call::all`, `Call::flag` | Formatting values into a command sentence | `format!` builds a recovery's command | `format!\("[^"]*\b<bin> ` | 0.1, `flag` 0.5.0 | `typed-recovery` |
 | `Call::typed` | Re-joining the caller's argv | A recovery repeats `std::env::args` | `env::args` | 0.1 | `typed-recovery` |

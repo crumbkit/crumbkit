@@ -8,7 +8,7 @@ use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode};
 use super::super::PreparedFailure;
 use crate::{Code, Failure, Recovery, Spelling};
 
-const BAD_CONFIG: Code<'static> = Code::new("shelf", "config", "bad");
+const BAD_CONFIG: Code<'static> = Code::from_spelling("shelf::config::bad");
 
 /// The settings file that the failure points into. `colour` starts at byte
 /// 22 on line 3 and `size` at byte 37 on line 4.

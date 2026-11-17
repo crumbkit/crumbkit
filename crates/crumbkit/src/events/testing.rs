@@ -22,7 +22,7 @@ thread_local! {
 
 /// The code that shows a spelling: a `typed` line ends with this code in
 /// the run's spelling, such as `a::b::c`.
-const SAMPLE: Code<'static> = Code::new("a", "b", "c");
+const SAMPLE: Code<'static> = Code::from_spelling("a::b::c");
 
 /// The test observer. It handles no interrupt, and its other queries answer
 /// what the thread's test set, by default no variables and no ids.

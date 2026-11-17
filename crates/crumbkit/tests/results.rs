@@ -31,7 +31,7 @@ impl std::error::Error for Missing {}
 
 impl Failure for Missing {
     fn code(&self) -> Code<'_> {
-        const NOT_FOUND: Code<'static> = Code::new("shelf", "books", "not_found");
+        const NOT_FOUND: Code<'static> = Code::from_spelling("shelf::books::not_found");
         NOT_FOUND
     }
 

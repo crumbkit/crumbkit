@@ -144,7 +144,7 @@ fn the_notes_reach_standard_error_in_one_write_so_no_note_is_split_between_other
     assert!(err.bytes.ends_with(SHOW_STEP_LINES.as_bytes()));
 }
 
-const GONE: Code<'static> = Code::new("solar", "planets", "gone");
+const GONE: Code<'static> = Code::from_spelling("solar::planets::gone");
 
 /// A planet that the batch could not find.
 #[derive(Debug)]

@@ -59,7 +59,7 @@ const CRUMBKIT: [(u8, &str); 3] = [
 /// use crumbkit::Tool;
 /// use crumbkit::tool::{Exit, Failures};
 ///
-/// const TIMED_OUT: Code<'static> = Code::new("shelf", "download", "timed_out");
+/// const TIMED_OUT: Code<'static> = Code::from_spelling("shelf::download::timed_out");
 ///
 /// const TOOL: Tool = Tool::new().failures(
 ///     Failures::new()

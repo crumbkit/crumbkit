@@ -5,8 +5,8 @@ use std::fmt;
 
 use crumbkit::{Code, Failure};
 
-const INVALID: Code<'static> = Code::new("tool", "flows", "invalid");
-const EMPTY: Code<'static> = Code::new("tool", "flows", "empty");
+const INVALID: Code<'static> = Code::from_spelling("tool::flows::invalid");
+const EMPTY: Code<'static> = Code::from_spelling("tool::flows::empty");
 
 /// A failure that lists a reason for each invalid flow.
 #[derive(Debug, crumbkit_derive::Failure)]

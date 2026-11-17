@@ -246,7 +246,7 @@ fn the_trace_ids_come_from_the_first_installed_observer_that_gives_them() {
     assert_eq!((ids.trace(), ids.run()), ("trace-a", "run-a"));
 }
 
-const TIMED_OUT: Code<'static> = Code::new("shelf", "network", "timed_out");
+const TIMED_OUT: Code<'static> = Code::from_spelling("shelf::network::timed_out");
 
 /// A tool record that maps `TIMED_OUT` to 124 and refused command lines to 64
 /// (ADR-0037), with the smallest output budget.
@@ -570,7 +570,8 @@ impl Observer for Keeping {
 fn an_observer_keeps_a_failed_code_whose_text_is_gone_by_storing_its_buf() {
     let keeping = Keeping::default();
     let reason = String::from("overdue");
-    let code = Code::runtime("lending", "loans", &reason).unwrap();
+    let text = format!("lending::loans::{reason}");
+    let code = Code::runtime(&text).unwrap();
 
     keeping.failed(Spelling::COLONS.for_tool(ToolName::new("shelf")), code);
     drop(reason);
@@ -579,7 +580,7 @@ fn an_observer_keeps_a_failed_code_whose_text_is_gone_by_storing_its_buf() {
     assert_eq!(spelling.spell(code.as_code()), "lending::loans::overdue");
 }
 
-static LOCKED: Code<'static> = Code::new("shelf", "catalogue", "locked");
+static LOCKED: Code<'static> = Code::from_spelling("shelf::catalogue::locked");
 
 #[test]
 fn the_public_reports_reach_the_observer_and_ended_returns_its_exit_code() {

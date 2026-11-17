@@ -67,7 +67,7 @@ fn kingfisher() -> Sighting {
     }
 }
 
-const NOT_FOUND: Code<'static> = Code::new("birds", "sightings", "unreadable");
+const NOT_FOUND: Code<'static> = Code::from_spelling("birds::sightings::unreadable");
 
 /// A failure that names a line of the log that could not be read.
 #[derive(Debug)]

@@ -30,7 +30,7 @@ fn finish_pretty<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Fi
     finish_output(pretty(flags), document, value)
 }
 
-const NOT_FOUND: Code<'static> = Code::new("solar", "planets", "not_found");
+const NOT_FOUND: Code<'static> = Code::from_spelling("solar::planets::not_found");
 
 /// A failure whose recovery names `tool list`.
 #[derive(Debug)]

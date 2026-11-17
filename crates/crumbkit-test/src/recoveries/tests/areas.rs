@@ -23,7 +23,7 @@ fn an_area_entry_excuses_every_declared_code_of_its_area_that_no_start_provokes(
         NOT_FOUND,
         UNREADABLE,
         REMOVED,
-        Code::new("tool", "api", "down"),
+        Code::from_spelling("tool::api::down"),
     ];
 
     let message = problems(

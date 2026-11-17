@@ -130,7 +130,7 @@ fn the_help_of_a_leaf_that_prints_no_result_prints_the_output_line_and_no_view_f
 struct Interrupted;
 
 /// The code of [`Interrupted`].
-const INTERRUPTED: Code<'static> = Code::new("tool", "server", "interrupted");
+const INTERRUPTED: Code<'static> = Code::from_spelling("tool::server::interrupted");
 
 impl fmt::Display for Interrupted {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
