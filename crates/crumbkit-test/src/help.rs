@@ -84,6 +84,8 @@ mod tests;
 ///   both a `text` and a `base64` property, because its JSON then holds the
 ///   bytes under that field; the row marks its `Bytes` field
 ///   `#[serde(flatten)]` (ADR-0062);
+/// - a headed leaf whose row type has fields but no top-level `text` and
+///   `base64`, such as one with no `Bytes` field;
 /// - a leaf whose document holds rows and is not headed, and whose row
 ///   type has no `Row::COLUMNS`, because its table and its JSON without
 ///   `--full` then print nothing of each row. `finish` and `stream` already
@@ -397,6 +399,10 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     if let Some(name) = document.unflattened_bytes_field() {
         problems.push(format!(
             "{text}: the field `{name}` holds the bytes as `text` and `base64` beside the row's other fields, so the JSON of the headed document does not hold them at the top level; mark the `Bytes` field `#[serde(flatten)]`"
+        ));
+    } else if document.headed_row_lacks_bytes_fields() {
+        problems.push(format!(
+            "{text}: the row type has fields but no top-level `text` and `base64`, so the JSON of the headed document does not hold the bytes; add a `Bytes` field marked `#[serde(flatten)]`"
         ));
     }
     let headed = document.document().is_headed();

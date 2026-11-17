@@ -228,6 +228,93 @@ fn check_help_fails_a_headed_row_whose_bytes_field_is_not_flattened_and_names_th
     );
 }
 
+/// A book's file whose optional bytes sit under `content`, which the schema
+/// describes as `anyOf` the bytes and null.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct NestedOptionalFile {
+    /// The book's title.
+    title: String,
+    /// The file's bytes, when it has any.
+    content: Option<crumbkit::Bytes>,
+}
+
+impl crumbkit::Row for NestedOptionalFile {
+    const COLUMNS: &'static [&'static str] = &["title"];
+}
+
+impl crumbkit::Headed for NestedOptionalFile {
+    fn bytes(&self) -> Option<&crumbkit::Bytes> {
+        self.content.as_ref()
+    }
+}
+
+#[test]
+fn check_help_fails_a_headed_row_whose_optional_bytes_field_is_not_flattened_and_names_the_field() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"]).document(
+                Document::<Batch<NestedOptionalFile, crumbkit::Error>>::new(
+                    "shelf",
+                    "books-files",
+                    1,
+                    "The books' files.",
+                )
+                .headed(),
+            ),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
+
+    assert_eq!(
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
+         shelf books list: the field `content` holds the bytes as `text` and `base64` beside the row's other fields, so the JSON of the headed document does not hold them at the top level; mark the `Bytes` field `#[serde(flatten)]`"
+    );
+}
+
+/// A book's file whose row type names fields and holds no bytes field.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct TitleOnly {
+    /// The book's title.
+    title: String,
+}
+
+impl crumbkit::Row for TitleOnly {
+    const COLUMNS: &'static [&'static str] = &["title"];
+}
+
+impl crumbkit::Headed for TitleOnly {
+    fn bytes(&self) -> Option<&crumbkit::Bytes> {
+        None
+    }
+}
+
+#[test]
+fn check_help_fails_a_headed_row_with_fields_and_no_text_or_base64() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new().leaves(&[
+            leaf(&["books", "list"]).document(
+                Document::<Batch<TitleOnly, crumbkit::Error>>::new(
+                    "shelf",
+                    "books-titles",
+                    1,
+                    "The books' titles.",
+                )
+                .headed(),
+            ),
+            leaf(&["books", "show"]),
+            leaf(&["authors", "list"]),
+        ]),
+    );
+
+    assert_eq!(
+        panic_message(|| check_help(&shelf(), &TOOL, &[])).unwrap(),
+        "the command tree breaks crumbkit's help rules:\n\
+         shelf books list: the row type has fields but no top-level `text` and `base64`, so the JSON of the headed document does not hold the bytes; add a `Bytes` field marked `#[serde(flatten)]`"
+    );
+}
+
 /// A row type that is transparent over a JSON value, so its schema has no
 /// properties.
 #[derive(serde::Serialize, schemars::JsonSchema)]

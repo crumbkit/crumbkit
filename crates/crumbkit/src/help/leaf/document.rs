@@ -134,13 +134,7 @@ impl LeafDocument {
         if !self.compact.is_empty() || !self.long.is_empty() {
             return true;
         }
-        self.document.is_headed() && {
-            let schema = (self.schema)();
-            let properties = row::properties(&schema);
-            BYTES_FIELDS
-                .iter()
-                .any(|name| properties.iter().any(|(field, _)| field == name))
-        }
+        self.document.is_headed() && !self.column_descriptions().is_empty()
     }
 
     /// Returns the document without its result type.
@@ -274,9 +268,10 @@ impl LeafDocument {
     }
 
     /// Returns the name of the first field of the row type whose schema
-    /// holds both a `text` and a `base64` property, directly or through a
-    /// local `$ref`, or `None` when a headed document has no such field or
-    /// the document is not headed. Such a field is a `Bytes` that lacks
+    /// holds both a `text` and a `base64` property, directly, through a
+    /// local `$ref` or inside an `anyOf`, `oneOf` or `allOf`, or `None` when
+    /// a headed document has no such field or the document is not headed.
+    /// Such a field is a `Bytes` or an `Option<Bytes>` that lacks
     /// `#[serde(flatten)]`, so the JSON of the document holds the bytes under
     /// that name. It builds the row type's JSON Schema on each call.
     /// crumbkit-test's `check_help` reads it.
@@ -290,19 +285,25 @@ impl LeafDocument {
         let root = schema.as_value();
         row::properties(&schema)
             .into_iter()
-            .find(|(_, property)| {
-                let target = property
-                    .get("$ref")
-                    .and_then(Value::as_str)
-                    .and_then(|reference| reference.strip_prefix('#'))
-                    .and_then(|pointer| root.pointer(pointer))
-                    .unwrap_or(property);
-                let fields = target.get("properties").and_then(Value::as_object);
-                fields.is_some_and(|fields| {
-                    BYTES_FIELDS.iter().all(|name| fields.contains_key(*name))
-                })
-            })
+            .find(|(_, property)| holds_bytes_fields(root, property))
             .map(|(name, _)| name.to_owned())
+    }
+
+    /// Reports whether the document is headed and its row schema has
+    /// properties but lacks a top-level `text` or `base64`, so its JSON does
+    /// not hold the bytes. A row schema with no properties is not reported.
+    /// It builds the row type's JSON Schema on each call. crumbkit-test's
+    /// `check_help` reads it.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn headed_row_lacks_bytes_fields(&self) -> bool {
+        if !self.document.is_headed() {
+            return false;
+        }
+        let schema = (self.schema)();
+        let properties = row::properties(&schema);
+        let has = |name: &str| properties.iter().any(|(field, _)| *field == name);
+        !properties.is_empty() && !BYTES_FIELDS.iter().all(|name| has(name))
     }
 
     /// Returns the settings of the row type's child lines, its
@@ -334,6 +335,28 @@ impl LeafDocument {
 /// The names of the fields that a headed document's JSON holds beside the
 /// row's own fields when the row flattens its `Bytes` (ADR-0062).
 const BYTES_FIELDS: [&str; 2] = ["text", "base64"];
+
+/// Reports whether `schema` has both bytes properties, directly, through a
+/// local `$ref` into `root`, or inside an `anyOf`, `oneOf` or `allOf`.
+fn holds_bytes_fields(root: &Value, schema: &Value) -> bool {
+    let target = schema
+        .get("$ref")
+        .and_then(Value::as_str)
+        .and_then(|reference| reference.strip_prefix('#'))
+        .and_then(|pointer| root.pointer(pointer))
+        .unwrap_or(schema);
+    let direct = target
+        .get("properties")
+        .and_then(Value::as_object)
+        .is_some_and(|fields| BYTES_FIELDS.iter().all(|name| fields.contains_key(*name)));
+    direct
+        || ["anyOf", "oneOf", "allOf"].iter().any(|key| {
+            target
+                .get(key)
+                .and_then(Value::as_array)
+                .is_some_and(|branches| branches.iter().any(|b| holds_bytes_fields(root, b)))
+        })
+}
 
 /// Returns the JSON Schema of `R`, as the document's schema describes it.
 fn schema<R: JsonSchema>() -> Schema {
