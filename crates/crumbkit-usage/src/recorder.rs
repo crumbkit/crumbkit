@@ -156,6 +156,12 @@ impl Drop for Log {
 /// takes only SIGINT, and the process then ends with the exit code that
 /// Ctrl-C gives, `STATUS_CONTROL_C_EXIT`.
 ///
+/// When another observer already handles the interrupt, as crumbkit's
+/// `interrupt` owner does after `install`, `start` starts no signal thread,
+/// so the owner stays the only handler that ends the process. The line is
+/// then written when the run ends normally, and a signal that ends the run
+/// leaves no line unless the tool used [`start_under`].
+///
 /// The thread replaces the default action of both signals for the whole
 /// process. A handler that the tool installs later through signal-hook runs
 /// beside the thread, which still ends the process. A handler that replaces
@@ -187,7 +193,7 @@ impl Drop for Log {
 /// output or exit code (ADR-0029).
 pub fn start() -> Log {
     let log = begin();
-    if log.active {
+    if log.active && !crumbkit::events::handles_interrupt() {
         signals::watch_signals();
     }
     log

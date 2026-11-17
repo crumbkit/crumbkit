@@ -67,6 +67,28 @@ pub(crate) fn open_lock(path: &Path) -> io::Result<File> {
         .open(path)
 }
 
+/// The user a lock file's owner is compared with, which Windows never
+/// checks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Caller;
+
+impl Caller {
+    /// The one caller.
+    pub(crate) fn current() -> Self {
+        Self
+    }
+}
+
+/// Accepts every lock file, because Windows lock files are not checked for
+/// an owner.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "the Unix form of this function returns the owner mismatch"
+)]
+pub(crate) fn check_owner(_file: &File, _path: &Path, _caller: Caller) -> io::Result<()> {
+    Ok(())
+}
+
 /// The identity of a lock file, which on Windows never needs a check,
 /// because the open lock file cannot be removed or replaced. Every
 /// identity equals every other.

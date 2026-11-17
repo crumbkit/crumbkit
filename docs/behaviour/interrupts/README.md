@@ -38,25 +38,34 @@ Why: ADR-0241, ADR-0179, ADR-0042.
 The owner moves between these states:
 
 - **not installed**: crumbkit takes no signal.
-- **idle**: `install` took SIGINT and SIGTERM, and no window is open.
-- **open**: a command holds an `Interrupt`, and no Ctrl-C has arrived.
-- **requested**: one Ctrl-C arrived inside the window.
+- **idle**: `install` took SIGINT and SIGTERM, and no guard is open.
+- **open(n)**: n guards are open (`n >= 1`), and no Ctrl-C has arrived.
+- **requested(n)**: n guards are open, and one Ctrl-C arrived inside the
+  window.
 - **held**: a child holds the terminal.
 - **ending**: the clean-ups run, then the signal's default action.
 
 | From | Event | To | Effect |
 | --- | --- | --- | --- |
-| not installed | `install` | idle | one thread takes SIGINT and SIGTERM; `handles_interrupt` is true |
+| not installed | `install`, with `handles_interrupt` false | idle | one thread takes SIGINT and SIGTERM; `handles_interrupt` is true |
+| not installed | `install`, with `handles_interrupt` already true | not installed | returns `InstallError::Taken`; nothing is installed |
 | idle | SIGINT or SIGTERM | ending | clean-ups, then the signal's default action |
-| idle | `cooperate` | open | flag clear |
-| open | SIGINT | requested | flag set; the process keeps running |
+| idle | `cooperate` | open(1) | request cleared, then count 1 |
+| open(n) | `cooperate` | open(n+1) | request untouched |
+| requested(n) | `cooperate` | requested(n+1) | request kept |
+| open(n) | SIGINT | requested(n) | flag set; the process keeps running |
+| requested(n) | `check` on any guard | requested(n) | returns `Err(Interrupted)` |
+| requested(n) | SIGINT | ending | a shell reports 130 |
+| open(n), requested(n), n > 1 | a guard dropped | open(n-1), requested(n-1) | request kept |
+| open(1), requested(1) | the last guard dropped | idle | request cleared |
 | open, requested | SIGTERM | ending | as from idle |
-| requested | `check` | requested | returns `Err(Interrupted)` |
-| requested | SIGINT | ending | a shell reports 130 |
-| open, requested | guard dropped | idle | flag cleared |
 | any but ending | `handed_over` | held | SIGINT is dropped |
 | held | `taken_back`, Windows only | the earlier state | a Ctrl-C not yet read is discarded |
 | held | SIGTERM | ending | as from idle |
+
+The usage log's `start` reads `handles_interrupt` after it installs its own
+observer. When the answer is true, `start` skips its signal thread, so the
+owner stays the only handler.
 
 Crash points:
 
@@ -66,9 +75,13 @@ Crash points:
   default action follows.
 - A clean-up that blocks delays the end. The usage line writer waits at most
   `LINE_WAIT`.
+- A guard that unwinds in a panic still runs its drop, so the count stays
+  correct.
+- A panic while the window lock is held poisons the lock. Readers take the
+  data with `PoisonError::into_inner`.
 - A request that arrives after the last `check` is lost, and the run ends
   with its own result.
-- `install` that cannot take a signal returns `InstallError`, and the tool
+- `install` that cannot take a signal returns `InstallError::Os`, and the tool
   keeps the default signals. A thread that cannot start leaves SIGINT and
   SIGTERM ignored, because signal-hook cannot restore a default action.
 - A run that answers a shell's completion request takes no signal, and
@@ -76,14 +89,18 @@ Crash points:
 
 Invariants:
 
-1. While the owner is installed, it is the only handler that ends the
-   process on SIGINT or SIGTERM. A tool with the usage log starts the log
-   with `start_under(interrupt::clean_up)`, and a tool with `forward` does
-   not install the owner.
-2. The first SIGINT inside an open window never ends the process.
-3. A SIGINT outside a window, the second SIGINT inside one and every SIGTERM
+1. While the owner is installed, it is the only handler from crumbkit or
+   crumbkit-usage that ends the process on SIGINT or SIGTERM. Code enforces
+   this in both orders of `install` and `crumbkit_usage::start`: `install`
+   after `start` returns `InstallError::Taken`, and `start` after `install`
+   starts no signal thread. A tool with the usage log starts it with
+   `start_under(interrupt::clean_up)`. crumbkit-process's `forward` stays a
+   rule of this page: a tool with `forward` does not install the owner.
+2. The first SIGINT while any guard is open never ends the process.
+3. A request is cleared only while no guard is open.
+4. A SIGINT outside a window, the second SIGINT inside one and every SIGTERM
    end the process only after every clean-up has run.
-4. The usage line is written at most once.
-5. A SIGINT while a child holds the terminal never reaches the ending path.
+5. The usage line is written at most once.
+6. A SIGINT while a child holds the terminal never reaches the ending path.
 
 Why: ADR-0241.
