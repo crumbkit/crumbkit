@@ -14,9 +14,9 @@ crumbkit-test's grammar check as one of its verbs.
 
 `self runs export` prints one line for each record in the log, oldest
 first, as a [stream](../../output/streams.md). It reads the whole log and
-applies none of the report's record checks, because it prints what the log
-stores, but it skips a line that is not a whole `<tool>/usage/v1` record.
-It prints only lines that end with a newline and takes no lock, so it never
+skips a line that is not a whole `<tool>/usage/v1` record, and a line that
+the [report's check](../report.md) refuses, because anyone with the user's
+rights can edit the log and the text line prints the command. It prints only lines that end with a newline and takes no lock, so it never
 prints the half line of a run that is still writing and never makes a run
 wait.
 

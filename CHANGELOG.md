@@ -8,6 +8,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit-usage: `self runs export` skips a usage log line that names a command, flag or code the tool could not have written, as `self usage` does ([behaviour/usage-log/export]).
 - crumbkit-aliases: a `Source::table` entry with no words no longer expands to
   nothing. `aliases list` shows it with a problem, as for a file entry, and the
   root help leaves it out ([behaviour/parsing/aliases]).
