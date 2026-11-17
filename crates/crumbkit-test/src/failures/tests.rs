@@ -236,3 +236,18 @@ fn a_program_step_without_its_run_line_reads_as_no_next_step() {
         )]
     );
 }
+
+#[test]
+fn a_program_step_with_an_empty_run_line_reads_as_no_next_step() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"program","program":"git","args":[],"run":""}}"#;
+
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "a".to_owned(),
+            vec![RecoveryStep::None(String::new())],
+        )]
+    );
+}
