@@ -28,6 +28,7 @@ fn write(failure: &FailureType) -> TokenStream {
     } = failure;
     let code = code(krate, arms);
     let recovery = recovery(krate, arms);
+    let causes = causes(krate, arms);
     let alternatives = alternatives(krate, arms);
     let fields = fields(krate, arms);
     let url = url(krate, arms);
@@ -42,6 +43,7 @@ fn write(failure: &FailureType) -> TokenStream {
     quote! {
         impl #krate::Failure for #name {
             #code
+            #causes
             #recovery
             #alternatives
             #fields
@@ -103,6 +105,32 @@ fn recovery(krate: &Path, arms: &[Arm]) -> TokenStream {
     });
     quote! {
         fn recovery(&self) -> #krate::Recovery {
+            match self {
+                #(#arms)*
+            }
+        }
+    }
+}
+
+/// Writes `causes()`, unless no arm gives `causes` or forwards.
+fn causes(krate: &Path, arms: &[Arm]) -> TokenStream {
+    if !needed(arms, |own| own.causes.is_some()) {
+        return TokenStream::new();
+    }
+    let arms = arms.iter().map(|arm| match &arm.answers {
+        Answers::Own(own) if own.causes.is_some() => {
+            let pattern = bound(arm);
+            let causes = &own.causes;
+            quote!(#pattern => #causes,)
+        }
+        Answers::Own(_) => {
+            let pattern = unbound(arm);
+            quote!(#pattern => ::std::vec::Vec::new(),)
+        }
+        Answers::Forward { field, .. } => forward(krate, arm, field, "causes"),
+    });
+    quote! {
+        fn causes(&self) -> ::std::vec::Vec<::std::string::String> {
             match self {
                 #(#arms)*
             }

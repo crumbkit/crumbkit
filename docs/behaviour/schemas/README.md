@@ -62,6 +62,12 @@ A failure prints with `--json` as the `<tool>/failure/v1` document.
   errors usually come from libraries whose wording and depth are not stable. A
   program matches on `code` and shows `cause` as one line. The schema requires
   `code` to be printable ASCII without spaces.
+- The document and each batch failure hold `causes` after `cause` when the
+  failure lists at least one cause, as an array of strings in order, one
+  sentence each ([failures](../failures/README.md#the-failure-model)). The
+  reasons sit side by side, so the array says nothing about one causing
+  another, and `cause` keeps the joined source chain. The id stays `v1`,
+  because the property is optional.
 - The document and each batch failure hold `alternatives` when the failure
   offers at least one alternative repair, each in the shape of `recovery`.
 - A `run` step may hold `all`, the name of a list field of the same failure,
@@ -70,7 +76,7 @@ A failure prints with `--json` as the `<tool>/failure/v1` document.
   such as `<ID>...` ([output budget](../output/budget/README.md#batches)).
 - A `terminal` step holds `call`, a command that a person must run in a
   terminal ([failures](../failures/README.md#recoveries-and-alternatives)).
-- The document and each batch failure hold `fields` after `cause` when the
+- The document and each batch failure hold `fields` after `causes` when the
   failure names at least one field, as one object of names to values in the
   order the failure gave them. A value is a string, an integer, a boolean,
   null, or an array or object of such values. No value holds a float at any

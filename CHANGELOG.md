@@ -7,17 +7,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
-- crumbkit-process: `RunOptions::overdue` calls a report once when a time
-  passes while the child still runs, and the run goes on waiting without
-  signalling the child. `ChildFinished::was_overdue` says whether it ran
-  ([behaviour/process-runs]).
+- crumbkit: `Failure::causes` returns the reasons a failure lists side by
+  side. Text prints a `cause:` line for each after the `source()` chain's, and
+  the failure document gains an optional array `causes`. crumbkit-derive:
+  `causes = EXPR` ([behaviour/failures]).
+
 - crumbkit-test: `Unprovoked::area` lists every declared code of one area
   under one reason for `check_recoveries` and `check_twins`, and the recovery
   report names each code it excuses.
-- crumbkit: `RowReports::reports_problem` asks a row whether it reports a
-  problem, as `Row::PROBLEM` decides. Every `Row` has it through a blanket
-  impl, so a row type cannot override the answer
-  ([behaviour/output/listings]).
 
 - crumbkit: each argument of a `commands list` row has `after_double_dash`,
   which is `true` for an argument that takes the values written after `--`
@@ -2048,7 +2045,6 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/parsing]: docs/behaviour/parsing/README.md
 [behaviour/parsing/aliases]: docs/behaviour/parsing/aliases.md
 [behaviour/parsing/completion]: docs/behaviour/parsing/completion.md
-[behaviour/process-runs]: docs/behaviour/process-runs/README.md
 [behaviour/processes]: docs/behaviour/processes.md
 [behaviour/run-observer]: docs/behaviour/run-observer/README.md
 [behaviour/schemas]: docs/behaviour/schemas/README.md

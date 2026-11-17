@@ -25,7 +25,7 @@ use serde_json::Value;
 /// of `COLUMNS`.
 ///
 /// ```
-/// use crumbkit::{Problem, Row, RowReports};
+/// use crumbkit::{Problem, Row};
 /// use schemars::JsonSchema;
 /// use serde::Serialize;
 ///
@@ -54,7 +54,7 @@ use serde_json::Value;
 /// }
 ///
 /// let job = Job { name: "fetch".to_owned(), state: State::Failed };
-/// assert!(job.reports_problem());
+/// assert!(Job::PROBLEM.is_some_and(|problem| problem.reports(&job)));
 /// ```
 // `Clone`, `Copy` and `Debug` are written by hand, because their derives
 // would bound `R`, which a function pointer does not need. A function pointer

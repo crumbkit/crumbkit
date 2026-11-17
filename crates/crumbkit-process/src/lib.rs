@@ -21,7 +21,6 @@ mod group;
 mod lines;
 mod notice;
 mod outcome;
-mod overdue;
 mod run;
 mod sys;
 #[cfg(test)]
@@ -35,7 +34,6 @@ pub use self::lines::{LineQueue, Lines, Silent, line_queue};
 pub use zeroize::Zeroizing;
 
 pub use self::outcome::{Outcome, Status, StopReason};
-pub use self::overdue::Overdue;
 pub use self::run::{
     Capture, Captured, ChildFinished, DRAIN_GRACE, Input, LineCapture, LongLine, OverLimit,
     REAP_GRACE, RunError, RunOptions, Spawn, Spawned, WholeCapture, run,

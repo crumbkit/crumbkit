@@ -43,8 +43,6 @@ its reasons.
   [usage report](usage-log/report.md).
 - [Checks](checks/README.md): what crumbkit-test's checks enforce on a
   tool, and [code coverage](checks/coverage/README.md) for declared codes.
-- [Process runs](process-runs/README.md): the states of a run, including the
-  overdue report that leaves the child running.
 - [Processes](processes.md): running another program whose output a tool
   reads, with crumbkit-process.
 - [Durable files](durable-files.md): replacing a file atomically and

@@ -93,6 +93,7 @@ impl Group {
     }
 
     /// Returns the child's process id.
+    #[cfg(all(test, unix))]
     pub(crate) fn id(&self) -> u32 {
         self.child.id()
     }

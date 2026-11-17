@@ -16,7 +16,6 @@ pub struct ChildFinished {
     pub(super) stderr: Captured,
     pub(super) first_stdout: Option<Duration>,
     pub(super) survivors: bool,
-    pub(super) overdue: bool,
 }
 
 impl ChildFinished {
@@ -48,14 +47,6 @@ impl ChildFinished {
     #[must_use]
     pub const fn survivors(&self) -> bool {
         self.survivors
-    }
-
-    /// Returns true when the report of [`RunOptions::overdue`](crate::RunOptions::overdue)
-    /// ran, so the child was still running at the overdue time. The
-    /// [`outcome`](Self::outcome) tells how the child ended after that.
-    #[must_use]
-    pub const fn was_overdue(&self) -> bool {
-        self.overdue
     }
 
     /// Returns what the run kept of standard output.
@@ -95,10 +86,9 @@ pub enum RunError {
     /// duplicated. No child is left running.
     Start(io::Error),
     /// Waiting for the child, reaping it, reading its output or starting a
-    /// thread failed after it started, a copy function panicked, or the
-    /// report of [`RunOptions::overdue`](crate::RunOptions::overdue)
-    /// panicked. The child was stopped and reaped, or after a copy
-    /// function's panic it ran to its end and was reaped.
+    /// thread failed after it started, or a copy function panicked. The
+    /// child was stopped and reaped, or after a panic it ran to its end and
+    /// was reaped.
     Run(io::Error),
 }
 

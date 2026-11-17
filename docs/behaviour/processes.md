@@ -144,9 +144,6 @@ A run ends when the child exits, when its deadline passes, when its
 `Status::Code` or `Status::Signal` for the child's own end, `TimedOut`, and
 `Stopped` with `StopReason::Cancelled` or `StopReason::OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
-`RunOptions::overdue` calls a report once when a time passes while the child
-still runs, and the run then goes on waiting without signalling the child
-([process runs](process-runs/README.md)).
 
 Any thread may call `Cancel::cancel` at any time. A cancel that arrives once the
 run has seen the child's exit changes nothing, so the run gives the child's own

@@ -3,10 +3,10 @@
 //! [`exit::problem_rows`](crate::exit::problem_rows) (ADR-0050), and the
 //! rows that the default text of a listing prints, which `Row::in_default_text`
 //! and `Document::only_problems` choose (ADR-0138, ADR-0157). The
-//! `row::problems` module counts which rows report one.
+//! `row::problems` module decides which rows report one.
 
 use crate::view::{Table, View};
-use crate::{Document, Row, RowReports, Rows, Shape, exit};
+use crate::{Document, Row, Rows, Shape, exit, row};
 
 /// The rule that picks the rows that the default text of a listing lists
 /// (ADR-0138, ADR-0157): each row that reports a problem, and each other
@@ -34,9 +34,9 @@ impl DefaultText {
     /// `Row::PROBLEM` can do, such as serializing the problem field.
     fn lists<R: Row>(self, row: &R) -> bool {
         if self.only_problems {
-            row.reports_problem()
+            row::problems::reports(row)
         } else {
-            row.in_default_text() || row.reports_problem()
+            row.in_default_text() || row::problems::reports(row)
         }
     }
 }

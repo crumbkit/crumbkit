@@ -6,7 +6,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crumbkit::{Listing, Row, RowReports};
+use crumbkit::{Listing, Row};
 
 use crate::skill::Skill;
 
@@ -88,7 +88,7 @@ pub(crate) fn listing<R: Row>(
             Err((dir, reason)) => all.push(refused(skill, dir, reason)),
         }
     }
-    all.sort_by_key(|row| !row.reports_problem());
+    all.sort_by_key(|row| !R::PROBLEM.is_some_and(|problem| problem.reports(row)));
     Listing::from_all(all, None).described("skills directories")
 }
 

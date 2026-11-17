@@ -87,6 +87,17 @@ impl Failure for Missing {
         NOT_FOUND
     }
 
+    fn causes(&self) -> Vec<String> {
+        if self.names == "Planet X" {
+            vec![
+                "no chart lists it".to_owned(),
+                "no probe reached it".to_owned(),
+            ]
+        } else {
+            Vec::new()
+        }
+    }
+
     fn recovery(&self) -> Recovery {
         Recovery::Run(Call::new(&["list"]))
     }
@@ -343,6 +354,23 @@ fn json_of_a_batch_prints_one_document_with_the_failures_and_exits_with_code_1()
         )
     );
     assert_eq!(finished.err, "");
+}
+
+#[test]
+fn an_entry_of_a_batch_holds_the_causes_that_its_failure_lists() {
+    let finished = finish_with(
+        &["--json"],
+        answered(vec![saturn()], vec![missing("Planet X")]),
+    );
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planets-show/v1","data":[{"name":"Saturn","moons":274}],"failures":["#,
+            r#"{"key":"2","index":1,"code":"solar::planets::not_found","message":"the solar system has no planet Planet X","causes":["no chart lists it","no probe reached it"],"recovery":{"kind":"run","call":"tool list"}}"#,
+            "]}\n"
+        )
+    );
 }
 
 #[test]

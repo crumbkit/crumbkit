@@ -9,14 +9,12 @@ mod line;
 mod no_row;
 mod problem;
 pub(crate) mod problems;
-mod reports;
 mod rows;
 
 pub use children::Children;
 pub use line::Line;
 pub use no_row::NoRow;
 pub use problem::Problem;
-pub use reports::RowReports;
 pub(crate) use rows::Sealed;
 pub use rows::{Rows, Shape};
 

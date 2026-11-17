@@ -130,34 +130,3 @@ fn a_deadline_ends_the_job_with_the_grandchild_in_it() {
         "the grandchild {grandchild} outlived the run"
     );
 }
-
-#[test]
-fn a_run_past_its_overdue_time_reports_once_and_waits_for_the_child_to_exit() {
-    let (sender, reports) = std::sync::mpsc::channel();
-    let options = RunOptions::new().stdout(WHOLE).overdue(
-        Instant::now() + Duration::from_millis(200),
-        move |overdue| {
-            sender.send(overdue).unwrap();
-        },
-    );
-
-    let finished = run(cmd("ping -n 4 127.0.0.1 >NUL& echo done"), &options).unwrap();
-
-    assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(0)));
-    assert!(finished.was_overdue());
-    assert_eq!(finished.stdout().bytes(), b"done\r\n");
-    assert!(reports.try_recv().is_ok());
-    assert!(reports.try_recv().is_err());
-}
-
-#[test]
-fn a_child_that_exits_before_its_overdue_time_is_never_reported() {
-    let options = RunOptions::new().overdue(Instant::now() + Duration::from_secs(60), |_| {
-        panic!("reported")
-    });
-
-    let finished = run(cmd("exit 4"), &options).unwrap();
-
-    assert_eq!(finished.outcome(), Outcome::Ended(Status::Code(4)));
-    assert!(!finished.was_overdue());
-}

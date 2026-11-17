@@ -13,6 +13,7 @@ use crate::{
 };
 
 mod alternatives;
+mod causes;
 mod fields;
 mod roles;
 mod terminal;
@@ -89,6 +90,7 @@ impl std::error::Error for Cause {
 struct Missing {
     message: &'static str,
     cause: Option<Cause>,
+    listed: Vec<&'static str>,
     recovery: Recovery,
     alternatives: Vec<Recovery>,
     fields: Vec<(&'static str, FieldValue<'static>)>,
@@ -113,6 +115,13 @@ impl std::error::Error for Missing {
 impl Failure for Missing {
     fn code(&self) -> Code<'_> {
         NOT_FOUND
+    }
+
+    fn causes(&self) -> Vec<String> {
+        self.listed
+            .iter()
+            .map(|cause| (*cause).to_owned())
+            .collect()
     }
 
     fn recovery(&self) -> Recovery {
@@ -145,6 +154,7 @@ fn missing(recovery: Recovery) -> Missing {
     Missing {
         message: "the solar system has no planet Vulcan",
         cause: None,
+        listed: Vec::new(),
         recovery,
         alternatives: Vec::new(),
         fields: Vec::new(),

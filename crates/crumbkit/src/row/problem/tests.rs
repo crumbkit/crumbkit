@@ -3,7 +3,7 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::{Problem, Row, RowReports};
+use crate::{Problem, Row};
 
 /// A book whose `damage` field marks a problem when it holds a value.
 #[derive(Serialize, JsonSchema)]
@@ -124,13 +124,12 @@ impl Row for Note {
 
 #[test]
 fn a_row_type_without_a_problem_reports_none() {
-    assert!(!Note { text: "torn" }.reports_problem());
-    assert!(
-        (Job {
-            name: "fetch",
-            failed: true,
-        })
-        .reports_problem()
-    );
-    assert!(book(serde_json::json!("torn")).reports_problem());
+    assert!(!super::super::problems::reports(&Note { text: "torn" }));
+    assert!(super::super::problems::reports(&Job {
+        name: "fetch",
+        failed: true,
+    }));
+    assert!(super::super::problems::reports(&book(serde_json::json!(
+        "torn"
+    ))));
 }

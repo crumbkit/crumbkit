@@ -34,6 +34,11 @@ A hand-written impl repeats one `match` per method, and a hand-written
   braces goes through `format!` too.
 - `forward` returns every answer of a wrapped failure, so the wrapper's
   `CODES` leaves the wrapped codes to the wrapped type's own list.
+- `causes = EXPR` gives a `Vec<String>` that `causes()` returns, one reason
+  for each side-by-side cause. The expression reads the variant's fields.
+  `forward` returns the wrapped failure's causes, and `causes` beside
+  `forward` is a compile error that names the variant. The derive writes
+  `causes()` only when a variant gives the key or forwards.
 - `sentence = "..."` gives the fixed sentence of a variant. The text is one
   line with no `{`, and the derive refuses an empty text, a line break and a
   brace, because a placeholder would let a run-time value into reviewed text.
@@ -52,4 +57,4 @@ Removing or renaming a key, or changing what a key returns, is a breaking
 change. A new key is a minor change, and so is a new trait method that the
 derive starts to write.
 
-Why: ADR-0001, ADR-0002, ADR-0226.
+Why: ADR-0001, ADR-0002, ADR-0226, ADR-0244.
