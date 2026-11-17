@@ -20,7 +20,7 @@ fn os(words: &[&str]) -> Vec<OsString> {
 fn expanded(text: &str, words: &[&str]) -> Vec<OsString> {
     Aliases::new()
         .source(Source::text(Kind::Personal, Some(text)))
-        .expand(&tree(), words.iter().copied())
+        .expand(&mut tree(), words.iter().copied())
 }
 
 /// A loader that fails the test, for a source that a run must not read.
@@ -34,7 +34,7 @@ fn expanded_unread(words: &[&str]) -> Vec<OsString> {
     Aliases::new()
         .source(Source::lazy("lazy", Kind::Shipped, boom))
         .source(Source::lazy("personal", Kind::Personal, boom))
-        .expand(&tree(), words.iter().copied())
+        .expand(&mut tree(), words.iter().copied())
 }
 
 /// A table with a two-word key, a one-word key and a key that starts with a
@@ -62,7 +62,7 @@ fn an_alias_is_replaced_by_its_words_and_the_words_typed_after_it_follow() {
 fn a_key_of_two_words_expands_when_the_leading_words_match() {
     let aliases = Aliases::new().source(WORKTREES);
 
-    let args = aliases.expand(&tree(), ["shelf", "wt", "ls", "--limit", "2"]);
+    let args = aliases.expand(&mut tree(), ["shelf", "wt", "ls", "--limit", "2"]);
 
     assert_eq!(
         args,
@@ -75,11 +75,11 @@ fn the_longest_key_in_a_source_wins() {
     let aliases = Aliases::new().source(WORKTREES);
 
     assert_eq!(
-        aliases.expand(&tree(), ["shelf", "wt", "ls"]),
+        aliases.expand(&mut tree(), ["shelf", "wt", "ls"]),
         os(&["shelf", "books", "list", "--long"])
     );
     assert_eq!(
-        aliases.expand(&tree(), ["shelf", "wt", "other"]),
+        aliases.expand(&mut tree(), ["shelf", "wt", "other"]),
         os(&["shelf", "books", "list", "other"])
     );
 }
@@ -95,11 +95,11 @@ fn the_first_listed_source_wins_when_two_sources_match() {
         .source(Source::text(Kind::Personal, Some(MINE)));
 
     assert_eq!(
-        first.expand(&tree(), ["shelf", "mine"]),
+        first.expand(&mut tree(), ["shelf", "mine"]),
         os(&["shelf", "books", "list", "--long"])
     );
     assert_eq!(
-        second.expand(&tree(), ["shelf", "mine"]),
+        second.expand(&mut tree(), ["shelf", "mine"]),
         os(&["shelf", "books", "show"])
     );
 }
@@ -110,7 +110,7 @@ fn a_shorter_key_in_an_earlier_source_wins_over_a_longer_key_in_a_later_one() {
         .source(Source::table("first", &[("wt", &["books", "show"])]))
         .source(WORKTREES);
 
-    let args = aliases.expand(&tree(), ["shelf", "wt", "ls"]);
+    let args = aliases.expand(&mut tree(), ["shelf", "wt", "ls"]);
 
     assert_eq!(args, os(&["shelf", "books", "show", "ls"]));
 }
@@ -119,7 +119,7 @@ fn a_shorter_key_in_an_earlier_source_wins_over_a_longer_key_in_a_later_one() {
 fn a_table_key_that_starts_with_a_command_expands_when_its_last_word_is_no_subcommand() {
     let aliases = Aliases::new().source(WORKTREES);
 
-    let args = aliases.expand(&tree(), ["shelf", "books", "recent"]);
+    let args = aliases.expand(&mut tree(), ["shelf", "books", "recent"]);
 
     assert_eq!(args, os(&["shelf", "books", "list", "--limit", "5"]));
 }
@@ -141,7 +141,7 @@ fn a_table_key_that_names_a_real_command_path_never_expands() {
         &["shelf", "books"],
     ] {
         assert_eq!(
-            aliases.expand(&tree(), words.iter().copied()),
+            aliases.expand(&mut tree(), words.iter().copied()),
             os(words),
             "{words:?}"
         );
@@ -211,8 +211,8 @@ fn a_lazy_source_runs_its_loader_once_when_the_first_word_is_not_a_command() {
     let aliases = Aliases::new().source(Source::lazy("lazy", Kind::Shipped, counted));
     let before = LOADS.load(Ordering::SeqCst);
 
-    let real = aliases.expand(&tree(), ["shelf", "books", "list"]);
-    let alias = aliases.expand(&tree(), ["shelf", "wt"]);
+    let real = aliases.expand(&mut tree(), ["shelf", "books", "list"]);
+    let alias = aliases.expand(&mut tree(), ["shelf", "wt"]);
 
     assert_eq!(real, os(&["shelf", "books", "list"]));
     assert_eq!(alias, os(&["shelf", "books", "list"]));
@@ -227,8 +227,8 @@ fn a_missing_file_or_no_file_leaves_the_arguments_unchanged() {
     let missing = Aliases::new().source(Source::file(Some(missing)));
     let none = Aliases::new().source(Source::file(None));
 
-    assert_eq!(missing.expand(&tree(), words), os(&words));
-    assert_eq!(none.expand(&tree(), words), os(&words));
+    assert_eq!(missing.expand(&mut tree(), words), os(&words));
+    assert_eq!(none.expand(&mut tree(), words), os(&words));
 }
 
 #[test]
@@ -245,7 +245,7 @@ fn an_unreadable_source_is_skipped_and_a_later_source_still_expands() {
         .source(Source::file(Some(directory)))
         .source(WORKTREES);
 
-    let args = aliases.expand(&tree(), ["shelf", "wt"]);
+    let args = aliases.expand(&mut tree(), ["shelf", "wt"]);
 
     assert_eq!(args, os(&["shelf", "books", "list"]));
 }
@@ -259,7 +259,7 @@ fn a_failing_lazy_loader_is_skipped_and_a_later_source_still_expands() {
         .source(Source::lazy("lazy", Kind::Shipped, fails))
         .source(WORKTREES);
 
-    let args = aliases.expand(&tree(), ["shelf", "wt"]);
+    let args = aliases.expand(&mut tree(), ["shelf", "wt"]);
 
     assert_eq!(args, os(&["shelf", "books", "list"]));
 }
@@ -315,9 +315,35 @@ fn a_lazy_key_of_two_words_that_starts_with_a_command_never_expands() {
     let aliases = Aliases::new().source(Source::lazy("lazy", Kind::Shipped, entries));
     let recent = ["shelf", "books", "recent"];
 
-    assert_eq!(aliases.expand(&tree(), recent), os(&recent));
+    assert_eq!(aliases.expand(&mut tree(), recent), os(&recent));
     assert_eq!(
-        aliases.expand(&tree(), ["shelf", "wt", "ls"]),
+        aliases.expand(&mut tree(), ["shelf", "wt", "ls"]),
         os(&["shelf", "books", "list"])
     );
+}
+
+#[test]
+fn an_alias_whose_words_name_a_lazy_group_expands() {
+    let aliases = Aliases::new().source(Source::table(
+        "shelf",
+        &[
+            ("skills install", &["books", "list"]),
+            ("skills nope", &["books", "show"]),
+        ],
+    ));
+    let lazy = || {
+        tree().subcommand(
+            clap::Command::new("skills")
+                .subcommand_value_name("COMMAND")
+                .defer(|skills| skills.subcommand(clap::Command::new("install"))),
+        )
+    };
+
+    // A real command of the group wins over an alias of the same words,
+    // and a key that names none expands.
+    let real = aliases.expand(&mut lazy(), ["shelf", "skills", "install"]);
+    let alias = aliases.expand(&mut lazy(), ["shelf", "skills", "nope"]);
+
+    assert_eq!(real, os(&["shelf", "skills", "install"]));
+    assert_eq!(alias, os(&["shelf", "books", "show"]));
 }

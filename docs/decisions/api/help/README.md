@@ -32,3 +32,4 @@ that each path through a tool's help costs.
 - [ADR-0166. Goal headings](headings/README.md)
 - [ADR-0194. Skill draft](skill/README.md)
 - [ADR-0198. `commands list` marks crumbkit's own commands](0198-commands-list-marks-crumbkit-s-own-commands.md)
+- [ADR-0246. A group builds its arguments only when its word is typed](0246-a-group-builds-its-arguments-only-when-its-word-is-typed.md)

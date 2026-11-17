@@ -118,6 +118,21 @@ pub(super) fn add_help_lines(
     }
 }
 
+/// Hides the visible global flags of `node` from `-h`. [`reach`] calls it
+/// before it builds a command, so the copies that the build gives the
+/// subcommands are hidden too.
+///
+/// [`reach`]: super::reach::reach
+pub(super) fn hide_global_flags(node: &mut Command) {
+    *node = std::mem::take(node).mut_args(|arg| {
+        if arg.is_global_set() && !arg.is_hide_set() {
+            arg.hide_short_help(true)
+        } else {
+            arg
+        }
+    });
+}
+
 /// Hides the visible global flags of `node` from `-h`, builds `node` alone,
 /// and adds to `flags` the id and the text of each visible global flag of
 /// `node` whose id `flags` does not hold yet, in definition order.
@@ -126,13 +141,7 @@ pub(super) fn add_help_lines(
 /// subcommands, so those copies are hidden too. A global flag of a command
 /// above `node` is already in `flags`, from that command.
 fn add_global_flags(node: &mut Command, flags: &mut Vec<(String, String)>) {
-    *node = std::mem::take(node).mut_args(|arg| {
-        if arg.is_global_set() && !arg.is_hide_set() {
-            arg.hide_short_help(true)
-        } else {
-            arg
-        }
-    });
+    hide_global_flags(node);
     let _ = node.render_usage();
     for arg in node.get_arguments() {
         let id = arg.get_id().as_str();

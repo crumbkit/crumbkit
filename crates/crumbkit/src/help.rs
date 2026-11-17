@@ -37,6 +37,7 @@ pub(crate) use self::group::{apply, apply_root_verbs};
 pub(crate) use self::list::goal_sections;
 use self::list::write_line;
 use crate::Tool;
+use crate::parse::reach::reach_all;
 
 #[cfg(test)]
 mod tests;
@@ -289,6 +290,8 @@ impl Default for Help {
 /// [shelf-help]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/help/shelf-help.txt
 #[must_use]
 pub fn extend(mut command: Command, tool: &Tool) -> Command {
+    // A lazy group holds no leaf until it expands.
+    reach_all(&mut command);
     // clap copies the root's styles to every subcommand when it builds the
     // tree, so every page with goal headings prints with the root's styles.
     let styles = command.get_styles();

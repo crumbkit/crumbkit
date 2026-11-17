@@ -1,10 +1,25 @@
 //! The walk over a command tree, and the helpers that the command tree
 //! checks share.
 
+use std::borrow::Cow;
+
 use clap::{Arg, Command};
 
 #[cfg(test)]
 mod tests;
+
+/// Returns `command` with every lazy group expanded, for a check to walk.
+///
+/// A tool's `Cli::command()` holds a `crumbkit::Lazy` group with no
+/// subcommands until the group is expanded, so a check that walks it finds
+/// no leaf below the group. The function returns an expanded clone of a tree
+/// with a lazy group, which holds the arguments that clap adds in the build
+/// to the commands that the expansion built, from the root down to each
+/// group. It returns `command` itself for a tree without one, so that tree
+/// is walked unbuilt as [`walk`] describes.
+pub(crate) fn expanded(command: &Command) -> Cow<'_, Command> {
+    crumbkit::expanded_clone(command).map_or(Cow::Borrowed(command), Cow::Owned)
+}
 
 /// One command that a walk visits.
 pub(crate) struct Visit<'a> {
@@ -60,7 +75,7 @@ impl<'a> Visit<'a> {
 /// the tool's commands and report each global argument once for every
 /// command, so the walk leaves the tree unbuilt. A command that the tool
 /// gives to `Command::defer` adds its arguments only when it is built, so the
-/// checks see no arguments on it.
+/// checks read a tree with a `crumbkit::Lazy` group through [`expanded`].
 pub(crate) fn walk(root: &Command) -> Vec<Visit<'_>> {
     walk_tree(root, true)
 }

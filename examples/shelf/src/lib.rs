@@ -66,8 +66,8 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
-    let command = Cli::command();
-    let args = ALIASES.expand(&command, args);
+    let mut command = Cli::command();
+    let args = ALIASES.expand(&mut command, args);
     // The aliases needed the tree, so the parse takes that tree and the run
     // builds it once.
     let parsed =
@@ -105,14 +105,14 @@ where
         // `commands list`, `schemas`, `self` and `aliases list` read the
         // command tree through `&mut run`, so each runs before
         // `finish` takes `run` in turn.
-        Resource::Commands { command } => match command {
+        Resource::Commands { command } => match command.into_inner() {
             CommandsCommand::List(args) => {
                 let result = crumbkit::commands::list(&mut run, &TOOL, &args);
                 let document = crumbkit::commands::COMMANDS_LIST;
                 crumbkit::finish(run, document, result)
             }
         },
-        Resource::Schemas { command } => match command {
+        Resource::Schemas { command } => match command.into_inner() {
             SchemasCommand::List(args) => {
                 let result = crumbkit::schemas::list(&mut run, &TOOL, &args);
                 let document = crumbkit::schemas::SCHEMAS_LIST;
@@ -124,7 +124,7 @@ where
                 crumbkit::finish(run, document, result)
             }
         },
-        Resource::SelfCommand { command } => match command {
+        Resource::SelfCommand { command } => match command.into_inner() {
             SelfCommand::Usage(args) => {
                 let result =
                     Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&mut run, &TOOL, &args));
@@ -150,9 +150,9 @@ where
                 command: RunsCommand::Export(args),
             } => crumbkit_usage::export(run, &args),
         },
-        Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], command),
-        Resource::Completion { command } => completion(run, command),
-        Resource::Aliases { command } => match command {
+        Resource::Skills { command } => crumbkit_skills::run(run, &[SKILL], command.into_inner()),
+        Resource::Completion { command } => completion(run, command.into_inner()),
+        Resource::Aliases { command } => match command.into_inner() {
             AliasesCommand::List(args) => {
                 let result = Ok::<_, crumbkit::Error>(ALIASES.list(&mut run, &args));
                 let document = crumbkit_aliases::ALIASES_LIST;

@@ -184,13 +184,13 @@ pub(crate) enum Resource {
     Commands {
         /// What to do with the commands.
         #[command(subcommand)]
-        command: CommandsCommand,
+        command: crumbkit::Lazy<CommandsCommand>,
     },
     /// Explore the JSON documents that reading prints.
     Schemas {
         /// What to do with the documents.
         #[command(subcommand)]
-        command: SchemasCommand,
+        command: crumbkit::Lazy<SchemasCommand>,
     },
     /// Print the directory that holds reading's lists.
     Where,

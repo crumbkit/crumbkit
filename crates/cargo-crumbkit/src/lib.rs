@@ -67,8 +67,10 @@ pub fn run() -> ExitCode {
                     tool_skill::draft(&args),
                 ),
             },
-            CrumbkitCommand::Skills { command } => crumbkit_skills::run(output, &[SKILL], command),
-            CrumbkitCommand::Commands { command } => match command {
+            CrumbkitCommand::Skills { command } => {
+                crumbkit_skills::run(output, &[SKILL], command.into_inner())
+            }
+            CrumbkitCommand::Commands { command } => match command.into_inner() {
                 // `commands list` reads the command tree through
                 // `&mut output`, so it runs before `finish`.
                 CommandsCommand::List(args) => {

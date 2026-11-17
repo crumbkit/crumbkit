@@ -204,6 +204,8 @@ mod tests;
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_help(command: &Command, tool: &Tool, allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut allowances = Allowances::new(allow, &[Rule::HelpExamples, Rule::HelpDocument]);
     let mut problems = Vec::new();
     let root = tool.get_help().get_root();

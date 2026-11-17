@@ -15,7 +15,10 @@ impl Aliases {
     /// Returns the process arguments `args` with an alias replaced by its
     /// words, for the tool to pass to `crumbkit::try_parse_to`.
     ///
-    /// `command` is the tool's command tree before parsing. The words after
+    /// `command` is the tool's command tree before parsing. It takes the tree
+    /// by `&mut`, because it expands each [`crumbkit::Lazy`] group that the
+    /// typed words pass through with [`crumbkit::reach`], so a key that
+    /// names a command of the group is no alias. The words after
     /// the tool's name are matched against the keys of each source in
     /// order. A key is one or more words, and it matches when it spells the
     /// leading words. The longest matching key in a source wins, and the
@@ -44,7 +47,7 @@ impl Aliases {
     ///
     /// [`Source::table`]: crate::Source::table
     #[must_use]
-    pub fn expand<I, T>(&self, command: &Command, args: I) -> Vec<OsString>
+    pub fn expand<I, T>(&self, command: &mut Command, args: I) -> Vec<OsString>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString>,
@@ -56,12 +59,16 @@ impl Aliases {
         if first.starts_with('-') || first == "help" {
             return args;
         }
-        let first_is_command = wins(command, first);
         let typed: Vec<&str> = args
             .iter()
             .skip(1)
             .map_while(|word| word.to_str())
             .collect();
+        // The typed words can start with a command of a lazy group, which
+        // has no subcommands until it expands.
+        crumbkit::reach(command, &typed);
+        let command = &*command;
+        let first_is_command = wins(command, first);
         for source in self.sources() {
             if source.deferred() && first_is_command {
                 continue;

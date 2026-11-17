@@ -93,16 +93,20 @@ pub(crate) fn problem_of<K: AsRef<str>>(
 }
 
 /// Returns whether `command` has a subcommand at the path `key`, each word
-/// a name or an alias, hidden or not.
+/// a name or an alias, hidden or not. A command with no subcommands may be a
+/// lazy group that has not expanded, so the walk expands a clone of it, which
+/// happens only when a key reaches into such a command.
 fn names_a_command<K: AsRef<str>>(command: &Command, key: &[K]) -> bool {
-    let mut current = command;
-    for word in key {
-        match current.find_subcommand(word.as_ref()) {
-            Some(next) => current = next,
-            None => return false,
-        }
+    let Some((word, rest)) = key.split_first() else {
+        return true;
+    };
+    if !command.has_subcommands() {
+        return crumbkit::expanded_clone(command)
+            .is_some_and(|expanded| expanded.has_subcommands() && names_a_command(&expanded, key));
     }
-    true
+    command
+        .find_subcommand(word.as_ref())
+        .is_some_and(|next| names_a_command(next, rest))
 }
 
 /// Returns whether `word`, typed as the first word after the tool's name,
