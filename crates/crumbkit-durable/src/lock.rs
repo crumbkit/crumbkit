@@ -176,8 +176,8 @@ impl PathLock {
     /// message naming the path and the owner's uid, when the lock file is
     /// owned by a user other than the caller's effective user, because
     /// another user who created the file in a shared directory could hold
-    /// or replace it. The file is left as it is. Windows does not check
-    /// the owner.
+    /// or replace it. A process running as root gets no exception. The file is
+    /// left as it is. Windows does not check the owner.
     pub fn acquire_unless(
         path: &Path,
         deadline: Instant,

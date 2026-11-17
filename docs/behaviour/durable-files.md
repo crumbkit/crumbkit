@@ -104,8 +104,8 @@ the file stays, empty and unlocked, after the release.
    effective uid. When they differ it closes the file and returns `Io` at
    `Open` with the kind `PermissionDenied` and a message naming the path
    and the owner's uid, so a user who created the file first in a shared
-   directory cannot make the caller lock it. Windows does not check the
-   owner.
+   directory cannot make the caller lock it. A process running as root gets
+   no exception. Windows does not check the owner.
 2. It calls `try_lock`, which is `flock` on Unix and `LockFileEx` on
    Windows. While another holder has the lock, it calls `give_up`, returns
    `Busy` when that returns true or the deadline has passed, and otherwise

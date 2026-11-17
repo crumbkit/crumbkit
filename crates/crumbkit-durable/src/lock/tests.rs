@@ -344,3 +344,30 @@ fn a_lock_file_the_caller_owns_locks() {
 
     let _lock = PathLock::acquire_unless_as(&path, later(), &|| false, Caller::uid(owner)).unwrap();
 }
+
+#[cfg(unix)]
+#[test]
+fn a_replacement_file_owned_by_another_user_is_refused_when_the_path_is_opened_again() {
+    use crate::platform::Caller;
+    use std::os::unix::fs::MetadataExt as _;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.lock");
+    let old = super::open(&path, Caller::current()).unwrap();
+    let owner = old.metadata().unwrap().uid();
+    replace(dir.path(), &path);
+    let now = Instant::now();
+
+    let error = super::lock_opened(
+        &path,
+        old,
+        now,
+        now,
+        &|| false,
+        Caller::uid(owner.wrapping_add(1)),
+    )
+    .unwrap_err();
+
+    assert!(matches!(error, LockError::Io { .. }), "{error:?}");
+    assert_eq!(io_kind(error), std::io::ErrorKind::PermissionDenied);
+}
