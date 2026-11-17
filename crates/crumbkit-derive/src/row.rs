@@ -32,6 +32,12 @@ struct RowType {
     krate: Path,
     /// Whether the type gives `whole`, which sets `WHOLE`.
     whole: bool,
+    /// The type that gets the impl, from `remote = TYPE`, or `None` when the
+    /// type that derives gets it.
+    remote: Option<Type>,
+    /// The names of every field, which the mirror's use needs when the type
+    /// gives `remote`.
+    fields: Vec<Ident>,
     /// Whether the type has generic parameters, which a flattened field
     /// cannot have.
     generic: bool,
@@ -57,7 +63,7 @@ enum Piece {
     /// The field's name as serde serializes it.
     Name(String),
     /// The same list of the flattened field's type, spliced in.
-    Splice(Type),
+    Splice(Box<Type>),
 }
 
 /// The field that decides which rows report a problem or a warning.
@@ -106,6 +112,8 @@ fn read(input: &DeriveInput) -> syn::Result<RowType> {
     let mut row = RowType {
         krate: type_keys.krate,
         whole: type_keys.whole,
+        remote: type_keys.remote,
+        fields: Vec::new(),
         generic: !input.generics.params.is_empty(),
         flattened: Vec::new(),
         columns: Vec::new(),
@@ -115,7 +123,19 @@ fn read(input: &DeriveInput) -> syn::Result<RowType> {
         warning: None,
         children: None,
     };
-    let rule = rename_all(&input.attrs, name)?;
+    if let (Some(remote), true) = (&row.remote, row.generic) {
+        return Err(syn::Error::new_spanned(
+            remote,
+            format!(
+                "the type `{name}` is generic and gives `remote`, and a mirror of a foreign type has no type parameters"
+            ),
+        ));
+    }
+    row.fields = fields
+        .iter()
+        .filter_map(|field| field.ident.clone())
+        .collect();
+    let rule = rename_all(&input.attrs, name, row.remote.is_some())?;
     // Every field of `Fields::Named` has a name.
     for (field, ident) in fields
         .iter()
@@ -203,6 +223,12 @@ fn read_field(row: &mut RowType, field: &Field, ident: &Ident, rule: RenameAll) 
     if keys.uncut.is_some() {
         row.uncut.push(Piece::Name(name.clone()));
     }
+    read_decisions(row, &keys, ident, name)
+}
+
+/// Records the field `ident` as the row's problem field or warning field, as
+/// its keys say, or returns the error for keys that do not hold.
+fn read_decisions(row: &mut RowType, keys: &Keys, ident: &Ident, name: String) -> syn::Result<()> {
     let problem = decision_key(
         keys.problem.map(|span| ("problem", span)),
         keys.problem_by.as_ref().map(|by| ("problem_by", by)),
@@ -342,7 +368,7 @@ fn read_flatten(
         ));
     }
     for list in [&mut row.columns, &mut row.long, &mut row.uncut] {
-        list.push(Piece::Splice(field.ty.clone()));
+        list.push(Piece::Splice(Box::new(field.ty.clone())));
     }
     row.flattened.push(field.ty.clone());
     Ok(())

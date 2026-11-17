@@ -17,6 +17,8 @@ pub(super) fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
         long,
         uncut,
         flattened,
+        remote,
+        fields,
         problem,
         warning,
         children,
@@ -42,9 +44,14 @@ pub(super) fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
         List::new("UNCUT_COLUMNS", uncut, krate),
     ];
     let [columns, long, uncut] = lists.each_ref().map(|list| &list.value);
+    let target = remote
+        .as_ref()
+        .map_or_else(|| quote!(#name #type_generics), |remote| quote!(#remote));
+    let impl_generics = remote.is_none().then_some(impl_generics);
+    let where_clause = remote.is_none().then_some(where_clause);
     let impl_row = quote! {
         #[automatically_derived]
-        impl #impl_generics #krate::Row for #name #type_generics #where_clause {
+        impl #impl_generics #krate::Row for #target #where_clause {
             const COLUMNS: &'static [&'static str] = #columns;
             const LONG_COLUMNS: &'static [&'static str] = #long;
             const UNCUT_COLUMNS: &'static [&'static str] = #uncut;
@@ -54,8 +61,16 @@ pub(super) fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
             #whole
         }
     };
+    // The mirror's fields are never read and the mirror is never built,
+    // so a function that moves each field into a new mirror stops the
+    // dead_code warnings for them.
+    let mirror_use = remote.as_ref().map(|_| {
+        quote! {
+            const _: fn(#name) -> #name = |row| #name { #(#fields: row.#fields),* };
+        }
+    });
     if flattened.is_empty() {
-        return impl_row;
+        return quote!(#impl_row #mirror_use);
     }
     let spliced = lists.iter().filter_map(|list| list.constant.as_ref());
     let unset = flattened.iter().map(|ty| unset_assertions(ty, krate));
@@ -65,6 +80,7 @@ pub(super) fn write(input: &DeriveInput, row: &RowType) -> TokenStream {
             #(#unset)*
             #impl_row
         };
+        #mirror_use
     }
 }
 
@@ -148,9 +164,10 @@ fn decision(decision: Option<&Decision>, kind: &TokenStream) -> TokenStream {
     let Some(Decision { name, by, .. }) = decision else {
         return quote!(::std::option::Option::None);
     };
-    match by {
-        Some(by) => quote!(::std::option::Option::Some(#kind::by(#name, #by))),
-        None => quote!(::std::option::Option::Some(#kind::field(#name))),
+    if let Some(by) = by {
+        quote!(::std::option::Option::Some(#kind::by(#name, #by)))
+    } else {
+        quote!(::std::option::Option::Some(#kind::field(#name)))
     }
 }
 

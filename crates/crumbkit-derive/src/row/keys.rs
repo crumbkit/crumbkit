@@ -4,11 +4,11 @@ use proc_macro2::Span;
 use quote::ToTokens;
 use syn::meta::ParseNestedMeta;
 use syn::spanned::Spanned;
-use syn::{Attribute, Expr, Ident, LitInt, LitStr, Path};
+use syn::{Attribute, Expr, Ident, LitInt, LitStr, Path, Type};
 
 /// The keys that `#[row(...)]` accepts, as the message about an unknown key
 /// lists them.
-const KEYS: &str = "`column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by`, `children` and `flatten` on a field, and `crate` and `whole` on the type";
+const KEYS: &str = "`column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by`, `children` and `flatten` on a field, and `crate`, `whole` and `remote` on the type";
 
 /// The keys that `#[row(...)]` accepts on a field.
 const FIELD_KEYS: [&str; 9] = [
@@ -24,7 +24,7 @@ const FIELD_KEYS: [&str; 9] = [
 ];
 
 /// The keys that `#[row(...)]` accepts on the type.
-const TYPE_KEYS: [&str; 2] = ["crate", "whole"];
+const TYPE_KEYS: [&str; 3] = ["crate", "whole", "remote"];
 
 /// The options that `children(...)` accepts, as the message about an
 /// unknown option lists them.
@@ -37,14 +37,18 @@ pub(super) struct TypeKeys {
     pub(super) krate: Path,
     /// Whether the type gives `whole`, which sets `WHOLE` to true.
     pub(super) whole: bool,
+    /// The type that `remote = TYPE` names, which gets the impl in place of
+    /// the type that carries the attribute.
+    pub(super) remote: Option<Type>,
 }
 
 impl TypeKeys {
     /// Reads the `#[row(...)]` attributes on the type, which take `crate =
-    /// PATH` and `whole`.
+    /// PATH`, `whole` and `remote = TYPE`.
     pub(super) fn read(attrs: &[Attribute]) -> syn::Result<Self> {
         let mut krate: Option<Path> = None;
         let mut whole = false;
+        let mut remote: Option<Type> = None;
         for attr in attrs.iter().filter(|attr| attr.path().is_ident("row")) {
             attr.parse_nested_meta(|meta| {
                 let key = meta.path.to_token_stream().to_string();
@@ -63,6 +67,11 @@ impl TypeKeys {
                         return Err(twice());
                     }
                     whole = true;
+                } else if key == "remote" {
+                    if remote.is_some() {
+                        return Err(twice());
+                    }
+                    remote = Some(meta.value()?.parse()?);
                 } else {
                     if krate.is_some() {
                         return Err(twice());
@@ -75,6 +84,7 @@ impl TypeKeys {
         Ok(Self {
             krate: krate.unwrap_or_else(|| syn::parse_quote!(::crumbkit)),
             whole,
+            remote,
         })
     }
 }

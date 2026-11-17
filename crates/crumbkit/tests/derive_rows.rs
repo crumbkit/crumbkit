@@ -447,7 +447,7 @@ fn a_derived_row_with_children_prints_the_same_listing_as_a_hand_written_row() {
 fn a_derived_whole_row_prints_the_same_json_as_a_hand_written_row() {
     let from_derive = print(SERVICES_DERIVED, service::derived(), &["--json"]).unwrap();
     let by_hand = print(SERVICES_WRITTEN, service::written(), &["--json"]).unwrap();
-    assert!(from_derive.1.contains(r#"parts"#), "{}", from_derive.1);
+    assert!(from_derive.1.contains("\"parts\""), "{}", from_derive.1);
     assert_eq!(from_derive, by_hand);
 }
 
@@ -534,4 +534,98 @@ fn flattened_columns_print_in_field_order_and_their_long_columns_follow_long() {
 fn the_columns_helper_concatenates_lists_in_order() {
     const JOINED: [&str; 3] = crumbkit::__row_columns(&[&["a"], &["b", "c"], &[]]);
     assert_eq!(JOINED, ["a", "b", "c"]);
+}
+
+/// A foreign row type, such as another crate's report, and the newtype that
+/// wraps it, whose `Row` impl the derive writes through a local mirror.
+mod remote {
+    use schemars::JsonSchema;
+    use serde::Serialize;
+
+    /// A run report, as another crate defines it.
+    #[derive(Serialize, JsonSchema)]
+    #[serde(rename_all = "camelCase")]
+    pub(super) struct RunReport {
+        /// The run's name.
+        pub(super) run_name: &'static str,
+        /// The items the run handled.
+        pub(super) item_count: u32,
+        /// Whether the run failed.
+        pub(super) failed: bool,
+    }
+
+    /// A newtype over any printable value, which prints as the value.
+    #[derive(Serialize, JsonSchema)]
+    #[serde(transparent)]
+    pub(super) struct Printed<T>(pub(super) T);
+
+    /// The same newtype, whose impl is written by hand.
+    #[derive(Serialize, JsonSchema)]
+    #[serde(transparent)]
+    pub(super) struct PrintedByHand<T>(pub(super) T);
+
+    /// Lists the fields of `Printed<RunReport>` that its rows print. The
+    /// mirror is never built and its fields are never read.
+    #[derive(crumbkit_derive::Row)]
+    #[row(crate = ::crumbkit, remote = Printed<RunReport>)]
+    #[serde(rename_all = "camelCase")]
+    struct PrintedRunReport {
+        #[row(column, uncut)]
+        run_name: String,
+        #[row(column, problem_by = |row: &Self| row.0.failed)]
+        failed: bool,
+        #[row(long)]
+        item_count: u32,
+    }
+
+    impl crumbkit::Row for PrintedByHand<RunReport> {
+        const COLUMNS: &'static [&'static str] = &["runName", "failed"];
+        const LONG_COLUMNS: &'static [&'static str] = &["itemCount"];
+        const UNCUT_COLUMNS: &'static [&'static str] = &["runName"];
+        const PROBLEM: Option<crumbkit::Problem<Self>> =
+            Some(crumbkit::Problem::by("failed", |row| row.0.failed));
+    }
+
+    /// Returns two reports as the derived newtype.
+    pub(super) fn derived() -> Vec<Printed<RunReport>> {
+        vec![
+            Printed(RunReport {
+                run_name: "nightly",
+                item_count: 4,
+                failed: false,
+            }),
+            Printed(RunReport {
+                run_name: "weekly",
+                item_count: 9,
+                failed: true,
+            }),
+        ]
+    }
+
+    /// Returns the same reports as the hand-written newtype.
+    pub(super) fn written() -> Vec<PrintedByHand<RunReport>> {
+        derived()
+            .into_iter()
+            .map(|printed| PrintedByHand(printed.0))
+            .collect()
+    }
+}
+
+const REMOTE_DERIVED: Document<Listing<remote::Printed<remote::RunReport>>> =
+    Document::new("shelf", "runs", 1, "The runs.");
+const REMOTE_WRITTEN: Document<Listing<remote::PrintedByHand<remote::RunReport>>> =
+    Document::new("shelf", "runs", 1, "The runs.");
+
+#[test]
+fn a_remote_mirror_gives_a_newtype_the_same_output_as_a_hand_written_impl() {
+    let views: [&[&str]; 3] = [&[], &["--long"], &["--json"]];
+    for flags in views {
+        let from_derive = print(REMOTE_DERIVED, remote::derived(), flags).unwrap();
+        let by_hand = print(REMOTE_WRITTEN, remote::written(), flags).unwrap();
+        assert!(!from_derive.1.is_empty(), "{flags:?} printed nothing");
+        assert_eq!(from_derive, by_hand, "{flags:?}");
+    }
+    let text = print(REMOTE_DERIVED, remote::derived(), &["--long"]).unwrap();
+    assert_eq!(text.0, 1);
+    assert!(text.1.contains("RUNNAME"), "{}", text.1);
 }

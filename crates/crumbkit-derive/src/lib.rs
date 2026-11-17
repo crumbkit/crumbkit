@@ -278,7 +278,7 @@ pub fn derive_failure(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 /// `#[serde(flatten)]`. The derive also refuses a type marked
 /// `#[serde(transparent)]`, an enum, a union, a tuple struct and a unit
 /// struct.
-#[proc_macro_derive(Row, attributes(row))]
+#[proc_macro_derive(Row, attributes(row, serde))]
 pub fn derive_row(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
     row::expand(&input)

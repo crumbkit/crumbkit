@@ -47,12 +47,17 @@ impl SerdeField {
 /// Returns the type's `#[serde(rename_all = "...")]` rule for serializing,
 /// or [`RenameAll::None`] when it gives none. It refuses a type marked
 /// `#[serde(transparent)]`, whose JSON is the value of its one field and has
-/// no field names.
-pub(super) fn rename_all(attrs: &[Attribute], name: &Ident) -> syn::Result<RenameAll> {
+/// no field names, unless the type is a mirror of a foreign type (`remote`),
+/// whose own JSON nothing prints.
+pub(super) fn rename_all(
+    attrs: &[Attribute],
+    name: &Ident,
+    remote: bool,
+) -> syn::Result<RenameAll> {
     let mut rule = RenameAll::None;
     for attr in attrs.iter().filter(|attr| attr.path().is_ident("serde")) {
         attr.parse_nested_meta(|meta| {
-            if meta.path.is_ident("transparent") {
+            if meta.path.is_ident("transparent") && !remote {
                 return Err(meta.error(format!(
                     "the type `{name}` is marked #[serde(transparent)], so its JSON has no field names for #[derive(Row)] to list"
                 )));

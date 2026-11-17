@@ -55,7 +55,7 @@ fn each_refused_use_is_a_compile_error_that_names_the_field_or_the_type() {
             "the field `notes` is marked #[serde({key})], so the JSON holds no field of that name, and it takes no #[row(...)] key{except}"
         )
     };
-    let keys = "Its keys are `column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by`, `children` and `flatten` on a field, and `crate` and `whole` on the type";
+    let keys = "Its keys are `column`, `long`, `uncut`, `problem`, `problem_by`, `warning`, `warning_by`, `children` and `flatten` on a field, and `crate`, `whole` and `remote` on the type";
     let refused = "#[derive(Row)] supports a struct with named fields, and";
     let cases = [
         (
@@ -255,6 +255,31 @@ fn each_refused_flatten_use_is_a_compile_error_that_names_the_field() {
         (
             quote! { struct File { #[row(flatten)] #[row(flatten)] stats: Stats } },
             "the field `stats` gives `flatten` twice",
+        ),
+    ];
+    for (input, message) in cases {
+        assert_eq!(refusal(input.clone()), message, "{input}");
+    }
+}
+
+#[test]
+fn each_refused_remote_use_is_a_compile_error_that_names_the_type_or_the_field() {
+    let cases = [
+        (
+            quote! { #[row(remote = Printed<Report>)] struct Mirror<T> { #[row(column)] name: T } },
+            "the type `Mirror` is generic and gives `remote`, and a mirror of a foreign type has no type parameters",
+        ),
+        (
+            quote! { #[row(remote = A, remote = B)] struct Mirror { #[row(column)] name: String } },
+            "the type gives `remote` twice",
+        ),
+        (
+            quote! { struct Mirror { #[row(remote = A)] name: String } },
+            "`remote` goes in the #[row(...)] attribute of the type",
+        ),
+        (
+            quote! { #[serde(transparent)] struct Mirror { #[row(column)] name: String } },
+            "the type `Mirror` is marked #[serde(transparent)], so its JSON has no field names for #[derive(Row)] to list",
         ),
     ];
     for (input, message) in cases {

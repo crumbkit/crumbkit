@@ -164,3 +164,36 @@ fn a_row_without_flatten_writes_no_helper_constants() {
     assert!(!output.contains("__row_columns"), "{output}");
     assert!(!output.contains("const _"), "{output}");
 }
+
+#[test]
+fn a_remote_key_writes_the_impl_for_the_named_type_and_uses_the_mirror() {
+    let output = expanded(quote! {
+        #[serde(rename_all = "camelCase", transparent)]
+        #[row(remote = Printed<RunReport>)]
+        struct RunReportRow {
+            #[row(column)]
+            run_name: String,
+            #[row(long)]
+            item_count: u32,
+            hidden: bool,
+        }
+    });
+    let expected = quote! {
+        #[automatically_derived]
+        impl ::crumbkit::Row for Printed<RunReport> {
+            const COLUMNS: &'static [&'static str] = &["runName"];
+            const LONG_COLUMNS: &'static [&'static str] = &["itemCount"];
+            const UNCUT_COLUMNS: &'static [&'static str] = &[];
+            const PROBLEM: ::std::option::Option<::crumbkit::Problem<Self>> =
+                ::std::option::Option::None;
+            const WARNING: ::std::option::Option<::crumbkit::Warning<Self>> =
+                ::std::option::Option::None;
+        }
+        const _: fn(RunReportRow) -> RunReportRow = |row| RunReportRow {
+            run_name: row.run_name,
+            item_count: row.item_count,
+            hidden: row.hidden
+        };
+    };
+    assert_eq!(output, expected.to_string());
+}
