@@ -16,7 +16,11 @@ crumbkit-test's grammar check as one of its verbs.
 first, as a [stream](../../output/streams.md). It reads the whole log and
 skips a line that is not a whole `<tool>/usage/v1` record, and a line that
 the [report's check](../report.md) refuses, because anyone with the user's
-rights can edit the log and the text line prints the command. It prints only lines that end with a newline and takes no lock, so it never
+rights can edit the log and the text line prints the command. A record
+that the check refuses is also not found by `--after`. When an upgrade
+removes a command or flag that the last record read names, the next export
+treats that run as trimmed and prints every record again, with `gap` set.
+It prints only lines that end with a newline and takes no lock, so it never
 prints the half line of a run that is still writing and never makes a run
 wait.
 
@@ -60,7 +64,9 @@ Why: ADR-0191, ADR-0041.
 Tests of `self runs export` read a fixed log after a run and after a
 trimmed run. Another checks that an export of shelf's own log prints its
 stored records, and that the next export after the last run prints only the
-newer line. Another lowers the output budget, checks that the export stops
+newer line. Others check that an export skips a record whose command is no
+command of the tool, in text and in JSON, and that `--after` naming such a
+record prints every known record after a gap. Another lowers the output budget, checks that the export stops
 with the over-budget failure, and resumes after the last run it printed.
 
 Why: ADR-0191.

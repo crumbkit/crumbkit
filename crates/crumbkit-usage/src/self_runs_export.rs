@@ -1,5 +1,6 @@
 //! The `self runs export` command, which prints the records of a tool's
 //! usage log after a run, oldest first, as the log stores them (ADR-0191).
+//! It leaves out a line that the report's check refuses.
 //!
 //! The tool owns the command. It adds an `export` verb that takes
 //! [`SelfRunsExport`] to the `runs` resource of its `self` group, and its
