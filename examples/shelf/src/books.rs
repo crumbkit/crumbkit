@@ -469,7 +469,7 @@ pub(crate) enum BooksError {
     /// that is not a book id.
     #[failure(
         code = REMOVED_FILE,
-        hint = "make {name} a readable file that holds one book id per line, or delete it",
+        hint = "make {name} a readable file that holds one book id per line",
         alternative = Recovery::program(RM, [name.as_str()]),
     )]
     RemovedFile {

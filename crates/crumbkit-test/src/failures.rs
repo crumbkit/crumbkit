@@ -241,8 +241,8 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
 }
 
 /// Returns the `program` step `step` of a failure document, or
-/// `RecoveryStep::None` with no reason when it lacks its program or its
-/// command line.
+/// `RecoveryStep::None` with no reason when it lacks its program or holds
+/// no command line.
 fn program_step(step: &Value) -> RecoveryStep {
     let text = |key: &str| step.get(key).and_then(Value::as_str).map(str::to_owned);
     let args = step
@@ -256,7 +256,9 @@ fn program_step(step: &Value) -> RecoveryStep {
         })
         .unwrap_or_default();
     match (text("program"), text("run")) {
-        (Some(program), Some(run)) => RecoveryStep::Program { program, args, run },
+        (Some(program), Some(run)) if !run.is_empty() => {
+            RecoveryStep::Program { program, args, run }
+        }
         _ => RecoveryStep::None(String::new()),
     }
 }
@@ -305,7 +307,9 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
                 format!("run `{call}` with every value of {field}")
             }
             RecoveryStep::Terminal(call) => format!("run `{call}` in a terminal"),
-            RecoveryStep::Program { run, .. } => format!("run `{run}` of another program"),
+            RecoveryStep::Program { run, .. } => {
+                format!("run `{run}`, a command of another program")
+            }
             RecoveryStep::Retry => "retry".to_owned(),
             RecoveryStep::Hint(text) => format!("hint: {text}"),
             RecoveryStep::None(reason) if reason.is_empty() => "no next step".to_owned(),
