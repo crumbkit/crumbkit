@@ -98,7 +98,7 @@ const UNPROVOKED: &[Unprovoked<'_>] = &[Unprovoked::new(
 /// past the end of a list and a version conflict each start a chain. Each
 /// chain runs in its own copy of the fixture lists, and the last two run on
 /// a dry run, so they write nothing to that copy either.
-const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[reading::CODES])
+const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, reading::CODES)
     .starts(&[
         UNREAD,
         POSITION_7,
@@ -123,7 +123,7 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[reading::CODES])
 /// The settings of reading's twin check: one twin for each declared code
 /// that a command line can provoke. Each twin differs from its refused line
 /// in one word, so that word is the reason for the refusal (TEST-1).
-const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[reading::CODES])
+const TWINS: Twins<'_> = Twins::new(EXAMPLES, reading::CODES)
     .pairs(&[
         Twin::new(UNREAD, &["entries", "list", "--list", "to-read"]),
         Twin::new(

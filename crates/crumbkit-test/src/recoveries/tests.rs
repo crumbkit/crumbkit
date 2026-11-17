@@ -40,7 +40,7 @@ const UNREADABLE: Code<'static> = Code::new("tool", "books", "unreadable");
 const REMOVED: Code<'static> = Code::new("tool", "books", "removed_file");
 
 /// The tool's declared codes.
-const CODES: &[&[Code<'static>]] = &[&[NOT_FOUND, UNREADABLE, REMOVED]];
+const CODES: &[Code<'static>] = &[NOT_FOUND, UNREADABLE, REMOVED];
 
 /// The listed code that no command line provokes, for a test whose
 /// starts provoke `NOT_FOUND` and `UNREADABLE`.
@@ -478,13 +478,12 @@ fn every_declared_code_is_provoked_or_listed_and_each_listed_code_is_declared_an
 }
 
 #[test]
-fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_do() {
+fn recoveries_new_takes_a_code_list_built_at_run_time_and_bound_before_the_check() {
     let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
     let answers = [("books show 7 --json", 1, show.as_str(), "")];
     let from_lists = Setup::new("recoveries-owned-codes-lists", &answers);
     let run_time = Setup::new("recoveries-owned-codes-run-time", &answers);
     let codes: Vec<Code<'_>> = vec![NOT_FOUND, UNREADABLE, REMOVED];
-    let lists = [codes.as_slice()];
     let owned = [
         Unprovoked::new(codes[1], "Only a broken file provokes it."),
         Unprovoked::new(codes[2], "Only a full disk provokes it."),
@@ -493,7 +492,7 @@ fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_
     let lists_problems = problems(&from_lists, &recoveries(&from_lists, SHOW_7, OTHERS));
     let codes_problems = problems(
         &run_time,
-        &Recoveries::new(Examples::new(&run_time.script, ""), &lists)
+        &Recoveries::new(Examples::new(&run_time.script, ""), &codes)
             .starts(SHOW_7)
             .unprovoked(&owned),
     );
@@ -548,5 +547,53 @@ fn a_call_that_does_not_start_with_the_tool_s_name_fails_the_check() {
         problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap(),
         "the tool's recoveries break crumbkit's recovery rules:\n\
          tool books show 7: the step `other books list` must start with the tool's name, tool"
+    );
+}
+
+#[test]
+fn recoveries_lists_needs_a_start_for_a_code_of_the_second_list() {
+    let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
+    let answers = [("books show 7 --json", 1, show.as_str(), "")];
+    let setup = Setup::new("recoveries-lists-second", &answers);
+    let first = [NOT_FOUND];
+    let second = [UNREADABLE];
+    let lists: [&[Code<'_>]; 2] = [&first, &second];
+
+    let message = problems(
+        &setup,
+        &Recoveries::lists(Examples::new(&setup.script, ""), &lists).starts(SHOW_7),
+    );
+
+    assert_eq!(
+        message.as_deref(),
+        Some(
+            "the tool's recoveries break crumbkit's recovery rules:\n\
+             tool::books::unreadable: no start provokes the declared code, and Recoveries::unprovoked does not list it"
+        )
+    );
+}
+
+#[test]
+fn a_code_that_two_lists_share_is_checked_once() {
+    let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
+    let answers = [("books show 7 --json", 1, show.as_str(), "")];
+    let setup = Setup::new("recoveries-lists-shared", &answers);
+    let lists: [&[Code<'_>]; 2] = [&[NOT_FOUND, UNREADABLE], &[UNREADABLE, REMOVED]];
+
+    let message = problems(
+        &setup,
+        &Recoveries::lists(Examples::new(&setup.script, ""), &lists).starts(SHOW_7),
+    );
+
+    let message = message.unwrap();
+    assert_eq!(
+        message.matches("tool::books::unreadable").count(),
+        1,
+        "{message}"
+    );
+    assert_eq!(
+        message.matches("tool::books::removed_file").count(),
+        1,
+        "{message}"
     );
 }

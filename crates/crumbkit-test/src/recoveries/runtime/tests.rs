@@ -28,7 +28,7 @@ const NOT_FOUND: Code<'static> = Code::new("tool", "lists", "not_found");
 const UNREADABLE: Code<'static> = Code::new("tool", "lists", "unreadable");
 
 /// The tool's declared codes.
-const CODES: &[&[Code<'static>]] = &[&[NOT_FOUND, UNREADABLE]];
+const CODES: &[Code<'static>] = &[NOT_FOUND, UNREADABLE];
 
 /// The script's answers, with or without `--json` at the end:
 ///

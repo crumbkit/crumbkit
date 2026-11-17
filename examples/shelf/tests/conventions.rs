@@ -114,7 +114,7 @@ const UNPROVOKED: &[Unprovoked<'_>] = &[
 ];
 
 /// The settings of shelf's recovery check.
-const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[shelf::CODES])
+const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, shelf::CODES)
     .starts(STARTS)
     .unprovoked(UNPROVOKED)
     .values(&[("ID", "2")]);
@@ -122,7 +122,7 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[shelf::CODES])
 /// The settings of shelf's twin check: one twin for each declared code that
 /// a command line can provoke. Each twin differs from its refused line in
 /// one word, so that word is the reason for the refusal (TEST-1).
-const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[shelf::CODES])
+const TWINS: Twins<'_> = Twins::new(EXAMPLES, shelf::CODES)
     .pairs(&[
         Twin::new(SHOW_7, &["books", "show", "2"]),
         Twin::new(MISSING_FILE, ONE_ID),
