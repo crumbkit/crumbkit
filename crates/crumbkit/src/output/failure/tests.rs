@@ -15,6 +15,7 @@ use crate::{
 mod alternatives;
 mod causes;
 mod fields;
+mod program;
 mod roles;
 mod terminal;
 mod usage;
@@ -672,4 +673,42 @@ fn the_failure_schema_describes_an_optional_string_sentence() {
             .iter()
             .any(|name| name == "sentence")
     );
+}
+
+#[test]
+fn the_failure_schema_admits_a_program_step() {
+    let schema = super::document_schema().to_value();
+    let steps = schema["properties"]["recovery"]["oneOf"]
+        .as_array()
+        .unwrap();
+
+    let program = steps
+        .iter()
+        .find(|step| step["properties"]["kind"]["const"] == "program")
+        .expect("the step schema holds a program member");
+    assert_eq!(
+        program["required"],
+        serde_json::json!(["kind", "program", "args", "run"])
+    );
+    assert_eq!(program["properties"]["args"]["items"]["type"], "string");
+    let alternatives = schema["properties"]["alternatives"]["items"]["oneOf"]
+        .as_array()
+        .unwrap();
+    assert!(alternatives.contains(program));
+}
+
+#[test]
+fn the_failure_schema_still_admits_every_earlier_step_kind() {
+    let schema = super::document_schema().to_value();
+    let steps = schema["properties"]["recovery"]["oneOf"]
+        .as_array()
+        .unwrap();
+
+    let kinds: Vec<_> = steps
+        .iter()
+        .map(|step| step["properties"]["kind"]["const"].as_str().unwrap())
+        .collect();
+    for earlier in ["run", "terminal", "retry", "hint", "none"] {
+        assert!(kinds.contains(&earlier), "{earlier} missing from {kinds:?}");
+    }
 }

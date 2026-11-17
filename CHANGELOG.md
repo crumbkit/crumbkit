@@ -7,6 +7,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit: `Recovery::program` names another program's command. It prints
+  ``run `git status` `` and, in JSON, a step of kind `program`.
+  `check_recoveries` reports it and ends the branch
+  ([behaviour/failures/recoveries]).
 - crumbkit: `Leaf::notes` sets notes that a leaf's `-h` and `--help` print
   under `Notes:` right after its examples. A tool that wrote a `Notes:`
   section in `after_help` moves it there
@@ -104,6 +108,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: the failure document's steps gain the kind `program`,
+  and its id stays `failure/v1`. Every schema that embeds the failure schema
+  gains the member ([behaviour/failures/recoveries]).
 - crumbkit-aliases: breaking: `Aliases::expand` takes `&mut Command`, so it
   expands a lazy group that the typed words name
   ([behaviour/parsing/aliases]).
@@ -2073,6 +2080,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/effects/write-guards]: docs/behaviour/effects/write-guards.md
 [behaviour/failures]: docs/behaviour/failures/README.md
 [behaviour/output/styles]: docs/behaviour/output/styles/README.md
+[behaviour/failures/recoveries]: docs/behaviour/failures/recoveries/README.md
 [behaviour/failures/derive]: docs/behaviour/failures/derive.md
 [behaviour/failures/exit-codes]: docs/behaviour/failures/exit-codes.md
 [behaviour/failures/excerpts-and-readers]: docs/behaviour/failures/excerpts-and-readers.md

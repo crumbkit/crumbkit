@@ -470,6 +470,7 @@ pub(crate) enum BooksError {
     #[failure(
         code = REMOVED_FILE,
         hint = "make {name} a readable file that holds one book id per line, or delete it",
+        alternative = Recovery::program(RM, [name.as_str()]),
     )]
     RemovedFile {
         /// The path of the file.

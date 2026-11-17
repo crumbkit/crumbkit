@@ -202,3 +202,37 @@ fn a_terminal_step_without_a_call_reads_as_no_next_step() {
         )]
     );
 }
+
+#[test]
+fn a_program_step_reads_as_a_program_recovery_step() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"program","program":"git","args":["commit","-m","Add books"],"run":"git commit -m 'Add books'"}}"#;
+
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "a".to_owned(),
+            vec![RecoveryStep::Program {
+                program: "git".to_owned(),
+                args: vec!["commit".to_owned(), "-m".to_owned(), "Add books".to_owned()],
+                run: "git commit -m 'Add books'".to_owned(),
+            }],
+        )]
+    );
+}
+
+#[test]
+fn a_program_step_without_its_run_line_reads_as_no_next_step() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"program","program":"git","args":[]}}"#;
+
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "a".to_owned(),
+            vec![RecoveryStep::None(String::new())],
+        )]
+    );
+}

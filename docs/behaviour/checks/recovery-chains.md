@@ -35,8 +35,12 @@ because a terminal runs the call exactly as it prints. A quoted literal such as
 as one that opens an editor, needs an opt-out from `Rule::Recoveries`, id
 `recoveries/follow`, that names the command.
 
+A `program` step names a command of another program. The check writes
+`program` and its line in the report, does not run it, and ends the branch,
+because crumbkit cannot know the other program's usage.
+
 A failure with one of the tool's declared codes that offers no `run`,
-`terminal`, `retry` or `hint` step fails the check, at the start and after any step,
+`terminal`, `program`, `retry` or `hint` step fails the check, at the start and after any step,
 because an agent that reads it has nothing to act on. A `none` step with a
 reason counts as no next step. An opt-out from `Rule::NextStep`, id
 `recoveries/next-step`, that names the failing command declares the

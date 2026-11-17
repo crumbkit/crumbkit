@@ -1,5 +1,5 @@
 //! A failure's recovery ready to print, with a `Recovery::Run` or
-//! `Recovery::Terminal` call rendered as text.
+//! `Recovery::Terminal` call rendered as text, and a `Recovery::Program` command line quoted.
 
 use std::borrow::Cow;
 
@@ -32,6 +32,15 @@ pub enum RecoveryStep {
     },
     /// A person must run this command line in a terminal.
     Terminal(String),
+    /// Run this command of another program.
+    Program {
+        /// The word that runs the program.
+        program: String,
+        /// The arguments, as the caller types them.
+        args: Vec<String>,
+        /// The command line, quoted for a POSIX shell.
+        run: String,
+    },
     /// Run the same command again later.
     Retry,
     /// Follow this advice.
@@ -74,6 +83,20 @@ impl RecoveryStep {
                     return Err(Self::None(UNAVAILABLE.to_owned()));
                 }
                 Ok(Self::Terminal(rendered))
+            }
+            Recovery::Program { program, args } => {
+                let Some(run) = crate::step::program_line(program, &args) else {
+                    unrendered.push(format!(
+                        "an argument of the command `{}` holds a control or format character",
+                        program.name()
+                    ));
+                    return Err(Self::None(UNAVAILABLE.to_owned()));
+                };
+                Ok(Self::Program {
+                    program: program.name().to_owned(),
+                    args,
+                    run,
+                })
             }
             Recovery::Retry => Ok(Self::Retry),
             Recovery::Hint(text) => Ok(Self::Hint(text)),
@@ -120,6 +143,7 @@ impl RecoveryStep {
                 }
             }
             Self::Terminal(call) => Cow::Owned(format!("run `{call}` in a terminal")),
+            Self::Program { run, .. } => Cow::Owned(format!("run `{run}`")),
             Self::Retry => Cow::Borrowed("run the same command again later"),
             Self::Hint(text) => Cow::Borrowed(text),
             Self::None(reason) => Cow::Owned(format!("no next step: {reason}")),
@@ -223,6 +247,14 @@ impl Serialize for RecoveryStep {
             Self::Run(call) => ("run", Some(("call", call)), None),
             Self::RunAll { call, field } => ("run", Some(("call", call)), Some(field)),
             Self::Terminal(call) => ("terminal", Some(("call", call)), None),
+            Self::Program { program, args, run } => {
+                let mut map = serializer.serialize_map(Some(4))?;
+                map.serialize_entry("kind", "program")?;
+                map.serialize_entry("program", program)?;
+                map.serialize_entry("args", args)?;
+                map.serialize_entry("run", run)?;
+                return map.end();
+            }
             Self::Retry => ("retry", None, None),
             Self::Hint(text) => ("hint", Some(("text", text)), None),
             Self::None(reason) => ("none", Some(("reason", reason)), None),

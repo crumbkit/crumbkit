@@ -19,6 +19,7 @@ its reasons.
   [cell styles](output/styles/README.md) and the
   [JSON layout](output/json-layout.md).
 - [Failures](failures/README.md): the failure model, codes and recoveries,
+  [recoveries and alternatives](failures/recoveries/README.md),
   [deriving `Failure`](failures/derive.md),
   [source excerpts and failure readers](failures/excerpts-and-readers.md) and
   [exit codes](failures/exit-codes.md).

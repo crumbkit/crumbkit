@@ -264,3 +264,16 @@ fn summarize_has_no_note_when_no_book_was_removed() {
 
     assert_eq!(prose.get_note(), None);
 }
+
+#[test]
+fn the_removed_file_failure_offers_deleting_the_file_as_an_alternative() {
+    let failure = BooksError::RemovedFile {
+        name: "removed.txt".to_owned(),
+        error: std::io::Error::other("denied"),
+    };
+
+    assert_eq!(
+        failure.alternatives(),
+        vec![Recovery::program(super::RM, ["removed.txt"])]
+    );
+}

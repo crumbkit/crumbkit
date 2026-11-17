@@ -245,6 +245,10 @@ impl Walk<'_> {
                     };
                     (call, Some(values.as_slice()))
                 }
+                RecoveryStep::Program { run, .. } => {
+                    let _ = writeln!(self.report, "{indent}program {run}");
+                    continue;
+                }
                 RecoveryStep::Retry => {
                     let _ = writeln!(self.report, "{indent}retry");
                     continue;
@@ -393,6 +397,7 @@ impl Walk<'_> {
                 RecoveryStep::Run(_)
                     | RecoveryStep::RunAll { .. }
                     | RecoveryStep::Terminal(_)
+                    | RecoveryStep::Program { .. }
                     | RecoveryStep::Retry
                     | RecoveryStep::Hint(_)
             )
