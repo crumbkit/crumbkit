@@ -118,6 +118,13 @@ impl Child {
         }
     }
 
+    /// Returns true when `error` from a wait means that the child is no
+    /// longer this process's child, because another waiter reaped it or the
+    /// host ignores `SIGCHLD`.
+    pub(crate) fn is_gone(error: &io::Error) -> bool {
+        error.raw_os_error() == Some(Errno::CHILD.raw_os_error())
+    }
+
     /// Returns true when the child has exited, and leaves it unreaped.
     pub(crate) fn has_exited(&self) -> io::Result<bool> {
         has_exited(self.pid)

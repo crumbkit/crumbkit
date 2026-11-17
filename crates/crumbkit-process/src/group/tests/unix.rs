@@ -173,3 +173,47 @@ fn gone_soon(pid: i32) -> bool {
     }
     false
 }
+
+/// Reaps the group's child from outside the group, which makes the group's
+/// own wait fail with `ECHILD`.
+fn reap_outside(group: &Group) {
+    let pid = Pid::from_raw(group.id().try_into().unwrap()).unwrap();
+    group.wait_exit().unwrap();
+    rustix::process::waitpid(Some(pid), rustix::process::WaitOptions::empty()).unwrap();
+}
+
+#[test]
+fn a_child_reaped_elsewhere_makes_the_reap_fail_and_the_group_refuse_every_later_step() {
+    let mut group = start("exit 0", Scope::Group);
+    reap_outside(&group);
+
+    let error = group.reap().unwrap_err();
+
+    assert_eq!(
+        error.raw_os_error(),
+        Some(rustix::io::Errno::CHILD.raw_os_error())
+    );
+    assert!(group.signal(Signal::Kill).is_err());
+    assert!(group.has_exited().unwrap());
+    let started = Instant::now();
+    assert_eq!(
+        group.reap().unwrap_err().kind(),
+        std::io::ErrorKind::NotFound
+    );
+    assert!(started.elapsed() < Duration::from_secs(1));
+}
+
+#[test]
+fn a_group_whose_child_was_reaped_elsewhere_drops_without_the_kill_and_reap() {
+    let mut group = start("exit 0", Scope::Group);
+    reap_outside(&group);
+    group.reap().unwrap_err();
+
+    let started = Instant::now();
+    drop(group);
+
+    assert!(
+        started.elapsed() < crate::REAP_GRACE / 2,
+        "the drop entered the kill and reap path"
+    );
+}

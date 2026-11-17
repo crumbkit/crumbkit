@@ -6,6 +6,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- crumbkit-process: a run whose wait for the child fails with `ECHILD` no
+  longer sends SIGKILL to the child's process group on unwind or drop, because
+  the id may name another group by then ([behaviour/processes]).
+
 ## [0.6.0](https://github.com/crumbkit/crumbkit/compare/v0.5.0...v0.6.0) - 2026-11-17
 
 ### Added
