@@ -219,6 +219,9 @@ kill ended are gone too, including one that waited for its new parent to
 reap it. It never sends another signal after the reap. Both waits end
 `REAP_GRACE` after the child's exit, and a process that outlasts it, such
 as one under an init process that reaps nothing, is left in the group.
+After a wait that finds the child already reaped elsewhere (`ECHILD`), the
+crate sends no further signal to its group, because the id may name
+another group by then.
 
 macOS also gives a wait for an exit a report that the child stopped, for
 as long as it stays stopped, because `WNOWAIT` leaves that report in place.

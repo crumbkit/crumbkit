@@ -97,6 +97,12 @@ impl Child {
         locked(&self.wrapped).start_kill()
     }
 
+    /// Returns false, because a job object's handle names the job itself
+    /// and no other waiter can take the child from it.
+    pub(crate) const fn is_gone(_error: &io::Error) -> bool {
+        false
+    }
+
     /// Returns true when the child has exited.
     pub(crate) fn has_exited(&self) -> io::Result<bool> {
         Ok(locked(&self.wrapped).try_wait()?.is_some())

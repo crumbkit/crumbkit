@@ -146,3 +146,16 @@ fn a_wait_for_an_empty_group_gives_up_when_its_time_passes() {
     assert!(started.elapsed() < Duration::from_secs(1));
     assert!(steps > 1, "the wait stepped once and stopped");
 }
+
+#[test]
+fn only_an_error_for_no_child_means_that_the_child_is_gone() {
+    use rustix::io::Errno;
+
+    for (errno, gone) in [
+        (Errno::CHILD, true),
+        (Errno::INTR, false),
+        (Errno::PERM, false),
+    ] {
+        assert_eq!(Child::is_gone(&errno.into()), gone, "{errno}");
+    }
+}

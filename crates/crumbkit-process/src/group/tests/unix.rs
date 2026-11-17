@@ -173,3 +173,54 @@ fn gone_soon(pid: i32) -> bool {
     }
     false
 }
+
+/// Reaps the group's child from outside the group, which makes the group's
+/// own wait fail with `ECHILD`.
+fn reap_outside(group: &Group) {
+    let pid = Pid::from_raw(group.id().try_into().unwrap()).unwrap();
+    group.wait_exit().unwrap();
+    rustix::process::waitpid(Some(pid), rustix::process::WaitOptions::empty()).unwrap();
+}
+
+#[test]
+fn a_child_reaped_elsewhere_makes_the_reap_fail_and_the_group_refuse_every_later_step() {
+    let mut group = start("exit 0", Scope::Group);
+    reap_outside(&group);
+
+    let error = group.reap().unwrap_err();
+
+    assert_eq!(
+        error.raw_os_error(),
+        Some(rustix::io::Errno::CHILD.raw_os_error())
+    );
+    assert!(group.signal(Signal::Kill).is_err());
+    assert!(group.has_exited().unwrap());
+    let started = Instant::now();
+    assert_eq!(
+        group.reap().unwrap_err().kind(),
+        std::io::ErrorKind::NotFound
+    );
+    assert!(started.elapsed() < Duration::from_secs(1));
+}
+
+#[test]
+fn a_group_whose_child_was_reaped_elsewhere_sends_no_signal_from_a_signal_or_the_drop() {
+    // The background sleep keeps the group's id in use after its leader is
+    // reaped, so a SIGKILL sent to that id would end it.
+    let mut group = start("sleep 30 & echo $!", Scope::Group);
+    let sleeper = pid_in(&first_line(&mut group));
+    reap_outside(&group);
+    group.reap().unwrap_err();
+
+    assert!(group.signal(Signal::Kill).is_err());
+    drop(group);
+    // A killed process answers signal 0 until its new parent reaps it.
+    std::thread::sleep(Duration::from_millis(500));
+
+    let alive = rustix::process::test_kill_process(Pid::from_raw(sleeper).unwrap()).is_ok();
+    kill(sleeper);
+    assert!(
+        alive,
+        "a signal or the drop killed the background sleep {sleeper}"
+    );
+}
