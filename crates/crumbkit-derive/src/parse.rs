@@ -9,7 +9,7 @@ use syn::{Attribute, Data, DeriveInput, Expr, Fields, Ident, LitStr, Path, Visib
 
 /// The keys that `#[failure(...)]` accepts, as the message about an unknown
 /// key lists them.
-const KEYS: &str = "`code`, `recovery`, `hint`, `no_next_step`, `alternative`, `causes`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type";
+const KEYS: &str = "`code`, `codes`, `recovery`, `hint`, `no_next_step`, `alternative`, `causes`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type";
 
 /// A type that derives `Failure`, as its attributes describe it.
 pub(crate) struct FailureType {
@@ -63,8 +63,8 @@ pub(crate) enum Answers {
 
 /// The answers that a variant's attribute gives itself.
 pub(crate) struct Own {
-    /// The path of the variant's `Code` constant.
-    pub(crate) code: Path,
+    /// The variant's code.
+    pub(crate) code: CodeKey,
     /// The variant's recovery.
     pub(crate) recovery: RecoveryKey,
     /// The variant's alternatives, in the written order.
@@ -79,6 +79,21 @@ pub(crate) struct Own {
     pub(crate) url: Option<Expr>,
     /// Whether `diagnostic()` returns the failure itself.
     pub(crate) diagnostic: bool,
+}
+
+/// How a variant states its code.
+pub(crate) enum CodeKey {
+    /// `code = PATH`, the path of a `Code` constant, which `CODES` lists.
+    Path(Path),
+    /// `code = EXPR` with `codes = [...]`: an expression of type `Code<'_>`
+    /// that reads the bound fields, and the paths of the codes it returns,
+    /// which `CODES` lists.
+    Expr {
+        /// The expression.
+        expr: Expr,
+        /// The codes the expression returns, as the attribute lists them.
+        codes: Vec<Path>,
+    },
 }
 
 /// How a variant states its recovery.
@@ -210,8 +225,10 @@ struct Keys {
     given: Vec<(String, Span)>,
     /// `crate = PATH`.
     krate: Option<Path>,
-    /// `code = PATH`.
-    code: Option<Path>,
+    /// `code = PATH` or `code = EXPR`.
+    code: Option<Expr>,
+    /// `codes = [PATH, ...]`.
+    codes: Option<Vec<Path>>,
     /// `recovery = EXPR`.
     recovery: Option<Expr>,
     /// `hint = "text"`.
@@ -263,6 +280,14 @@ impl Keys {
         match key.as_str() {
             "crate" => set(&mut self.krate, meta.value()?.parse()?, twice)?,
             "code" => set(&mut self.code, meta.value()?.parse()?, twice)?,
+            "codes" => {
+                let content;
+                let value = meta.value()?;
+                syn::bracketed!(content in value);
+                let codes =
+                    content.parse_terminated(<Path as syn::parse::Parse>::parse, syn::Token![,])?;
+                set(&mut self.codes, codes.into_iter().collect(), twice)?;
+            }
             "recovery" => set(&mut self.recovery, meta.value()?.parse()?, twice)?,
             "hint" => set(&mut self.hint, meta.value()?.parse()?, twice)?,
             "no_next_step" => set(&mut self.no_next_step, meta.value()?.parse()?, twice)?,
@@ -377,6 +402,32 @@ impl Keys {
                 format!("{owner} needs `code = ...` or `forward` in #[failure(...)]"),
             ));
         };
+        let path = match &code {
+            Expr::Path(path) if path.qself.is_none() && !names_field(&path.path, shape) => {
+                Some(path.path.clone())
+            }
+            _ => None,
+        };
+        let code = match (path, self.codes) {
+            (Some(path), None) => CodeKey::Path(path),
+            (Some(_), Some(_)) => {
+                return Err(syn::Error::new(
+                    span,
+                    format!(
+                        "{owner} gives `codes` beside a `code` that is a path, and `codes` goes with a `code` expression"
+                    ),
+                ));
+            }
+            (None, Some(codes)) => CodeKey::Expr { expr: code, codes },
+            (None, None) => {
+                return Err(syn::Error::new(
+                    span,
+                    format!(
+                        "{owner} gives `code` as an expression, so it needs `codes = [...]` naming each code the expression returns, or `codes = []`"
+                    ),
+                ));
+            }
+        };
         if reviewed && self.sentence.is_none() {
             return Err(syn::Error::new(
                 span,
@@ -417,6 +468,16 @@ impl Keys {
             diagnostic: self.diagnostic,
         })))
     }
+}
+
+/// Returns whether `path` is one identifier that names a field of the
+/// variant, so `code = code` reads the field and is no constant.
+fn names_field(path: &Path, shape: &Shape) -> bool {
+    let Shape::Named(fields) = shape else {
+        return false;
+    };
+    path.get_ident()
+        .is_some_and(|ident| fields.iter().any(|field| field == ident))
 }
 
 /// Refuses a sentence that is empty, has a line break or has a `{`, because

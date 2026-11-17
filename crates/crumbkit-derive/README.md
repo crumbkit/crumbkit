@@ -134,6 +134,10 @@ impl std::error::Error for ReviewedError {}
 The check covers a type that derives `Failure`. A failure written by hand and
 a code from `Code::runtime` escape it.
 
+A `code` can be an expression that reads the variant's fields, with
+`codes = [..]` naming what it returns. A foreign error is forwarded through
+a newtype that implements `Failure`.
+
 A struct that derives `Row` marks its column fields, and the same attribute
 can name the child lines, a problem decided by an expression, the columns of a
 flattened field and a mirror of a foreign type; the documentation of the

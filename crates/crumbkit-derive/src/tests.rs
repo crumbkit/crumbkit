@@ -4,6 +4,7 @@ use quote::quote;
 use crate::expand::expand;
 
 mod causes;
+mod code;
 mod sentences;
 
 /// Returns the derive's output for `input` as text.
@@ -425,7 +426,7 @@ fn an_unknown_key_is_refused_with_the_list_of_accepted_keys() {
     });
     assert_eq!(
         message,
-        "#[failure(...)] has no key `colour`. Its keys are `code`, `recovery`, `hint`, `no_next_step`, `alternative`, `causes`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type"
+        "#[failure(...)] has no key `colour`. Its keys are `code`, `codes`, `recovery`, `hint`, `no_next_step`, `alternative`, `causes`, `field`, `url`, `sentence`, `diagnostic` and `forward`, and `crate` and `reviewed` on the type"
     );
 }
 

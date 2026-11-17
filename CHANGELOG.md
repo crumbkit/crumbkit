@@ -7,6 +7,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit-derive: `#[derive(Failure)]` takes `code = EXPR` with `codes = [..]`
+  naming the codes it returns. A foreign error is forwarded through a newtype
+  that implements `Failure` ([behaviour/failures/derive]).
 - crumbkit: `Recovery::after` puts a repair before a `Then::Retry`,
   `Then::Run` or `Then::Terminal`. It prints the repair then the step, and
   JSON gives it the step kind `after` with `repair` and `then`
