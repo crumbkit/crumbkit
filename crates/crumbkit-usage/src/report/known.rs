@@ -41,7 +41,7 @@ pub(crate) enum Read {
 /// An [`Entry`] that [`known`] accepted. Only [`read`] makes one, so a
 /// reader that holds a `Known` holds a record the writer could have
 /// produced.
-pub(crate) struct Known(Entry);
+pub(crate) struct Known(Box<Entry>);
 
 impl Known {
     /// Returns the checked record.
@@ -51,7 +51,7 @@ impl Known {
 
     /// Returns the checked record, which the caller then owns.
     pub(crate) fn into_entry(self) -> Entry {
-        self.0
+        *self.0
     }
 }
 
@@ -60,7 +60,7 @@ impl Known {
 pub(crate) fn read(tool: &Command, line: &[u8]) -> Read {
     match Entry::parse(line) {
         None => Read::NotRecord,
-        Some(entry) if known(tool, &entry) => Read::Known(Known(entry)),
+        Some(entry) if known(tool, &entry) => Read::Known(Known(Box::new(entry))),
         Some(entry) => Read::Unknown(entry.at),
     }
 }
