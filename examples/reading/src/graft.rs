@@ -23,7 +23,7 @@ pub(crate) enum ListCommand {
     /// List the entries of this reading list, in file order.
     List(ListEntries),
     /// Open this reading list in your editor: $VISUAL, $EDITOR or vi.
-    Edit,
+    Edit(EditList),
 }
 
 /// The arguments of `reading <name> list`.
@@ -32,6 +32,14 @@ pub(crate) struct ListEntries {
     /// How many entries to print.
     #[command(flatten)]
     pub(crate) page: Page<3>,
+}
+
+/// The arguments of `reading <name> edit`.
+#[derive(Debug, Args)]
+pub(crate) struct EditList {
+    /// The editor program and its arguments, in place of $VISUAL and $EDITOR.
+    #[arg(last = true, value_name = "EDITOR")]
+    pub(crate) editor: Vec<String>,
 }
 
 /// A parsed command line: a command of reading's static grammar, or the
@@ -86,8 +94,8 @@ pub fn command(lists: &[List]) -> Command {
 
 /// Returns reading's tool record: [`TOOL`], with a leaf that lists two
 /// examples for the `list` command of each of `lists` and declares the document
-/// it prints, the one that `entries list` prints, and a leaf with one example
-/// for its `edit` command, which passes on the editor's exit code. With no
+/// it prints, the one that `entries list` prints, and a leaf with two examples
+/// for its `edit` command, which runs a program and passes on the editor's exit code. With no
 /// lists it returns [`TOOL`] itself and allocates nothing.
 #[must_use]
 pub fn tool(lists: &[List]) -> Tool {
@@ -110,10 +118,15 @@ pub fn tool(lists: &[List]) -> Tool {
                 .effects(Effects::read_only())
                 .document(ENTRIES_LIST);
             // The editor can delete or overwrite any line of the list, and
-            // it saves the whole file over the one it opened.
+            // it saves the whole file over the one it opened. The caller can
+            // name the editor program after `--`.
             let edit_leaf = RuntimeLeaf::new(vec![name.to_owned(), "edit".to_owned()])
                 .example(Vec::new(), format!("Open the {name} list in your editor"))
-                .effects(Effects::replacing())
+                .example(
+                    vec!["--".to_owned(), "nano".to_owned()],
+                    format!("Open the {name} list in nano"),
+                )
+                .effects(Effects::replacing().runs_program())
                 .passes_on_exit("the editor");
             [list_leaf, edit_leaf]
         })

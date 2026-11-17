@@ -4,6 +4,7 @@ This page covers what a tool's help pages show when the tool parses with
 [`parse`](../../../crates/crumbkit/src/parse.rs): the lines crumbkit adds,
 goal headings, runtime leaves, the word `help` and help topics. The other
 pages in this directory cover [goal headings](headings/README.md),
+[arguments after `--`](after-double-dash/README.md),
 [leaf examples and columns](examples.md), [leaf notes](leaves/README.md),
 [`commands list`](commands-list.md), the
 [command reference](reference.md), [help weight](weight.md), the

@@ -73,9 +73,9 @@ where
         }
         Parsed::Grafted {
             name,
-            command: ListCommand::Edit,
+            command: ListCommand::Edit(args),
         } => {
-            let editor = lists::editor(dir.as_deref(), &name);
+            let editor = lists::editor(dir.as_deref(), &name, &args.editor);
             crumbkit_child::hand_over(run, editor)
         }
         Parsed::Static(cli) => {

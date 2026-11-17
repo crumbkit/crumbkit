@@ -145,8 +145,8 @@ pub(crate) fn dir() -> Option<PathBuf> {
 }
 
 /// Returns the command that opens the file of the list named `name` in `dir`
-/// in the caller's editor. The editor is the program and arguments that
-/// `VISUAL` names, or `EDITOR` when `VISUAL` is unset or blank, or `vi` when
+/// in the caller's editor. The editor is the `chosen` words, when there are
+/// any, or else the program and arguments that `VISUAL` names, or `EDITOR` when `VISUAL` is unset or blank, or `vi` when
 /// both are. The list's path follows the editor's own arguments. With `dir`
 /// `None`, the path is relative to the working directory.
 //
@@ -154,7 +154,7 @@ pub(crate) fn dir() -> Option<PathBuf> {
 // an editor whose path holds a space, or a variable that quotes its words,
 // does not run as a shell would run it.
 #[must_use]
-pub(crate) fn editor(dir: Option<&Path>, name: &str) -> Command {
+pub(crate) fn editor(dir: Option<&Path>, name: &str, chosen: &[String]) -> Command {
     let variable = EDITOR_VARIABLES
         .iter()
         .find_map(|name| {
@@ -166,7 +166,11 @@ pub(crate) fn editor(dir: Option<&Path>, name: &str) -> Command {
             (!value.trim().is_empty()).then_some(value)
         })
         .unwrap_or_else(|| "vi".to_owned());
-    let mut words = variable.split_whitespace();
+    let mut words: Box<dyn Iterator<Item = &str>> = if chosen.is_empty() {
+        Box::new(variable.split_whitespace())
+    } else {
+        Box::new(chosen.iter().map(String::as_str))
+    };
     #[expect(
         clippy::disallowed_methods,
         reason = "this module builds the command that `reading <list> edit` hands the terminal to"

@@ -232,6 +232,41 @@ fn edit_opens_the_list_in_the_editor_that_visual_names_and_returns_its_exit_code
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn edit_runs_the_program_after_the_double_dash_in_place_of_visual_and_returns_its_exit_code()
+-> io::Result<()> {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let scratch = tempfile::tempdir()?;
+    let opened = scratch.path().join("opened.txt");
+    let editor = scratch.path().join("editor");
+    let script = format!(
+        "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}'\nexit 4\n",
+        opened.display()
+    );
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test writes the editor script that reading runs"
+    )]
+    fs::write(&editor, script)?;
+    fs::set_permissions(&editor, fs::Permissions::from_mode(0o755))?;
+    let program = editor.display().to_string();
+
+    reading_with(
+        LISTS,
+        &["to-read", "edit", "--", &program, "--wait"],
+        &[("VISUAL", "false")],
+    )?
+    .code(4)
+    .stdout_eq("")
+    .stderr_eq("");
+    let expected = format!("--wait\n{LISTS}/to-read.txt\n");
+    assert_eq!(fs::read_to_string(opened)?, expected);
+    Ok(())
+}
+
 /// Returns a temporary directory that holds a copy of the fixture lists, so
 /// a test can write to a list without changing the fixtures.
 ///

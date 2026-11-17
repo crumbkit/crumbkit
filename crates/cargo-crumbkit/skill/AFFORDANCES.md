@@ -135,7 +135,7 @@ runs. `check_recoveries` finds that case when a test provokes the failure.
 
 | Affordance | Replaces | Smell | Search | Since | Criterion |
 | --- | --- | --- | --- | --- | --- |
-| `Effects::read_only`, `additive`, `destructive`, `idempotent`, `open_world`, `Leaf::effects` | A description of what a command changes | A leaf has no `.effects(` | `Leaf::new` `\.effects\(` | 0.1 | `effects-declared` |
+| `Effects::read_only`, `additive`, `destructive`, `idempotent`, `open_world`, `runs_program`, `Leaf::effects` | A description of what a command changes | A leaf has no `.effects(` | `Leaf::new` `\.effects\(` | 0.1, `runs_program` 0.6.0 | `effects-declared` |
 | `Effects::all_or_none`, `per_item` | A sentence about partial writes | A multi-item write declares neither | `\.effects\(` | 0.1 | `effects-declared` |
 | `DryRun`, `Run::is_dry_run` | Own `--dry-run` | A bool field `dry_run` | `dry_run:\s*bool` | 0.1 | `dry-run` |
 | `Yes`, `Run::confirm` | Own `--yes` and a stdin prompt | A bool field `yes`, `read_line` on stdin | `yes:\s*bool` `read_line` `Confirm::new` | 0.1 | `confirm-yes` |

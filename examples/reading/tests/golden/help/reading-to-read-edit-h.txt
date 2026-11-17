@@ -1,14 +1,18 @@
 Open this reading list in your editor: $VISUAL, $EDITOR or vi
 
-Usage: reading to-read edit [OPTIONS]
+Usage: reading to-read edit [OPTIONS] [-- <EDITOR>...]
+
+Arguments:
+  [EDITOR]...  The editor program and its arguments, in place of $VISUAL and $EDITOR
 
 Options:
   -h, --help  Print help (see more with '--help')
 
 Examples:
   reading to-read edit
+  reading to-read edit -- nano
 
-Effects: destructive, not idempotent, closed-world.
+Effects: destructive, not idempotent, open-world, runs a program the caller names.
 Writes: replaces existing data, without a version check.
 Exit code: the command passes on the exit code of the editor.
 Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading to-read edit --help` describes them.
