@@ -73,7 +73,7 @@ row the same way.
 - `children_help` holds the text that help prints after `Children: `, or
   `null` when `children` is `null`.
 - `columns` lists a headed leaf's JSON fields that `--fields` selects,
-  ending with `text` and `base64`, because its text has no columns.
+  ending with `text` and `base64` when the row has them.
 - `exits` lists the exit codes that the tool declares for the command, each
   with its first code in `exit`, its last code in `last` and its meaning.
   `last` equals `exit` for a single code and is greater for a range. crumbkit's own 0, 1 and 2 are the same for every

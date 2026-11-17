@@ -325,6 +325,57 @@ fn fields_without_json_is_refused_on_a_headed_document() {
     assert_eq!(json.code, ExitCode::SUCCESS, "{}", json.err);
 }
 
+/// A row type that is transparent over a JSON value, so its schema has no
+/// properties.
+#[derive(Serialize, JsonSchema)]
+#[serde(transparent)]
+struct Report(serde_json::Value);
+
+impl Row for Report {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl Headed for Report {
+    fn bytes(&self) -> Option<&Bytes> {
+        None
+    }
+}
+
+#[test]
+fn finish_refuses_fields_on_a_headed_batch_whose_rows_have_no_fields() {
+    let reports = |args: &[&str]| {
+        let tool = Tool::new().output(Output::new().budget(BUDGET, "the tests print little"));
+        let output = super::built_with(Cli::command(), &tool, args);
+        let mut batch = Batch::new(&["show"], "names", &["a"]);
+        batch.extend([Ok::<_, Error>(Report(serde_json::json!({"size": 3})))]);
+        let mut out = Vec::new();
+        let mut err = Vec::new();
+        let document =
+            Document::<Batch<Report, Error>>::new("files", "reports", 1, "The reports.").headed();
+        let result: Result<_, Error> = Ok(batch);
+        let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, result);
+        let out = String::from_utf8(out).unwrap();
+        (ExitCode::from(code), out, String::from_utf8(err).unwrap())
+    };
+    let refused = ["tool", "list", "--json", "--fields=text"];
+    let admitted = ["tool", "list", "--json"];
+    assert_one_word_apart(&refused, &admitted);
+
+    let (twin_code, _, twin_err) = reports(&admitted);
+    let (code, out, _) = reports(&refused);
+
+    assert_eq!(twin_code, ExitCode::SUCCESS, "{twin_err}");
+    assert_eq!(code, ExitCode::from(2));
+    assert!(
+        out.contains("--fields names the field 'text', and this command takes no --fields, because its rows have no named fields"),
+        "{out}"
+    );
+    assert!(
+        out.contains(r#""recovery":{"kind":"hint","text":"drop --fields"}"#),
+        "{out}"
+    );
+}
+
 #[test]
 fn long_and_full_with_json_on_a_headed_document_print_the_json_document_and_a_note() {
     let json = finish_pages(&["--json"], batch(&[("a", Some(b"one\n"))]));

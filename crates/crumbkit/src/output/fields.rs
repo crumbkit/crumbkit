@@ -93,6 +93,17 @@ fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
 /// leaf's document.
 pub(crate) fn unknown_field_in(schema: &Schema, fields: &[String]) -> Option<Refusal> {
     let properties = row::properties(schema);
+    if properties.is_empty() {
+        return Some(Refusal::flag_value(
+            format!(
+                "--fields names the field '{}', and this command takes no --fields, because its rows have no named fields",
+                fields.first()?
+            ),
+            "drop --fields".to_owned(),
+            "--fields",
+            fields.first().cloned(),
+        ));
+    }
     let is_field = |name: &str| properties.iter().any(|(field, _)| *field == name);
     let unknown = fields.iter().find(|name| !is_field(name))?;
 
