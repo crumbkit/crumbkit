@@ -49,4 +49,4 @@ Invariants:
    the report.
 5. An overdue time at or after the deadline never calls `report`.
 
-Why: ADR-0236.
+Why: ADR-0237.

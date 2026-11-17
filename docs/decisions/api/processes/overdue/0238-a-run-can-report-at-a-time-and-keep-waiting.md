@@ -1,4 +1,4 @@
-# ADR-0237. A run can report at a time and keep waiting for the child
+# ADR-0238. A run can report at a time and keep waiting for the child
 
 - Date: 2026-11-17
 - Status: accepted
