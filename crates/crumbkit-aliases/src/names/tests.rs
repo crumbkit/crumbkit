@@ -138,3 +138,22 @@ fn shipped_names_never_read_a_personal_source() {
 
     assert_eq!(aliases.shipped_names(&tree()), ["recent"]);
 }
+
+#[test]
+fn names_leave_out_an_alias_that_a_command_of_an_unexpanded_lazy_group_shadows() {
+    let aliases = Aliases::new().source(Source::table(
+        "shelf",
+        &[
+            ("skills install", &["books", "list"]),
+            ("skills nope", &["books", "show"]),
+        ],
+    ));
+    let command = tree().subcommand(
+        clap::Command::new("skills")
+            .subcommand_value_name("COMMAND")
+            .defer(|skills| skills.subcommand(clap::Command::new("install"))),
+    );
+
+    assert_eq!(aliases.names(&command), ["skills nope"]);
+    assert_eq!(aliases.shipped_names(&command), ["skills nope"]);
+}

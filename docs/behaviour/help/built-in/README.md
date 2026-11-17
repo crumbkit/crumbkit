@@ -35,7 +35,7 @@ Why: ADR-0198, ADR-0026.
 ## A group builds when its word is typed
 
 A tool writes `crumbkit::Lazy<S>` for the field of a built-in group, such as
-`commands: crumbkit::Lazy<CommandsCommand>`, and calls `into_inner()` in its
+`command: crumbkit::Lazy<CommandsCommand>`, and calls `into_inner()` in its
 match. `Cli::command()` then holds the group with no subcommands, and a
 run that types another command never builds the group's arguments.
 
