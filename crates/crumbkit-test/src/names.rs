@@ -78,6 +78,8 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// on its own line and names each command by its path from `command`, such
 /// as `shelf books list`.
 pub fn check_names(command: &Command, pages: Pages<'_>, allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut allowances = Allowances::new(allow, &[Rule::OneName, Rule::PersonalAliases]);
     let mut problems = Vec::new();
     let personal_aliases = pages.tool().is_some_and(|tool| {

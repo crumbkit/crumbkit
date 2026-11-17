@@ -7,6 +7,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
 
+- crumbkit: `Lazy<S>` is the field type of a command group that builds its
+  arguments only when the caller types the group's word, and `reach`
+  expands the lazy groups that typed words pass through
+  ([behaviour/help/built-in]).
 - crumbkit-process: `RunOptions::overdue` calls a report once when a time
   passes while the child still runs, and the run goes on waiting without
   signalling the child. `ChildFinished::was_overdue` says whether it ran
@@ -78,6 +82,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-aliases: breaking: `Aliases::expand` takes `&mut Command`, so it
+  expands a lazy group that the typed words name
+  ([behaviour/parsing/aliases]).
+- crumbkit-test: the checks walk a clone of a tree that holds a lazy group
+  with each group expanded ([behaviour/help/built-in]).
+- Lower benchmark limits, because the built-in groups of shelf are lazy
+  ([behaviour/help/built-in]).
 - crumbkit-usage: the docs of `start_under` name `interrupt::clean_up`
   ([behaviour/interrupts]).
 - crumbkit-test: breaking: `Recoveries::new` and `Twins::new` take one code

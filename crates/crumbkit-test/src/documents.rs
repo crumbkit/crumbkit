@@ -68,6 +68,8 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 8] = [
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_document_ids(command: &Command, tool: &Tool, allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut allowances = Allowances::new(allow, &[Rule::Envelope, Rule::RowsWhole]);
     let mut problems = Vec::new();
     for leaf in tool.get_help().get_leaves() {
@@ -158,6 +160,8 @@ pub(crate) fn declared_name(
 /// tool mounts the command at. A problem of a query names the command, the
 /// whole query, and each flag to add with the type that adds it.
 pub fn check_mounts(command: &Command, tool: &Tool) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut problems = Vec::new();
     for leaf in tool.get_help().get_leaves() {
         let Some(document) = leaf.get_document().map(LeafDocument::document) else {

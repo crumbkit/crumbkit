@@ -31,3 +31,22 @@ never calls it. `commands list` works out a group's mark on the same walk
 that collects the branch, and never compares a group's name.
 
 Why: ADR-0198, ADR-0026.
+
+## A group builds when its word is typed
+
+A tool writes `crumbkit::Lazy<S>` for the field of a built-in group, such as
+`commands: crumbkit::Lazy<CommandsCommand>`, and calls `into_inner()` in its
+match. `Cli::command()` then holds the group with no subcommands, and a
+run that types another command never builds the group's arguments.
+
+`parse` expands a group when the typed words name it, and again when the
+words after `help` name it, before it reads the tree. `crumbkit::reach`
+does the same for a tree that a tool reads before it parses. `Run::command`,
+`help::extend`, completion and crumbkit-test's checks build or expand every
+group. Help pages, refusals, `commands list` rows and completion scripts are
+the same as with an eager group.
+
+A tool's own code that reads `Cli::command()` without building it sees a
+lazy group with no subcommands until it calls `reach` or `Command::build`.
+
+Why: ADR-0246.

@@ -77,6 +77,8 @@ mod tests;
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_exit_codes(command: &Command, tool: &Tool, allow: &[Allow]) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let mut allowances = Allowances::new(allow, &[Rule::ShellExitCode, Rule::SharedExit]);
     let mut problems = Vec::new();
     let spelling = Spelling::COLONS.for_tool(tool.tool_name(command));

@@ -77,6 +77,8 @@ mod tests;
 /// message starts on a new line and names the document by its id, such as
 /// `shelf/books-list/v1`.
 pub fn check_schema_goldens(command: &Command, tool: &Tool, dir: impl AsRef<Path>) {
+    let expanded = tree::expanded(command);
+    let command = &*expanded;
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, tool, dir.as_ref(), &assert);
 }

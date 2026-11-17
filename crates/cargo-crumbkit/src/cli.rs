@@ -174,13 +174,13 @@ pub(crate) enum CrumbkitCommand {
     Skills {
         /// What to do with cargo crumbkit's skill.
         #[command(subcommand)]
-        command: SkillsCommand,
+        command: crumbkit::Lazy<SkillsCommand>,
     },
     /// Explore cargo crumbkit's commands.
     Commands {
         /// What to do with the commands.
         #[command(subcommand)]
-        command: CommandsCommand,
+        command: crumbkit::Lazy<CommandsCommand>,
     },
 }
 

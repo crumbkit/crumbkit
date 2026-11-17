@@ -83,8 +83,8 @@ static ALIASES: LazyLock<Aliases> = LazyLock::new(|| {
 
 /// Runs shelf with `args`. shelf's `main` passes `std::env::args_os()`.
 fn run(args: &[&str]) -> ExitCode {
-    let command = Cli::command();
-    let args = ALIASES.expand(&command, args);
+    let mut command = Cli::command();
+    let args = ALIASES.expand(&mut command, args);
     // `expand` needed the tree, so the parse takes it and the run builds it once.
     let parsed = crumbkit::try_parse_to::<Cli>(&mut crumbkit::Sink::standard(), command, &TOOL, args);
     let (cli, mut run) = match parsed.map_err(crumbkit::Unparsed::print) {

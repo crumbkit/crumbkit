@@ -37,7 +37,7 @@ fn a_file_key_that_starts_with_a_command_expands_when_the_file_is_on_disk() -> i
     )?;
     let aliases = Aliases::new().source(Source::file(Some(path)));
 
-    let args = aliases.expand(&tool(), ["shelf", "books", "recent"]);
+    let args = aliases.expand(&mut tool(), ["shelf", "books", "recent"]);
 
     let expected: Vec<OsString> = ["shelf", "books", "list", "--limit", "5"]
         .map(OsString::from)

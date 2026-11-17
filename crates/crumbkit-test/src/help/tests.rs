@@ -73,6 +73,39 @@ fn a_tool_that_names_every_visible_child_of_each_group_passes() {
 }
 
 #[test]
+fn check_help_finds_the_leaves_of_a_lazy_group() {
+    const TOOL: Tool = Tool::new().help(
+        Help::new()
+            .groups(&[
+                ROOT,
+                Group::new(
+                    &["books"],
+                    &[
+                        Goal::new("Read", &["list", "show"]),
+                        Goal::new("Change", &["purge"]),
+                    ],
+                ),
+            ])
+            .leaves(LEAVES),
+    );
+    let lazy = Command::new("shelf")
+        .subcommand(
+            Command::new("books")
+                .alias("titles")
+                .subcommand_value_name("COMMAND")
+                .defer(|books| {
+                    books
+                        .subcommand(Command::new("list"))
+                        .subcommand(Command::new("show"))
+                        .subcommand(Command::new("purge").hide(true))
+                }),
+        )
+        .subcommand(Command::new("authors").subcommand(Command::new("list")));
+
+    check_help(&lazy, &TOOL, &[]);
+}
+
+#[test]
 fn a_hidden_child_that_no_goal_names_passes() {
     const TOOL: Tool = Tool::new().help(
         Help::new()

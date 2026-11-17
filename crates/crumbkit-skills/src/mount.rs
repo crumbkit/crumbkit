@@ -54,6 +54,8 @@ pub enum SkillsAction {
 /// leaf for the tool's [`Help`](crumbkit::help::Help). Chain `.examples(..)`
 /// on a leaf to give it examples of the tool's own. The tool needs `clap`
 /// with its `derive` feature, because the enum derives `clap::Subcommand`.
+/// A tool mounts the group's field as `crumbkit::Lazy<Name>`, which builds the
+/// group's arguments only when the caller types `skills` (ADR-0246).
 ///
 /// ```
 /// crumbkit_skills::skills_command!(
