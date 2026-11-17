@@ -1,4 +1,4 @@
-# ADR-0235. A headed document lists only the fields its rows have
+# ADR-0236. A headed document lists only the fields its rows have
 
 - Date: 2026-11-16
 - Status: accepted
