@@ -396,7 +396,10 @@ mod rows {
             pub(super) year: u16,
             /// What is wrong with the book's record, if anything.
             #[row(column, problem)]
-            pub(super) warning: Option<&'static str>,
+            pub(super) damage: Option<&'static str>,
+            /// How worn the book is, if at all.
+            #[row(column, warning)]
+            pub(super) wear: Option<&'static str>,
             /// The book's ISBN.
             pub(super) isbn: &'static str,
         }
@@ -404,7 +407,7 @@ mod rows {
 
     /// The same book with a hand-written `Row` impl.
     mod written {
-        use crumbkit::{Problem, Row};
+        use crumbkit::{Problem, Row, Warning};
         use schemars::JsonSchema;
         use serde::Serialize;
 
@@ -418,16 +421,19 @@ mod rows {
             /// The year the book came out.
             pub(super) year: u16,
             /// What is wrong with the book's record, if anything.
-            pub(super) warning: Option<&'static str>,
+            pub(super) damage: Option<&'static str>,
+            /// How worn the book is, if at all.
+            pub(super) wear: Option<&'static str>,
             /// The book's ISBN.
             pub(super) isbn: &'static str,
         }
 
         impl Row for Book {
-            const COLUMNS: &'static [&'static str] = &["id", "title", "warning"];
+            const COLUMNS: &'static [&'static str] = &["id", "title", "damage", "wear"];
             const LONG_COLUMNS: &'static [&'static str] = &["year"];
             const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
-            const PROBLEM: Option<Problem<Self>> = Some(Problem::field("warning"));
+            const PROBLEM: Option<Problem<Self>> = Some(Problem::field("damage"));
+            const WARNING: Option<Warning<Self>> = Some(Warning::field("wear"));
         }
     }
 
@@ -471,25 +477,43 @@ mod rows {
 
     #[test]
     fn a_derived_row_lists_its_marked_fields_in_field_order() {
-        assert_eq!(derived::Book::COLUMNS, &["id", "title", "warning"]);
+        assert_eq!(derived::Book::COLUMNS, &["id", "title", "damage", "wear"]);
         assert_eq!(derived::Book::LONG_COLUMNS, &["year"]);
         assert_eq!(derived::Book::UNCUT_COLUMNS, &["id"]);
         let problem = derived::Book::PROBLEM.unwrap();
-        assert_eq!(problem.get_field(), Some("warning"));
+        assert_eq!(problem.get_field(), Some("damage"));
+        let warning = derived::Book::WARNING.unwrap();
+        assert_eq!(warning.get_field(), Some("wear"));
     }
 
     #[test]
     fn a_derived_row_reports_a_problem_through_its_problem_field() {
-        let book = |warning| derived::Book {
+        let book = |damage| derived::Book {
             id: 1,
             title: "Frankenstein",
             year: 1818,
-            warning,
+            damage,
+            wear: None,
             isbn: "",
         };
         let problem = derived::Book::PROBLEM.unwrap();
         assert!(problem.reports(&book(Some("no ISBN"))));
         assert!(!problem.reports(&book(None)));
+    }
+
+    #[test]
+    fn a_derived_row_reports_a_warning_through_its_warning_field() {
+        let book = |wear| derived::Book {
+            id: 1,
+            title: "Frankenstein",
+            year: 1818,
+            damage: None,
+            wear,
+            isbn: "",
+        };
+        let warning = derived::Book::WARNING.unwrap();
+        assert!(warning.reports(&book(Some("frayed"))));
+        assert!(!warning.reports(&book(None)));
     }
 
     #[test]
@@ -500,14 +524,16 @@ mod rows {
                     id: 1,
                     title: "Frankenstein",
                     year: 1818,
-                    warning: Some("no ISBN"),
+                    damage: Some("no ISBN"),
+                    wear: Some("frayed"),
                     isbn: "",
                 },
                 derived::Book {
                     id: 2,
                     title: "Moby-Dick",
                     year: 1851,
-                    warning: None,
+                    damage: None,
+                    wear: None,
                     isbn: "978-0142437247",
                 },
             ]
@@ -519,7 +545,8 @@ mod rows {
                     id: book.id,
                     title: book.title,
                     year: book.year,
-                    warning: book.warning,
+                    damage: book.damage,
+                    wear: book.wear,
                     isbn: book.isbn,
                 })
                 .collect()

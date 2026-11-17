@@ -19,9 +19,9 @@ shelf self runs list      959         -       2415        0     0
 shelf self runs export    851         54      2361        0     0
 shelf skills              473         -       1021        0     0
 shelf skills install      647         87      1755        0     0
-shelf skills check        605         60      1686        0     0
+shelf skills check        618         60      1699        0     0
 shelf skills print        262         586     1869        0     0
 shelf completion          506         -       1054        0     0
 shelf completion install  723         83      1860        0     0
-shelf completion check    689         43      1786        0     0
+shelf completion check    702         43      1799        0     0
 shelf completion print    479         178     1711        0     0

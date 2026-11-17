@@ -9,6 +9,7 @@ use super::rerun::{self, Rerun};
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
 use crate::output::{Run, layout, problems};
+use crate::row::problems::Marks;
 use crate::sink::role::{Deliver, Message, Role};
 use crate::{Code, Rows, codes};
 
@@ -42,7 +43,7 @@ pub(super) fn write<T: Rows>(
     output: &Run,
     value: &T,
     bytes_of: fn(&T, usize) -> Option<&[u8]>,
-    problems: usize,
+    marks: Marks,
     first_always: bool,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
@@ -106,12 +107,12 @@ pub(super) fn write<T: Rows>(
     // A failure for an answer left out decides the exit, so the note of the
     // rows that report a problem, which names the exit, prints only when
     // every answer printed. The tool's note always prints.
-    let problems = if left_out.is_none() && refused.is_none() {
-        problems
+    let marks = if left_out.is_none() && refused.is_none() {
+        marks
     } else {
-        0
+        Marks::default()
     };
-    write_notes(sink, value, problems);
+    write_notes(sink, value, marks);
     let answer = match refused {
         Some(position) => Answer::RefusedFirst {
             position,
@@ -165,13 +166,14 @@ fn left_out<T: Rows>(
     })
 }
 
-/// Writes the note of the rows that report a problem, when `problems` is
-/// more than 0, and the tool's note to `sink` as one note. A note is the
+/// Writes the notes of the rows that report a problem and a warning, each
+/// when its count in `marks` is more than 0, and the tool's note to `sink`
+/// as one note. A note is the
 /// last thing to report, so a failure to deliver it goes unreported.
-fn write_notes<T: Rows>(sink: &mut dyn Deliver, value: &T, problems: usize) {
+fn write_notes<T: Rows>(sink: &mut dyn Deliver, value: &T, marks: Marks) {
     let mut notes = Vec::new();
-    if problems > 0 {
-        notes.extend(problems::note(problems, value.description()).as_bytes());
+    for note in problems::notes(marks, value.description()) {
+        notes.extend(note.as_bytes());
         notes.push(b'\n');
     }
     if let Some(note) = value.note() {

@@ -6,7 +6,8 @@ use std::fmt;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::Serialize;
 
-use super::{Row, problems};
+use super::Row;
+use super::problems::{self, Marks};
 use crate::{Call, Failure, Step};
 
 /// A result that `crumbkit::finish` prints: one [`Row`], a `Vec` of rows, a
@@ -140,12 +141,12 @@ pub trait Sealed {
         None
     }
 
-    /// Returns the number of rows that report a problem
-    /// ([`Row::PROBLEM`]), which `crumbkit::finish` reads for the
-    /// exit code and the note. Every result counts the rows it holds, and a
-    /// listing that [`Listing::from_all`](crate::Listing::from_all) cut to
-    /// its limit also counts the rows it cut.
-    fn problems(&self) -> usize
+    /// Returns the numbers of rows that report a problem ([`Row::PROBLEM`])
+    /// and a warning ([`Row::WARNING`]), which `crumbkit::finish` reads for
+    /// the exit code and the notes. Every result counts the rows it holds,
+    /// and a listing that [`Listing::from_all`](crate::Listing::from_all)
+    /// cut to its limit also counts the rows it cut.
+    fn marks(&self) -> Marks
     where
         Self: Rows,
     {

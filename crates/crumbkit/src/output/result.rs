@@ -28,6 +28,7 @@ use super::layout::{self, JsonLayout};
 use super::table::{self, Table};
 use super::{Run, children, fields, lines, listing, problems, prose};
 use crate::help::view::{Kind, Printed};
+use crate::row::problems::Marks;
 use crate::shown::text_cells;
 use crate::sink::role::{Deliver, Message, Role};
 use crate::step::RenderedStep;
@@ -72,8 +73,9 @@ pub(super) enum Answer {
 ///
 /// `failures` holds the failures of a batch or a prose result, which the
 /// JSON document holds under `failures`, and is `None` for every other
-/// result. `problems` is the number of rows that report a problem, which
-/// the text's note counts when there is no failure (ADR-0050).
+/// result. `marks` holds the numbers of rows that report a problem and a
+/// warning, which the text's notes count when there is no failure
+/// (ADR-0050, ADR-0245).
 ///
 /// A result that fits prints whole. Otherwise a listing or a list prints the
 /// most rows that fit, marked as cut short. A batch prints the most rows
@@ -106,7 +108,7 @@ pub(super) fn write_result<T: Rows>(
     document: Document<T>,
     value: &T,
     failures: Option<&[PreparedFailure<'_>]>,
-    problems: usize,
+    marks: Marks,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
     let code = codes::OUTPUT_OVER_BUDGET;
@@ -124,15 +126,16 @@ pub(super) fn write_result<T: Rows>(
         sink.deliver(Role::Result, bytes)?;
         return Ok((Answer::Whole, bytes.len()));
     }
-    // The problem note names the exit, so it prints only without a failure.
-    let problems = if failures.is_some_and(|listed| !listed.is_empty()) {
-        0
+    // The problem note names the exit, so the notes print only without a
+    // failure.
+    let marks = if failures.is_some_and(|listed| !listed.is_empty()) {
+        Marks::default()
     } else {
-        problems
+        marks
     };
     if let Some(bytes_of) = document.headed_bytes().filter(|_| !output.is_json()) {
         let first_always = document.get_always_print_first();
-        return headed::write(sink, output, value, bytes_of, problems, first_always);
+        return headed::write(sink, output, value, bytes_of, marks, first_always);
     }
     // `Prepared` borrows the settings for the whole write, and the `Next:`
     // line and the failure of a batch's left-out keys render their calls
@@ -140,7 +143,7 @@ pub(super) fn write_result<T: Rows>(
     let (settings, command) =
         Settings::split(output, sink.width(Role::Result), sink.styles(Role::Result));
     write_rows(
-        sink, &settings, command, spelling, document, value, failures, problems,
+        sink, &settings, command, spelling, document, value, failures, marks,
     )
 }
 
@@ -204,7 +207,7 @@ fn write_rows<T: Rows>(
     document: Document<T>,
     value: &T,
     failures: Option<&[PreparedFailure<'_>]>,
-    problems: usize,
+    marks: Marks,
 ) -> io::Result<(Answer, usize)> {
     let budget = settings.budget;
     let code = codes::OUTPUT_OVER_BUDGET;
@@ -231,7 +234,7 @@ fn write_rows<T: Rows>(
     } else {
         text_cells(serialize)?
     };
-    let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, problems)?;
+    let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, marks)?;
     let listed = failures.map(Failures::of);
     let rows = prepared.rows;
     // A batch that never fetched some of its keys ends with their failure
@@ -337,9 +340,9 @@ struct Prepared<'a, T> {
     /// as its `Next:` lines and the JSON document holds under `next`, or
     /// none when the result names no next step.
     next: Vec<RenderedStep<'a>>,
-    /// The number of rows that report a problem, which the text's note
-    /// counts, or 0 when the run has a failure.
-    problems: usize,
+    /// The numbers of rows that report a problem and a warning, which the
+    /// text's notes count, or none when the run has a failure.
+    marks: Marks,
     /// The number of rows that the result prints when it fits: in the
     /// default text of a listing, the rows that it lists, and otherwise
     /// every row (ADR-0138, ADR-0157).
@@ -355,7 +358,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         columns: &'a [&'a str],
         values: &'a [Value],
         next: Vec<RenderedStep<'a>>,
-        problems: usize,
+        marks: Marks,
     ) -> io::Result<Self> {
         let text = !settings.is_json();
         let prose = match value.prose() {
@@ -417,7 +420,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             prose,
             summary,
             next,
-            problems,
+            marks,
             rows,
         })
     }
@@ -465,7 +468,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
     /// decides the exit, so the note of the rows that report a problem,
     /// which names the exit, does not print, and the tool's note does.
     fn send_notes_before_left_out(&mut self, sink: &mut dyn Deliver, shown: usize) {
-        self.problems = 0;
+        self.marks = Marks::default();
         self.send_notes(sink, &mut Vec::new(), shown, None);
     }
 
@@ -493,12 +496,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
             listing::write_footer(out, value)?;
             listing::write_empty_note(out, value, self.document.empty_note())?;
         }
-        if self.problems > 0 {
-            writeln!(
-                out,
-                "{}",
-                problems::note(self.problems, value.description())
-            )?;
+        for note in problems::notes(self.marks, value.description()) {
+            writeln!(out, "{note}")?;
         }
         if let Some(note) = value.note() {
             writeln!(out, "{note}")?;

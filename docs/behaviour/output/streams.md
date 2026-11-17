@@ -78,7 +78,8 @@ exits with the code of its first failure, as `finish` does
 other failed write prints once on standard error and exits with code 1 unless
 a failure chose the code. A stream without a failure whose printed items
 report a problem exits with 1 and, in text, ends with the note that counts
-them ([rows that report a problem](listings/README.md#rows-that-report-a-problem)).
+them ([problems](listings/README.md#rows-that-report-a-problem)), and
+a warning adds a note only ([warnings](listings/README.md#rows-that-report-a-warning)).
 
 A stream prints at most the [output budget](budget/README.md#streams).
 
