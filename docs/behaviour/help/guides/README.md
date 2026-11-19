@@ -32,6 +32,31 @@ break. It applies the view-flag rule of leaf examples to a command whose path
 names a leaf of the tool record, so an unoffered `--long`, `--fields` or
 `--full` fails.
 
+## A step that points to another tool
+
+`Step::see(about, tool, topic)` declares a step that another tool carries out,
+such as signing in with a separate login tool. `<tool> help <guide>` prints the
+explanation and the line `$ <tool> help <topic>` under it, so a reader or an
+agent opens the other tool's guide from its installed binary:
+
+```text
+1. Sign in with the login tool.
+   $ logintool help sign-in
+```
+
+The step counts toward the limit of 12 steps. It has no commands, so the limit
+of 3 commands does not apply to it. `check_help` fails a pointer whose `tool`
+is not lowercase letters and digits in words joined by single dashes, starting
+with a letter, and one whose `topic` breaks the topic-name rule. It also fails
+a `tool` that is the tool's own name, because a step in the same tool needs a
+step with commands.
+
+`check_help` does not run or parse the other tool's commands, because it holds
+no other tool's command tree, and it does not know whether the other tool is
+installed or has the topic. When the other tool removes the topic, no test in
+this tool fails, and a reader gets that tool's unknown-topic refusal. The other
+tool's own `check_help` keeps the topic's commands true.
+
 The check skips these:
 
 - A command whose path names no leaf, such as a bare group word. clap accepts
@@ -41,4 +66,4 @@ The check skips these:
   run the commands.
 - Preconditions, which `Example::needs` holds for leaf examples.
 
-Why: ADR-0257.
+Why: ADR-0257, ADR-0258.

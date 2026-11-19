@@ -326,3 +326,28 @@ fn guide_numbers_are_as_wide_as_the_last_one() {
     assert!(text.starts_with(" 1. Go.\n    $ tool go\n"), "{text}");
     assert!(text.ends_with("10. Go.\n    $ tool go\n"), "{text}");
 }
+
+#[test]
+fn a_step_that_points_to_another_tool_prints_its_help_line() {
+    const GUIDE: Topic = Topic::guide(
+        "start",
+        "",
+        &[
+            Step::new("Create.", &[&["create"]]),
+            Step::see("Sign in with the login tool.", "logintool", "sign-in"),
+        ],
+    );
+    assert_eq!(
+        GUIDE.render("tool"),
+        "1. Create.\n   $ tool create\n2. Sign in with the login tool.\n   $ logintool help sign-in\n"
+    );
+}
+
+#[test]
+fn a_pointer_step_has_no_commands_and_names_its_tool_and_topic() {
+    const STEP: Step = Step::see("Sign in.", "logintool", "sign-in");
+    assert_eq!(STEP.about(), "Sign in.");
+    assert_eq!(STEP.commands().len(), 0);
+    assert_eq!(STEP.pointer(), Some(("logintool", "sign-in")));
+    assert_eq!(Step::new("Go.", &[&["go"]]).pointer(), None);
+}

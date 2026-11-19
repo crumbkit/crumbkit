@@ -35,3 +35,4 @@ that each path through a tool's help costs.
 - [ADR-0246. A group builds its arguments only when its word is typed](0246-a-group-builds-its-arguments-only-when-its-word-is-typed.md)
 - [ADR-0249. Leaves](leaves/README.md)
 - [ADR-0257. Guide topics](guides/README.md)
+- [ADR-0258. A guide step points to another tool's topic](step-see/README.md)

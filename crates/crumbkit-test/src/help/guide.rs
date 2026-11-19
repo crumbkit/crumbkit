@@ -4,7 +4,7 @@ use clap::Command;
 use crumbkit::Tool;
 use crumbkit::help::{Step, Topic};
 
-use super::{command_line, push_view_flag_problems};
+use super::{DASHED_NAME, command_line, is_dashed, push_view_flag_problems};
 
 /// Adds a problem to `problems` for each way that the guide `name` with
 /// `steps` breaks a guide rule: no steps, more than `Topic::MAX_STEPS`
@@ -16,7 +16,10 @@ use super::{command_line, push_view_flag_problems};
 /// examples. A command that types a view flag that the leaf at its path in
 /// `tool` does not offer, or that adds nothing to the leaf's JSON, fails as
 /// an example does. The check skips a command whose path names no leaf of
-/// the tool record, so it accepts a bare group word that prints help.
+/// the tool record, so it accepts a bare group word that prints help. A
+/// step that points to another tool's topic needs no command, and the check
+/// fails a pointer whose names are malformed or whose tool is `command`'s own
+/// name, without reading the other tool's topic.
 pub(super) fn check_guide(
     command: &Command,
     tool: &Tool,
@@ -43,6 +46,35 @@ pub(super) fn check_guide(
     }
 }
 
+/// Adds a problem to `problems` for each rule that the pointer of step
+/// `number` of the guide `name` breaks: a `tool` that is not a command name
+/// or is `own`, the tool's own name, and a `topic` that is not a topic name.
+/// The check holds no command tree of the other tool, so it does not look at
+/// the topic's commands.
+fn check_pointer(
+    own: &str,
+    name: &str,
+    number: usize,
+    tool: &str,
+    topic: &str,
+    problems: &mut Vec<String>,
+) {
+    if !is_dashed(tool) {
+        problems.push(format!(
+            "the guide `{name}` step {number} points to the tool `{tool}`, which is not {DASHED_NAME}"
+        ));
+    } else if tool == own {
+        problems.push(format!(
+            "the guide `{name}` step {number} points to the tool `{tool}`, which is this tool's own name, so use a step with commands for a topic of this tool"
+        ));
+    }
+    if !is_dashed(topic) {
+        problems.push(format!(
+            "the guide `{name}` step {number} points to the topic `{topic}`, which is not {DASHED_NAME}"
+        ));
+    }
+}
+
 /// Adds a problem to `problems` for each rule that step `number` of the
 /// guide `name` breaks.
 fn check_step(
@@ -64,6 +96,10 @@ fn check_step(
             "the guide `{name}` step {number} has an explanation with a line break, so help cannot print it on one line: `{}`",
             about.escape_debug()
         ));
+    }
+    if let Some((other, topic)) = step.pointer() {
+        check_pointer(command.get_name(), name, number, other, topic, problems);
+        return;
     }
     let commands = step.commands();
     if commands.is_empty() {
