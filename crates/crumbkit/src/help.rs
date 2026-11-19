@@ -29,7 +29,7 @@ pub use self::leaf::{
     text_line,
 };
 pub use self::runtime::RuntimeLeaf;
-pub use self::topic::Topic;
+pub use self::topic::{Step, Topic};
 pub use self::view::ViewFlag;
 pub use self::words::quote;
 

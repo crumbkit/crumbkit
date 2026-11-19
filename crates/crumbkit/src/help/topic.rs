@@ -2,8 +2,13 @@
 //! takes through [`text`] and [`names`]. Each of them adds crumbkit's own
 //! `exit-codes` topic after the tool's topics.
 
+use std::borrow::Cow;
+
 use super::exit;
 use crate::Tool;
+
+mod step;
+pub use self::step::Step;
 
 #[cfg(test)]
 mod tests;
@@ -27,6 +32,37 @@ mod tests;
 ///
 /// assert_eq!(TOOL.get_help().get_topics()[0].name(), "catalogue");
 /// ```
+///
+/// # Guides
+///
+/// [`Topic::guide`] declares a task guide in place of text: a list of
+/// [`Step`]s, each with a one-line explanation and the commands that carry
+/// it out. crumbkit prints the steps as a numbered list, and crumbkit-test's
+/// `check_help` parses every command against the tool's clap tree, so a guide
+/// stops passing when the tool renames a flag that a step uses. A guide has at
+/// most [`Topic::MAX_STEPS`] steps and a step at most [`Step::MAX_COMMANDS`]
+/// commands, and `check_help` fails a guide that has more.
+///
+/// ```
+/// use crumbkit::Tool;
+/// use crumbkit::help::{Help, Step, Topic};
+///
+/// const TOOL: Tool = Tool::new().help(Help::new().topics(&[Topic::guide(
+///     "first-record",
+///     "Sign in and create a record",
+///     &[
+///         Step::new("Sign in.", &[&["login", "--user", "you@example.com"]]),
+///         Step::new("Create a record.", &[&["create", "--title", "Quarterly report"]]),
+///     ],
+/// )]));
+///
+/// let text = TOOL.get_help().get_topics()[0].render("records");
+/// assert_eq!(
+///     text,
+///     "1. Sign in.\n   $ records login --user you@example.com\n\
+///      2. Create a record.\n   $ records create --title 'Quarterly report'\n"
+/// );
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Topic {
     /// The word after `help` that prints the topic.
@@ -34,8 +70,10 @@ pub struct Topic {
     /// The summary of the topic, which the tool reads through
     /// [`Topic::about`].
     about: &'static str,
-    /// The text that `<tool> help <TOPIC>` prints.
+    /// The text that `<tool> help <TOPIC>` prints, empty for a guide.
     text: &'static str,
+    /// The steps of a guide, or `None` for a topic of plain text.
+    steps: Option<&'static [Step]>,
 }
 
 impl Topic {
@@ -45,7 +83,31 @@ impl Topic {
     /// `Topics:` line names each topic (ADR-0101).
     #[must_use]
     pub const fn new(name: &'static str, about: &'static str, text: &'static str) -> Self {
-        Self { name, about, text }
+        Self {
+            name,
+            about,
+            text,
+            steps: None,
+        }
+    }
+
+    /// The most steps that a guide has. `check_help` fails a guide with more,
+    /// and the tool splits it into two guides.
+    pub const MAX_STEPS: usize = 12;
+
+    /// Returns the guide called `name` with the summary `about`, which
+    /// `<tool> help <name>` prints as one numbered line for each of `steps`
+    /// and the step's commands under it. `about` is used as for
+    /// [`Topic::new`]. A guide has between one and [`Topic::MAX_STEPS`]
+    /// steps.
+    #[must_use]
+    pub const fn guide(name: &'static str, about: &'static str, steps: &'static [Step]) -> Self {
+        Self {
+            name,
+            about,
+            text: "",
+            steps: Some(steps),
+        }
     }
 
     /// Returns the word after `help` that prints the topic.
@@ -62,10 +124,32 @@ impl Topic {
         self.about
     }
 
-    /// Returns the text that `<tool> help <TOPIC>` prints.
+    /// Returns the text that a [`Topic::new`] topic was declared with, as
+    /// written, and an empty string for a [guide](Topic::guide), whose text
+    /// holds the tool's name and which [`Topic::render`] prints.
     #[must_use]
     pub const fn text(&self) -> &'static str {
         self.text
+    }
+
+    /// Returns the steps of a [guide](Topic::guide), or `None` for a topic
+    /// of plain text.
+    #[must_use]
+    pub const fn steps(&self) -> Option<&'static [Step]> {
+        self.steps
+    }
+
+    /// Returns what `<tool_name> help <TOPIC>` prints: the text as written
+    /// for a plain topic, and for a guide the numbered steps with each
+    /// command as `$` and the tool's name and the command's words quoted as
+    /// [`quote`](super::quote) does. A guide's text ends with a line break,
+    /// and a plain topic's text ends as it was written.
+    #[must_use]
+    pub fn render(&self, tool_name: &str) -> Cow<'static, str> {
+        match self.steps {
+            None => Cow::Borrowed(self.text),
+            Some(steps) => Cow::Owned(step::render(tool_name, steps)),
+        }
     }
 }
 
@@ -94,7 +178,7 @@ pub(crate) fn text(tool_name: &str, tool: &Tool, name: &str) -> Option<String> {
         .get_topics()
         .iter()
         .find(|topic| topic.name == name)?;
-    let mut text = topic.text.to_owned();
+    let mut text = topic.render(tool_name).into_owned();
     if !text.ends_with('\n') {
         text.push('\n');
     }

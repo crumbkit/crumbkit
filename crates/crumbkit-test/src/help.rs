@@ -11,6 +11,7 @@ use crate::tree::{self, DASHED_NAME, is_dashed};
 
 mod children;
 mod document;
+mod guide;
 mod notes;
 #[cfg(test)]
 mod tests;
@@ -625,6 +626,9 @@ pub(crate) fn command_line(text: &str, words: &[&str]) -> String {
 fn check_topics(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
     let tool_name = command.get_name();
     let topics = tool.get_help().get_topics();
+    // clap builds the tree that it parses, so the guides parse against a
+    // copy, as the examples do.
+    let mut parser = command.clone();
     for (index, topic) in topics.iter().enumerate() {
         let name = topic.name();
         if !is_dashed(name) {
@@ -644,8 +648,12 @@ fn check_topics(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
                 "the topic `{name}` has the name of crumbkit's own topic, so `{tool_name} help {name}` prints crumbkit's exit codes in its place"
             ));
         }
-        if topic.text().trim().is_empty() {
-            problems.push(format!("the topic `{name}` has no text"));
+        match topic.steps() {
+            Some(steps) => guide::check_guide(command, name, steps, &mut parser, problems),
+            None if topic.text().trim().is_empty() => {
+                problems.push(format!("the topic `{name}` has no text"));
+            }
+            None => {}
         }
         // Only the second topic with a name reports it, so a name that
         // three topics share is one problem.

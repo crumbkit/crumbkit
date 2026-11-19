@@ -6,6 +6,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- crumbkit: `Topic::guide` declares a task guide, a list of `Step`s that
+  `<tool> help <name>` prints as numbered steps with their commands. crumbkit-test's
+  `check_help` parses every command of a guide against the tool's command tree
+  and fails a guide with more than 12 steps or a step with more than 3 commands
+  ([behaviour/help], [behaviour/help/checks]). `Topic::render` returns what
+  help prints for a topic, and `Topic::text` is empty for a guide.
+
 ## [0.6.1](https://github.com/crumbkit/crumbkit/compare/v0.6.0...v0.6.1) - 2026-11-17
 
 ### Fixed

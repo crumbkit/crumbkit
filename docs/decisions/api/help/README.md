@@ -34,3 +34,4 @@ that each path through a tool's help costs.
 - [ADR-0198. `commands list` marks crumbkit's own commands](0198-commands-list-marks-crumbkit-s-own-commands.md)
 - [ADR-0246. A group builds its arguments only when its word is typed](0246-a-group-builds-its-arguments-only-when-its-word-is-typed.md)
 - [ADR-0249. Leaves](leaves/README.md)
+- [ADR-0257. A topic can be a task guide whose commands check_help parses](0257-a-topic-can-be-a-task-guide-whose-commands-check_help-parses.md)
