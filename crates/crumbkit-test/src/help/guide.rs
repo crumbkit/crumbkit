@@ -22,7 +22,7 @@ pub(super) fn check_guide(
 ) {
     if steps.is_empty() {
         problems.push(format!(
-            "the guide `{name}` has no steps, so `{} help {name}` prints nothing",
+            "the guide `{name}` has no steps, so `{} help {name}` prints an empty page",
             command.get_name()
         ));
     }
@@ -73,7 +73,18 @@ fn check_step(
         ));
     }
     let tool_name = command.get_name();
+    // RUST-10: a guide command is parsed against the tool's whole tree, so
+    // the check does less than it does for a leaf's examples. It does not
+    // refuse a view flag that the command does not offer, because a guide
+    // command names no leaf, and it accepts a group word that prints help.
+    // A leaf's example covers those through `Leaf::examples`.
     for words in commands {
+        if let Some(word) = words.iter().find(|word| word.contains(['\n', '\r'])) {
+            problems.push(format!(
+                "the guide `{name}` step {number} has a command word with a line break, so help cannot print the command on one line: `{}`",
+                word.escape_debug()
+            ));
+        }
         let args = std::iter::once(tool_name).chain(words.iter().copied());
         if let Err(error) = parser.try_get_matches_from_mut(args) {
             problems.push(format!(

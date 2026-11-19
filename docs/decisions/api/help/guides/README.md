@@ -39,5 +39,5 @@ The root's `Topics:` line names guides with the other topics.
 
 Considered: parsing command lines out of topic text, which needs a shell
 grammar and guesses where a command starts; a guide step that points to
-another tool's topic, which a later change adds; running the commands, which
+another tool's topic; running the commands, which
 needs state that a check does not have.

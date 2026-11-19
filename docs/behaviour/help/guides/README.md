@@ -2,7 +2,7 @@
 
 A tool declares a topic as a task guide with
 [`Topic::guide`](../../../../crates/crumbkit/src/help/topic.rs), a list of
-`Step`s. Each step holds a one-line explanation and one to 3 commands, each the
+`Step`s. Each step holds a one-line explanation and between 1 and 3 commands, each the
 words after the tool's name. A guide has at most 12 steps.
 
 `<tool> help <name>` prints a numbered line for each step and then each command

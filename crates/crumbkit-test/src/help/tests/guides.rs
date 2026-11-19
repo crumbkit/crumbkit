@@ -58,7 +58,7 @@ fn check_help_fails_a_guide_command_that_clap_refuses() {
 }
 
 #[test]
-fn check_help_names_the_step_number_and_quotes_the_command_words() {
+fn check_help_names_the_step_number_of_the_command_that_clap_refuses() {
     const BAD: Topic = Topic::guide(
         "show-books",
         "",
@@ -147,7 +147,7 @@ fn check_help_fails_a_step_without_commands_and_a_guide_without_steps() {
     assert_eq!(
         problems(&shelf(), &NONE).unwrap(),
         format!(
-            "{HEAD}the guide `empty` has no steps, so `shelf help empty` prints nothing\n\
+            "{HEAD}the guide `empty` has no steps, so `shelf help empty` prints an empty page\n\
              the guide `bare` step 1 has no commands, so it shows nothing to run"
         )
     );
@@ -185,4 +185,42 @@ fn a_guide_still_follows_the_topic_name_rules() {
             .unwrap()
             .contains("the topic `books` is a name of the command")
     );
+}
+
+#[test]
+fn check_help_prints_a_refused_command_with_its_words_quoted() {
+    const BAD: Topic = Topic::guide(
+        "g",
+        "",
+        &[Step::new(
+            "Show.",
+            &[&["books", "show", "--title", "Sense and Sensibility"]],
+        )],
+    );
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[BAD]));
+    assert_eq!(
+        problems(&shelf_with_arguments(), &TOOL).unwrap(),
+        format!(
+            "{HEAD}the guide `g` step 1: clap refuses the command `shelf books show --title 'Sense and Sensibility'` with the error kind UnknownArgument"
+        )
+    );
+}
+
+#[test]
+fn check_help_fails_a_command_word_with_a_line_break_and_passes_the_word_without_one() {
+    const BAD: Topic = Topic::guide(
+        "g",
+        "",
+        &[Step::new("Show.", &[&["books", "show", "a\nb"]])],
+    );
+    const GOOD: Topic = Topic::guide("g", "", &[Step::new("Show.", &[&["books", "show", "a b"]])]);
+    const BAD_TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[BAD]));
+    const GOOD_TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[GOOD]));
+    assert_eq!(
+        problems(&shelf_with_arguments(), &BAD_TOOL).unwrap(),
+        format!(
+            "{HEAD}the guide `g` step 1 has a command word with a line break, so help cannot print the command on one line: `a\\nb`"
+        )
+    );
+    assert_eq!(problems(&shelf_with_arguments(), &GOOD_TOOL), None);
 }
