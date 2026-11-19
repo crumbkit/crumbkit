@@ -173,6 +173,6 @@ A topic's text prints as plain text, also on a terminal and when `--json`
 follows its name. The root's help
 names the topics on one line and gives no summaries, so crumbkit prints a
 topic's summary nowhere. `Topic::about` returns it to a tool that lists its
-topics itself.
+topics itself. A topic can also be a [task guide](guides/README.md).
 
 Why: ADR-0023, ADR-0037, ADR-0101, ADR-0129.

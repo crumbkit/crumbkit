@@ -12,6 +12,7 @@ use crate::testing::panic_message;
 mod children;
 mod documents;
 mod examples;
+mod guides;
 mod lines;
 mod notes;
 mod problems;

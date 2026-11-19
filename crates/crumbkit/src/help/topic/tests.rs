@@ -274,3 +274,55 @@ fn a_root_without_subcommands_or_topics_names_no_topics_in_its_help() {
 
     assert!(!short.contains("Topics:"), "{short}");
 }
+
+use super::Step;
+
+/// A guide of two steps, the second with two commands.
+const START: Topic = Topic::guide(
+    "start",
+    "Sign in and create a record",
+    &[
+        Step::new("Sign in.", &[&["login", "--user", "you@example.com"]]),
+        Step::new(
+            "Create two records.",
+            &[&["create", "--title", "Quarterly report"], &["create"]],
+        ),
+    ],
+);
+
+const START_TEXT: &str = "1. Sign in.\n   $ tool login --user you@example.com\n\
+                          2. Create two records.\n   $ tool create --title 'Quarterly report'\n   $ tool create\n";
+
+#[test]
+fn help_with_a_guide_s_name_prints_its_numbered_steps() {
+    let tool = Tool::new().help(Help::new().topics(&[START]));
+    assert_eq!(page(&tool, &["tool", "help", "start"]), START_TEXT);
+}
+
+#[test]
+fn a_guide_s_text_is_empty_and_its_render_holds_the_steps() {
+    assert_eq!(START.text(), "");
+    assert_eq!(START.render("tool"), START_TEXT);
+    assert_eq!(START.steps().map(<[Step]>::len), Some(2));
+}
+
+#[test]
+fn a_plain_topic_renders_its_text_and_has_no_steps() {
+    assert_eq!(ORBITS.render("tool"), ORBITS.text());
+    assert_eq!(ORBITS.steps(), None);
+}
+
+#[test]
+fn the_root_s_topics_line_names_a_guide() {
+    let tool = Tool::new().help(Help::new().topics(&[ORBITS, START]));
+    assert!(page(&tool, &["tool", "--help"]).contains("orbits, start, exit-codes"));
+}
+
+#[test]
+fn guide_numbers_are_as_wide_as_the_last_one() {
+    const STEPS: &[Step] = &[Step::new("Go.", &[&["go"]]); 10];
+    let guide = Topic::guide("many", "", STEPS);
+    let text = guide.render("tool");
+    assert!(text.starts_with(" 1. Go.\n    $ tool go\n"), "{text}");
+    assert!(text.ends_with("10. Go.\n    $ tool go\n"), "{text}");
+}

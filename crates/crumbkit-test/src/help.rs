@@ -11,6 +11,7 @@ use crate::tree::{self, DASHED_NAME, is_dashed};
 
 mod children;
 mod document;
+mod guide;
 mod notes;
 #[cfg(test)]
 mod tests;
@@ -338,17 +339,7 @@ fn check_leaves(
             let line = command_line(&text, example.words());
             match parser.try_get_matches_from_mut(args) {
                 Ok(matches) => {
-                    for (flag, adds_nothing) in flagged_view_flags(leaf, &matches) {
-                        let flag = flag.name();
-                        let outcome = if adds_nothing {
-                            "adds nothing to the command's JSON, so crumbkit prints a note that says so"
-                        } else {
-                            "the command does not offer, so crumbkit refuses it"
-                        };
-                        problems.push(format!(
-                            "{text}: the example `{line}` types {flag}, which {outcome}"
-                        ));
-                    }
+                    push_view_flag_problems(&text, "example", &line, leaf, &matches, problems);
                 }
                 Err(error) => problems.push(format!(
                     "{text}: clap refuses the example `{line}` with the error kind {:?}",
@@ -566,6 +557,31 @@ fn check_mark(
     }
 }
 
+/// Adds a problem to `problems` for each flag that `flagged_view_flags`
+/// returns for `matches`, the matches of the command line `line` of `leaf`.
+/// A problem starts with `prefix` and names the line as a `noun`, such as
+/// `example` or `command`.
+pub(crate) fn push_view_flag_problems(
+    prefix: &str,
+    noun: &str,
+    line: &str,
+    leaf: &Leaf,
+    matches: &ArgMatches,
+    problems: &mut Vec<String>,
+) {
+    for (flag, adds_nothing) in flagged_view_flags(leaf, matches) {
+        let flag = flag.name();
+        let outcome = if adds_nothing {
+            "adds nothing to the command's JSON, so crumbkit prints a note that says so"
+        } else {
+            "the command does not offer, so crumbkit refuses it"
+        };
+        problems.push(format!(
+            "{prefix}: the {noun} `{line}` types {flag}, which {outcome}"
+        ));
+    }
+}
+
 /// Returns each view flag that the caller typed in `matches`, the matches
 /// of one example of `leaf`, and that the leaf does not offer or that adds
 /// nothing to the leaf's JSON, as `LeafDocument::adds_nothing` decides (ADR-0149),
@@ -625,6 +641,9 @@ pub(crate) fn command_line(text: &str, words: &[&str]) -> String {
 fn check_topics(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
     let tool_name = command.get_name();
     let topics = tool.get_help().get_topics();
+    // clap builds the tree that it parses, so the guides parse against a
+    // copy, as the examples do.
+    let mut parser = command.clone();
     for (index, topic) in topics.iter().enumerate() {
         let name = topic.name();
         if !is_dashed(name) {
@@ -644,8 +663,12 @@ fn check_topics(command: &Command, tool: &Tool, problems: &mut Vec<String>) {
                 "the topic `{name}` has the name of crumbkit's own topic, so `{tool_name} help {name}` prints crumbkit's exit codes in its place"
             ));
         }
-        if topic.text().trim().is_empty() {
-            problems.push(format!("the topic `{name}` has no text"));
+        match topic.steps() {
+            Some(steps) => guide::check_guide(command, tool, name, steps, &mut parser, problems),
+            None if topic.text().trim().is_empty() => {
+                problems.push(format!("the topic `{name}` has no text"));
+            }
+            None => {}
         }
         // Only the second topic with a name reports it, so a name that
         // three topics share is one problem.
