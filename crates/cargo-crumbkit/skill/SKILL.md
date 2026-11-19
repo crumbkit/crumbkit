@@ -254,9 +254,11 @@ that calls it. It reads one tool per run and applies no suggestion.
 
 - cargo crumbkit 0.4.0 or later, which has `tool-skill check`. Earlier
   versions name the command `skill check`.
-- The tool's crumbkit-usage version. crumbkit-usage writes `lock_ms` and
-  `context` from 0.6.0. With an older version the runs have no lock wait,
-  so the job reads only `ms` and the `mostly waiting` rows.
+- The tool's crumbkit-usage version. `self runs list` needs 0.3.0,
+  `self runs export` 0.3.1, and the `program` field and
+  `--exclude-program` 0.3.2. crumbkit-usage writes `lock_ms` from 0.6.0.
+  With an older version the runs have no lock wait, so the job reads only
+  `ms` and the `mostly waiting` rows.
 - The tool's crumbkit version in `Cargo.lock`. Two crumbkit versions in one
   `Cargo.lock` mean the tool's codes, events and observers may come from
   either, as the audit's `convention-suite` rule says. Use the version that
@@ -271,12 +273,19 @@ binary name. The window is 14 days unless the request names another.
 
 ```sh
 <bin> self usage --since 14d --json --full
-<bin> self runs list --since 14d --all --json --full
+<bin> self runs list --since 14d --all --json --fields run,session,step,at,caller,command,flags,help,exit,code,ms,out_bytes,lock_ms
+<bin> self runs export --json
 <bin> commands list --json --full
 ```
 
-`self runs list` needs `--full` for the `at`, `caller`, `flags`, `help`
-and `lock_ms` fields.
+`--fields` asks `self runs list` for only the fields the Method reads.
+Leave out `lock_ms` before crumbkit-usage 0.6.0, which refuses the name.
+When the document's `truncated` is true or it holds `cut`, the output
+budget cut the runs short. Run it again with a shorter `--since`, use the
+same window for `self usage`, and say so in the report's `note`.
+`self runs export` prints each stored record with its `program` field.
+When it stops at the output budget, run it again with `--after <RUN>`
+naming the last `run` it printed.
 
 - `GUIDES.md` beside this skill: one row per finding, with what agents were
   probably trying to do, a guide text template, the tool change, the
@@ -310,26 +319,31 @@ elsewhere. When a judgement needs them, it says so in a proposal.
 2. Group the rows by command. All the rows of one command become one
    suggestion with every finding under `findings`, because they usually
    share one cause and one task is enough.
-3. Decide who made each command's runs, from `self runs list`. A run came
-   from a program when its flags hold `--no-input` or a fixed set that the
+3. Decide who made each command's runs. First read the runs that a
+   program marked: a program that sets `<TOOL>_PROGRAM` on the runs it
+   starts gets its name in the record's `program` field, which
+   `self runs export` prints. Match each record's `run` to the `run` of
+   `self runs list`. When programs marked runs, run `self usage` again
+   with `--exclude-program <NAME>` to see which findings remain without
+   them. Judge the unmarked runs by their signs: a run came from a
+   program when its flags hold `--no-input` or a fixed set that the
    tool's docs do not show, when the runs come at a steady interval in
    `at`, or when the session runs the same few commands and nothing else.
-   A run's `caller` field comes from the environment, so a program
-   started inside an agent session records the agent's id. Set the
-   suggestion's `made_by` to `program` when most of the runs came from a
-   program, and to `agent` otherwise.
+   A run's `caller` field comes from the environment, so an unmarked
+   program started inside an agent session records the agent's id. Set
+   the suggestion's `made_by` to `program` when most of the runs came
+   from a program, and to `agent` otherwise.
 4. Read the runs before and after each finding in each session by `step`.
    The command the agent ran next, its `flags`, `code`, `ms`, `out_bytes`
    and, from crumbkit-usage 0.6.0, `lock_ms` show what it was trying to
-   do. Write that in `intent`. An identical repeat whose runs differ in
-   `out_bytes` was probably two calls with different values, so leave
-   those repeats out of the count and say so in `intent`.
+   do. Write that in `intent`. An `identical repeat` counts command lines
+   that match word for word, values included, because the log compares a
+   keyed hash of every word. A repeat whose `out_bytes` differs from the
+   run before it therefore read state that had changed between the two.
 5. Apply the cost test. Move a finding that costs a caller nothing to
    `rejected`, under its command and with the reason. A command left
    with no finding gets no suggestion. A finding costs nothing when:
    - it is `slow command` and `p95_ms` is under 5,000 ms;
-   - it is `identical repeat` and its runs fall under 5 once step 4
-     leaves out the repeats with different output;
    - it is `heavy output` or `identical repeat` and every run came from a
      program that reads the output once and discards it.
 6. For a suggestion made by an `agent`, write the guide text from each
@@ -351,27 +365,30 @@ elsewhere. When a judgement needs them, it says so in a proposal.
    Rewrite a failing line, or drop it.
 8. Write the tool change and its affordances from the rows. An affordance
    whose **Since** is newer than the tool's crumbkit version needs an
-   upgrade first, and the tool change says so.
+   upgrade first, and the tool change says so. Set `change_to` to `tool`,
+   unless the "Program callers" section sends the change to the calling
+   program.
 9. Set `guide_enough` from the rows' last column, or `false` for a
    suggestion made by a `program`.
 
-A cause that the log cannot show, such as the values behind a repeat, or a
+A cause that the log cannot show, such as the flags of a refused run, or a
 tool change that no affordance covers, is a proposal for crumbkit. It goes
 in `proposals` with the findings that showed it, as the audit's
 `crumbkit-gap` does.
 
 ### Where suggestions go
 
-1. When `board` is on PATH, run
+1. When your instructions say that the caller keeps tasks in Board for
+   the tool's repository, run
    `board call tasks.add --title <TITLE> --text <TEXT>` from the tool's
    checkout once per suggestion, so Board routes each task by the
-   checkout's git remote. The title names the behaviour the suggestion asks
+   checkout's git remote. `board` on PATH alone is not enough, because
+   `tasks.add` writes to another repository when no board mounts the
+   checkout's remote. The title names the behaviour the suggestion asks
    for, such as "shelf's skill tells agents to pass every id to one books
    show call". The text holds the command, the findings with their runs,
    the window, `made_by`, the intent, the guide text, the tool change and
-   the affordances. When Board finds no board that mounts the tool's
-   repository, the caller does not use Board for this tool, so go to the
-   next place.
+   the affordances.
 2. When your instructions name another place, such as an issue tracker,
    write one entry per suggestion there with the same fields.
 3. Otherwise the suggestions are only in the report.
@@ -395,14 +412,14 @@ holds:
   command, its findings with their runs and codes, `made_by`, the intent,
   the guide text and its target, the tool change and `change_to`, which
   says whether it belongs to the tool or the calling program, the
-  affordances,
-  `guide_enough` and `written_to`, the task or entry it was written to,
-  or `null`.
+  affordances, `guide_enough` and `written_to`, the task or entry it was
+  written to, or `null`.
 - `rejected`: each command with findings that failed the cost test, with
   those findings and the reason.
 - `not_judged`, `proposals` and `unverified`, as the Method describes.
 - `note`: a one-line verdict, which also names a version mismatch between
-  the binary and the checkout, and two crumbkit versions in `Cargo.lock`.
+  the binary and the checkout, two crumbkit versions in `Cargo.lock`, and
+  a window shortened because the output budget cut the runs.
 
 Print the report, or write it to the file the request names, in every
 case, so it lists which suggestions were written and where.

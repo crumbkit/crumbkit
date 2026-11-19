@@ -11,12 +11,14 @@ Why: ADR-0258.
 ## What the job reads
 
 The job needs cargo crumbkit 0.4.0 or later, which has `tool-skill check`.
-It runs three commands of the tool in its checkout: `self usage` with
-`--json --full`, `self runs list` with `--all --json --full`, and
-`commands list --json --full`. `self runs list` needs `--full` for the
-`at`, `caller`, `flags` and `help` fields, and for `lock_ms`, which
-crumbkit-usage writes from 0.6.0. Both usage commands read the same
-window, which is 14 days unless the request names another. A tool without
+It runs four commands of the tool in its checkout: `self usage` with
+`--json --full`, `self runs list` with `--all --json` and `--fields`
+naming the fields it reads, `self runs export --json`, and
+`commands list --json --full`. The fields include `at`, `caller`, `flags`
+and `help`, and `lock_ms`, which crumbkit-usage writes from 0.6.0. The
+usage commands read the same window, which is 14 days unless the request
+names another. When the output budget cuts the runs short, the job
+shortens the window and says so in the report's note. A tool without
 `self usage`, or a log with no runs in the window, gives the outcome
 `skipped`, and the job writes nothing.
 
@@ -43,14 +45,17 @@ would remove the cause, the affordances from
 that the change would use, and when the guide text alone is enough.
 
 The job reads the runs around each finding in `self runs list` to say
-what the caller was trying to do. A run's `caller` comes from the
-environment, so a program started in an agent's session records the
-agent's id. The job marks a command's runs as made by a program when they
-carry `--no-input` or a fixed set of flags, come at a steady interval, or
-fill sessions that run nothing else. A suggestion made by a program gets a
-tool change for the tool or for the calling program, and no guide text.
-An identical repeat whose runs printed different amounts of output was
-probably two different calls, so the job leaves it out of the count.
+what the caller was trying to do. It first takes the runs that a
+[program marked](../../usage-log/program/README.md) with
+`<TOOL>_PROGRAM`, which `self runs export` shows in the `program` field,
+and runs `self usage` again with `--exclude-program` to see what remains.
+An unmarked program's `caller` names the agent whose environment it
+inherited, so the job marks unmarked runs as a program's when they carry
+`--no-input` or a fixed set of flags, come at a steady interval, or fill
+sessions that run nothing else. A suggestion made by a program gets a
+tool change and no guide text. An identical repeat counts command lines
+that match word for word, values included, so a repeat whose output size
+changed read state that had changed.
 
 A cost test moves a finding that costs a caller nothing to the report's
 `rejected` list with its reason, such as a slow command whose 95th
@@ -73,10 +78,13 @@ does not list.
 
 ## Where the suggestions go
 
-When `board` is on PATH and a board mounts the tool's repository, the job
-writes one Board task per suggestion with `board call tasks.add`, titled
-with the behaviour the suggestion asks for. Otherwise it writes them to
-the place that the caller's instructions name, such as an issue tracker.
+When the caller's instructions say that it keeps tasks in Board for the
+tool's repository, the job writes one Board task per suggestion with
+`board call tasks.add`, titled with the behaviour the suggestion asks
+for. The job does not decide from `board` being on PATH, because
+`tasks.add` writes to another repository when no board mounts the tool's.
+Otherwise it writes them to the place that the caller's instructions name,
+such as an issue tracker.
 
 In every case the job prints a JSON report, or writes it to the file the
 request names. The report is the `cargo-crumbkit/guide-report/v1`

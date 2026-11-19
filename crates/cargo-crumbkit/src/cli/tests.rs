@@ -193,3 +193,116 @@ fn an_affordance_row_with_a_missing_cell_fails_the_agreement() {
         "| Affordance | Replaces | Smell | Search | Since | Criterion |\n| --- | --- | --- | --- | --- | --- |\n| `Tool` | help | none | 0.1 | `tool-record` |\n",
     );
 }
+
+/// The headings of the columns of the guides table in `GUIDES.md`, in
+/// order.
+const GUIDE_COLUMNS: [&str; 6] = [
+    "Finding",
+    "Agents were probably trying to",
+    "Guide text",
+    "Tool change",
+    "Affordance",
+    "The guide alone is enough when",
+];
+
+/// Returns the cells of each line of the first table in `text`, header
+/// first, without its separator line.
+fn table(text: &str) -> Vec<Vec<String>> {
+    text.lines()
+        .skip_while(|line| !line.starts_with('|'))
+        .take_while(|line| line.starts_with('|'))
+        .filter(|line| !line.starts_with("| ---"))
+        .map(cells)
+        .collect()
+}
+
+/// Returns the text of each backticked span in `cell`.
+fn spans(cell: &str) -> Vec<&str> {
+    cell.split('`').skip(1).step_by(2).collect()
+}
+
+#[test]
+fn guides_has_one_row_for_each_finding_that_self_usage_reports_in_its_order() {
+    let schema = crumbkit::schemas::document_schema(crumbkit_usage::SELF_USAGE);
+    let schema = serde_json::to_value(schema).unwrap();
+    let findings: Vec<&str> = schema["$defs"]["Kind"]["oneOf"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|kind| kind["const"].as_str().unwrap())
+        .collect();
+    let (_, guides) = SKILL.get_files()[2];
+    let rows = table(guides);
+    let named: Vec<&str> = rows[1..].iter().map(|row| spans(&row[0])[0]).collect();
+
+    assert_eq!(findings.len(), 9, "{findings:?}");
+    assert_eq!(named, findings);
+}
+
+#[test]
+fn guides_has_six_columns_filled_in_every_row() {
+    let (_, guides) = SKILL.get_files()[2];
+    let rows = table(guides);
+
+    assert_eq!(rows[0], GUIDE_COLUMNS);
+    for row in &rows[1..] {
+        assert_eq!(
+            row.len(),
+            GUIDE_COLUMNS.len(),
+            "a row with an empty cell: {row:?}"
+        );
+    }
+}
+
+#[test]
+fn every_affordance_that_guides_names_is_one_that_affordances_lists() {
+    let (_, affordances) = SKILL.get_files()[0];
+    let (_, guides) = SKILL.get_files()[2];
+    for row in &table(guides)[1..] {
+        let named = spans(&row[4]);
+        assert!(!named.is_empty(), "{} names no affordance", row[0]);
+        for affordance in named {
+            assert!(
+                affordances.contains(&format!("`{affordance}`")),
+                "{} names `{affordance}`, which AFFORDANCES.md does not list",
+                row[0]
+            );
+        }
+    }
+}
+
+#[test]
+fn the_guide_report_schema_is_json_with_the_id_that_the_skill_names() {
+    let (_, schema) = SKILL.get_files()[3];
+    let schema: serde_json::Value = serde_json::from_str(schema).unwrap();
+
+    assert_eq!(schema["title"], "cargo-crumbkit/guide-report/v1");
+    assert_eq!(
+        schema["properties"]["schema"]["const"],
+        "cargo-crumbkit/guide-report/v1"
+    );
+    assert!(SKILL.text().contains("`cargo-crumbkit/guide-report/v1`"));
+}
+
+#[test]
+fn the_guide_report_requires_every_property_it_declares_and_no_other() {
+    let (_, schema) = SKILL.get_files()[3];
+    let schema: serde_json::Value = serde_json::from_str(schema).unwrap();
+    let mut declared: Vec<&str> = schema["properties"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    let mut required: Vec<&str> = schema["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|name| name.as_str().unwrap())
+        .collect();
+    declared.sort_unstable();
+    required.sort_unstable();
+
+    assert_eq!(declared, required);
+    assert_eq!(schema["additionalProperties"], false);
+}

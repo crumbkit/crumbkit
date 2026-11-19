@@ -19,8 +19,10 @@ effort.
 
 - cargo crumbkit's skill gains a second job, "Suggest guides from usage",
   beside "Audit a tool" (ADR-0199). One run reads one named tool's
-  `self usage --json --full`, `self runs list --all --json` and
-  `commands list --json --full` for a window that defaults to 14 days.
+  `self usage --json --full`, `self runs list --all --json` with
+  `--fields` naming the long fields it reads, such as `flags` and
+  `caller`, `self runs export --json` and `commands list --json --full`,
+  for a window that defaults to 14 days.
 - `GUIDES.md` ships beside the skill with one row for each finding of
   `self usage`. A row says what agents were probably trying to do, a
   template for one line of guide text, the tool change that would remove
@@ -33,16 +35,20 @@ effort.
   writes it, so no suggestion names a command or flag the tool lacks.
 - The findings of one command become one suggestion, because they usually
   share a cause and one task per cause is enough.
-- The job marks runs that a program made, such as a poller, and gives
-  them a tool change with no guide text, because no agent reads it. The
-  log's `caller` cannot tell them apart, since a program inherits the
-  agent's environment.
+- The job finds the runs that a program made, such as a poller, and gives
+  them a tool change with no guide text, because no agent reads it. It
+  reads the runs that a program marked with `<TOOL>_PROGRAM` (ADR-0197)
+  first. For unmarked runs it judges by flags and timing, because an
+  unmarked program inherits the agent's environment and its `caller`
+  names the agent.
 - A cost test moves a finding that costs a caller nothing, such as a slow
   command under 5 seconds, to a `rejected` list, which never makes the
   outcome fail. A trial on one tool's log turned such findings into
   suggestions that no reader would act on.
-- When the caller uses Board for the tool's repository, the job writes one
-  task per suggestion. Otherwise it writes them to the place the caller's
+- When the caller's instructions say that it keeps tasks in Board for the
+  tool's repository, the job writes one task per suggestion. Board on
+  PATH alone is not enough, because `tasks.add` writes to another
+  repository when no board mounts the tool's. Otherwise it writes them to the place the caller's
   instructions name. In every case it prints the
   `cargo-crumbkit/guide-report/v1` report, whose schema ships beside the
   skill and follows the audit report's shape.

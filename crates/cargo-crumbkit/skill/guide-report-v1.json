@@ -176,7 +176,7 @@
           "type": "string"
         },
         "runs": {
-          "description": "The row's runs field, which counts the runs that show the finding, less any repeats the job left out because their output differed.",
+          "description": "The row's runs field, which counts the runs that show the finding. For an identical repeat it counts command lines that match word for word, values included.",
           "type": "integer",
           "minimum": 0
         },
@@ -204,7 +204,7 @@
           "type": "string"
         },
         "findings": {
-          "description": "Every finding of the command with at least 5 runs, merged into this one suggestion.",
+          "description": "The findings of the command that have at least 5 runs and passed the cost test, merged into this one suggestion.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/Finding"
