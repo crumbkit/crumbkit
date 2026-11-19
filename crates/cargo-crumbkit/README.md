@@ -74,8 +74,8 @@ file.
 ## Its own skill
 
 `cargo crumbkit skills install` installs cargo crumbkit's agent skill, which
-says what each command is for and how to audit a tool for places that
-should use crumbkit. The audit writes a JSON report that
+says what each command is for, how to audit a tool for crumbkit and how
+to suggest guides from its usage log. The audit writes a JSON report that
 [the report schema] describes.
 
 ## Where to read more

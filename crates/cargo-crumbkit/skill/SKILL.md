@@ -1,6 +1,6 @@
 ---
 name: cargo-crumbkit
-description: Measure, document and check a Rust command-line tool built with crumbkit, and audit a tool for places that should use something crumbkit offers and do not, such as typed recoveries, the `Failure` derive, output shapes, effects, convention checks and process handling. Use for cargo crumbkit's commands and for a crumbkit audit.
+description: Measure, document and check a Rust command-line tool built with crumbkit, and audit a tool for places that should use something crumbkit offers and do not, such as typed recoveries, the `Failure` derive, output shapes, effects, convention checks and process handling, and suggest guide text and tool changes from a tool's usage log. Use for cargo crumbkit's commands, for a crumbkit audit and for guides from usage.
 ---
 
 # cargo crumbkit
@@ -242,3 +242,103 @@ their chains.
 A trial on ten repositories rated nothing `high`, while an independent reader
 rated seven hand-written runners, signal owners, failure stacks and usage logs
 `high`. The Severity section now names those.
+
+## Suggest guides from usage
+
+This job reads one tool's usage log and suggests, for each finding of its
+`self usage`, a line of guide text for the tool's `SKILL.md` or a help
+topic, and a change to the tool that would remove the cause. It reads one
+tool per run and applies no suggestion.
+
+### Reads
+
+Run these in the tool's checkout, with `<bin>` replaced by the tool's
+binary name. The window is 14 days unless the request names another.
+
+```sh
+<bin> self usage --since 14d --json --full
+<bin> self runs list --since 14d --all --json
+<bin> commands list --json --full
+```
+
+- `GUIDES.md` beside this skill: one row per finding, with what agents were
+  probably trying to do, a guide text template, the tool change, the
+  affordances it would use and when the guide alone is enough.
+- `AFFORDANCES.md` beside this skill, for the **Since** of each affordance,
+  and the crumbkit version in the tool's `Cargo.lock`.
+
+The job gets the outcome `skipped`, and writes nothing, when the tool has
+no `self usage` command or its log holds no runs in the window. When the
+tool has no `commands list`, the job judges without it and lists every
+suggestion under `unverified`.
+
+The usage log holds no value that a caller typed. The job never asks for
+those values or looks for them elsewhere.
+
+### Method
+
+1. Take each row of `self usage` with at least 5 runs. A row with fewer
+   goes under `not_judged` with the reason "fewer than 5 runs", because a
+   pattern seen that rarely is noise.
+2. Find the row's finding in `GUIDES.md`, and read the row's `figures`.
+3. In `self runs list`, find the sessions whose runs of the row's command
+   show the finding, and read the runs before and after them in each
+   session by `step`. The command the agent ran next, its `flags`, `code`,
+   `ms`, `out_bytes` and `lock_ms` show what it was trying to do. Write
+   that in `intent`.
+4. Write the guide text from the row's template with the tool's real
+   commands and flags from `commands list` and the figures from step 2. A
+   line about one command goes in the tool's `SKILL.md`, and a concept
+   that spans commands goes in a help topic.
+5. Write the guide text to a scratch Markdown file and run
+   `cargo crumbkit tool-skill check --bin <NAME> --skill <FILE>` in the
+   tool's workspace. Rewrite a failing line from `commands list`, or drop
+   it. Never write a guide line that fails.
+6. Write the tool change and its affordances from the row. An affordance
+   whose **Since** is newer than the tool's crumbkit version needs an
+   upgrade first, and the tool change says so.
+7. Set `guide_enough` from the row's last column.
+
+A cause that the log cannot show, or a tool change that no affordance
+covers, is a proposal for crumbkit. It goes in `proposals` with the
+findings that showed it, as the audit's `crumbkit-gap` does.
+
+### Where suggestions go
+
+1. When `board` is on PATH, run
+   `board call tasks.add --title <TITLE> --text <TEXT>` from the tool's
+   checkout once per suggestion, so Board routes each task by the
+   checkout's git remote. The title names the behaviour the suggestion asks
+   for, such as "shelf's skill tells agents to pass every id to one books
+   show call". The text holds the finding, the command, the runs, the
+   window, the intent, the guide text, the tool change and the
+   affordances. When Board finds no board that mounts the tool's
+   repository, the caller does not use Board for this tool, so go to the
+   next place.
+2. When your instructions name another place, such as an issue tracker,
+   write one entry per suggestion there with the same fields.
+3. Otherwise the suggestions are only in the report.
+
+Each task is one write. When Board refuses a task, for example with
+`tasks::repo::ambiguous`, pass `--repo` as the refusal names and add the
+rest.
+
+### Report
+
+Write the report as one JSON document that `guide-report-v1.json` beside
+this skill describes, with the id `cargo-crumbkit/guide-report/v1`. It
+holds:
+
+- `tool`, `repository`, `window`, `since`, `runs` and `sessions`: what was
+  read, and the summary of `self usage`.
+- `outcome`: `skipped` when the log could not be read or holds no runs,
+  `fail` when the report holds a suggestion, and `pass` otherwise.
+- `suggestions`: one entry per finding with at least 5 runs, the most runs
+  first, with its finding, command, code, runs, intent, guide text and its
+  target, tool change, affordances, `guide_enough` and `written_to`, the
+  task or entry it was written to, or `null`.
+- `not_judged`, `proposals` and `unverified`, as the Method describes.
+- `note`: a one-line verdict.
+
+Print the report, or write it to the file the request names, in every
+case, so it lists which suggestions were written and where.

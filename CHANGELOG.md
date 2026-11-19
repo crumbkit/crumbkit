@@ -11,6 +11,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Topic::guide` declares a task guide that `help` prints as numbered steps, and
   `check_help` parses each command of it. `Topic::text` returns "" for a guide, so read a
   topic with `Topic::render` ([behaviour/help/guides]).
+- cargo-crumbkit: the skill's "Suggest guides from usage" job turns one tool's
+  `self usage` findings into guide text and tool changes, written as Board tasks
+  or a `cargo-crumbkit/guide-report/v1` report ([behaviour/help/skill-guides]).
 
 ## [0.6.1](https://github.com/crumbkit/crumbkit/compare/v0.6.0...v0.6.1) - 2026-11-17
 
@@ -2166,6 +2169,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/help/reference]: docs/behaviour/help/reference.md
 [behaviour/help/skill-check]: docs/behaviour/help/skill-check/README.md
 [behaviour/help/skill-draft]: docs/behaviour/help/skill-draft/README.md
+[behaviour/help/skill-guides]: docs/behaviour/help/skill-guides/README.md
 [behaviour/help/weight]: docs/behaviour/help/weight.md
 [behaviour/output]: docs/behaviour/output/README.md
 [behaviour/output/values]: docs/behaviour/output/values/README.md

@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cargo-crumbkit/guide-report/v1",
+  "description": "The report of one run of the \"Suggest guides from usage\" job of cargo crumbkit's skill, which turns one tool's self usage findings into guide text and tool changes.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "description": "The id of this document.",
+      "const": "cargo-crumbkit/guide-report/v1"
+    },
+    "tool": {
+      "description": "The binary name of the tool whose usage log was read, such as shelf.",
+      "type": "string"
+    },
+    "repository": {
+      "description": "The tool's repository, such as its path or its owner/name.",
+      "type": "string"
+    },
+    "window": {
+      "description": "The --since value that the job passed to self usage and self runs list, such as 14d.",
+      "type": "string"
+    },
+    "since": {
+      "description": "The day in UTC on which the report of self usage starts, such as 2026-11-05, or null when the job could not read it.",
+      "type": ["string", "null"]
+    },
+    "runs": {
+      "description": "The runs that self usage read.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "sessions": {
+      "description": "The sessions that the runs came from.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "outcome": {
+      "description": "skipped when the tool has no self usage command or its log holds no runs, fail when the report holds a suggestion, and pass otherwise.",
+      "enum": ["pass", "fail", "skipped"]
+    },
+    "suggestions": {
+      "description": "One suggestion per finding with at least 5 runs, whose guide text passed the skill check, the most runs first.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Suggestion"
+      }
+    },
+    "not_judged": {
+      "description": "The findings that the job did not judge, with the reason, such as fewer than 5 runs.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "finding": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "runs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["finding", "command", "runs", "reason"],
+        "additionalProperties": false
+      }
+    },
+    "proposals": {
+      "description": "The proposals for crumbkit itself: a cause that the usage log cannot show, or a tool change that no affordance covers, with the feature crumbkit could offer. A proposal never makes the outcome fail.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "description": "What is missing, and the feature crumbkit could offer in its place.",
+            "type": "string"
+          },
+          "findings": {
+            "description": "The findings that showed the gap, each as its finding and command, such as \"identical repeat: books list\".",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["text", "findings"],
+        "additionalProperties": false
+      }
+    },
+    "unverified": {
+      "description": "The suggestions whose guide text the job could not check, because the tool has no commands list. They count in no outcome.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Suggestion"
+      }
+    },
+    "note": {
+      "description": "A one-line verdict.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "tool",
+    "repository",
+    "window",
+    "since",
+    "runs",
+    "sessions",
+    "outcome",
+    "suggestions",
+    "not_judged",
+    "proposals",
+    "unverified",
+    "note"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Suggestion": {
+      "description": "The guide text and the tool change for one finding of self usage.",
+      "type": "object",
+      "properties": {
+        "finding": {
+          "description": "The finding as self usage names it, such as identical repeat.",
+          "type": "string"
+        },
+        "command": {
+          "description": "The command path of the finding's row, such as books show.",
+          "type": "string"
+        },
+        "code": {
+          "description": "The failure code of a retry after failure, or null for any other finding.",
+          "type": ["string", "null"]
+        },
+        "runs": {
+          "description": "The runs that show the finding.",
+          "type": "integer",
+          "minimum": 5
+        },
+        "intent": {
+          "description": "What the agents were probably trying to do, and the runs before and after the finding that show it.",
+          "type": "string"
+        },
+        "guide": {
+          "description": "The guide text, which passed cargo crumbkit tool-skill check.",
+          "type": "string"
+        },
+        "guide_target": {
+          "description": "Where the guide text goes: skill for the tool's SKILL.md, or topic for a help topic.",
+          "enum": ["skill", "topic"]
+        },
+        "tool_change": {
+          "description": "The change to the tool that would remove the cause.",
+          "type": "string"
+        },
+        "affordances": {
+          "description": "The affordances that the tool change would use, as AFFORDANCES.md names them. An affordance newer than the tool's crumbkit version needs an upgrade first.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "guide_enough": {
+          "description": "True when the guide text alone is the whole fix and the tool needs no change.",
+          "type": "boolean"
+        },
+        "written_to": {
+          "description": "The place the job wrote the suggestion, such as a task's path or an issue's URL, or null when the suggestion is only in this report.",
+          "type": ["string", "null"]
+        }
+      },
+      "required": [
+        "finding",
+        "command",
+        "code",
+        "runs",
+        "intent",
+        "guide",
+        "guide_target",
+        "tool_change",
+        "affordances",
+        "guide_enough",
+        "written_to"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
