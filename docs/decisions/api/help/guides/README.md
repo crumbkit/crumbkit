@@ -1,4 +1,4 @@
-# ADR-0257. A topic can be a task guide whose commands check_help parses
+# ADR-0257. Guide topics
 
 - Date: 2026-11-19
 - Status: accepted

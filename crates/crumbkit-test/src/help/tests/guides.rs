@@ -2,9 +2,16 @@
 
 use clap::Command;
 use crumbkit::Tool;
-use crumbkit::help::{Help, Step, Topic};
+use crumbkit::help::{Example, Help, Step, Topic};
 
-use super::{check_help, panic_message, shelf, shelf_with_arguments};
+use super::{LEAVES, check_help, panic_message, shelf, shelf_with_arguments};
+use crumbkit::help::Leaf;
+
+/// The examples of the two leaves of `shelf_with_arguments`.
+const BOOKS: &[Leaf] = &[
+    Leaf::new(&["books", "list"]).examples(&[Example::new(&[], "List")]),
+    Leaf::new(&["books", "show"]).examples(&[Example::new(&["1"], "Show")]),
+];
 
 /// The help rules' heading in a panic message.
 const HEAD: &str = "the command tree breaks crumbkit's help rules:\n";
@@ -27,7 +34,7 @@ const SHOW: Topic = Topic::guide(
 
 #[test]
 fn a_guide_whose_commands_parse_passes() {
-    const TOOL: Tool = Tool::new().help(Help::new().topics(&[SHOW]));
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[SHOW]));
     assert_eq!(problems(&shelf_with_arguments(), &TOOL), None);
 }
 
@@ -41,7 +48,7 @@ fn check_help_fails_a_guide_command_that_clap_refuses() {
             &[&["books", "list", "--everything"]],
         )],
     );
-    const TOOL: Tool = Tool::new().help(Help::new().topics(&[BAD]));
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[BAD]));
     assert_eq!(
         problems(&shelf_with_arguments(), &TOOL).unwrap(),
         format!(
@@ -60,7 +67,7 @@ fn check_help_names_the_step_number_and_quotes_the_command_words() {
             Step::new("Show.", &[&["books", "show", "1"], &["books", "show"]]),
         ],
     );
-    const TOOL: Tool = Tool::new().help(Help::new().topics(&[BAD]));
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[BAD]));
     assert_eq!(
         problems(&shelf_with_arguments(), &TOOL).unwrap(),
         format!(
@@ -76,7 +83,7 @@ fn check_help_counts_help_and_version_in_a_guide_as_refused() {
         "",
         &[Step::new("Ask.", &[&["--version"], &["books", "--help"]])],
     );
-    const TOOL: Tool = Tool::new().help(Help::new().topics(&[BAD]));
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[BAD]));
     assert_eq!(
         problems(&shelf_with_arguments(), &TOOL).unwrap(),
         format!(
@@ -90,8 +97,16 @@ fn check_help_counts_help_and_version_in_a_guide_as_refused() {
 fn a_guide_of_twelve_steps_passes_and_one_of_thirteen_fails() {
     const STEPS: &[Step] = &[Step::new("List.", &[&["books", "list"]]); 13];
     const STEPS_12: &[Step] = &[Step::new("List.", &[&["books", "list"]]); 12];
-    const OK: Tool = Tool::new().help(Help::new().topics(&[Topic::guide("many", "", STEPS_12)]));
-    const OVER: Tool = Tool::new().help(Help::new().topics(&[Topic::guide("many", "", STEPS)]));
+    const OK: Tool = Tool::new().help(
+        Help::new()
+            .leaves(BOOKS)
+            .topics(&[Topic::guide("many", "", STEPS_12)]),
+    );
+    const OVER: Tool = Tool::new().help(
+        Help::new()
+            .leaves(BOOKS)
+            .topics(&[Topic::guide("many", "", STEPS)]),
+    );
     assert_eq!(problems(&shelf_with_arguments(), &OK), None);
     assert_eq!(
         problems(&shelf_with_arguments(), &OVER).unwrap(),
@@ -104,12 +119,12 @@ fn a_guide_of_twelve_steps_passes_and_one_of_thirteen_fails() {
 #[test]
 fn a_step_of_three_commands_passes_and_one_of_four_fails() {
     const LIST: &[&str] = &["books", "list"];
-    const OK: Tool = Tool::new().help(Help::new().topics(&[Topic::guide(
+    const OK: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[Topic::guide(
         "g",
         "",
         &[Step::new("List thrice.", &[LIST, LIST, LIST])],
     )]));
-    const OVER: Tool = Tool::new().help(Help::new().topics(&[Topic::guide(
+    const OVER: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[Topic::guide(
         "g",
         "",
         &[Step::new("List four times.", &[LIST, LIST, LIST, LIST])],
@@ -125,7 +140,7 @@ fn a_step_of_three_commands_passes_and_one_of_four_fails() {
 
 #[test]
 fn check_help_fails_a_step_without_commands_and_a_guide_without_steps() {
-    const NONE: Tool = Tool::new().help(Help::new().topics(&[
+    const NONE: Tool = Tool::new().help(Help::new().leaves(LEAVES).topics(&[
         Topic::guide("empty", "", &[]),
         Topic::guide("bare", "", &[Step::new("Think.", &[])]),
     ]));
@@ -148,7 +163,7 @@ fn check_help_fails_an_empty_explanation_and_one_that_holds_a_line_break() {
             Step::new("List\nthem.", &[&["books", "list"]]),
         ],
     );
-    const TOOL: Tool = Tool::new().help(Help::new().topics(&[BAD]));
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[BAD]));
     assert_eq!(
         problems(&shelf_with_arguments(), &TOOL).unwrap(),
         format!(
@@ -160,7 +175,7 @@ fn check_help_fails_an_empty_explanation_and_one_that_holds_a_line_break() {
 
 #[test]
 fn a_guide_still_follows_the_topic_name_rules() {
-    const TOOL: Tool = Tool::new().help(Help::new().topics(&[Topic::guide(
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[Topic::guide(
         "books",
         "",
         &[Step::new("List.", &[&["books", "list"]])],

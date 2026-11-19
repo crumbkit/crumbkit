@@ -85,18 +85,6 @@ files are the same on every machine.
 
 Why: ADR-0025, ADR-0004, ADR-0027.
 
-## Guide topics
-
-`check_help` checks each [guide topic](README.md#topics) of the tool record. It
-parses every command of every step with the tool's name in front, and it fails
-naming the topic, the step number, clap's error kind and the command line as
-help prints it. A `--help` or `--version` command counts as refused, as for a
-leaf's examples. It also fails a guide with no steps or with more than 12, a
-step with no commands or with more than 3, and a step whose explanation is
-empty or holds a line break. The check does not run the commands.
-
-Why: ADR-0257.
-
 ## Checks that stay separate
 
 crumbkit-test has no bundled check that runs every check. A tool calls each

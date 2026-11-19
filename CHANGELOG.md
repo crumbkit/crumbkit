@@ -12,7 +12,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `<tool> help <name>` prints as numbered steps with their commands. crumbkit-test's
   `check_help` parses every command of a guide against the tool's command tree
   and fails a guide with more than 12 steps or a step with more than 3 commands
-  ([behaviour/help], [behaviour/help/checks]). `Topic::render` returns what
+  ([behaviour/help/guides]). `Topic::render` returns what
   help prints for a topic, and `Topic::text` is empty for a guide.
 
 ## [0.6.1](https://github.com/crumbkit/crumbkit/compare/v0.6.0...v0.6.1) - 2026-11-17
@@ -2164,6 +2164,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/help/leaves]: docs/behaviour/help/leaves/README.md
 [behaviour/help/commands-list]: docs/behaviour/help/commands-list.md
 [behaviour/help/examples]: docs/behaviour/help/examples.md
+[behaviour/help/guides]: docs/behaviour/help/guides/README.md
 [behaviour/help/headings]: docs/behaviour/help/headings/README.md
 [behaviour/help/reference]: docs/behaviour/help/reference.md
 [behaviour/help/skill-check]: docs/behaviour/help/skill-check/README.md

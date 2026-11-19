@@ -173,24 +173,6 @@ A topic's text prints as plain text, also on a terminal and when `--json`
 follows its name. The root's help
 names the topics on one line and gives no summaries, so crumbkit prints a
 topic's summary nowhere. `Topic::about` returns it to a tool that lists its
-topics itself.
+topics itself. A topic can also be a [task guide](guides/README.md).
 
-A tool can declare a topic as a task guide with `Topic::guide`, a list of
-`Step`s. Each step holds a one-line explanation and one to 3 commands, each
-the words after the tool's name. A guide has at most 12 steps. `<tool> help
-<name>` prints a numbered line for each step and then each command on an
-indented line that starts with `$`, with each word quoted as example lines
-quote it:
-
-```text
-1. Sign in.
-   $ records login --user you@example.com
-2. Create a record.
-   $ records create --title 'Quarterly report'
-```
-
-`Topic::text` returns an empty string for a guide, and `Topic::render` returns
-what help prints for either kind. [`check_help`](checks.md#guide-topics) parses
-each command of a guide.
-
-Why: ADR-0023, ADR-0037, ADR-0101, ADR-0129, ADR-0257.
+Why: ADR-0023, ADR-0037, ADR-0101, ADR-0129.
