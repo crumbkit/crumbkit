@@ -1,4 +1,4 @@
-# ADR-0258. cargo crumbkit's skill suggests guides from a tool's usage
+# ADR-0259. cargo crumbkit's skill suggests guides from a tool's usage
 
 - Date: 2026-11-19
 - Status: accepted

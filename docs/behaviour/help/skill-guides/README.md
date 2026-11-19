@@ -6,7 +6,7 @@ agent loads after `cargo crumbkit skills install`. The job reads one
 tool's [usage report](../../usage-log/report.md) and suggests guide text
 and tool changes for the findings in it.
 
-Why: ADR-0258.
+Why: ADR-0259.
 
 ## What the job reads
 
