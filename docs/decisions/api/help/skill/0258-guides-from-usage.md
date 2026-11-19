@@ -31,6 +31,16 @@ effort.
   wanted, and lists the others under `not_judged`.
 - The job checks every guide line with `tool-skill check` before it
   writes it, so no suggestion names a command or flag the tool lacks.
+- The findings of one command become one suggestion, because they usually
+  share a cause and one task per cause is enough.
+- The job marks runs that a program made, such as a poller, and gives
+  them a tool change with no guide text, because no agent reads it. The
+  log's `caller` cannot tell them apart, since a program inherits the
+  agent's environment.
+- A cost test moves a finding that costs a caller nothing, such as a slow
+  command under 5 seconds, to a `rejected` list, which never makes the
+  outcome fail. A trial on one tool's log turned such findings into
+  suggestions that no reader would act on.
 - When the caller uses Board for the tool's repository, the job writes one
   task per suggestion. Otherwise it writes them to the place the caller's
   instructions name. In every case it prints the

@@ -245,10 +245,24 @@ rated seven hand-written runners, signal owners, failure stacks and usage logs
 
 ## Suggest guides from usage
 
-This job reads one tool's usage log and suggests, for each finding of its
-`self usage`, a line of guide text for the tool's `SKILL.md` or a help
-topic, and a change to the tool that would remove the cause. It reads one
-tool per run and applies no suggestion.
+This job reads one tool's usage log and suggests, for each command with
+findings in its `self usage`, a line of guide text for the tool's
+`SKILL.md` or a help topic, and a change to the tool or to the program
+that calls it. It reads one tool per run and applies no suggestion.
+
+### Needs
+
+- cargo crumbkit 0.4.0 or later, which has `tool-skill check`. Earlier
+  versions name the command `skill check`.
+- The tool's crumbkit-usage version. crumbkit-usage writes `lock_ms` and
+  `context` from 0.6.0. With an older version the runs have no lock wait,
+  so the job reads only `ms` and the `mostly waiting` rows.
+- The tool's crumbkit version in `Cargo.lock`. Two crumbkit versions in one
+  `Cargo.lock` mean the tool's codes, events and observers may come from
+  either, as the audit's `convention-suite` rule says. Use the version that
+  the tool's own package depends on, which
+  `cargo tree -p <package> -i crumbkit@<version>` shows, and name both
+  versions in the report's `note`.
 
 ### Reads
 
@@ -257,51 +271,94 @@ binary name. The window is 14 days unless the request names another.
 
 ```sh
 <bin> self usage --since 14d --json --full
-<bin> self runs list --since 14d --all --json
+<bin> self runs list --since 14d --all --json --full
 <bin> commands list --json --full
 ```
 
+`self runs list` needs `--full` for the `at`, `caller`, `flags`, `help`
+and `lock_ms` fields.
+
 - `GUIDES.md` beside this skill: one row per finding, with what agents were
   probably trying to do, a guide text template, the tool change, the
-  affordances it would use and when the guide alone is enough.
-- `AFFORDANCES.md` beside this skill, for the **Since** of each affordance,
-  and the crumbkit version in the tool's `Cargo.lock`.
+  affordances it would use and when the guide alone is enough. Its
+  "Program callers" section covers runs that a program made.
+- `AFFORDANCES.md` beside this skill, for the **Since** of each affordance.
+
+The installed binary wrote the log, and `tool-skill check` builds the
+checkout. Compare `<bin> --version` with the checkout's version and commit,
+and say in the report's `note` when they differ, because a guide line
+checked against the checkout can name a command that the installed binary
+lacks. Set `CARGO_TARGET_DIR` to a scratch directory for the builds of
+`tool-skill check`, so they leave the checkout's target directory alone,
+and start them through the job runner that your instructions name, if any.
 
 The job gets the outcome `skipped`, and writes nothing, when the tool has
 no `self usage` command or its log holds no runs in the window. When the
 tool has no `commands list`, the job judges without it and lists every
 suggestion under `unverified`.
 
-The usage log holds no value that a caller typed. The job never asks for
-those values or looks for them elsewhere.
+The usage log holds no value that a caller typed, and a refused run holds
+no flags. The job never asks for those values or looks for them
+elsewhere. When a judgement needs them, it says so in a proposal.
 
 ### Method
 
-1. Take each row of `self usage` with at least 5 runs. A row with fewer
-   goes under `not_judged` with the reason "fewer than 5 runs", because a
-   pattern seen that rarely is noise.
-2. Find the row's finding in `GUIDES.md`, and read the row's `figures`.
-3. In `self runs list`, find the sessions whose runs of the row's command
-   show the finding, and read the runs before and after them in each
-   session by `step`. The command the agent ran next, its `flags`, `code`,
-   `ms`, `out_bytes` and `lock_ms` show what it was trying to do. Write
-   that in `intent`.
-4. Write the guide text from the row's template with the tool's real
-   commands and flags from `commands list` and the figures from step 2. A
-   line about one command goes in the tool's `SKILL.md`, and a concept
-   that spans commands goes in a help topic.
-5. Write the guide text to a scratch Markdown file and run
-   `cargo crumbkit tool-skill check --bin <NAME> --skill <FILE>` in the
-   tool's workspace. Rewrite a failing line from `commands list`, or drop
-   it. Never write a guide line that fails.
-6. Write the tool change and its affordances from the row. An affordance
+1. Take each row of `self usage` whose `runs` field is at least 5. The
+   `runs` field counts the runs that show the finding, and
+   `figures.runs` counts every run of the command. A row with fewer goes
+   under `not_judged` with the reason "fewer than 5 runs".
+2. Group the rows by command. All the rows of one command become one
+   suggestion with every finding under `findings`, because they usually
+   share one cause and one task is enough.
+3. Decide who made each command's runs, from `self runs list`. A run came
+   from a program when its flags hold `--no-input` or a fixed set that the
+   tool's docs do not show, when the runs come at a steady interval in
+   `at`, or when the session runs the same few commands and nothing else.
+   A run's `caller` field comes from the environment, so a program
+   started inside an agent session records the agent's id. Set the
+   suggestion's `made_by` to `program` when most of the runs came from a
+   program, and to `agent` otherwise.
+4. Read the runs before and after each finding in each session by `step`.
+   The command the agent ran next, its `flags`, `code`, `ms`, `out_bytes`
+   and, from crumbkit-usage 0.6.0, `lock_ms` show what it was trying to
+   do. Write that in `intent`. An identical repeat whose runs differ in
+   `out_bytes` was probably two calls with different values, so leave
+   those repeats out of the count and say so in `intent`.
+5. Apply the cost test. Move a finding that costs a caller nothing to
+   `rejected`, under its command and with the reason. A command left
+   with no finding gets no suggestion. A finding costs nothing when:
+   - it is `slow command` and `p95_ms` is under 5,000 ms;
+   - it is `identical repeat` and its runs fall under 5 once step 4
+     leaves out the repeats with different output;
+   - it is `heavy output` or `identical repeat` and every run came from a
+     program that reads the output once and discards it.
+6. For a suggestion made by an `agent`, write the guide text from each
+   finding's row in `GUIDES.md`. Fill each command line with the example
+   values of the leaf's `examples` in `commands list`, so the line is one
+   an agent can run. When the leaf has no example, write each value as a
+   placeholder in capitals, such as `NAME`. A line about one command goes
+   in the tool's `SKILL.md`, and a concept that spans commands goes in a
+   help topic. A suggestion made by a `program` has no guide text, and
+   its tool change follows the "Program callers" section of `GUIDES.md`.
+7. Check each guide line. Write the lines to a scratch Markdown file and
+   run `cargo crumbkit tool-skill check --bin <NAME> --skill <FILE>` in the
+   tool's workspace. The check refuses an unknown command, an unknown
+   flag, a flag without its value, a value outside the argument's possible
+   values and an extra positional argument. It passes a line that leaves
+   out a required argument, and it checks no rule across arguments, such
+   as two conflicting flags. So also compare each line with the arguments
+   that `commands list` marks `required`, and add any that are missing.
+   Rewrite a failing line, or drop it.
+8. Write the tool change and its affordances from the rows. An affordance
    whose **Since** is newer than the tool's crumbkit version needs an
    upgrade first, and the tool change says so.
-7. Set `guide_enough` from the row's last column.
+9. Set `guide_enough` from the rows' last column, or `false` for a
+   suggestion made by a `program`.
 
-A cause that the log cannot show, or a tool change that no affordance
-covers, is a proposal for crumbkit. It goes in `proposals` with the
-findings that showed it, as the audit's `crumbkit-gap` does.
+A cause that the log cannot show, such as the values behind a repeat, or a
+tool change that no affordance covers, is a proposal for crumbkit. It goes
+in `proposals` with the findings that showed it, as the audit's
+`crumbkit-gap` does.
 
 ### Where suggestions go
 
@@ -310,9 +367,9 @@ findings that showed it, as the audit's `crumbkit-gap` does.
    checkout once per suggestion, so Board routes each task by the
    checkout's git remote. The title names the behaviour the suggestion asks
    for, such as "shelf's skill tells agents to pass every id to one books
-   show call". The text holds the finding, the command, the runs, the
-   window, the intent, the guide text, the tool change and the
-   affordances. When Board finds no board that mounts the tool's
+   show call". The text holds the command, the findings with their runs,
+   the window, `made_by`, the intent, the guide text, the tool change and
+   the affordances. When Board finds no board that mounts the tool's
    repository, the caller does not use Board for this tool, so go to the
    next place.
 2. When your instructions name another place, such as an issue tracker,
@@ -321,7 +378,7 @@ findings that showed it, as the audit's `crumbkit-gap` does.
 
 Each task is one write. When Board refuses a task, for example with
 `tasks::repo::ambiguous`, pass `--repo` as the refusal names and add the
-rest.
+rest. A rejected command gets no task.
 
 ### Report
 
@@ -332,13 +389,20 @@ holds:
 - `tool`, `repository`, `window`, `since`, `runs` and `sessions`: what was
   read, and the summary of `self usage`.
 - `outcome`: `skipped` when the log could not be read or holds no runs,
-  `fail` when the report holds a suggestion, and `pass` otherwise.
-- `suggestions`: one entry per finding with at least 5 runs, the most runs
-  first, with its finding, command, code, runs, intent, guide text and its
-  target, tool change, affordances, `guide_enough` and `written_to`, the
-  task or entry it was written to, or `null`.
+  `fail` when the report holds a suggestion, and `pass` otherwise. A
+  rejected finding never makes the outcome `fail`.
+- `suggestions`: one entry per command, the most runs first, with its
+  command, its findings with their runs and codes, `made_by`, the intent,
+  the guide text and its target, the tool change and `change_to`, which
+  says whether it belongs to the tool or the calling program, the
+  affordances,
+  `guide_enough` and `written_to`, the task or entry it was written to,
+  or `null`.
+- `rejected`: each command with findings that failed the cost test, with
+  those findings and the reason.
 - `not_judged`, `proposals` and `unverified`, as the Method describes.
-- `note`: a one-line verdict.
+- `note`: a one-line verdict, which also names a version mismatch between
+  the binary and the checkout, and two crumbkit versions in `Cargo.lock`.
 
 Print the report, or write it to the file the request names, in every
 case, so it lists which suggestions were written and where.

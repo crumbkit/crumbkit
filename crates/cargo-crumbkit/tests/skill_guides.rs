@@ -149,3 +149,32 @@ fn the_guide_report_requires_every_property_it_declares_and_no_other() {
     assert_eq!(declared, required);
     assert_eq!(schema["additionalProperties"], false);
 }
+
+#[test]
+fn the_skill_reads_self_runs_list_with_full_for_the_fields_its_method_reads() {
+    assert!(SKILL.contains("<bin> self runs list --since 14d --all --json --full"));
+}
+
+#[test]
+fn guides_tells_the_job_what_to_do_with_runs_that_a_program_made() {
+    assert!(GUIDES.contains("\n## Program callers\n"));
+    assert!(SKILL.contains("\"Program callers\" section of `GUIDES.md`"));
+}
+
+#[test]
+fn the_guide_report_lists_rejected_findings_beside_the_suggestions() {
+    let schema: Value = serde_json::from_str(GUIDE_REPORT).unwrap();
+    let rejected = &schema["properties"]["rejected"]["items"];
+    let suggestion = &schema["$defs"]["Suggestion"]["properties"];
+
+    assert_eq!(
+        rejected["required"],
+        serde_json::json!(["command", "findings", "reason"])
+    );
+    assert_eq!(
+        suggestion["made_by"]["enum"],
+        serde_json::json!(["agent", "program"])
+    );
+    assert_eq!(suggestion["findings"]["minItems"], 1);
+    assert!(SKILL.contains("- `rejected`:"));
+}

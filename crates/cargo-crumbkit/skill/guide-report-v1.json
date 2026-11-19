@@ -22,7 +22,10 @@
     },
     "since": {
       "description": "The day in UTC on which the report of self usage starts, such as 2026-11-05, or null when the job could not read it.",
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "runs": {
       "description": "The runs that self usage read.",
@@ -35,18 +38,53 @@
       "minimum": 0
     },
     "outcome": {
-      "description": "skipped when the tool has no self usage command or its log holds no runs, fail when the report holds a suggestion, and pass otherwise.",
-      "enum": ["pass", "fail", "skipped"]
+      "description": "skipped when the tool has no self usage command or its log holds no runs, fail when the report holds a suggestion, and pass otherwise. A rejected command never makes the outcome fail.",
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
     },
     "suggestions": {
-      "description": "One suggestion per finding with at least 5 runs, whose guide text passed the skill check, the most runs first.",
+      "description": "One suggestion per command with a finding of at least 5 runs that passed the cost test, the most runs first.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/Suggestion"
       }
     },
+    "rejected": {
+      "description": "The commands whose findings failed the cost test, because they cost a caller nothing, each with the reason. A rejected command never makes the outcome fail.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "description": "The command path, such as books show.",
+            "type": "string"
+          },
+          "findings": {
+            "description": "The command's findings.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Finding"
+            },
+            "minItems": 1
+          },
+          "reason": {
+            "description": "Why the findings cost a caller nothing, such as a p95 of 1,941 ms for a slow command.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command",
+          "findings",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
     "not_judged": {
-      "description": "The findings that the job did not judge, with the reason, such as fewer than 5 runs.",
+      "description": "The findings that the job did not judge, with the reason, such as fewer than 5 runs in the row's runs field.",
       "type": "array",
       "items": {
         "type": "object",
@@ -65,7 +103,12 @@
             "type": "string"
           }
         },
-        "required": ["finding", "command", "runs", "reason"],
+        "required": [
+          "finding",
+          "command",
+          "runs",
+          "reason"
+        ],
         "additionalProperties": false
       }
     },
@@ -87,7 +130,10 @@
             }
           }
         },
-        "required": ["text", "findings"],
+        "required": [
+          "text",
+          "findings"
+        ],
         "additionalProperties": false
       }
     },
@@ -99,7 +145,7 @@
       }
     },
     "note": {
-      "description": "A one-line verdict.",
+      "description": "A one-line verdict. It also names a difference between the installed binary that wrote the log and the checkout that the guide lines were checked against, and two crumbkit versions in Cargo.lock.",
       "type": "string"
     }
   },
@@ -113,6 +159,7 @@
     "sessions",
     "outcome",
     "suggestions",
+    "rejected",
     "not_judged",
     "proposals",
     "unverified",
@@ -120,42 +167,86 @@
   ],
   "additionalProperties": false,
   "$defs": {
-    "Suggestion": {
-      "description": "The guide text and the tool change for one finding of self usage.",
+    "Finding": {
+      "description": "One row of self usage.",
       "type": "object",
       "properties": {
         "finding": {
           "description": "The finding as self usage names it, such as identical repeat.",
           "type": "string"
         },
-        "command": {
-          "description": "The command path of the finding's row, such as books show.",
-          "type": "string"
+        "runs": {
+          "description": "The row's runs field, which counts the runs that show the finding, less any repeats the job left out because their output differed.",
+          "type": "integer",
+          "minimum": 0
         },
         "code": {
           "description": "The failure code of a retry after failure, or null for any other finding.",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "finding",
+        "runs",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "Suggestion": {
+      "description": "The guide text and the tool change for the findings of one command.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command path of the findings, such as books show.",
+          "type": "string"
         },
-        "runs": {
-          "description": "The runs that show the finding.",
-          "type": "integer",
-          "minimum": 5
+        "findings": {
+          "description": "Every finding of the command with at least 5 runs, merged into this one suggestion.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "minItems": 1
+        },
+        "made_by": {
+          "description": "agent when most of the runs came from coding agents, and program when most came from a program such as a daemon or a poller.",
+          "enum": [
+            "agent",
+            "program"
+          ]
         },
         "intent": {
-          "description": "What the agents were probably trying to do, and the runs before and after the finding that show it.",
+          "description": "What the callers were probably trying to do, and the runs before and after the findings that show it.",
           "type": "string"
         },
         "guide": {
-          "description": "The guide text, which passed cargo crumbkit tool-skill check.",
-          "type": "string"
+          "description": "The guide text, which passed cargo crumbkit tool-skill check and names every required argument, or null for a suggestion made by a program.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "guide_target": {
-          "description": "Where the guide text goes: skill for the tool's SKILL.md, or topic for a help topic.",
-          "enum": ["skill", "topic"]
+          "description": "Where the guide text goes: skill for the tool's SKILL.md, topic for a help topic, or null when there is no guide text.",
+          "enum": [
+            "skill",
+            "topic",
+            null
+          ]
         },
         "tool_change": {
-          "description": "The change to the tool that would remove the cause.",
+          "description": "The change that would remove the cause.",
           "type": "string"
+        },
+        "change_to": {
+          "description": "tool when the change belongs to the tool, and program when it belongs to the program that calls the tool.",
+          "enum": [
+            "tool",
+            "program"
+          ]
         },
         "affordances": {
           "description": "The affordances that the tool change would use, as AFFORDANCES.md names them. An affordance newer than the tool's crumbkit version needs an upgrade first.",
@@ -165,23 +256,26 @@
           }
         },
         "guide_enough": {
-          "description": "True when the guide text alone is the whole fix and the tool needs no change.",
+          "description": "True when the guide text alone is the whole fix and the tool needs no change. Always false for a suggestion made by a program.",
           "type": "boolean"
         },
         "written_to": {
           "description": "The place the job wrote the suggestion, such as a task's path or an issue's URL, or null when the suggestion is only in this report.",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [
-        "finding",
         "command",
-        "code",
-        "runs",
+        "findings",
+        "made_by",
         "intent",
         "guide",
         "guide_target",
         "tool_change",
+        "change_to",
         "affordances",
         "guide_enough",
         "written_to"
