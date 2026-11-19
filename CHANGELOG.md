@@ -9,8 +9,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - crumbkit: `Topic::guide` declares a task guide that `help` prints as numbered steps, and
-  `check_help` parses each command of it. `Topic::render` returns the printed
-  text, and `Topic::text` is empty for a guide ([behaviour/help/guides]).
+  `check_help` parses each command of it. `Topic::text` returns "" for a guide, so read a
+  topic with `Topic::render` ([behaviour/help/guides]).
 
 ## [0.6.1](https://github.com/crumbkit/crumbkit/compare/v0.6.0...v0.6.1) - 2026-11-17
 

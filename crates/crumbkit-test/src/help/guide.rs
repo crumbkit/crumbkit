@@ -1,9 +1,10 @@
 //! The tool record check of the guide topics that `Topic::guide` declares.
 
 use clap::Command;
+use crumbkit::Tool;
 use crumbkit::help::{Step, Topic};
 
-use super::command_line;
+use super::{command_line, push_view_flag_problems};
 
 /// Adds a problem to `problems` for each way that the guide `name` with
 /// `steps` breaks a guide rule: no steps, more than `Topic::MAX_STEPS`
@@ -12,9 +13,13 @@ use super::command_line;
 /// clap refuses when it parses the tool's name and the command's words
 /// against `parser`, a copy of the tool's tree that the check may parse
 /// with. A `--help` or `--version` command counts as refused, as in a leaf's
-/// examples.
+/// examples. A command that types a view flag that the leaf at its path in
+/// `tool` does not offer, or that adds nothing to the leaf's JSON, fails as
+/// an example does. The check skips a command whose path names no leaf of
+/// the tool record, so it accepts a bare group word that prints help.
 pub(super) fn check_guide(
     command: &Command,
+    tool: &Tool,
     name: &str,
     steps: &[Step],
     parser: &mut Command,
@@ -34,7 +39,7 @@ pub(super) fn check_guide(
         ));
     }
     for (index, step) in steps.iter().enumerate() {
-        check_step(command, name, index + 1, step, parser, problems);
+        check_step(command, tool, name, index + 1, step, parser, problems);
     }
 }
 
@@ -42,6 +47,7 @@ pub(super) fn check_guide(
 /// guide `name` breaks.
 fn check_step(
     command: &Command,
+    tool: &Tool,
     name: &str,
     number: usize,
     step: &Step,
@@ -73,11 +79,6 @@ fn check_step(
         ));
     }
     let tool_name = command.get_name();
-    // RUST-10: a guide command is parsed against the tool's whole tree, so
-    // the check does less than it does for a leaf's examples. It does not
-    // refuse a view flag that the command does not offer, because a guide
-    // command names no leaf, and it accepts a group word that prints help.
-    // A leaf's example covers those through `Leaf::examples`.
     for words in commands {
         if let Some(word) = words.iter().find(|word| word.contains(['\n', '\r'])) {
             problems.push(format!(
@@ -86,12 +87,29 @@ fn check_step(
             ));
         }
         let args = std::iter::once(tool_name).chain(words.iter().copied());
-        if let Err(error) = parser.try_get_matches_from_mut(args) {
-            problems.push(format!(
-                "the guide `{name}` step {number}: clap refuses the command `{}` with the error kind {:?}",
-                command_line(tool_name, words),
+        let line = command_line(tool_name, words);
+        match parser.try_get_matches_from_mut(args) {
+            Ok(matches) => {
+                let mut path = Vec::new();
+                let mut level = &matches;
+                while let Some((word, next)) = level.subcommand() {
+                    path.push(word);
+                    level = next;
+                }
+                let leaf = tool
+                    .get_help()
+                    .get_leaves()
+                    .iter()
+                    .find(|leaf| leaf.path() == path.as_slice());
+                if let Some(leaf) = leaf {
+                    let prefix = format!("the guide `{name}` step {number}");
+                    push_view_flag_problems(&prefix, "command", &line, leaf, &matches, problems);
+                }
+            }
+            Err(error) => problems.push(format!(
+                "the guide `{name}` step {number}: clap refuses the command `{line}` with the error kind {:?}",
                 error.kind()
-            ));
+            )),
         }
     }
 }

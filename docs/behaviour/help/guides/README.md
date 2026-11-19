@@ -28,6 +28,17 @@ the step number, clap's error kind and the command line as help prints it. A
 `--help` or `--version` command counts as refused, as for a leaf's examples. It
 also fails a guide with no steps or with more than 12, a step with no commands
 or with more than 3, and a step whose explanation is empty or holds a line
-break. The check does not run the commands.
+break. It applies the view-flag rule of leaf examples to a command whose path
+names a leaf of the tool record, so an unoffered `--long`, `--fields` or
+`--full` fails.
+
+The check skips these:
+
+- A command whose path names no leaf, such as a bare group word. clap accepts
+  it when the group does not require a subcommand, and at run time it prints
+  the group's help.
+- The command's output, and whether it succeeds when run. The check does not
+  run the commands.
+- Preconditions, which `Example::needs` holds for leaf examples.
 
 Why: ADR-0257.

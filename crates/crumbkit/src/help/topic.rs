@@ -43,6 +43,10 @@ mod tests;
 /// most [`Topic::MAX_STEPS`] steps and a step at most [`Step::MAX_COMMANDS`]
 /// commands, and `check_help` fails a guide that has more.
 ///
+/// [`Topic::text`] returns an empty string for a guide, because the printed
+/// text holds the tool's name. A tool that prints or lists topics itself
+/// calls [`Topic::render`] with its name, which works for both kinds.
+///
 /// ```
 /// use crumbkit::Tool;
 /// use crumbkit::help::{Help, Step, Topic};
