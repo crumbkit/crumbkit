@@ -5,6 +5,14 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- cargo-crumbkit: the skill's "Suggest guides from usage" job turns one tool's
+  `self usage` findings into guide text and tool changes. It always prints a
+  `cargo-crumbkit/guide-report/v1` report, and can also write Board tasks or
+  entries in the caller's named place ([behaviour/help/skill-guides]).
+
 ## [0.6.2](https://github.com/crumbkit/crumbkit/compare/v0.6.1...v0.6.2) - 2026-11-19
 ### Added
 
@@ -2169,6 +2177,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/help/reference]: docs/behaviour/help/reference.md
 [behaviour/help/skill-check]: docs/behaviour/help/skill-check/README.md
 [behaviour/help/skill-draft]: docs/behaviour/help/skill-draft/README.md
+[behaviour/help/skill-guides]: docs/behaviour/help/skill-guides/README.md
 [behaviour/help/weight]: docs/behaviour/help/weight.md
 [behaviour/output]: docs/behaviour/output/README.md
 [behaviour/output/values]: docs/behaviour/output/values/README.md

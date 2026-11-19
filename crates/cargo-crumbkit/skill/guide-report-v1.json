@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cargo-crumbkit/guide-report/v1",
+  "description": "The report of one run of the \"Suggest guides from usage\" job of cargo crumbkit's skill, which turns one tool's self usage findings into guide text and tool changes.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "description": "The id of this document.",
+      "const": "cargo-crumbkit/guide-report/v1"
+    },
+    "tool": {
+      "description": "The binary name of the tool whose usage log was read, such as shelf.",
+      "type": "string"
+    },
+    "repository": {
+      "description": "The tool's repository, such as its path or its owner/name.",
+      "type": "string"
+    },
+    "window": {
+      "description": "The --since value that the job passed to self usage and self runs list, such as 14d.",
+      "type": "string"
+    },
+    "since": {
+      "description": "The day in UTC on which the report of self usage starts, such as 2026-11-05, or null when the job could not read it.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runs": {
+      "description": "The runs that self usage read.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "sessions": {
+      "description": "The sessions that the runs came from.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "outcome": {
+      "description": "skipped when the tool has no self usage command or its log holds no runs, fail when the report holds a suggestion, and pass otherwise. A rejected command never makes the outcome fail.",
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
+    },
+    "suggestions": {
+      "description": "One suggestion per command with a finding of at least 5 runs that passed the cost test, the most runs first.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Suggestion"
+      }
+    },
+    "rejected": {
+      "description": "The commands whose findings failed the cost test, because they cost a caller nothing, each with the reason. A rejected command never makes the outcome fail.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "description": "The command path, such as books show.",
+            "type": "string"
+          },
+          "findings": {
+            "description": "The command's findings.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Finding"
+            },
+            "minItems": 1
+          },
+          "reason": {
+            "description": "Why the findings cost a caller nothing, such as a p95 of 1,941 ms for a slow command.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command",
+          "findings",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "not_judged": {
+      "description": "The findings that the job did not judge, with the reason, such as fewer than 5 runs in the row's runs field.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "finding": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "runs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "finding",
+          "command",
+          "runs",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "proposals": {
+      "description": "The proposals for crumbkit itself: a cause that the usage log cannot show, or a tool change that no affordance covers, with the feature crumbkit could offer. A proposal never makes the outcome fail.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "description": "What is missing, and the feature crumbkit could offer in its place.",
+            "type": "string"
+          },
+          "findings": {
+            "description": "The findings that showed the gap, each as its finding and command, such as \"identical repeat: books list\".",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "findings"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unverified": {
+      "description": "The suggestions whose guide text the job could not check, because the tool has no commands list. They count in no outcome.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Suggestion"
+      }
+    },
+    "note": {
+      "description": "A one-line verdict. It also names a difference between the installed binary that wrote the log and the checkout that the guide lines were checked against, and two crumbkit versions in Cargo.lock.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "tool",
+    "repository",
+    "window",
+    "since",
+    "runs",
+    "sessions",
+    "outcome",
+    "suggestions",
+    "rejected",
+    "not_judged",
+    "proposals",
+    "unverified",
+    "note"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Finding": {
+      "description": "One row of self usage.",
+      "type": "object",
+      "properties": {
+        "finding": {
+          "description": "The finding as self usage names it, such as identical repeat.",
+          "type": "string"
+        },
+        "runs": {
+          "description": "The row's runs field, which counts the runs that show the finding. For an identical repeat it counts command lines that match word for word, values included.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "code": {
+          "description": "The failure code of a retry after failure, or null for any other finding.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "finding",
+        "runs",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "Suggestion": {
+      "description": "The guide text and the tool change for the findings of one command.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command path of the findings, such as books show.",
+          "type": "string"
+        },
+        "findings": {
+          "description": "The findings of the command that have at least 5 runs and passed the cost test, merged into this one suggestion.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "minItems": 1
+        },
+        "made_by": {
+          "description": "agent when most of the runs came from coding agents, and program when most came from a program such as a daemon or a poller.",
+          "enum": [
+            "agent",
+            "program"
+          ]
+        },
+        "intent": {
+          "description": "What the callers were probably trying to do, and the runs before and after the findings that show it.",
+          "type": "string"
+        },
+        "guide": {
+          "description": "The guide text, which passed cargo crumbkit tool-skill check and names every required argument, or null for a suggestion made by a program.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "guide_target": {
+          "description": "Where the guide text goes: skill for the tool's SKILL.md, topic for a help topic, or null when there is no guide text.",
+          "enum": [
+            "skill",
+            "topic",
+            null
+          ]
+        },
+        "tool_change": {
+          "description": "The change that would remove the cause.",
+          "type": "string"
+        },
+        "change_to": {
+          "description": "tool when the change belongs to the tool, and program when it belongs to the program that calls the tool.",
+          "enum": [
+            "tool",
+            "program"
+          ]
+        },
+        "affordances": {
+          "description": "The affordances that the tool change would use, as AFFORDANCES.md names them. An affordance newer than the tool's crumbkit version needs an upgrade first.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "guide_enough": {
+          "description": "True when the guide text alone is the whole fix and the tool needs no change. Always false for a suggestion made by a program.",
+          "type": "boolean"
+        },
+        "written_to": {
+          "description": "The place the job wrote the suggestion, such as a task's path or an issue's URL, or null when the suggestion is only in this report.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "command",
+        "findings",
+        "made_by",
+        "intent",
+        "guide",
+        "guide_target",
+        "tool_change",
+        "change_to",
+        "affordances",
+        "guide_enough",
+        "written_to"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
