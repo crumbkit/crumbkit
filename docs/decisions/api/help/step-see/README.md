@@ -23,9 +23,14 @@ tool's code to learn its commands, so `check_help` cannot parse them.
   commands. A pointer step is exempt from the rule that a step has a command.
 - The step counts toward `Topic::MAX_STEPS`, and `Step::MAX_COMMANDS` does
   not apply to it.
+- This relaxes ADR-0257's rule that each step has at least one command: a
+  step made by `Step::see` has none.
 - `check_help` does not run or parse the other tool's commands, and it does
   not check that the other tool has the topic. The other tool's own
   `check_help` keeps its topic's commands true.
+
+API-1 ground: an ordinary need that other tools share, stated by the same
+tools that asked for the guide topic.
 
 ## Consequences
 

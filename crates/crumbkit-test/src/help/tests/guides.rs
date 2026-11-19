@@ -370,7 +370,7 @@ fn check_help_fails_a_pointer_whose_tool_is_not_a_command_name() {
     assert_eq!(
         problems(&shelf_with_arguments(), &TOOL).unwrap(),
         format!(
-            "{HEAD}the guide `g` step 1 points to the tool `Login Tool`, which is not lowercase letters and digits in words joined by single dashes, starting with a letter"
+            "{HEAD}the guide `g` step 1 points to the tool `Login Tool`, which is not lowercase letters and digits in words joined by single dashes, starting with a letter; name the other tool's command, such as `logintool`"
         )
     );
 }
@@ -388,7 +388,7 @@ fn check_help_fails_a_pointer_whose_topic_is_not_a_topic_name() {
     assert_eq!(
         problems(&shelf_with_arguments(), &TOOL).unwrap(),
         format!(
-            "{HEAD}the guide `g` step 1 points to the topic `Sign_in`, which is not lowercase letters and digits in words joined by single dashes, starting with a letter"
+            "{HEAD}the guide `g` step 1 points to the topic `Sign_in`, which is not lowercase letters and digits in words joined by single dashes, starting with a letter; name a topic as `<tool> help` lists it, such as `sign-in`"
         )
     );
 }
@@ -421,5 +421,41 @@ fn check_help_still_checks_a_pointer_step_s_explanation() {
     assert_eq!(
         problems(&shelf_with_arguments(), &TOOL).unwrap(),
         format!("{HEAD}the guide `g` step 1 has an empty explanation")
+    );
+}
+
+#[test]
+fn check_help_reports_both_names_of_a_pointer_that_are_malformed() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[Topic::guide(
+        "g",
+        "",
+        &[Step::see("Sign in.", "Login", "Sign_in")],
+    )]));
+    let form =
+        "lowercase letters and digits in words joined by single dashes, starting with a letter";
+    assert_eq!(
+        problems(&shelf_with_arguments(), &TOOL).unwrap(),
+        format!(
+            "{HEAD}the guide `g` step 1 points to the tool `Login`, which is not {form}; name the other tool's command, such as `logintool`\n\
+             the guide `g` step 1 points to the topic `Sign_in`, which is not {form}; name a topic as `<tool> help` lists it, such as `sign-in`"
+        )
+    );
+}
+
+#[test]
+fn check_help_reports_a_bad_command_step_beside_a_valid_pointer() {
+    const TOOL: Tool = Tool::new().help(Help::new().leaves(BOOKS).topics(&[Topic::guide(
+        "g",
+        "",
+        &[
+            Step::see("Sign in.", "logintool", "sign-in"),
+            Step::new("List.", &[&["books", "list", "--everything"]]),
+        ],
+    )]));
+    assert_eq!(
+        problems(&shelf_with_arguments(), &TOOL).unwrap(),
+        format!(
+            "{HEAD}the guide `g` step 2: clap refuses the command `shelf books list --everything` with the error kind UnknownArgument"
+        )
     );
 }

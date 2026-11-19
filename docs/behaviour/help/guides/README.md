@@ -2,8 +2,9 @@
 
 A tool declares a topic as a task guide with
 [`Topic::guide`](../../../../crates/crumbkit/src/help/topic.rs), a list of
-`Step`s. Each step holds a one-line explanation and between 1 and 3 commands, each the
-words after the tool's name. A guide has at most 12 steps.
+`Step`s. Each step holds a one-line explanation and either between 1 and 3 commands, each
+the words after the tool's name, or a pointer to another tool's topic (see below). A
+guide has at most 12 steps.
 
 `<tool> help <name>` prints a numbered line for each step and then each command
 on an indented line that starts with `$`, with each word quoted as example
@@ -26,8 +27,8 @@ name, and `Topic::render` returns what help prints for either kind.
 command of every step with the tool's name in front. It fails naming the topic,
 the step number, clap's error kind and the command line as help prints it. A
 `--help` or `--version` command counts as refused, as for a leaf's examples. It
-also fails a guide with no steps or with more than 12, a step with no commands
-or with more than 3, and a step whose explanation is empty or holds a line
+also fails a guide with no steps or with more than 12, a step that is not a pointer and has no commands
+or has more than 3, and a step whose explanation is empty or holds a line
 break. It applies the view-flag rule of leaf examples to a command whose path
 names a leaf of the tool record, so an unoffered `--long`, `--fields` or
 `--full` fails.
@@ -49,7 +50,9 @@ of 3 commands does not apply to it. `check_help` fails a pointer whose `tool`
 is not lowercase letters and digits in words joined by single dashes, starting
 with a letter, and one whose `topic` breaks the topic-name rule. It also fails
 a `tool` that is the tool's own name, because a step in the same tool needs a
-step with commands.
+step with commands. The tool's name is its clap command name, which can differ
+from the name of its binary, so the check cannot see a pointer to the tool's own
+binary under another name.
 
 `check_help` does not run or parse the other tool's commands, because it holds
 no other tool's command tree, and it does not know whether the other tool is

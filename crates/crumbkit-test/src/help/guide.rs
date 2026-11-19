@@ -61,7 +61,7 @@ fn check_pointer(
 ) {
     if !is_dashed(tool) {
         problems.push(format!(
-            "the guide `{name}` step {number} points to the tool `{tool}`, which is not {DASHED_NAME}"
+            "the guide `{name}` step {number} points to the tool `{tool}`, which is not {DASHED_NAME}; name the other tool's command, such as `logintool`"
         ));
     } else if tool == own {
         problems.push(format!(
@@ -70,7 +70,7 @@ fn check_pointer(
     }
     if !is_dashed(topic) {
         problems.push(format!(
-            "the guide `{name}` step {number} points to the topic `{topic}`, which is not {DASHED_NAME}"
+            "the guide `{name}` step {number} points to the topic `{topic}`, which is not {DASHED_NAME}; name a topic as `<tool> help` lists it, such as `sign-in`"
         ));
     }
 }
