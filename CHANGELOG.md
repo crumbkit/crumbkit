@@ -5,7 +5,7 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
+## [0.6.2](https://github.com/crumbkit/crumbkit/compare/v0.6.1...v0.6.2) - 2026-11-19
 ### Added
 
 - crumbkit: `Topic::guide` declares a task guide that `help` prints as numbered steps, and
