@@ -199,9 +199,11 @@ pub(crate) enum CommandsCommand {
 
 /// cargo crumbkit's own agent skill, which `cargo crumbkit skills install`
 /// writes into the agent skills directories. It tells an agent what each
-/// `cargo crumbkit` command is for, and how to audit a tool for places that
-/// should use crumbkit, with the table of crumbkit's affordances and the
-/// schema of the audit's report beside it.
+/// `cargo crumbkit` command is for, how to audit a tool for places that
+/// should use crumbkit, and how to suggest guides from a tool's usage log.
+/// Beside it are the table of crumbkit's affordances, the schema of the
+/// audit's report, the table of guides for each usage finding and the
+/// schema of the guide report.
 pub(crate) const SKILL: Skill = Skill::new(
     "cargo-crumbkit",
     env!("CARGO_PKG_VERSION"),
@@ -212,6 +214,11 @@ pub(crate) const SKILL: Skill = Skill::new(
     (
         "audit-report-v1.json",
         include_str!("../skill/audit-report-v1.json"),
+    ),
+    ("GUIDES.md", include_str!("../skill/GUIDES.md")),
+    (
+        "guide-report-v1.json",
+        include_str!("../skill/guide-report-v1.json"),
     ),
 ]);
 

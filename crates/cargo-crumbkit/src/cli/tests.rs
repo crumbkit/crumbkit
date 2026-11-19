@@ -78,11 +78,19 @@ fn criteria(skill: &str) -> Vec<&str> {
 }
 
 #[test]
-fn cargo_crumbkit_s_skill_holds_the_affordances_and_the_report_schema() {
+fn cargo_crumbkit_s_skill_holds_the_affordances_the_guides_and_both_report_schemas() {
     let names: Vec<&str> = SKILL.get_files().iter().map(|(name, _)| *name).collect();
 
     assert_eq!(SKILL.name(), "cargo-crumbkit");
-    assert_eq!(names, ["AFFORDANCES.md", "audit-report-v1.json"]);
+    assert_eq!(
+        names,
+        [
+            "AFFORDANCES.md",
+            "audit-report-v1.json",
+            "GUIDES.md",
+            "guide-report-v1.json"
+        ]
+    );
 }
 
 #[test]
