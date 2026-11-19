@@ -41,7 +41,8 @@ mod tests;
 /// `check_help` parses every command against the tool's clap tree, so a guide
 /// stops passing when the tool renames a flag that a step uses. A guide has at
 /// most [`Topic::MAX_STEPS`] steps and a step at most [`Step::MAX_COMMANDS`]
-/// commands, and `check_help` fails a guide that has more.
+/// commands, and `check_help` fails a guide that has more. [`Step::see`]
+/// declares a step that another tool's topic carries out.
 ///
 /// [`Topic::text`] returns an empty string for a guide, because the printed
 /// text holds the tool's name. A tool that prints or lists topics itself
