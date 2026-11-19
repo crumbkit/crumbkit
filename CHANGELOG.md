@@ -5,16 +5,20 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- cargo-crumbkit: the skill's "Suggest guides from usage" job turns one tool's
+  `self usage` findings into guide text and tool changes. It always prints a
+  `cargo-crumbkit/guide-report/v1` report, and can also write Board tasks or
+  entries in the caller's named place ([behaviour/help/skill-guides]).
+
 ## [0.6.2](https://github.com/crumbkit/crumbkit/compare/v0.6.1...v0.6.2) - 2026-11-19
 ### Added
 
 - crumbkit: `Topic::guide` declares a task guide that `help` prints as numbered steps, and
   `check_help` parses each command of it. `Topic::text` returns "" for a guide, so read a
   topic with `Topic::render` ([behaviour/help/guides]).
-- cargo-crumbkit: the skill's "Suggest guides from usage" job turns one tool's
-  `self usage` findings into guide text and tool changes. It always prints a
-  `cargo-crumbkit/guide-report/v1` report, and can also write Board tasks or
-  entries in the caller's named place ([behaviour/help/skill-guides]).
 - crumbkit: `Step::see(about, tool, topic)` declares a guide step that another tool's topic
   carries out; `help` prints `$ <tool> help <topic>`, and `check_help` checks both names
   ([behaviour/help/guides]).
