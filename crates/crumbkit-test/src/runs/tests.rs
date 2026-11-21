@@ -80,3 +80,38 @@ fn a_run_whose_tool_exits_while_a_process_it_started_keeps_standard_output_open_
     );
     assert!(started.elapsed() < Duration::from_secs(2));
 }
+
+#[test]
+fn a_run_past_its_timeout_is_waited_for_even_when_its_kill_fails() {
+    use std::io;
+    use std::process::ExitStatus;
+    use std::time::{Duration, Instant};
+
+    use super::{Reap, wait};
+
+    struct KillFails {
+        waited: bool,
+    }
+
+    impl Reap for KillFails {
+        fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+            Ok(None)
+        }
+
+        fn kill(&mut self) -> io::Result<()> {
+            Err(io::Error::other("the kill failed"))
+        }
+
+        fn wait(&mut self) -> io::Result<ExitStatus> {
+            self.waited = true;
+            Err(io::Error::other("no status"))
+        }
+    }
+
+    let mut child = KillFails { waited: false };
+
+    let waited = wait(&mut child, Instant::now(), Duration::ZERO);
+
+    assert_eq!(waited.unwrap_err().to_string(), "the kill failed");
+    assert!(child.waited);
+}

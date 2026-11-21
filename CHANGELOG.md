@@ -13,6 +13,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `cargo-crumbkit/guide-report/v1` report, and can also write Board tasks or
   entries in the caller's named place ([behaviour/help/skill-guides]).
 
+### Fixed
+
+- crumbkit-test: a run that passes its timeout is waited for even when its
+  kill returns an error, so the run does not stay a zombie process
+  ([behaviour/checks/end-to-end]).
+
 ## [0.6.2](https://github.com/crumbkit/crumbkit/compare/v0.6.1...v0.6.2) - 2026-11-19
 ### Added
 
