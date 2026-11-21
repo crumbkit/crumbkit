@@ -6,7 +6,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::sync::mpsc::{self, Receiver};
-use std::thread;
+use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
@@ -300,6 +300,10 @@ pub(crate) fn run(
     let waited = wait(&mut child, started, timeout)
         .map_err(|error| format!("the run of `{binary}` cannot be waited for: {error}"))?;
     let Some(status) = waited else {
+        // The check does not join the reader threads of a stopped run. A
+        // process that the run started survives the kill and can hold
+        // standard output or standard error open, so a join could block
+        // until that process ends.
         return Ok(Ran::Stopped);
     };
     let held = || {
@@ -317,6 +321,31 @@ pub(crate) fn run(
     }))
 }
 
+/// The three calls on a running child that [`wait`] makes. [`Child`] has
+/// them, and a test gives a child whose calls fail.
+trait Reap {
+    /// Returns the exit status when the child has exited.
+    fn try_wait(&mut self) -> io::Result<Option<ExitStatus>>;
+    /// Asks the operating system to end the child.
+    fn kill(&mut self) -> io::Result<()>;
+    /// Blocks until the child has exited and returns its exit status.
+    fn wait(&mut self) -> io::Result<ExitStatus>;
+}
+
+impl Reap for Child {
+    fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+        Child::try_wait(self)
+    }
+
+    fn kill(&mut self) -> io::Result<()> {
+        Child::kill(self)
+    }
+
+    fn wait(&mut self) -> io::Result<ExitStatus> {
+        Child::wait(self)
+    }
+}
+
 /// The longest pause between two checks of whether a run has exited.
 const LONGEST_PAUSE: Duration = Duration::from_millis(10);
 
@@ -326,7 +355,11 @@ const LONGEST_PAUSE: Duration = Duration::from_millis(10);
 /// waits little and a long run costs few checks. When the check cannot
 /// learn whether `child` exited, it kills `child` before it returns the
 /// error, so no run outlives the check.
-fn wait(child: &mut Child, started: Instant, timeout: Duration) -> io::Result<Option<ExitStatus>> {
+fn wait(
+    child: &mut impl Reap,
+    started: Instant,
+    timeout: Duration,
+) -> io::Result<Option<ExitStatus>> {
     let mut pause = Duration::from_millis(1);
     loop {
         let exited = match child.try_wait() {
@@ -350,7 +383,16 @@ fn wait(child: &mut Child, started: Instant, timeout: Duration) -> io::Result<Op
             // signal sent to the run's process group on Unix, or a job
             // object on Windows. The standard library offers neither, so a
             // check that must end them adds a crate that does.
-            child.kill()?;
+            //
+            // After a kill that succeeds, the check waits for the child and
+            // so reaps it. A kill that fails can leave the child running, and
+            // a blocking wait would then never return. The check instead
+            // makes one non-blocking check, which reaps a child that has
+            // already exited, and returns the kill's error.
+            if let Err(error) = child.kill() {
+                let _ = child.try_wait();
+                return Err(error);
+            }
             child.wait()?;
             return Ok(None);
         }
@@ -360,20 +402,32 @@ fn wait(child: &mut Child, started: Instant, timeout: Duration) -> io::Result<Op
 }
 
 /// Writes `bytes` to `pipe` on a new thread and then drops the pipe, which
-/// closes the run's standard input. Nothing waits for the thread: a run may
-/// exit or be killed without reading its input, so a failed write, such as
-/// a broken pipe, is not a problem of the check.
+/// closes the run's standard input. A run may exit or be killed without
+/// reading its input, so a failed write, such as a broken pipe, is not a
+/// problem of the check.
 fn write_all(mut pipe: impl Write + Send + 'static, bytes: Vec<u8>) {
+    // The check does not join this thread. A process that the run started
+    // can keep standard input open without reading it, and then the write
+    // blocks after the run has ended, so a join would block the check.
     thread::spawn(move || {
         let _ = pipe.write_all(&bytes);
     });
 }
 
+/// The thread that reads one of the run's output pipes, and the channel on
+/// which it sends the bytes when the pipe closes.
+struct Reader {
+    /// The channel that carries the bytes the thread read.
+    bytes: Receiver<Vec<u8>>,
+    /// The thread, which [`collect`] joins once the bytes have arrived.
+    thread: JoinHandle<()>,
+}
+
 /// Reads everything from `pipe` on a new thread, which sends the bytes on
 /// the returned channel when the pipe closes.
-fn read_all(mut pipe: impl Read + Send + 'static) -> Receiver<Vec<u8>> {
-    let (sender, receiver) = mpsc::channel();
-    thread::spawn(move || {
+fn read_all(mut pipe: impl Read + Send + 'static) -> Reader {
+    let (sender, bytes) = mpsc::channel();
+    let thread = thread::spawn(move || {
         let mut bytes = Vec::new();
         // A read that fails keeps the bytes read until then.
         let _ = pipe.read_to_end(&mut bytes);
@@ -381,25 +435,32 @@ fn read_all(mut pipe: impl Read + Send + 'static) -> Receiver<Vec<u8>> {
         // is not a problem.
         let _ = sender.send(bytes);
     });
-    receiver
+    Reader { bytes, thread }
 }
 
 /// Returns the bytes that `reader` read, or none when there is no reader or
 /// its thread panicked. It returns `None` when the pipe is still open
-/// `timeout` after `started`.
-fn collect(
-    reader: Option<Receiver<Vec<u8>>>,
-    started: Instant,
-    timeout: Duration,
-) -> Option<Vec<u8>> {
+/// `timeout` after `started`. It joins the reader's thread once the thread
+/// has sent its bytes or panicked, which leaves the thread nothing to block
+/// on.
+fn collect(reader: Option<Reader>, started: Instant, timeout: Duration) -> Option<Vec<u8>> {
     let Some(reader) = reader else {
         return Some(Vec::new());
     };
-    match reader.recv_timeout(timeout.saturating_sub(started.elapsed())) {
-        Ok(bytes) => Some(bytes),
-        Err(mpsc::RecvTimeoutError::Disconnected) => Some(Vec::new()),
-        Err(mpsc::RecvTimeoutError::Timeout) => None,
-    }
+    let bytes = match reader
+        .bytes
+        .recv_timeout(timeout.saturating_sub(started.elapsed()))
+    {
+        Ok(bytes) => bytes,
+        Err(mpsc::RecvTimeoutError::Disconnected) => Vec::new(),
+        // The check does not join the thread here. A process that the run
+        // started still holds the pipe open, so the read and a join would
+        // block until that process ends.
+        Err(mpsc::RecvTimeoutError::Timeout) => return None,
+    };
+    // A thread that panicked has no bytes to give, so the panic adds nothing.
+    let _ = reader.thread.join();
+    Some(bytes)
 }
 
 /// Returns the note that follows a command line whose run sets or removes
