@@ -82,7 +82,7 @@ fn a_run_whose_tool_exits_while_a_process_it_started_keeps_standard_output_open_
 }
 
 #[test]
-fn a_run_past_its_timeout_is_waited_for_even_when_its_kill_fails() {
+fn a_run_past_its_timeout_is_reaped_without_a_blocking_wait_when_its_kill_fails() {
     use std::io;
     use std::process::ExitStatus;
     use std::time::{Duration, Instant};
@@ -90,28 +90,30 @@ fn a_run_past_its_timeout_is_waited_for_even_when_its_kill_fails() {
     use super::{Reap, wait};
 
     struct KillFails {
-        waited: bool,
+        calls: Vec<&'static str>,
     }
 
     impl Reap for KillFails {
         fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+            self.calls.push("try_wait");
             Ok(None)
         }
 
         fn kill(&mut self) -> io::Result<()> {
+            self.calls.push("kill");
             Err(io::Error::other("the kill failed"))
         }
 
         fn wait(&mut self) -> io::Result<ExitStatus> {
-            self.waited = true;
+            self.calls.push("wait");
             Err(io::Error::other("no status"))
         }
     }
 
-    let mut child = KillFails { waited: false };
+    let mut child = KillFails { calls: Vec::new() };
 
     let waited = wait(&mut child, Instant::now(), Duration::ZERO);
 
     assert_eq!(waited.unwrap_err().to_string(), "the kill failed");
-    assert!(child.waited);
+    assert_eq!(child.calls, ["try_wait", "kill", "try_wait"]);
 }

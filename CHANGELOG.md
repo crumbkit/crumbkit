@@ -15,9 +15,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- crumbkit-test: a run that passes its timeout is waited for even when its
-  kill returns an error, so the run does not stay a zombie process
-  ([behaviour/checks/end-to-end]).
+- crumbkit-test: when the kill of a run that passed its timeout returns an
+  error, the check still reaps the run if it has exited, so the run does not
+  stay a zombie process ([behaviour/checks/end-to-end]).
 
 ## [0.6.2](https://github.com/crumbkit/crumbkit/compare/v0.6.1...v0.6.2) - 2026-11-19
 ### Added

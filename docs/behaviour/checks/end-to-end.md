@@ -119,9 +119,9 @@ Why: ADR-0005, ADR-0036, ADR-0045, ADR-0050, ADR-0163.
 The checks run the binary through `std::process`. Each run has a timeout of
 10 seconds, which starts when the binary starts.
 
-- The check waits for the run itself, and when the timeout ends it kills
-  and reaps the run, even after a failed kill. It reports a stopped run as
-  stopped, never as failed.
+- The check waits for the run itself, and at the timeout kills, reaps and
+  reports it as stopped. A failed kill is an error, and the run is reaped if
+  it exited.
 - The kill ends the run's own process. A process that the run started
   survives it.
 - The check pipes standard input, standard output and standard error. One

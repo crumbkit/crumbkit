@@ -383,13 +383,17 @@ fn wait(
             // signal sent to the run's process group on Unix, or a job
             // object on Windows. The standard library offers neither, so a
             // check that must end them adds a crate that does.
-            // A kill that fails can still have ended the child, or the
-            // child can have exited on its own, so the check waits for it
-            // before it returns the kill's error. The wait then reaps it.
-            let killed = child.kill();
-            let reaped = child.wait();
-            killed?;
-            reaped?;
+            //
+            // After a kill that succeeds, the check waits for the child and
+            // so reaps it. A kill that fails can leave the child running, and
+            // a blocking wait would then never return. The check instead
+            // makes one non-blocking check, which reaps a child that has
+            // already exited, and returns the kill's error.
+            if let Err(error) = child.kill() {
+                let _ = child.try_wait();
+                return Err(error);
+            }
+            child.wait()?;
             return Ok(None);
         }
         thread::sleep(pause.min(left));
