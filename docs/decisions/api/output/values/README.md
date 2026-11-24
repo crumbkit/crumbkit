@@ -1,7 +1,7 @@
 # ADR-0147. A value type prints its Display in text and its own form in JSON
 
 - Date: 2026-10-24
-- Status: accepted
+- Status: amended by ADR-0214
 - Supersedes: ADR-0108, which it amends
 - Missed: ADR-0108 gave the text and JSON forms only to `Age`, inside crumbkit, so a tool's own value type could not print one form in a table and another in JSON.
 

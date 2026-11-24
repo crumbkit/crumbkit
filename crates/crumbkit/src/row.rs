@@ -148,8 +148,9 @@ pub trait Row: Serialize + JsonSchema {
     /// without `--json`, `--long` or `--fields`. It lists a row that
     /// reports a problem or a warning, as [`Row::PROBLEM`] and
     /// [`Row::WARNING`] decide, whatever this returns, so a note that counts
-    /// those rows never counts a row that the text leaves out. It lists each other row for which this returns
-    /// true, and none of them when the listing's document is marked with
+    /// those rows never counts a row that the text leaves out. It lists each
+    /// other row for which this returns true, and none of them when the
+    /// listing's document is marked with
     /// [`Document::only_problems`](crate::Document::only_problems).
     /// `--long` and `--fields` print every row, and `--json` holds every
     /// row unchanged. A list, a batch, a single row and a stream print
@@ -213,10 +214,11 @@ pub trait Row: Serialize + JsonSchema {
     /// field. The JSON without `--full` holds the field after the columns,
     /// so `--json` carries the children with each row. The leaf's help
     /// describes the child lines on a `Children:` line, with
-    /// [`Children::help`] or a sentence that names the field. crumbkit-test's `check_help` fails a field that is not a
-    /// field of the row type or has no doc comment, a field that is also a
-    /// column, and a headed leaf whose row type sets it, because a headed
-    /// batch's text prints each row's bytes.
+    /// [`Children::help`] or a sentence that names the field. crumbkit-test's
+    /// `check_help` fails a field that is not a field of the row type or has
+    /// no doc comment, a field that is also a column, and a headed leaf whose
+    /// row type sets it, because a headed batch's text prints each row's
+    /// bytes.
     const CHILDREN: Option<Children<Self>> = None;
 
     /// Whether `--json` prints every field of each row as the type

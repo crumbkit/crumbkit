@@ -258,6 +258,27 @@ fn children_keep_the_defaults_until_a_builder_changes_them() {
 }
 
 #[test]
+fn untyped_children_of_a_row_type_keep_its_field_indent_spacing_and_help() {
+    const TYPED: Children<Counted> = Children::field("tags")
+        .indent(4)
+        .spaced()
+        .help("one line that counts the tags.")
+        .lines(Counted::count)
+        .long_lines(Counted::all);
+    const UNTYPED: Children<()> = TYPED.untyped();
+
+    assert_eq!(
+        (
+            UNTYPED.get_field(),
+            UNTYPED.get_indent(),
+            UNTYPED.is_spaced(),
+            UNTYPED.get_help(),
+        ),
+        ("tags", 4, true, Some("one line that counts the tags.")),
+    );
+}
+
+#[test]
 fn children_describe_their_lines_with_crumbkits_sentence_or_the_tools_help() {
     assert_eq!(
         Children::<()>::field("notes").text(),
