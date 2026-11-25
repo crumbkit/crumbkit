@@ -178,7 +178,7 @@ impl JsonSchema for StoredRecord {
 /// 1, and the caller exports again after the last run it read. A failure
 /// to find or read the log stays silent, as every usage-log failure does,
 /// and the stream holds the lines read before it.
-#[must_use]
+#[must_use = "the exit code reports whether the export finished, so return it from main"]
 pub fn export(mut run: Run, args: &SelfRunsExport) -> ExitCode {
     let tool = run.command().clone();
     let log = open_log(&tool, args.log.as_deref());

@@ -37,3 +37,9 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+  - package-ecosystem: rust-toolchain
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
