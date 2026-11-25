@@ -11,38 +11,38 @@ reviewed. Every Rust job runs on a GitHub image that includes rustup, and
 ## The pull-request lane
 
 The fast lane's median wall time stays within the limit of CI-3, because a
-slow pull-request run delays every change. It has two work jobs, `lint` and
-`test`, which run in parallel on `ubuntu-latest`. GitHub's standard runners
-are free for a public repository, and `ubuntu-latest` has 4 CPUs, so cargo
-builds and tests in parallel, which the single CPU of `ubuntu-slim` cannot.
-Every extra job repeats the checkout, the toolchain installation and the
-cache restore, so a third work job would shorten a run only by the steps it
-took from the longer job.
+slow pull-request run delays every change. It has two work jobs, `lane` and
+`crumbkit`, which run in parallel.
 
-- `lint` runs the commit check on a pull request, rustfmt, clippy, the MSRV
-  check of RUST-9, `cargo xtask check`, rustdoc with warnings denied
-  (DOCS-4), cargo-deny, cargo-shear and zizmor.
-- `test` runs the tests with cargo-nextest, whose `ci` profile reports every
-  failing test in one run, and the doctests with `cargo test --doc`,
-  because nextest does not run doctests.
-- `gate` needs every fast-lane job, runs even when one of them failed or was
-  cancelled, and fails unless all of them succeeded. The ruleset requires
-  `gate` alone, so a job that joins the fast lane needs no change to the
-  ruleset. `gate` runs on `ubuntu-slim`, because it only reads results.
+- `lane` calls `rust-lane.yml` from crumbkit/rust-standards at commit
+  5ba71ff, with `library: true` and `timeout-minutes: 10`, and shows as
+  `lane / lane`. Its one job on `ubuntu-24.04` runs rustfmt, zizmor,
+  gitleaks, cargo-deny, cargo-shear, clippy with every feature, the tests
+  with cargo-nextest's default profile, the doctests, rustdoc with warnings
+  denied (DOCS-4), and clippy on each feature alone. A hand-written pull
+  request moves the commit, and Dependabot ignores the repository.
+- `crumbkit` runs on `ubuntu-latest` the steps the shared lane lacks: the
+  commit check on a pull request, the MSRV check of RUST-9,
+  `cargo xtask check`, `cargo doc -p crumbkit` and the per-package runs.
+- `gate` needs `[lane, crumbkit]`, runs even when one of them failed or was
+  cancelled, and fails unless both succeeded. The ruleset requires `gate`
+  alone, so a job that joins the fast lane needs no change to the ruleset.
+  `gate` runs on `ubuntu-slim`, because it only reads results.
 
-`ci.yml` also runs `lint` and `test` on each push to `main`, so the merged
-code is tested even when `main` moved after a pull request's last run. A
-newer push to `main` cancels the run of an older one. The repository has no
-merge queue, so `ci.yml` has no `merge_group` trigger. On each push to
-`main`, the `macos` job runs the tests on `macos-latest`. It stays out of
+`ci.yml` also runs `lane` and `crumbkit` on each push to `main`, so the
+merged code is tested even when `main` moved after a pull request's last
+run. A newer push to `main` cancels the run of an older one. The repository
+has no merge queue, so `ci.yml` has no `merge_group` trigger. On each push
+to `main`, the `macos` job runs the tests on `macos-latest`. It stays out of
 pull requests and the gate, because GitHub runs only a few macOS jobs of an
 account at once, so a pull request would wait for a runner.
 
-The `lint`, `test` and `macos` jobs use rust-cache, and only a run on `main`
-saves a cache. A pull request restores the cache that `main` saved, so pull
-requests skip the time of saving and leave the cache storage to `main`.
+The `lane / lane`, `crumbkit` and `macos` jobs use rust-cache, and only a run
+on `main` saves a cache. A pull request restores the cache that `main` saved,
+so pull requests skip the time of saving and leave the cache storage to
+`main`.
 
-Why: ADR-0011.
+Why: ADR-0011, ADR-0260.
 
 ## Feature builds
 
@@ -53,14 +53,14 @@ crumbkit-child. crumbkit-usage's Unix dev-dependency turns on
 crumbkit-process's `forward` feature, so the workspace runs on Unix build,
 test and lint crumbkit-process with it.
 
-- `test` runs crumbkit's tests and doctests again in the default build and
-  with `miette`.
-- `lint` runs clippy on crumbkit in the default build, with `miette` and
-  with `tracing` alone, which is the only build that compiles the spans
-  without the usage log's ids.
-- `test` and `lint` each run crumbkit-process alone with `-p`. Cargo unifies
+- `crumbkit` runs crumbkit's tests and doctests again in the default build
+  and with `miette`.
+- `crumbkit` runs crumbkit-process's tests alone with `-p`. Cargo unifies
   features only across the selected packages, so that run builds the crate
   without `forward`, which is an adopter's default build.
+- The lane's `features` step runs clippy on each feature of each package
+  alone, which covers crumbkit with `tracing` alone, the only build that
+  compiles the spans without the usage log's ids.
 
 A separate run for crumbkit-usage or crumbkit-child would repeat what the
 workspace runs check. crumbkit-child's own tests run with no usage log, so
@@ -68,19 +68,19 @@ they cover the child's SIGINT handler without the log's signal thread.
 Clippy runs once per build, because a single `--all-features`
 run misses a warning that only one build shows.
 
-Why: ADR-0011.
+Why: ADR-0011, ADR-0260.
 
 ## The commit check
 
-On a pull request, `lint` first runs `.github/scripts/commit-check.sh`. The
-script fails when the author name, author email, committer name, committer
-email or message of any commit between the pull request's base and head
-matches the case-insensitive extended regular expression in the repository
-secret `COMMIT_PATTERN`, which the owner sets.
+On a pull request, `crumbkit` first runs `.github/scripts/commit-check.sh`.
+The script fails when the author name, author email, committer name,
+committer email or message of any commit between the pull request's base
+and head matches the case-insensitive extended regular expression in the
+repository secret `COMMIT_PATTERN`, which the owner sets.
 
-- The check runs in `lint`, so `gate` blocks the merge without a change to
-  the ruleset, and `lint` checks out the full history so every commit is
-  present.
+- The check runs in `crumbkit`, so `gate` blocks the merge without a change
+  to the ruleset, and `crumbkit` checks out the full history so every commit
+  is present.
 - On a match the script prints the commit's SHA and the name of the field,
   and never the field's value, so the log does not reveal what matched.
 - The workflow passes the secret through `env:`, because an expression
@@ -90,7 +90,7 @@ secret `COMMIT_PATTERN`, which the owner sets.
   only Dependabot secrets, so both skip the check unless the owner also sets
   `COMMIT_PATTERN` as a Dependabot secret.
 
-Why: ADR-0011.
+Why: ADR-0011, ADR-0260.
 
 ## The ruleset
 

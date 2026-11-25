@@ -1,3 +1,10 @@
+# The default profile is the shared Rust lane's, whose `tests` step runs it
+# (ADR-0260). It runs every test after a failure and never retries a failed
+# test, so one run reports every failing test and a flaky test fails.
+[profile.default]
+fail-fast = false
+retries = 0
+
 # The ci profile runs every test after a failure, so one CI run reports every
 # failing test.
 [profile.ci]

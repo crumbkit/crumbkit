@@ -1,4 +1,5 @@
-# The fast lane of ADR-0011. The lint and test jobs run in parallel, and the
+# The fast lane of ADR-0011 and ADR-0260. The lane job runs the shared Rust
+# lane, the crumbkit job runs the checks that the shared lane lacks, and the
 # gate job reports whether both passed. A push to main runs them again on the
 # merged code, and also runs the tests on macOS.
 name: CI
@@ -24,14 +25,31 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
+  # The lane job runs the shared Rust lane of crumbkit/rust-standards, so a
+  # pull request shows its check as `lane / lane` (ADR-0260). The library
+  # profile adds the `rustdoc` step and the `features` step, which runs
+  # clippy on each feature of each package alone. The commit moves by hand,
+  # and dependabot.yml ignores crumbkit/rust-standards.
+  lane:
+    permissions:
+      contents: read # actions/checkout reads the repository.
+    uses: crumbkit/rust-standards/.github/workflows/rust-lane.yml@5ba71ff31c5f5d8e69b34d04bb65bd0177f7ebeb
+    with:
+      library: true
+      timeout-minutes: 10
+
+  # The crumbkit job runs the checks that the shared lane lacks: the commit
+  # check, the MSRV check, `cargo xtask check`, rustdoc on crumbkit's default
+  # build, and the per-package tests and doctests.
+  crumbkit:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read # actions/checkout reads the repository.
     steps:
       # The full history includes every commit of a pull request, which the
-      # commit check reads.
+      # commit check reads, and the merge base that `cargo xtask check`
+      # compares decision records with.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -51,89 +69,32 @@ jobs:
       - run: rustup toolchain install
       - run: rustup toolchain install 1.89.0 --profile minimal
       # install-action runs before rust-cache, so the cache leaves out the
-      # tool binaries that install-action downloads on every run.
-      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
+      # tool binaries that install-action downloads on every run. The pins
+      # are the shared lane's.
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: zizmor,cargo-deny,cargo-shear
+          tool: cargo-nextest@0.9.140
           fallback: none
       # Only a run on main saves the cache. A pull request restores the cache
       # that main saved and saves none of its own.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets
-      # shelf turns on crumbkit's `miette` and `tracing` features and uses
-      # crumbkit-usage, so the workspace run checks crumbkit with both
-      # features and with the usage log, and checks crumbkit-child. clippy
-      # checks crumbkit on its own in the default build, with `miette` and
-      # with `tracing` alone, because a single `--all-features` run would
-      # miss a warning that only one build shows, such as an import that
-      # only one feature uses. The `tracing` build compiles the spans without
-      # the usage log's ids.
-      - run: cargo clippy -p crumbkit --all-targets
-      - run: cargo clippy -p crumbkit --all-targets --features miette
-      - run: cargo clippy -p crumbkit --all-targets --features tracing
-      # crumbkit-usage's Unix dev-dependency turns on crumbkit-process's
-      # `forward` feature in every workspace run. Selecting crumbkit-process
-      # alone builds it without `forward`, as an adopter's default build does,
-      # so clippy checks that build here.
-      - run: cargo clippy -p crumbkit-process --all-targets
       # The MSRV check builds with the oldest supported toolchain (RUST-9).
       # It builds with every feature, which compiles every line of code once,
       # because no code is left out when a feature is on.
       - run: cargo +1.89.0 check --workspace --all-targets --all-features
       - run: cargo xtask check
-      # rustdoc fails on a warning, such as a broken link (DOCS-4). The
-      # workspace run documents crumbkit with the features that shelf turns
-      # on, and the crumbkit run documents its default build, where a link to
-      # an item behind a feature breaks.
-      - run: cargo doc --workspace --no-deps
-        env:
-          RUSTDOCFLAGS: -D warnings
+      # rustdoc fails on a warning, such as a broken link (DOCS-4). The shared
+      # lane documents the workspace, and this run documents crumbkit's
+      # default build, where a link to an item behind a feature breaks.
       - run: cargo doc -p crumbkit --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
-      # The advisories check runs nightly in scheduled.yml, because a new
-      # advisory can appear when no code has changed (ADR-0012).
-      - run: cargo deny check bans licenses sources
-      - run: cargo shear
-      # zizmor lints the workflows and .github/dependabot.yml.
-      - run: zizmor .
-
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read # actions/checkout reads the repository.
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # The image includes rustup, which installs the toolchain that
-      # rust-toolchain.toml pins. It runs before rust-cache, which reads the
-      # rustc version for its cache key.
-      - run: rustup toolchain install
-      # install-action runs before rust-cache, so the cache leaves out the
-      # tool binaries that install-action downloads on every run.
-      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
-        with:
-          tool: cargo-nextest
-          fallback: none
-      # Only a run on main saves the cache. A pull request restores the cache
-      # that main saved and saves none of its own.
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - run: cargo nextest run --workspace --profile ci
-      # nextest does not run doctests, so cargo test runs them.
-      - run: cargo test --workspace --doc
-      # shelf turns on crumbkit's `miette` and `tracing` features and uses
-      # crumbkit-usage, so the workspace runs test crumbkit with both
-      # features and with the usage log, and run crumbkit-child's tests.
-      # crumbkit's tests run again on their own in the default build and with
-      # `miette`. Its doctests run with the `derive` feature as well, because
-      # the README example derives `Row`, and the feature adds only the two
+      # The shared lane tests the workspace with every feature. crumbkit's
+      # tests run again on their own in the default build and with `miette`.
+      # Its doctests run with the `derive` feature as well, because the
+      # README example derives `Row`, and the feature adds only the two
       # derive re-exports.
       - run: cargo nextest run -p crumbkit --profile ci
       - run: cargo test -p crumbkit --features derive --doc
@@ -150,7 +111,7 @@ jobs:
   # every needed job succeeded. A skipped job fails it too, because a skipped
   # job ran none of its checks.
   gate:
-    needs: [lint, test]
+    needs: [lane, crumbkit]
     if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 5
@@ -180,9 +141,9 @@ jobs:
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins.
       - run: rustup toolchain install
-      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-nextest
+          tool: cargo-nextest@0.9.140
           fallback: none
       # Only a run on main saves the cache, and the next push to main
       # restores it.
