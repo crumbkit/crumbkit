@@ -61,6 +61,8 @@ test and lint crumbkit-process with it.
 - The lane's `features` step runs clippy on each feature of each package
   alone, which covers crumbkit with `tracing` alone, the only build that
   compiles the spans without the usage log's ids.
+- Only the nightly `windows` job runs clippy on the default build, where
+  shelf enables `miette` and `tracing`.
 
 A separate run for crumbkit-usage or crumbkit-child would repeat what the
 workspace runs check. crumbkit-child's own tests run with no usage log, so

@@ -1,7 +1,7 @@
 # cargo-deny checks the dependency graph (ADR-0012, CI-2). The `deny` step of
 # the shared Rust lane runs the bans, licenses and sources checks on each pull
-# request, and the nightly job in scheduled.yml runs the advisories check. A setting that is cargo-deny's
-# default is left out.
+# request, and the nightly job in scheduled.yml runs the advisories check. A
+# setting that is cargo-deny's default is left out.
 
 [graph]
 # The checks also cover dependencies behind optional cargo features, such as

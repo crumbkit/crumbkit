@@ -28,7 +28,8 @@ check and the feature builds.
   A pull request shows its check as `lane / lane`.
 - A `crumbkit` job runs the steps the shared lane lacks: the commit check,
   the MSRV check, `cargo xtask check`, rustdoc on crumbkit's default build,
-  and the per-package tests and doctests of crumbkit and crumbkit-process.
+  the per-package tests of crumbkit and crumbkit-process, and crumbkit's
+  doctests.
 - `gate` needs `[lane, crumbkit]` and stays the check that the ruleset
   requires, so the ruleset needs no change. A caller job named `gate` would
   report its check as `gate / lane`, which the ruleset does not name, so
