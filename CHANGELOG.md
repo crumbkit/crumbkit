@@ -5,7 +5,7 @@ format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
+## [0.6.3](https://github.com/crumbkit/crumbkit/compare/v0.6.2...v0.6.3) - 2026-11-25
 ### Added
 
 - cargo-crumbkit: the skill's "Suggest guides from usage" job turns one tool's
