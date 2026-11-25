@@ -22,3 +22,4 @@ chain and releases, documentation, and the repository layout.
 - [ADR-0122. Options for an ordinary need](0122-options-for-an-ordinary-need.md)
 - [ADR-0203. RUST-8 counts code lines](0203-rust-8-counts-code-lines.md)
 - [ADR-0220. The CI time limit is 240 seconds](0220-the-ci-time-limit-is-240-seconds.md)
+- [ADR-0260. Pull requests run the shared Rust lane](0260-pull-requests-run-the-shared-rust-lane.md)

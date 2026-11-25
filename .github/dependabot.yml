@@ -34,6 +34,10 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    # ci.yml calls the shared Rust lane at a commit of crumbkit/rust-standards,
+    # and a hand-written pull request moves that commit (ADR-0260).
+    ignore:
+      - dependency-name: crumbkit/rust-standards
     groups:
       github-actions:
         patterns: ["*"]

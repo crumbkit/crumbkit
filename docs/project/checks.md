@@ -58,10 +58,10 @@ Why: ADR-0010, ADR-0017, ADR-0074, ADR-0203.
 ## Supply-chain checks
 
 cargo-deny's licence, ban and source checks and cargo-shear enforce CI-2 in
-the pull-request `lint` job, because they take seconds and stop a bad
-dependency before it merges. An unexpected licence binds adopters, an
-unknown source can serve code that nobody reviewed, and an unused
-dependency adds build time for nothing.
+the `deny` and `shear` steps of `lane / lane`, because they take seconds
+and stop a bad dependency before it merges. An unexpected licence binds
+adopters, an unknown source can serve code that nobody reviewed, and an
+unused dependency adds build time for nothing.
 
 `deny.toml` allows only the licences the graph uses and only crates.io as a
 source. It bans these:
