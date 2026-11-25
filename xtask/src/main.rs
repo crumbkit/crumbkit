@@ -13,7 +13,7 @@ mod ci_time;
 mod run_time;
 
 use std::fs;
-use std::io::{self,Write};
+use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
