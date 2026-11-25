@@ -43,7 +43,7 @@ mod tests;
 /// cargo runs `cargo crumbkit weigh` as `cargo-crumbkit crumbkit weigh`, so
 /// the command tree's root is `cargo` and every command line that help,
 /// `Next:` lines and recoveries print starts with `cargo crumbkit`.
-#[must_use]
+#[must_use = "the exit code reports how the command ended, so return it from main"]
 pub fn run() -> ExitCode {
     let (cli, mut output) = match crumbkit::parse::<Cli>(&TOOL) {
         Ok(parsed) => parsed,

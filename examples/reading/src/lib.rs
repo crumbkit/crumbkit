@@ -33,7 +33,7 @@ pub const CODES: &[crumbkit::Code<'static>] = lists::EntriesError::CODES;
 
 /// Parses the process's command line, runs the command and returns the
 /// process's exit code.
-#[must_use]
+#[must_use = "the exit code reports how the command ended, so return it from main"]
 pub fn run() -> ExitCode {
     run_from(std::env::args_os())
 }
@@ -46,7 +46,7 @@ pub fn run() -> ExitCode {
 /// directory and adds a command for each list to its tree, and a leaf with
 /// the command's examples to its tool record. It passes the same tool record to
 /// `commands list` and `schemas`, so they describe the commands it added.
-#[must_use]
+#[must_use = "the exit code reports how the command ended, so return it from main"]
 pub fn run_from<I, T>(args: I) -> ExitCode
 where
     I: IntoIterator<Item = T>,

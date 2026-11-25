@@ -524,7 +524,7 @@ pub fn tolerated(code: Code<'_>) {
 /// then exits through its own path, such as `std::process::exit` on another
 /// thread, still has its line. Without an observer it only returns the
 /// code.
-#[must_use]
+#[must_use = "the exit code is the one each observer was told, so return it from main"]
 pub fn ended(exit: u8, out_bytes: Option<u64>) -> ExitCode {
     for observer in observers() {
         observer.ended(exit, out_bytes);

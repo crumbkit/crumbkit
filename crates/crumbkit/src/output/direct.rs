@@ -121,7 +121,7 @@ impl Run {
     /// so the run's end is reported however it ended. It reports the bytes
     /// of the result as `None`, unknown. A command that counted them calls
     /// [`Run::print_failure`] and [`events::ended`](crate::events::ended).
-    #[must_use]
+    #[must_use = "the failure's exit code is the one each observer was told, so return it from main"]
     pub fn fail<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,

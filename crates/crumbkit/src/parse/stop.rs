@@ -147,7 +147,7 @@ impl Stop {
     ///
     /// assert_eq!(stop.exit_code(), ExitCode::SUCCESS);
     /// ```
-    #[must_use]
+    #[must_use = "the exit code reports why parsing stopped, so return it from main"]
     pub fn exit_code(&self) -> ExitCode {
         ExitCode::from(self.code)
     }

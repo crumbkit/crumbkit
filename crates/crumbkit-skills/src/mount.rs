@@ -150,7 +150,7 @@ macro_rules! skills_command {
 /// `print` prints the first, so a tool lists its main skill first. When
 /// `skills` is empty, `print` prints nothing and succeeds. A tool whose
 /// other skills print by name keeps its own `print` command (ADR-0201).
-#[must_use]
+#[must_use = "the exit code reports how the skills command ended, so return it from main"]
 pub fn run(run: crumbkit::Run, skills: &[Skill], command: impl Into<SkillsAction>) -> ExitCode {
     match command.into() {
         SkillsAction::Install(args) => {

@@ -77,7 +77,7 @@ mod tests;
 ///
 /// It takes `run` by value, as [`finish`](crumbkit::finish) does,
 /// because the child's run is the last thing the tool prints (ADR-0094).
-#[must_use]
+#[must_use = "the exit code reports how the child ended, so return it from main"]
 pub fn hand_over(run: Run, child: Command) -> ExitCode {
     hand_over_to(&mut Sink::standard(), run, child)
 }

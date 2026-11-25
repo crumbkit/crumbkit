@@ -48,7 +48,7 @@ pub const CODES: &[crumbkit::Code<'static>] = books::BooksError::CODES;
 /// `Next:` line and a failure's recovery against it. `shelf commands list`
 /// and `shelf aliases list` read the same command, so they list what the
 /// caller can run.
-#[must_use]
+#[must_use = "the exit code reports how the command ended, so return it from main"]
 pub fn run() -> ExitCode {
     run_from(std::env::args_os())
 }
@@ -60,7 +60,7 @@ pub fn run() -> ExitCode {
 ///
 /// crumbkit's benchmarks call it, so they measure the path that every run
 /// of the `shelf` binary takes (ADR-0008).
-#[must_use]
+#[must_use = "the exit code reports how the command ended, so return it from main"]
 pub fn run_from<I, T>(args: I) -> ExitCode
 where
     I: IntoIterator<Item = T>,

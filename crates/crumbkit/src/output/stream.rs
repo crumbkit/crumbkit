@@ -346,7 +346,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// an `Err`, because the stream has printed result lines by then.
     /// `finish` prints no such note for an `Err`, which prints only the
     /// failure.
-    #[must_use]
+    #[must_use = "the exit code reports how the stream ended, so return it from main"]
     #[expect(
         clippy::needless_pass_by_value,
         reason = "end takes the result by value, as finish does, so a tool passes the result of its work in the same way to either"
