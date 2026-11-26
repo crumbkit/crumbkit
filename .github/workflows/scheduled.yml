@@ -38,7 +38,7 @@ jobs:
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins.
       - run: rustup toolchain install
-      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-deny@0.20.2
           fallback: none
@@ -106,7 +106,7 @@ jobs:
           sudo apt-get install --yes --no-install-recommends valgrind
       # The runner's version must equal the gungraun version in Cargo.toml.
       - if: steps.changed.outputs.run == 'true'
-        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: gungraun-runner@0.20.0
           fallback: none
@@ -169,7 +169,7 @@ jobs:
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins.
       - run: rustup toolchain install
-      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-nextest@0.9.140
           fallback: none
